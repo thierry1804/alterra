@@ -1,0 +1,93 @@
+name: alterra-staging
+
+# Same topology as prod, smaller footprint, anonymized data, no offsite backup
+# rotation (staging is disposable). Deployed to a small VPS or an isolated
+# Compose project on the same host, never sharing volumes with prod.
+
+services:
+  nginx:
+    image: nginx:1.26-alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on: [api]
+    networks: [internal]
+    ports: ["8443:443"]
+
+  admin-static:
+    image: ghcr.io/alterra/admin:${TAG:-latest}
+    restart: unless-stopped
+    networks: [internal]
+
+  pwa-static:
+    image: ghcr.io/alterra/pwa:${TAG:-latest}
+    restart: unless-stopped
+    networks: [internal]
+
+  api:
+    image: ghcr.io/alterra/api:${TAG:-latest}
+    restart: unless-stopped
+    env_file: ../.env.staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks: [internal]
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alterra_staging
+      POSTGRES_USER: alterra
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    volumes:
+      - pg_data_staging:/var/lib/postgresql/data
+    secrets: [pg_password]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alterra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [internal]
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_pass
+    volumes:
+      - minio_data_staging:/data
+    secrets: [minio_user, minio_pass]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  pg_data_staging:
+  minio_data_staging:
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password.staging.txt
+  minio_user:
+    file: ./secrets/minio_user.staging.txt
+  minio_pass:
+    file: ./secrets/minio_pass.staging.txt

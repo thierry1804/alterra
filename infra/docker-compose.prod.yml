@@ -1,0 +1,153 @@
+name: alterra-prod
+
+services:
+  nginx:
+    image: nginx:1.26-alpine
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      admin-static:
+        condition: service_started
+      pwa-static:
+        condition: service_started
+    networks: [edge, internal]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./secrets/cloudflared:/etc/cloudflared:ro
+    depends_on: [nginx]
+    networks: [edge]
+
+  admin-static:
+    image: ghcr.io/alterra/admin:${TAG:-latest}
+    restart: always
+    networks: [internal]
+
+  pwa-static:
+    image: ghcr.io/alterra/pwa:${TAG:-latest}
+    restart: always
+    networks: [internal]
+
+  api:
+    image: ghcr.io/alterra/api:${TAG:-latest}
+    restart: always
+    env_file: ../.env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [internal]
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: alterra
+      POSTGRES_USER: alterra
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - pg_wal_archive:/var/lib/pgbackrest
+      - ./pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+    secrets: [pg_password]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alterra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_pass
+    volumes:
+      - minio_data:/data
+    secrets: [minio_user, minio_pass]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  backup-offsite:
+    image: ghcr.io/alterra/backup:${TAG:-latest}
+    restart: always
+    env_file: ../.env.prod
+    volumes:
+      - pg_wal_archive:/var/lib/pgbackrest:ro
+      - ./scripts:/scripts:ro
+    depends_on: [postgres]
+    networks: [internal]
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: always
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks: [internal, edge]
+
+  netdata:
+    image: netdata/netdata:latest
+    restart: always
+    pid: host
+    network_mode: host
+    cap_add: [SYS_PTRACE, SYS_ADMIN]
+    security_opt: ["apparmor:unconfined"]
+    volumes:
+      - netdata_config:/etc/netdata
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+
+networks:
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  pg_data:
+  pg_wal_archive:
+  redis_data:
+  minio_data:
+  uptime_kuma_data:
+  netdata_config:
+  netdata_lib:
+  netdata_cache:
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password.txt
+  minio_user:
+    file: ./secrets/minio_user.txt
+  minio_pass:
+    file: ./secrets/minio_pass.txt

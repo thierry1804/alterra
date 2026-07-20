@@ -1,0 +1,22 @@
+{
+  "name": "alterra",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "admin",
+    "pwa"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,admin,pwa -c cyan,green,magenta \"npm run dev -w backend\" \"npm run dev -w admin\" \"npm run dev -w pwa\"",
+    "setup": "npm install && npm run db:setup -w backend",
+    "build": "npm run build -w backend && npm run build -w admin && npm run build -w pwa",
+    "lint": "npm run lint -w backend && npm run lint -w admin && npm run lint -w pwa",
+    "test": "npm run test -w backend",
+    "docker:dev:up": "docker compose up -d",
+    "docker:dev:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

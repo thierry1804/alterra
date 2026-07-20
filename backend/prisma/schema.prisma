@@ -1,0 +1,398 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  CHEF_SERVICE
+  CHEF_EQUIPE
+}
+
+enum WorkerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PointageStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+  NEEDS_CLARIFICATION
+}
+
+enum PaymentStatus {
+  PENDING
+  EXPORTED
+  PAID
+  FAILED
+}
+
+enum PaymentCycle {
+  WEEKLY
+  DAILY
+}
+
+enum BioContext {
+  POINTAGE_TASK
+  WEEKLY_VALIDATION
+}
+
+enum BioResult {
+  OK
+  DOUBT
+  KO
+  UNAVAILABLE
+}
+
+enum BioProvider {
+  AXIAN
+  MANUAL
+  MOCK
+  LOCAL_OFFLINE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ClarificationStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum PresenceSource {
+  NFC
+  MANUAL
+}
+
+// ---------------------------------------------------------------------------
+// Core V1
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String?   @unique
+  phone        String?   @unique
+  passwordHash String
+  role         Role
+  firstName    String
+  lastName     String
+  active       Boolean   @default(true)
+  mfaSecret    String? // TOTP secret chiffré AES-256-GCM
+  siteId       String?   @db.Uuid
+  site         Site?     @relation(fields: [siteId], references: [id])
+  teamId       String?   @db.Uuid
+  team         Team?     @relation(fields: [teamId], references: [id])
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  @@index([email])
+  @@index([role, siteId])
+}
+
+model Site {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  shortCode String   @unique // MNK, ANT, ANJ, MGT, AMB
+  location  String?
+  geoLat    Float?
+  geoLng    Float?
+  active    Boolean  @default(true)
+  zones     Zone[]
+  teams     Team[]
+  workers   Worker[]
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// V2
+model Zone {
+  id         String     @id @default(uuid()) @db.Uuid
+  siteId     String     @db.Uuid
+  site       Site       @relation(fields: [siteId], references: [id])
+  name       String
+  geoPolygon Json? // GeoJSON Polygon
+  parcelles  Parcelle[]
+  createdAt  DateTime   @default(now())
+
+  @@unique([siteId, name])
+}
+
+/// V2
+model Parcelle {
+  id        String     @id @default(uuid()) @db.Uuid
+  zoneId    String     @db.Uuid
+  zone      Zone       @relation(fields: [zoneId], references: [id])
+  name      String
+  geoPolygon Json?
+  surfaceHa Decimal?   @db.Decimal(10, 2)
+  pointages Pointage[]
+
+  @@unique([zoneId, name])
+  @@index([zoneId])
+}
+
+model Team {
+  id        String   @id @default(uuid()) @db.Uuid
+  siteId    String   @db.Uuid
+  site      Site     @relation(fields: [siteId], references: [id])
+  name      String
+  chefId    String?  @db.Uuid
+  active    Boolean  @default(true)
+  workers   Worker[]
+  users     User[]
+  createdAt DateTime @default(now())
+
+  @@unique([siteId, name])
+}
+
+model Activity {
+  id        String     @id @default(uuid()) @db.Uuid
+  label     String
+  unit      String // trou, m², plant, kg
+  unitRate  Decimal    @db.Decimal(12, 2)
+  validFrom DateTime   @db.Date
+  validTo   DateTime?  @db.Date
+  siteId    String?    @db.Uuid // null = global
+  active    Boolean    @default(true)
+  pointages Pointage[]
+  createdAt DateTime   @default(now())
+
+  @@index([siteId, active])
+  @@index([validFrom, validTo])
+}
+
+model Worker {
+  id            String           @id @default(uuid()) @db.Uuid
+  matricule     String           @unique
+  firstName     String
+  lastName      String
+  birthDate     DateTime?        @db.Date
+  maritalStatus String?
+  childrenCount Int?
+  mvolaNumber   String           @unique
+  cinNumber     String?
+  photoKey      String? // clé MinIO photo KYC ALTERRA
+  siteId        String           @db.Uuid
+  site          Site             @relation(fields: [siteId], references: [id])
+  teamId        String?          @db.Uuid
+  team          Team?            @relation(fields: [teamId], references: [id])
+  status        WorkerStatus     @default(ACTIVE)
+  hiredAt       DateTime         @db.Date
+  badge         Badge? // V2
+  pointages     Pointage[]
+  presences     PresenceRecord[] // V2
+  payments      Payment[]
+  bioChecks     BiometricCheck[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
+
+  @@index([siteId, teamId, status])
+  @@index([firstName, lastName])
+  @@index([mvolaNumber])
+}
+
+model Pointage {
+  id                String         @id @default(uuid()) @db.Uuid
+  clientUuid        String         @unique @db.Uuid // anti-doublon idempotence
+  workerId          String         @db.Uuid
+  worker            Worker         @relation(fields: [workerId], references: [id])
+  activityId        String         @db.Uuid
+  activity          Activity       @relation(fields: [activityId], references: [id])
+  quantity          Decimal        @db.Decimal(10, 2)
+  unitRateSnapshot  Decimal        @db.Decimal(12, 2) // tarif figé à la saisie
+  amount            Decimal        @db.Decimal(12, 2) // = quantity * unitRateSnapshot
+  date              DateTime       @db.Date
+  parcelleId        String?        @db.Uuid // V2
+  parcelle          Parcelle?      @relation(fields: [parcelleId], references: [id])
+  geoLat            Float?
+  geoLng            Float?
+  photoKey          String?
+  notes             String?
+  status            PointageStatus @default(PENDING)
+  enteredById       String         @db.Uuid
+  validatedById     String?        @db.Uuid
+  validatedAt       DateTime?
+  rejectionReason   String?
+  bioCheckId        String?        @db.Uuid
+  createdByClientAt DateTime // horodatage côté PWA
+  syncedAt          DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([workerId, date])
+  @@index([status, date])
+  @@index([parcelleId, date])
+}
+
+/// V2
+model PresenceRecord {
+  id                String         @id @default(uuid()) @db.Uuid
+  clientUuid        String         @unique @db.Uuid
+  workerId          String         @db.Uuid
+  worker            Worker         @relation(fields: [workerId], references: [id])
+  date              DateTime       @db.Date
+  arrivalTime       DateTime
+  badgeNfcTagId     String
+  scannedById       String         @db.Uuid
+  source            PresenceSource
+  parcelleId        String?        @db.Uuid
+  createdByClientAt DateTime
+  syncedAt          DateTime       @default(now())
+
+  @@index([workerId, date])
+  @@index([date, parcelleId])
+}
+
+/// V2
+model Badge {
+  id         String    @id @default(uuid()) @db.Uuid
+  workerId   String    @unique @db.Uuid
+  worker     Worker    @relation(fields: [workerId], references: [id])
+  nfcTagId   String    @unique
+  assignedAt DateTime  @default(now())
+  revokedAt  DateTime?
+}
+
+model BiometricCheck {
+  id            String      @id @default(uuid()) @db.Uuid
+  workerId      String      @db.Uuid
+  worker        Worker      @relation(fields: [workerId], references: [id])
+  context       BioContext
+  result        BioResult
+  score         Float?
+  provider      BioProvider
+  performedById String      @db.Uuid
+  performedAt   DateTime    @default(now())
+  weekIso       String? // ex: 2026-W18
+  rawResponse   Json? // logs AXIAN (audit)
+
+  @@index([workerId, weekIso])
+  @@index([performedAt])
+}
+
+/// V2
+model BiometricTemplate {
+  id           String      @id @default(uuid()) @db.Uuid
+  workerId     String      @unique @db.Uuid
+  templateData Bytes // chiffré AES-256 côté API
+  source       BioProvider
+  capturedAt   DateTime
+  expiresAt    DateTime
+  createdAt    DateTime    @default(now())
+}
+
+model Payment {
+  id               String        @id @default(uuid()) @db.Uuid
+  workerId         String        @db.Uuid
+  worker           Worker        @relation(fields: [workerId], references: [id])
+  periodIso        String // Sxx ou Dxxx
+  cycle            PaymentCycle
+  amount           Decimal       @db.Decimal(12, 2)
+  description      String // "Prénom Paiement Code_site"
+  bioValid         Boolean
+  status           PaymentStatus @default(PENDING)
+  exportedAt       DateTime?
+  paidAt           DateTime?
+  failureReason    String?
+  correctionReason String? // si modifié manuellement
+  originalAmount   Decimal?      @db.Decimal(12, 2)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([workerId, periodIso])
+  @@index([status, periodIso])
+}
+
+/// V2
+model ActivityRequest {
+  id                String        @id @default(uuid()) @db.Uuid
+  proposedLabel     String
+  proposedUnit      String
+  proposedRate      Decimal       @db.Decimal(12, 2)
+  justification     String        @db.Text
+  requestedById     String        @db.Uuid
+  siteId            String?       @db.Uuid
+  status            RequestStatus @default(PENDING)
+  decisionById      String?       @db.Uuid
+  decisionAt        DateTime?
+  decisionReason    String?
+  createdActivityId String?       @db.Uuid
+  createdAt         DateTime      @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// V2
+model WorkerRequest {
+  id               String        @id @default(uuid()) @db.Uuid
+  firstName        String
+  lastName         String
+  cinNumber        String?
+  mvolaNumber      String
+  proposedPhotoKey String?
+  targetTeamId     String?       @db.Uuid
+  justification    String        @db.Text
+  requestedById    String        @db.Uuid
+  status           RequestStatus @default(PENDING)
+  decisionById     String?       @db.Uuid
+  decisionAt       DateTime?
+  decisionReason   String?
+  createdWorkerId  String?       @db.Uuid
+  createdAt        DateTime      @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// V2
+model ClarificationRequest {
+  id             String              @id @default(uuid()) @db.Uuid
+  pointageId     String              @db.Uuid
+  question       String              @db.Text
+  requestedPhoto Boolean             @default(false)
+  status         ClarificationStatus @default(OPEN)
+  answerText     String?             @db.Text
+  answerPhotoKey String?
+  requestedById  String              @db.Uuid
+  answeredById   String?             @db.Uuid
+  answeredAt     DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+
+  @@index([pointageId])
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     String?  @db.Uuid
+  action     String // CREATE, UPDATE, DELETE, LOGIN, EXPORT, ...
+  entityType String // Worker, Pointage, Payment, ...
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

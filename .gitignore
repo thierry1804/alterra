@@ -1,0 +1,28 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Prisma
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Infra secrets - never versioned
+infra/secrets/*
+!infra/secrets/.gitignore
+
+# Coverage
+coverage/
+
+# Vite
+.vite/
+*.tsbuildinfo
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
