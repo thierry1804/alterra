@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { startAutoSync, stopAutoSync } from "../sync/SyncManager";
+import SyncStatusBar from "./sync/SyncStatusBar";
 
 export default function AppShell() {
   const { user, logout } = useAuth();
@@ -61,6 +62,8 @@ export default function AppShell() {
           Sync
         </Link>
       </nav>
+
+      <SyncStatusBar />
 
       <main className="flex-1">
         <Outlet />

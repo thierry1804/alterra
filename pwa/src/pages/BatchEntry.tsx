@@ -6,7 +6,7 @@ import { db, type ActivityRecord, type WorkerRecord } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, type DaySession } from "../lib/day-session";
 import { uuidv7 } from "../lib/uuid";
-import { syncNow } from "../sync/SyncManager";
+import { syncNow, enqueuePointageSync } from "../sync/SyncManager";
 
 function emptyRowValue(defaultQuantity: number): WorkerRowValue {
   return {
@@ -134,6 +134,16 @@ export default function BatchEntry() {
         for (const { worker, value } of entries) {
           const clientUuid = uuidv7();
           await db.pointages.add({
+            clientUuid,
+            workerId: worker.id,
+            activityId: session.activityId,
+            quantity: Number(value.quantity),
+            date: session.date,
+            createdByClientAt: nowIso,
+            status: "local",
+          });
+
+          await enqueuePointageSync({
             clientUuid,
             workerId: worker.id,
             activityId: session.activityId,

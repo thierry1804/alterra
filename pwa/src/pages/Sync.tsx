@@ -1,50 +1,136 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { db } from "../db/db";
-import { syncNow } from "../sync/SyncManager";
+import { discardRejectedPointage } from "../sync/ConflictResolver";
+import { forceSync } from "../sync/SyncManager";
+import { useSyncState } from "../hooks/useSyncState";
+
+function logLevelClass(level: string): string {
+  switch (level) {
+    case "success":
+      return "text-emerald-800";
+    case "warning":
+      return "text-amber-800";
+    case "error":
+      return "text-red-700";
+    default:
+      return "text-zinc-700";
+  }
+}
 
 export default function Sync() {
-  const pending = useLiveQuery(() => db.pointages.toArray(), []) ?? [];
-  const [syncing, setSyncing] = useState(false);
+  const state = useSyncState();
+  const rejected = useLiveQuery(
+    () => db.pointages.where("status").equals("rejected").toArray(),
+    [],
+  ) ?? [];
+  const [busy, setBusy] = useState(false);
 
-  async function onSyncClick() {
-    setSyncing(true);
-    await syncNow();
-    setSyncing(false);
+  async function handleForceSync() {
+    setBusy(true);
+    await forceSync();
+    setBusy(false);
   }
 
-  const rejected = pending.filter((p) => p.status === "rejected");
-  const local = pending.filter((p) => p.status !== "rejected");
-
   return (
-    <div className="p-4">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Synchronisation</h1>
-        <span className={navigator.onLine ? "text-green-600" : "text-red-600"}>
-          {navigator.onLine ? "En ligne" : "Hors ligne"}
-        </span>
+    <div className="space-y-4 p-4">
+      <header>
+        <h1 className="text-lg font-semibold text-zinc-900">Synchronisation</h1>
+        <p className="mt-1 text-sm text-zinc-600">
+          File idempotente par clientUuid — batch ≤100, intervalle 60 s.
+        </p>
       </header>
 
+      <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-4 sm:grid-cols-2">
+        <div>
+          <p className="text-xs text-zinc-500">Connexion</p>
+          <p className={`text-sm font-medium ${state.online ? "text-emerald-800" : "text-red-700"}`}>
+            {state.online ? "En ligne" : "Hors ligne"}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-zinc-500">En attente</p>
+          <p className="text-sm font-medium text-zinc-900">
+            {state.pendingCount + state.syncingCount} pointage(s)
+            {state.mediaPendingCount > 0 ? ` · ${state.mediaPendingCount} photo(s)` : ""}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-zinc-500">Dernière sync</p>
+          <p className="text-sm font-medium text-zinc-900">
+            {state.lastSyncAt
+              ? new Date(state.lastSyncAt).toLocaleString("fr-FR")
+              : "Jamais"}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-zinc-500">Sync auto</p>
+          <p className="text-sm font-medium text-zinc-900">
+            {state.autoSyncEnabled ? "Active (60 s)" : "Suspendue"}
+          </p>
+        </div>
+      </div>
+
       <button
-        onClick={onSyncClick}
-        disabled={syncing || !navigator.onLine}
-        className="mb-4 w-full rounded bg-slate-900 py-2 text-white disabled:opacity-50"
+        type="button"
+        onClick={() => void handleForceSync()}
+        disabled={busy || !state.online || state.isSyncing}
+        className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
       >
-        {syncing ? "Synchronisation…" : `Synchroniser (${local.length})`}
+        {busy || state.isSyncing
+          ? "Synchronisation…"
+          : `Forcer la synchronisation (${state.pendingCount})`}
       </button>
 
       {rejected.length > 0 && (
-        <section>
-          <h2 className="mb-2 font-medium text-red-600">Rejetés ({rejected.length})</h2>
-          <ul className="space-y-1">
-            {rejected.map((p) => (
-              <li key={p.clientUuid} className="rounded border border-red-200 p-2 text-sm">
-                {p.reason ?? "Rejeté par le serveur"}
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-red-700">
+            Rejetés — serveur autoritaire ({rejected.length})
+          </h2>
+          <ul className="space-y-2">
+            {rejected.map((pointage) => (
+              <li
+                key={pointage.clientUuid}
+                className="flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium text-red-800">{pointage.clientUuid.slice(0, 8)}…</p>
+                  <p className="text-red-700">{pointage.reason ?? "Rejeté par le serveur"}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void discardRejectedPointage(pointage.clientUuid)}
+                  className="text-xs text-red-800 underline"
+                >
+                  Abandonner
+                </button>
               </li>
             ))}
           </ul>
         </section>
       )}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-zinc-900">Journal récent</h2>
+        {state.recentLog.length === 0 && (
+          <p className="text-sm text-zinc-500">Aucune entrée pour le moment.</p>
+        )}
+        <ul className="space-y-2">
+          {state.recentLog.map((entry) => (
+            <li
+              key={entry.id}
+              className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`font-medium ${logLevelClass(entry.level)}`}>{entry.message}</span>
+                <span className="shrink-0 text-[10px] text-zinc-500">
+                  {new Date(entry.at).toLocaleTimeString("fr-FR")}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
