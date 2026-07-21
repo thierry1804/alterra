@@ -42,4 +42,5 @@ Task 35: complete (FE-ADMIN-WF file demandes, drawer, accepter/refuser/compléme
 Task 36: complete (FE-ADMIN-MAP Leaflet sites/zones/parcelles, tuiles OSM/MapTiler)
 Task 37: complete (BE-DAILY rapport journalier PDF, clôture CDS PWA, email Admin)
 Task 38: complete (QA-V2 E2E NFC/bio/workflows, recette-v2, hypercare-v2)
+Task 39: complete (MARGE-V2 retrospective-v2 template, grille marge 1.5 j-h)
 Task 6: complete (CRUD référentiels sites/activités/workers/users + import Excel)
