@@ -13,7 +13,11 @@ export class ApiError extends Error {
 }
 
 export function notFoundHandler(req: Request, res: Response) {
-  res.status(404).json({ code: "NOT_FOUND", message: `No route for ${req.method} ${req.path}`, traceId: req.id });
+  res.status(404).json({
+    code: "NOT_FOUND",
+    message: `No route for ${req.method} ${req.path}`,
+    traceId: req.id,
+  });
 }
 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
@@ -27,5 +31,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   logger.error({ err, traceId: req.id, path: req.path }, "Unhandled error");
-  res.status(500).json({ code: "INTERNAL_ERROR", message: "Unexpected server error", traceId: req.id });
+  res
+    .status(500)
+    .json({ code: "INTERNAL_ERROR", message: "Unexpected server error", traceId: req.id });
 }

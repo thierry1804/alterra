@@ -16,22 +16,45 @@ alterra/
 
 ## Prérequis
 
-- Node.js 22+
+- Node.js 20+ (LTS recommandé ; 22+ supporté)
 - Docker & Docker Compose
 - npm 10+
 
-## Démarrage local (dev hybride)
+## Démarrage local
 
-L'environnement de développement sépare l'infrastructure (Docker) des applications (Node local) pour bénéficier du hot-reload sur l'API et les frontends.
+Deux modes sont disponibles selon vos besoins :
 
-| Composant | Mode dev | Port |
-|-----------|----------|------|
-| PostgreSQL | Docker | 5433 |
-| Redis | Docker | 6380 |
-| MinIO | Docker | 9000 (API), 9001 (console) |
-| API Express | `npm run dev` (tsx watch) | 3001 |
-| Admin | `npm run dev` (Vite) | 5173 |
-| PWA | `npm run dev` (Vite) | 5174 |
+| Mode               | Commande infra                              | API                         | Frontends            | Cas d'usage                                   |
+| ------------------ | ------------------------------------------- | --------------------------- | -------------------- | --------------------------------------------- |
+| **Stack complète** | `docker compose up -d`                      | conteneur `api` (port 3001) | —                    | smoke test, CI local, sans Node pour l'API    |
+| **Dev hybride**    | `docker compose up -d postgres redis minio` | `npm run dev -w backend`    | `npm run dev` (Vite) | développement quotidien (hot-reload tsx/vite) |
+
+| Composant   | Stack complète | Dev hybride               | Port                       |
+| ----------- | -------------- | ------------------------- | -------------------------- |
+| PostgreSQL  | Docker         | Docker                    | 5433                       |
+| Redis       | Docker         | Docker                    | 6380                       |
+| MinIO       | Docker         | Docker                    | 9000 (API), 9001 (console) |
+| API Express | Docker (`api`) | `npm run dev` (tsx watch) | 3001                       |
+| Admin       | —              | `npm run dev` (Vite)      | 5173                       |
+| PWA         | —              | `npm run dev` (Vite)      | 5174                       |
+
+### Stack complète (Docker)
+
+Lance toute l'infrastructure + l'API conteneurisée (image `backend/Dockerfile`, target `runtime`).
+
+```bash
+npm install
+docker compose up -d --build    # postgres, redis, minio, api
+npm run db:setup -w backend     # migrations + seed (première fois)
+curl http://localhost:3001/health
+# {"status":"ok","db":"up","timestamp":"..."}
+```
+
+> L'API Docker attend Postgres sur le réseau interne (`postgres:5432`). Les frontends restent à lancer en local si besoin : `npm run dev -w admin` / `npm run dev -w pwa`.
+
+### Dev hybride (recommandé)
+
+Sépare l'infrastructure (Docker) des applications (Node local) pour le hot-reload sur l'API et les frontends.
 
 ### 1. Variables d'environnement
 
@@ -47,13 +70,13 @@ Le fichier `.env.example` à la racine documente toutes les variables backend : 
 npm install
 ```
 
-### 3. Infrastructure Docker
+### 3. Infrastructure Docker (sans conteneur API)
 
 ```bash
-docker compose up -d    # postgres, redis, minio
+docker compose up -d postgres redis minio
 ```
 
-Vérifier que les services sont up : `docker compose ps`.
+Vérifier que les services sont up : `docker compose ps`. Ne pas démarrer le service `api` en dev hybride (port 3001 réservé à `npm run dev -w backend`).
 
 ### 4. Base de données
 
@@ -99,7 +122,8 @@ TypeScript strict activé dans `backend/tsconfig.json`, `admin/tsconfig.json` et
 ## Arrêt
 
 ```bash
-docker compose down       # infra Docker
+docker compose down              # toute la stack (ou infra seule si api non démarrée)
+docker compose stop api          # libérer le port 3001 avant dev hybride
 # Ctrl+C pour npm run dev
 ```
 

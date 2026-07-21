@@ -2,9 +2,9 @@
 
 ## Contacts
 
-| Rôle | Contact | Astreinte |
-|---|---|---|
-| Infogérance applicative | NextA | à compléter |
+| Rôle                     | Contact | Astreinte   |
+| ------------------------ | ------- | ----------- |
+| Infogérance applicative  | NextA   | à compléter |
 | Référent physique/réseau | ALTERRA | à compléter |
 
 ## Gestes courants
@@ -50,8 +50,8 @@ COMPOSE_FILE=docker-compose.staging.yml ./scripts/restore.sh 2026-07-01
 Consigner chaque test de restauration ici : date, durée, résultat.
 
 | Date | Opérateur | Résultat | Durée |
-|---|---|---|---|
-| | | | |
+| ---- | --------- | -------- | ----- |
+|      |           |          |       |
 
 ## Incidents fréquents
 
@@ -66,6 +66,7 @@ Bascule fibre → 4G automatique côté routeur. Le tunnel Cloudflare rétablit 
 ### Alerte "job backup en échec"
 
 Le silence (absence de ping healthcheck) est le signal, pas une erreur explicite. Vérifier :
+
 1. `docker compose logs backup-offsite`
 2. Espace disque (`df -h`) — WAL et photos sont les deux consommateurs à surveiller
 3. Connectivité vers Backblaze B2

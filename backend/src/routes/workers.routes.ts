@@ -33,11 +33,17 @@ const createWorkerSchema = z.object({
   status: z.nativeEnum(WorkerStatus).default(WorkerStatus.ACTIVE),
 });
 
-workersRouter.post("/workers", requireAuth, requireRole(Role.ADMIN), validate(createWorkerSchema), async (req, res, next) => {
-  try {
-    const worker = await prisma.worker.create({ data: req.body });
-    res.status(201).json(worker);
-  } catch (err) {
-    next(err);
-  }
-});
+workersRouter.post(
+  "/workers",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(createWorkerSchema),
+  async (req, res, next) => {
+    try {
+      const worker = await prisma.worker.create({ data: req.body });
+      res.status(201).json(worker);
+    } catch (err) {
+      next(err);
+    }
+  },
+);

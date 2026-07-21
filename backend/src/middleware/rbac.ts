@@ -20,7 +20,7 @@ export function requireRole(...roles: Role[]) {
  * Prisma `where` filter — the second barrier alongside route guards.
  */
 export function siteScope(req: Request, _res: Response, next: NextFunction) {
-  req.siteScope = req.user?.role === Role.ADMIN ? undefined : req.user?.siteId ?? undefined;
+  req.siteScope = req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
   next();
 }
 

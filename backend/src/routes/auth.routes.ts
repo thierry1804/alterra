@@ -64,7 +64,8 @@ authRouter.post("/auth/refresh", async (req, res, next) => {
 
     const { sub } = verifyRefreshToken(token);
     const user = await prisma.user.findUnique({ where: { id: sub } });
-    if (!user || !user.active) throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
+    if (!user || !user.active)
+      throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
     res.json({ accessToken });

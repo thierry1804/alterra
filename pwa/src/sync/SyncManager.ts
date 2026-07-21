@@ -5,7 +5,12 @@ const BATCH_SIZE = 100;
 const BACKOFF_DELAYS_MS = [1000, 2000, 5000, 15000, 60000, 300000]; // 1s → 5min
 const AUTO_SYNC_INTERVAL_MS = 60_000;
 
-type SyncResult = { clientUuid: string; status: "created" | "already_exists" | "rejected"; id?: string; reason?: string };
+type SyncResult = {
+  clientUuid: string;
+  status: "created" | "already_exists" | "rejected";
+  id?: string;
+  reason?: string;
+};
 
 let autoSyncTimer: ReturnType<typeof setInterval> | null = null;
 let consecutiveFailures = 0;
@@ -47,7 +52,10 @@ export async function syncNow(): Promise<{ synced: number; rejected: number }> {
             await db.pointings_pending.delete(result.clientUuid);
             synced++;
           } else {
-            await db.pointings_pending.update(result.clientUuid, { status: "rejected", reason: result.reason });
+            await db.pointings_pending.update(result.clientUuid, {
+              status: "rejected",
+              reason: result.reason,
+            });
             rejected++;
           }
         }

@@ -26,11 +26,17 @@ const createSiteSchema = z.object({
   geoLng: z.number().optional(),
 });
 
-sitesRouter.post("/sites", requireAuth, requireRole(Role.ADMIN), validate(createSiteSchema), async (req, res, next) => {
-  try {
-    const site = await prisma.site.create({ data: req.body });
-    res.status(201).json(site);
-  } catch (err) {
-    next(err);
-  }
-});
+sitesRouter.post(
+  "/sites",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(createSiteSchema),
+  async (req, res, next) => {
+    try {
+      const site = await prisma.site.create({ data: req.body });
+      res.status(201).json(site);
+    } catch (err) {
+      next(err);
+    }
+  },
+);

@@ -22,7 +22,10 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-lg border bg-white p-8 shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-4 rounded-lg border bg-white p-8 shadow-sm"
+      >
         <h1 className="text-xl font-semibold">ALTERRA — Connexion</h1>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <input

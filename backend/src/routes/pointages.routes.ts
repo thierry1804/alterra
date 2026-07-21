@@ -38,11 +38,14 @@ pointagesRouter.post(
   async (req, res, next) => {
     try {
       const { batch } = req.body as z.infer<typeof syncBatchSchema>;
-      const results: Array<{ clientUuid: string; status: string; id?: string; reason?: string }> = [];
+      const results: Array<{ clientUuid: string; status: string; id?: string; reason?: string }> =
+        [];
 
       for (const item of batch) {
         try {
-          const activity = await prisma.activity.findUniqueOrThrow({ where: { id: item.activityId } });
+          const activity = await prisma.activity.findUniqueOrThrow({
+            where: { id: item.activityId },
+          });
           const amount = item.quantity * Number(activity.unitRate);
 
           const created = await prisma.pointage.create({
@@ -65,8 +68,14 @@ pointagesRouter.post(
           results.push({ clientUuid: item.clientUuid, status: "created", id: created.id });
         } catch (err) {
           if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-            const existing = await prisma.pointage.findUnique({ where: { clientUuid: item.clientUuid } });
-            results.push({ clientUuid: item.clientUuid, status: "already_exists", id: existing?.id });
+            const existing = await prisma.pointage.findUnique({
+              where: { clientUuid: item.clientUuid },
+            });
+            results.push({
+              clientUuid: item.clientUuid,
+              status: "already_exists",
+              id: existing?.id,
+            });
           } else {
             results.push({
               clientUuid: item.clientUuid,

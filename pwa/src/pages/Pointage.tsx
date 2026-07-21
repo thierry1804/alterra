@@ -37,7 +37,12 @@ export default function Pointage() {
       </header>
 
       <form onSubmit={onSubmit} className="space-y-3">
-        <select value={workerId} onChange={(e) => setWorkerId(e.target.value)} required className="w-full rounded border p-2">
+        <select
+          value={workerId}
+          onChange={(e) => setWorkerId(e.target.value)}
+          required
+          className="w-full rounded border p-2"
+        >
           <option value="">MOC…</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>
@@ -46,7 +51,12 @@ export default function Pointage() {
           ))}
         </select>
 
-        <select value={activityId} onChange={(e) => setActivityId(e.target.value)} required className="w-full rounded border p-2">
+        <select
+          value={activityId}
+          onChange={(e) => setActivityId(e.target.value)}
+          required
+          className="w-full rounded border p-2"
+        >
           <option value="">Activité…</option>
           {activities.map((a) => (
             <option key={a.id} value={a.id}>

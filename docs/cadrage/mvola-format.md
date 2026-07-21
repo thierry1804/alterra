@@ -20,14 +20,15 @@ ALTERRA ne paie **jamais par API MVola**. Le flux V1 est :
 
 ## 2. Fichier `basedocs/modele.xlsx`
 
-| Élément | Constat |
-|---------|---------|
-| Présence | Oui, fichier existant |
-| Contenu réel | **Backlog / chiffrage projet** (feuilles « Backlog », « Charges Complémentaires », « Macro-Planning ») |
-| Colonnes observées | Use Case, User Story, Acteur, Tâche, Description, Estimations UI/BE |
-| Conclusion | **Ce fichier n'est PAS un template MVola Bulk Transfer** |
+| Élément            | Constat                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| Présence           | Oui, fichier existant                                                                                  |
+| Contenu réel       | **Backlog / chiffrage projet** (feuilles « Backlog », « Charges Complémentaires », « Macro-Planning ») |
+| Colonnes observées | Use Case, User Story, Acteur, Tâche, Description, Estimations UI/BE                                    |
+| Conclusion         | **Ce fichier n'est PAS un template MVola Bulk Transfer**                                               |
 
 **Action requise :** Demander à ALTERRA un échantillon réel de :
+
 - Fichier soumis au portail MVola (export)
 - Fichier retour après traitement (import statuts)
 
@@ -39,24 +40,24 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 
 ### 3.1 Métadonnées fichier
 
-| Élément | Valeur |
-|---------|--------|
-| Extension | `.xlsx` (Excel 2007+) |
-| Nom fichier | `ALTERRA_MVola_{periodIso}_{yyyyMMdd_HHmm}.xlsx` |
-| Exemple | `ALTERRA_MVola_S18_20260428_0920.xlsx` |
-| Feuille unique | Nom : `Paiements` |
+| Élément        | Valeur                                                  |
+| -------------- | ------------------------------------------------------- |
+| Extension      | `.xlsx` (Excel 2007+)                                   |
+| Nom fichier    | `ALTERRA_MVola_{periodIso}_{yyyyMMdd_HHmm}.xlsx`        |
+| Exemple        | `ALTERRA_MVola_S18_20260428_0920.xlsx`                  |
+| Feuille unique | Nom : `Paiements`                                       |
 | Encodage texte | UTF-8 via Excel ; colonne téléphone en **format texte** |
-| Archivage | Copie stockée MinIO à chaque export |
+| Archivage      | Copie stockée MinIO à chaque export                     |
 
 ### 3.2 Structure colonnes (ligne 1 = header)
 
-| Col | Header exact | Type | Obligatoire | Description | Exemple |
-|-----|--------------|------|-------------|-------------|---------|
-| A | `Numéro téléphone` | Texte | Oui | 10 chiffres, préfixe 034 | `0341234567` |
-| B | `Description` | Texte | Oui | « Prénom Paiement Code_site » | `Rakoto Paiement MNK` |
-| C | `Période` | Texte | Oui | Semaine ISO `Sxx` ou jour `Dxxx` | `S18` ou `D138` |
-| D | `Montant` | Entier | Oui | Ariary, sans séparateur décimal | `125000` |
-| E | `Bio Validée` | Enum | Oui | `OUI` uniquement en export bulk ; `NON` / `N/A` = interne ALTERRA, jamais exportées | `OUI` |
+| Col | Header exact       | Type   | Obligatoire | Description                                                                         | Exemple               |
+| --- | ------------------ | ------ | ----------- | ----------------------------------------------------------------------------------- | --------------------- |
+| A   | `Numéro téléphone` | Texte  | Oui         | 10 chiffres, préfixe 034                                                            | `0341234567`          |
+| B   | `Description`      | Texte  | Oui         | « Prénom Paiement Code_site »                                                       | `Rakoto Paiement MNK` |
+| C   | `Période`          | Texte  | Oui         | Semaine ISO `Sxx` ou jour `Dxxx`                                                    | `S18` ou `D138`       |
+| D   | `Montant`          | Entier | Oui         | Ariary, sans séparateur décimal                                                     | `125000`              |
+| E   | `Bio Validée`      | Enum   | Oui         | `OUI` uniquement en export bulk ; `NON` / `N/A` = interne ALTERRA, jamais exportées | `OUI`                 |
 
 ### 3.3 Règles par colonne
 
@@ -90,11 +91,11 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 
 #### Colonne E — Bio Validée
 
-| Valeur | Condition | Export bulk MVola |
-|--------|-----------|-------------------|
-| `OUI` | BiometricCheck **OK** pour la période | **Incluse** — seule valeur autorisée en export |
-| `NON` | Bio KO, DOUBT ou absente | **Exclue** — ligne absente du fichier export (RG-03) |
-| `N/A` | Statut interne uniquement (mode dégradé Admin) | **Exclue** — jamais incluse en export bulk |
+| Valeur | Condition                                      | Export bulk MVola                                    |
+| ------ | ---------------------------------------------- | ---------------------------------------------------- |
+| `OUI`  | BiometricCheck **OK** pour la période          | **Incluse** — seule valeur autorisée en export       |
+| `NON`  | Bio KO, DOUBT ou absente                       | **Exclue** — ligne absente du fichier export (RG-03) |
+| `N/A`  | Statut interne uniquement (mode dégradé Admin) | **Exclue** — jamais incluse en export bulk           |
 
 > **RG-03 (strict) :** seules les lignes avec `Bio Validée = OUI` (BiometricCheck OK) entrent dans le bordereau exportable et le fichier MVola bulk. **DOUBT**, **KO**, **absence de bio** et **N/A** bloquent validation paiement et export — aucun chemin d'export dégradé.
 
@@ -109,10 +110,10 @@ Lorsque AXIAN est indisponible (BIO-503) ou cas exceptionnel validé métier :
 
 ### 3.4 Exemple contenu (lignes 2+)
 
-| Numéro téléphone | Description | Période | Montant | Bio Validée |
-|------------------|-------------|---------|---------|-------------|
-| 0341234567 | Rakoto Paiement MNK | S18 | 125000 | OUI |
-| 0349876543 | Rasoa Paiement MNK | S18 | 98500 | OUI |
+| Numéro téléphone | Description         | Période | Montant | Bio Validée |
+| ---------------- | ------------------- | ------- | ------- | ----------- |
+| 0341234567       | Rakoto Paiement MNK | S18     | 125000  | OUI         |
+| 0349876543       | Rasoa Paiement MNK  | S18     | 98500   | OUI         |
 
 > Les lignes DOUBT, KO, absentes ou en mode dégradé (`N/A` interne) sont **listées dans l'UI Admin** pour suivi mais **exclues** du fichier exporté.
 
@@ -124,32 +125,32 @@ Lorsque AXIAN est indisponible (BIO-503) ou cas exceptionnel validé métier :
 
 ### 4.1 Comportement attendu (UC-27)
 
-| Étape | Description |
-|-------|-------------|
-| 1 | Admin upload fichier `.xlsx` retour portail MVola |
-| 2 | Parse colonnes identifiées |
-| 3 | Match ligne ALTERRA par **numéro MVola + montant** |
-| 4 | Update Payment → `PAID` ou `FAILED` |
-| 5 | Rapport : compteurs PAID/FAILED/non matchés |
+| Étape | Description                                        |
+| ----- | -------------------------------------------------- |
+| 1     | Admin upload fichier `.xlsx` retour portail MVola  |
+| 2     | Parse colonnes identifiées                         |
+| 3     | Match ligne ALTERRA par **numéro MVola + montant** |
+| 4     | Update Payment → `PAID` ou `FAILED`                |
+| 5     | Rapport : compteurs PAID/FAILED/non matchés        |
 
 ### 4.2 Colonnes retour supposées (à confirmer)
 
-| Colonne supposée | Usage matching |
-|------------------|----------------|
-| Numéro téléphone / MSISDN | Clé primaire match |
-| Montant | Clé secondaire match (évite homonymes) |
-| Statut transaction | SUCCESS → PAID · FAILED/REJECTED → FAILED |
-| Motif échec | Stocké pour affichage Admin (RG-19) |
-| Référence MVola | Traçabilité optionnelle |
+| Colonne supposée          | Usage matching                            |
+| ------------------------- | ----------------------------------------- |
+| Numéro téléphone / MSISDN | Clé primaire match                        |
+| Montant                   | Clé secondaire match (évite homonymes)    |
+| Statut transaction        | SUCCESS → PAID · FAILED/REJECTED → FAILED |
+| Motif échec               | Stocké pour affichage Admin (RG-19)       |
+| Référence MVola           | Traçabilité optionnelle                   |
 
 ### 4.3 Règles import
 
-| Règle | Description |
-|-------|-------------|
+| Règle                | Description                                       |
+| -------------------- | ------------------------------------------------- |
 | Fichier non conforme | Erreur IMPORT-BADFORMAT avec détail ligne/colonne |
-| Ligne non matchée | Listée séparément ; statut inchangé |
-| Doublon match | Alerte Admin ; pas d'écrasement silencieux |
-| Idempotence | Ré-import même fichier → pas de double update |
+| Ligne non matchée    | Listée séparément ; statut inchangé               |
+| Doublon match        | Alerte Admin ; pas d'écrasement silencieux        |
+| Idempotence          | Ré-import même fichier → pas de double update     |
 
 ---
 
@@ -175,34 +176,34 @@ PENDING → (export) → EXPORTED → (import retour) → PAID | FAILED
 
 ## 6. Validations pré-export (Admin UI)
 
-| Check | Comportement |
-|-------|--------------|
-| MVola manquant | Bloquer ligne ou exclure avec warning |
-| Montant = 0 | Exclure automatiquement |
-| Bio DOUBT / KO / absente | **Bloquer** validation et export ; message « N lignes sans bio OK — bio requise avant paiement » |
-| Mode dégradé Admin | Override manuel ligne par ligne avec audit ; **jamais** inclus dans export bulk MVola ; paiement hors fichier |
-| Période déjà EXPORTED | Dialog correctif (PAY-CONFLICT) |
+| Check                    | Comportement                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| MVola manquant           | Bloquer ligne ou exclure avec warning                                                                         |
+| Montant = 0              | Exclure automatiquement                                                                                       |
+| Bio DOUBT / KO / absente | **Bloquer** validation et export ; message « N lignes sans bio OK — bio requise avant paiement »              |
+| Mode dégradé Admin       | Override manuel ligne par ligne avec audit ; **jamais** inclus dans export bulk MVola ; paiement hors fichier |
+| Période déjà EXPORTED    | Dialog correctif (PAY-CONFLICT)                                                                               |
 
 ---
 
 ## 7. Performance
 
-| Critère | Cible |
-|---------|-------|
-| Génération 600 lignes | < 30 secondes (critère acceptation global §10.1) |
-| Librairie | exceljs (backend) |
-| Taille fichier estimée | < 500 Ko |
+| Critère                | Cible                                            |
+| ---------------------- | ------------------------------------------------ |
+| Génération 600 lignes  | < 30 secondes (critère acceptation global §10.1) |
+| Librairie              | exceljs (backend)                                |
+| Taille fichier estimée | < 500 Ko                                         |
 
 ---
 
 ## 8. Risques et mitigations
 
-| Risque | Niveau | Mitigation |
-|--------|--------|------------|
-| Format MVola non documenté officiellement | Moyen | Échantillon Sprint 1 ; couche export configurable (mapping colonnes en config) |
-| Limite description inconnue | Moyen | RG-09 troncature ; paramètre `MVOLA_DESC_MAX_LEN` configurable |
-| Retour MVola format variable | Moyen | Parser configurable ; tests avec échantillon réel |
-| `modele.xlsx` incorrect | Faible | Documenté ici ; demande explicité à ALTERRA |
+| Risque                                    | Niveau | Mitigation                                                                     |
+| ----------------------------------------- | ------ | ------------------------------------------------------------------------------ |
+| Format MVola non documenté officiellement | Moyen  | Échantillon Sprint 1 ; couche export configurable (mapping colonnes en config) |
+| Limite description inconnue               | Moyen  | RG-09 troncature ; paramètre `MVOLA_DESC_MAX_LEN` configurable                 |
+| Retour MVola format variable              | Moyen  | Parser configurable ; tests avec échantillon réel                              |
+| `modele.xlsx` incorrect                   | Faible | Documenté ici ; demande explicité à ALTERRA                                    |
 
 **Provision marge :** 1 j-h prévu dans `UC-MARGE-V1` si écart format.
 
@@ -229,4 +230,4 @@ PENDING → (export) → EXPORTED → (import retour) → PAID | FAILED
 
 ---
 
-*Échantillon MVola : **EN ATTENTE VALIDATION ALTERRA***
+_Échantillon MVola : **EN ATTENTE VALIDATION ALTERRA**_

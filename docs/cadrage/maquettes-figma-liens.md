@@ -9,17 +9,17 @@
 
 ## Conventions design
 
-| Élément | Valeur |
-|---------|--------|
-| Admin viewport | Desktop 1280×800 min, sidebar fixe 240px |
-| PWA viewport | Mobile 360×640 (Android), safe-area respectée |
-| Grille Admin | 12 colonnes, gutter 24px, padding page 24px |
-| Grille PWA | 4 colonnes, gutter 16px, padding 16px |
-| Typo Admin | System stack projet (à définir design system) ; body 14px, h1 24px |
-| Typo PWA | Body 16px min (lisibilité terrain), labels 14px |
-| Touch targets PWA | Min 48×48px |
-| Couleurs statut | Validé `#16a34a` · En attente `#ca8a04` · Rejeté `#dc2626` · Bio KO `#dc2626` · Bio DOUBT `#ea580c` |
-| Composants | shadcn/ui (Admin) · composants custom touch-friendly (PWA) |
+| Élément           | Valeur                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Admin viewport    | Desktop 1280×800 min, sidebar fixe 240px                                                            |
+| PWA viewport      | Mobile 360×640 (Android), safe-area respectée                                                       |
+| Grille Admin      | 12 colonnes, gutter 24px, padding page 24px                                                         |
+| Grille PWA        | 4 colonnes, gutter 16px, padding 16px                                                               |
+| Typo Admin        | System stack projet (à définir design system) ; body 14px, h1 24px                                  |
+| Typo PWA          | Body 16px min (lisibilité terrain), labels 14px                                                     |
+| Touch targets PWA | Min 48×48px                                                                                         |
+| Couleurs statut   | Validé `#16a34a` · En attente `#ca8a04` · Rejeté `#dc2626` · Bio KO `#dc2626` · Bio DOUBT `#ea580c` |
+| Composants        | shadcn/ui (Admin) · composants custom touch-friendly (PWA)                                          |
 
 ---
 
@@ -56,57 +56,57 @@ Vue synthétique opérations multi-sites : effectifs, présence semaine, masse s
 
 #### Sidebar (persistante)
 
-| Zone | Contenu |
-|------|---------|
-| Haut | Logo ALTERRA 32px + label « Admin » |
+| Zone      | Contenu                                                                               |
+| --------- | ------------------------------------------------------------------------------------- |
+| Haut      | Logo ALTERRA 32px + label « Admin »                                                   |
 | Nav links | Dashboard, Sites, Activités, MOC, Utilisateurs, Pointages, Paiements, Rapports, Audit |
-| Bas | Avatar Admin + nom + Déconnexion |
+| Bas       | Avatar Admin + nom + Déconnexion                                                      |
 
 #### Filtres header
 
-| Composant | Type | Données | Comportement |
-|-----------|------|---------|--------------|
-| Sélecteur site | Combobox | Liste 5 sites + « Tous les sites » | Filtre tous KPIs ; valeur URL `?siteId=` |
-| Sélecteur semaine | Stepper date | Semaine ISO courante par défaut | ◀ ▶ change weekStart ; URL `?weekStart=` |
-| Rafraîchir | Button ghost | — | Invalide cache TanStack Query |
+| Composant         | Type         | Données                            | Comportement                             |
+| ----------------- | ------------ | ---------------------------------- | ---------------------------------------- |
+| Sélecteur site    | Combobox     | Liste 5 sites + « Tous les sites » | Filtre tous KPIs ; valeur URL `?siteId=` |
+| Sélecteur semaine | Stepper date | Semaine ISO courante par défaut    | ◀ ▶ change weekStart ; URL `?weekStart=` |
+| Rafraîchir        | Button ghost | —                                  | Invalide cache TanStack Query            |
 
 #### KPI Cards (5)
 
-| Card | Label | Valeur source | Format | Alerte |
-|------|-------|---------------|--------|--------|
-| 1 | Effectif actif | `workforce.totalActive` | Nombre entier | — |
-| 2 | Présence globale | `attendance.globalRate` | XX % | Bordure orange si < 70% |
-| 3 | Masse salariale | `payroll.currentWeekAmount` | XXX XXX Ar | — |
-| 4 | Litiges paiements | `payroll.disputeCount` | N | Bordure rouge si > 0 |
-| 5 | Sync en attente | `sync.pendingPointages` | N items | Bordure orange si > 5 |
+| Card | Label             | Valeur source               | Format        | Alerte                  |
+| ---- | ----------------- | --------------------------- | ------------- | ----------------------- |
+| 1    | Effectif actif    | `workforce.totalActive`     | Nombre entier | —                       |
+| 2    | Présence globale  | `attendance.globalRate`     | XX %          | Bordure orange si < 70% |
+| 3    | Masse salariale   | `payroll.currentWeekAmount` | XXX XXX Ar    | —                       |
+| 4    | Litiges paiements | `payroll.disputeCount`      | N             | Bordure rouge si > 0    |
+| 5    | Sync en attente   | `sync.pendingPointages`     | N items       | Bordure orange si > 5   |
 
 **Interaction :** click card → navigation drill-down (MOC, Pointages, Paiements, etc.)
 
 #### Graphiques
 
-| Graphique | Type | Données API | Axes / légende |
-|-----------|------|-------------|----------------|
-| Parité H/F | Donut Recharts | `workforce.byGender` | Homme bleu, Femme rose, Non spéc. gris ; ratio centré |
-| Présence par site | Bar horizontal | `attendance.bySite` | Barre rouge <70%, orange <85%, vert sinon |
-| Histogramme 4 sem | Bar groupé | `GET /dashboard/presence-chart?weeks=4` | X = semaines, couleur = site |
-| Masse salariale | Area chart | `GET /dashboard/payroll-chart?months=3` | Paid vert, Pending orange |
+| Graphique         | Type           | Données API                             | Axes / légende                                        |
+| ----------------- | -------------- | --------------------------------------- | ----------------------------------------------------- |
+| Parité H/F        | Donut Recharts | `workforce.byGender`                    | Homme bleu, Femme rose, Non spéc. gris ; ratio centré |
+| Présence par site | Bar horizontal | `attendance.bySite`                     | Barre rouge <70%, orange <85%, vert sinon             |
+| Histogramme 4 sem | Bar groupé     | `GET /dashboard/presence-chart?weeks=4` | X = semaines, couleur = site                          |
+| Masse salariale   | Area chart     | `GET /dashboard/payroll-chart?months=3` | Paid vert, Pending orange                             |
 
 #### Table sync CDS
 
-| Colonne | Contenu | Tri |
-|---------|---------|-----|
-| Chef de Service | Nom complet | Oui |
-| Site | Nom site | Oui |
-| Dernière sync | Relatif (« il y a 2h ») + datetime tooltip | Oui desc |
-| Statut | Badge OK / Alerte (>24h rouge) | — |
+| Colonne         | Contenu                                    | Tri      |
+| --------------- | ------------------------------------------ | -------- |
+| Chef de Service | Nom complet                                | Oui      |
+| Site            | Nom site                                   | Oui      |
+| Dernière sync   | Relatif (« il y a 2h ») + datetime tooltip | Oui desc |
+| Statut          | Badge OK / Alerte (>24h rouge)             | —        |
 
 #### États
 
-| État | Comportement |
-|------|--------------|
-| Loading | Skeleton sur chaque section |
-| Erreur API | Toast + bouton retry par section |
-| Empty | Message « Aucune donnée pour cette période » |
+| État       | Comportement                                 |
+| ---------- | -------------------------------------------- |
+| Loading    | Skeleton sur chaque section                  |
+| Erreur API | Toast + bouton retry par section             |
+| Empty      | Message « Aucune donnée pour cette période » |
 
 #### Refresh
 
@@ -154,54 +154,54 @@ Saisir rapidement les quantités réalisées par ~40 MOC pour l'activité du jou
 
 #### Bandeau statut (fixe top)
 
-| Élément | Contenu |
-|---------|---------|
+| Élément   | Contenu                                       |
+| --------- | --------------------------------------------- |
 | Connexion | Badge « En ligne » vert / « Hors ligne » gris |
-| Sync | Chip « 3 en attente » → tap ouvre écran sync |
-| Date | Date du jour (non éditable) |
+| Sync      | Chip « 3 en attente » → tap ouvre écran sync  |
+| Date      | Date du jour (non éditable)                   |
 
 #### En-tête activité
 
-| Champ | Source | Action |
-|-------|--------|--------|
+| Champ           | Source                                | Action                             |
+| --------------- | ------------------------------------- | ---------------------------------- |
 | Libellé + tarif | Activité sélectionnée (UC-FE-PWA-DAY) | Tap « Changer » → retour sélection |
-| Unité | Ex. « trou », « m² » | Affiché après quantité |
+| Unité           | Ex. « trou », « m² »                  | Affiché après quantité             |
 
 #### Barre outils saisie
 
-| Composant | Comportement |
-|-----------|--------------|
-| Recherche | Filtre instantané nom/matricule ; debounce 150ms |
+| Composant       | Comportement                                            |
+| --------------- | ------------------------------------------------------- |
+| Recherche       | Filtre instantané nom/matricule ; debounce 150ms        |
 | Quantité défaut | Number input ; bouton « Tous = X » remplit lignes vides |
-| Compteur | « 38/40 saisis » discret |
+| Compteur        | « 38/40 saisis » discret                                |
 
 #### Ligne MOC (répétée)
 
-| Zone | Spec |
-|------|------|
-| Photo | 48×48px, rond, placeholder initiales si absent |
-| Identité | Prénom Nom (truncate) + matricule 12px muted |
-| Quantité | Input number, clavier numérique, min 0, step 1, largeur 80px |
-| Unité | Label unité activité |
-| Photo pointage | Icône caméra 44px ; badge si photo attachée |
-| Absent | Quantité vide = pas de pointage créé |
+| Zone           | Spec                                                         |
+| -------------- | ------------------------------------------------------------ |
+| Photo          | 48×48px, rond, placeholder initiales si absent               |
+| Identité       | Prénom Nom (truncate) + matricule 12px muted                 |
+| Quantité       | Input number, clavier numérique, min 0, step 1, largeur 80px |
+| Unité          | Label unité activité                                         |
+| Photo pointage | Icône caméra 44px ; badge si photo attachée                  |
+| Absent         | Quantité vide = pas de pointage créé                         |
 
 #### Footer fixe
 
-| Élément | Spec |
-|---------|------|
+| Élément            | Spec                                               |
+| ------------------ | -------------------------------------------------- |
 | Total prévisionnel | Somme(qty × tarif jour) ; format Ar sans décimales |
-| Bouton Enregistrer | Primary full-width 48px ; disabled si 0 saisi |
-| Feedback | Toast « 38 pointages enregistrés localement » |
+| Bouton Enregistrer | Primary full-width 48px ; disabled si 0 saisi      |
+| Feedback           | Toast « 38 pointages enregistrés localement »      |
 
 #### Interactions
 
-| Action | Résultat |
-|--------|----------|
-| Enregistrer | Crée N Pointage en IndexedDB, status PENDING_SYNC, clientUuid v4 each |
-| Tap photo | Ouvre caméra (UC-FE-PWA-PHOTO) ; compression 1 Mo |
-| Scroll | Virtual list si >30 MOC (perf) |
-| Retour arrière | Dialog « Quitter sans enregistrer ? » si champs modifiés |
+| Action         | Résultat                                                              |
+| -------------- | --------------------------------------------------------------------- |
+| Enregistrer    | Crée N Pointage en IndexedDB, status PENDING_SYNC, clientUuid v4 each |
+| Tap photo      | Ouvre caméra (UC-FE-PWA-PHOTO) ; compression 1 Mo                     |
+| Scroll         | Virtual list si >30 MOC (perf)                                        |
+| Retour arrière | Dialog « Quitter sans enregistrer ? » si champs modifiés              |
 
 #### États offline
 
@@ -253,11 +253,11 @@ Consulter les pointages de la semaine par équipe, effectuer contrôle biométri
 
 #### Filtres
 
-| Filtre | Options | Défaut |
-|--------|---------|--------|
-| Semaine | Sélecteur semaine ISO | Semaine courante |
-| Équipe | Toutes + liste équipes site | Toutes |
-| Statut | Tous / En attente / Validé / Rejeté / Bio manquante | En attente |
+| Filtre  | Options                                             | Défaut           |
+| ------- | --------------------------------------------------- | ---------------- |
+| Semaine | Sélecteur semaine ISO                               | Semaine courante |
+| Équipe  | Toutes + liste équipes site                         | Toutes           |
+| Statut  | Tous / En attente / Validé / Rejeté / Bio manquante | En attente       |
 
 #### Groupe équipe (accordéon)
 
@@ -266,25 +266,25 @@ Consulter les pointages de la semaine par équipe, effectuer contrôle biométri
 
 #### Carte MOC
 
-| Zone | Contenu |
-|------|---------|
-| Avatar + nom | Photo 40px + nom complet |
-| Résumé | « N pointages · XXX Ar prévisionnel » |
+| Zone         | Contenu                                |
+| ------------ | -------------------------------------- |
+| Avatar + nom | Photo 40px + nom complet               |
+| Résumé       | « N pointages · XXX Ar prévisionnel »  |
 | Pastille bio | 🟢 OK · 🟠 DOUBT · 🔴 KO · ⚪ Non fait |
-| Actions | Boutons 44px : Bio · Valider · Rejeter |
+| Actions      | Boutons 44px : Bio · Valider · Rejeter |
 
-| Bouton | État enabled | Action |
-|--------|--------------|--------|
-| Bio | Toujours | Ouvre écran caméra biométrique |
+| Bouton  | État enabled          | Action                                                                                               |
+| ------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| Bio     | Toujours              | Ouvre écran caméra biométrique                                                                       |
 | Valider | **Bio OK uniquement** | PATCH validate all MOC week ; DOUBT/KO/absent → bouton disabled + tooltip « Bio OK requise (RG-03) » |
-| Rejeter | Toujours | Modal motif obligatoire → reject |
+| Rejeter | Toujours              | Modal motif obligatoire → reject                                                                     |
 
 #### Modal rejet
 
-| Champ | Validation |
-|-------|------------|
-| Motif | Textarea min 10 car., required |
-| Actions | Annuler · Confirmer rejet |
+| Champ   | Validation                     |
+| ------- | ------------------------------ |
+| Motif   | Textarea min 10 car., required |
+| Actions | Annuler · Confirmer rejet      |
 
 #### Écran biométrique (overlay full-screen)
 
@@ -304,19 +304,19 @@ Consulter les pointages de la semaine par équipe, effectuer contrôle biométri
 └─────────────────────────────────────┘
 ```
 
-| Élément | Spec |
-|---------|------|
-| Guide facial | Oval overlay SVG, instructions « Centrer le visage » |
-| Capture | POST /biometric/check ; loader 2–5s |
-| Résultat | Pastille + score ; auto-retour liste après 2s si OK |
+| Élément      | Spec                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Guide facial | Oval overlay SVG, instructions « Centrer le visage »                                                                            |
+| Capture      | POST /biometric/check ; loader 2–5s                                                                                             |
+| Résultat     | Pastille + score ; auto-retour liste après 2s si OK                                                                             |
 | Mode dégradé | Lien « Signaler indisponibilité AXIAN » si BIO-503 → alerte Admin ; **pas** de validation CDS ni export tant que bio OK absente |
 
 #### Footer résumé
 
-| Métrique | Calcul |
-|----------|--------|
+| Métrique        | Calcul                            |
+| --------------- | --------------------------------- |
 | Validés / Total | MOC avec tous pointages VALIDATED |
-| Montant | Somme montants validés semaine |
+| Montant         | Somme montants validés semaine    |
 
 #### Clôture semaine
 
@@ -359,59 +359,59 @@ Générer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire 
 
 #### Barre actions période
 
-| Composant | Comportement |
-|-----------|--------------|
-| Sélecteur période | Semaine ISO ; disabled si bordereau EXPORTED sans mode correctif |
-| Filtre site | Optionnel pour preview ; export toujours tous sites |
-| Générer | POST /payments/generate ; confirm si bordereau existant (PAY-CONFLICT) |
+| Composant         | Comportement                                                           |
+| ----------------- | ---------------------------------------------------------------------- |
+| Sélecteur période | Semaine ISO ; disabled si bordereau EXPORTED sans mode correctif       |
+| Filtre site       | Optionnel pour preview ; export toujours tous sites                    |
+| Générer           | POST /payments/generate ; confirm si bordereau existant (PAY-CONFLICT) |
 
 #### Barre export/import
 
-| Bouton | Action | Feedback |
-|--------|--------|----------|
-| Exporter MVola | GET /payments/:period/export | Progress bar ; download `.xlsx` ; toast succès |
-| Importer retour | Ouvre modal drag&drop | Preview PAID/FAILED avant confirm |
-| Historique | Drawer liste exports archivés MinIO | Re-download |
+| Bouton          | Action                              | Feedback                                       |
+| --------------- | ----------------------------------- | ---------------------------------------------- |
+| Exporter MVola  | GET /payments/:period/export        | Progress bar ; download `.xlsx` ; toast succès |
+| Importer retour | Ouvre modal drag&drop               | Preview PAID/FAILED avant confirm              |
+| Historique      | Drawer liste exports archivés MinIO | Re-download                                    |
 
 #### Table bordereau
 
-| Colonne | Type | Éditable | Notes |
-|---------|------|----------|-------|
-| ☐ | Checkbox | — | Sélection batch (future) |
-| Prénom Nom | Text | Non | Lien → fiche MOC |
-| Site | Badge | Non | Code 3 lettres |
-| N° MVola | Text mono | Non | Format 034XXXXXXX |
-| Montant (Ar) | Number | Oui inline | Édition → modal motif obligatoire |
-| Bio validée | Badge | Non | OUI / NON / N/A |
-| Statut | Badge | Non | PENDING/EXPORTED/PAID/FAILED |
-| Actions | Icon ✎ | — | Ouvre drawer détail |
+| Colonne      | Type      | Éditable   | Notes                             |
+| ------------ | --------- | ---------- | --------------------------------- |
+| ☐            | Checkbox  | —          | Sélection batch (future)          |
+| Prénom Nom   | Text      | Non        | Lien → fiche MOC                  |
+| Site         | Badge     | Non        | Code 3 lettres                    |
+| N° MVola     | Text mono | Non        | Format 034XXXXXXX                 |
+| Montant (Ar) | Number    | Oui inline | Édition → modal motif obligatoire |
+| Bio validée  | Badge     | Non        | OUI / NON / N/A                   |
+| Statut       | Badge     | Non        | PENDING/EXPORTED/PAID/FAILED      |
+| Actions      | Icon ✎    | —          | Ouvre drawer détail               |
 
 #### Badge statut paiement
 
-| Statut | Couleur | Signification |
-|--------|---------|---------------|
-| PENDING | Jaune | Généré, non exporté |
-| EXPORTED | Bleu | Fichier MVola produit |
-| PAID | Vert | Retour MVola OK |
-| FAILED | Rouge | Échec MVola ; tooltip motif |
+| Statut   | Couleur | Signification               |
+| -------- | ------- | --------------------------- |
+| PENDING  | Jaune   | Généré, non exporté         |
+| EXPORTED | Bleu    | Fichier MVola produit       |
+| PAID     | Vert    | Retour MVola OK             |
+| FAILED   | Rouge   | Échec MVola ; tooltip motif |
 
 #### Drawer détail ligne
 
-| Section | Contenu |
-|---------|---------|
-| MOC | Fiche résumée + photo |
+| Section       | Contenu                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| MOC           | Fiche résumée + photo                                                |
 | Détail calcul | Liste pointages VALIDATED agrégés (activité, qty, tarif, sous-total) |
-| Bio | Dernier BiometricCheck : date, résultat, provider |
-| Historique | Modifications montant (audit) |
-| Actions | Corriger montant · Exclure ligne (motif) |
+| Bio           | Dernier BiometricCheck : date, résultat, provider                    |
+| Historique    | Modifications montant (audit)                                        |
+| Actions       | Corriger montant · Exclure ligne (motif)                             |
 
 #### Modal correction montant
 
-| Champ | Validation |
-|-------|------------|
-| Montant actuel | Read-only |
-| Nouveau montant | Number > 0, integer |
-| Motif | Required min 10 car. |
+| Champ           | Validation           |
+| --------------- | -------------------- |
+| Montant actuel  | Read-only            |
+| Nouveau montant | Number > 0, integer  |
+| Motif           | Required min 10 car. |
 
 #### Modal import retour MVola
 
@@ -429,24 +429,24 @@ Générer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire 
 
 #### Cas limites
 
-| Cas | Comportement |
-|-----|--------------|
-| 600+ lignes | Virtual scroll TanStack Virtual ; pagination server 50 |
-| Bio DOUBT / KO / absente | Ligne visible UI en alerte ; **exclue** bordereau exportable et export MVola (RG-03 strict) |
-| Mode dégradé Admin | Override manuel ligne par ligne (motif + audit) ; badge `N/A` interne ; **jamais** inclus export bulk MVola ; paiement traité hors fichier |
-| Doublon période | Dialog correctif vs annuler |
-| Export partiel | Non supporté V1 — export complet période |
+| Cas                      | Comportement                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 600+ lignes              | Virtual scroll TanStack Virtual ; pagination server 50                                                                                     |
+| Bio DOUBT / KO / absente | Ligne visible UI en alerte ; **exclue** bordereau exportable et export MVola (RG-03 strict)                                                |
+| Mode dégradé Admin       | Override manuel ligne par ligne (motif + audit) ; badge `N/A` interne ; **jamais** inclus export bulk MVola ; paiement traité hors fichier |
+| Doublon période          | Dialog correctif vs annuler                                                                                                                |
+| Export partiel           | Non supporté V1 — export complet période                                                                                                   |
 
 ---
 
 ## Livrables Figma attendus (post-design — statut `NOT_CREATED`)
 
-| Frame Figma | Écrans | Variantes | Statut |
-|-------------|--------|-----------|--------|
-| `Admin/Dashboard` | Desktop 1280 | Loading, empty, alertes | `NOT_CREATED` |
-| `Admin/Bordereau` | Desktop 1280 | PENDING, post-export, import modal | `NOT_CREATED` |
-| `PWA/Saisie-lot` | Mobile 360 | Online, offline, avec photos | `NOT_CREATED` |
-| `PWA/Validation-CDS` | Mobile + Tablet 768 | Liste, bio overlay, rejet modal | `NOT_CREATED` |
+| Frame Figma          | Écrans              | Variantes                          | Statut        |
+| -------------------- | ------------------- | ---------------------------------- | ------------- |
+| `Admin/Dashboard`    | Desktop 1280        | Loading, empty, alertes            | `NOT_CREATED` |
+| `Admin/Bordereau`    | Desktop 1280        | PENDING, post-export, import modal | `NOT_CREATED` |
+| `PWA/Saisie-lot`     | Mobile 360          | Online, offline, avec photos       | `NOT_CREATED` |
+| `PWA/Validation-CDS` | Mobile + Tablet 768 | Liste, bio overlay, rejet modal    | `NOT_CREATED` |
 
 ---
 
@@ -459,4 +459,4 @@ Générer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire 
 
 ---
 
-*Références : Spec fonctionnelle §5 · Backlog UC-CAD-03 · Prompt Dashboard KPIs*
+_Références : Spec fonctionnelle §5 · Backlog UC-CAD-03 · Prompt Dashboard KPIs_
