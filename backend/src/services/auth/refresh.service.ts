@@ -46,7 +46,7 @@ export async function issueRefreshToken(
   res.cookie(REFRESH_COOKIE, raw, cookieOptions());
 }
 
-/** Rotate refresh token: verify, revoke old, blacklist, issue new access + refresh. */
+/** Rotate refresh token: verify, revoke old, create new — atomically in one transaction. */
 export async function rotateRefreshToken(rawToken: string, res: Response) {
   const tokenHash = hashToken(rawToken);
 
@@ -54,7 +54,11 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
     throw new ApiError(401, "REVOKED_REFRESH_TOKEN", "Refresh token has been revoked");
   }
 
-  const stored = await prisma.$transaction(async (tx) => {
+  const newRaw = generateRawRefreshToken();
+  const newHash = hashToken(newRaw);
+  const newExpiresAt = new Date(Date.now() + REFRESH_MAX_AGE_MS);
+
+  const { stored, user } = await prisma.$transaction(async (tx) => {
     const row = await tx.refreshToken.findUnique({ where: { tokenHash } });
     if (!row || row.revokedAt || row.expiresAt <= new Date()) {
       throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
@@ -69,17 +73,26 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
       throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
     }
 
-    return row;
-  });
+    const activeUser = await tx.user.findUnique({ where: { id: row.userId } });
+    if (!activeUser || !activeUser.active) {
+      throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
+    }
 
-  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
-  if (!user || !user.active) {
-    throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
-  }
+    await tx.refreshToken.create({
+      data: {
+        userId: row.userId,
+        tokenHash: newHash,
+        expiresAt: newExpiresAt,
+        deviceInfo: row.deviceInfo,
+      },
+    });
+
+    return { stored: row, user: activeUser };
+  });
 
   const ttl = remainingTtlSeconds(stored.expiresAt);
   await blacklistRefreshToken(tokenHash, ttl);
-  await issueRefreshToken(user.id, res, stored.deviceInfo ?? undefined);
+  res.cookie(REFRESH_COOKIE, newRaw, cookieOptions());
 
   const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
   return { accessToken, user };
