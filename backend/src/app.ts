@@ -6,6 +6,7 @@ import { pinoHttp } from "pino-http";
 import rateLimit from "express-rate-limit";
 import { logger } from "./lib/logger.js";
 import { apiRouter } from "./routes/index.js";
+import { healthRouter } from "./routes/health.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
 const ORIGINS = [process.env.ADMIN_ORIGIN, process.env.PWA_ORIGIN]
@@ -39,8 +40,8 @@ export function createApp(): Express {
     rateLimit({ windowMs: 60 * 1000, limit: 1000, standardHeaders: true, legacyHeaders: false }),
   );
 
+  app.use(healthRouter);
   app.use("/api/v1", apiRouter);
-  app.get("/health", (_req, res) => res.redirect(307, "/api/v1/health"));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -1,5 +1,9 @@
 name: alterra-dev
 
+# Dev local hybride : infra (postgres, redis, minio) dans Docker ;
+# API et frontends via `npm run dev` (hot-reload tsx/vite).
+# Voir README.md section « Démarrage local ».
+
 services:
   postgres:
     image: postgres:16-alpine

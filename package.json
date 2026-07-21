@@ -2,6 +2,7 @@
   "name": "alterra",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "workspaces": [
     "backend",
     "admin",
@@ -12,11 +13,20 @@
     "setup": "npm install && npm run db:setup -w backend",
     "build": "npm run build -w backend && npm run build -w admin && npm run build -w pwa",
     "lint": "npm run lint -w backend && npm run lint -w admin && npm run lint -w pwa",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "npm run test -w backend",
     "docker:dev:up": "docker compose up -d",
     "docker:dev:down": "docker compose down"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@eslint/js": "^9.15.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "prettier": "^3.3.3",
+    "typescript-eslint": "^8.15.0"
   }
 }
