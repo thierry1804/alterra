@@ -2,7 +2,7 @@ import { Router } from "express";
 import argon2 from "argon2";
 import { Role } from "@prisma/client";
 import { z } from "zod";
-import { prisma } from "../lib/prisma.js";
+import { basePrisma, prisma } from "../lib/prisma.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -31,7 +31,7 @@ const mfaVerifySchema = z.object({
 authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password, mfaCode } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await basePrisma.user.findUnique({ where: { email } });
 
     if (!user || !user.active || !(await argon2.verify(user.passwordHash, password))) {
       throw new ApiError(401, "INVALID_CREDENTIALS", "Email ou mot de passe incorrect");
@@ -54,7 +54,7 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
     });
     await issueRefreshToken(user.id, res, req.headers["user-agent"]);
 
-    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    await basePrisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
     res.json({
       accessToken,

@@ -1,0 +1,14 @@
+{
+  "name": "@alterra/e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test -c playwright.config.ts",
+    "test:ui": "playwright test -c playwright.config.ts --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

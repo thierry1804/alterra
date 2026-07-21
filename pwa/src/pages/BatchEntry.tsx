@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Link, useNavigate } from "react-router-dom";
 import WorkerRow, { type WorkerRowValue } from "../components/pointage/WorkerRow";
-import { db, type ActivityRecord, type WorkerRecord } from "../db/db";
+import { db, type ActivityRecord, type PointagePending, type WorkerRecord } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, type DaySession } from "../lib/day-session";
 import { uuidv7 } from "../lib/uuid";
@@ -130,10 +130,12 @@ export default function BatchEntry() {
 
       const nowIso = new Date().toISOString();
 
+      const pendingSync: PointagePending[] = [];
+
       await db.transaction("rw", db.pointages, db.media, async () => {
         for (const { worker, value } of entries) {
           const clientUuid = uuidv7();
-          await db.pointages.add({
+          const pointage: PointagePending = {
             clientUuid,
             workerId: worker.id,
             activityId: session.activityId,
@@ -141,17 +143,10 @@ export default function BatchEntry() {
             date: session.date,
             createdByClientAt: nowIso,
             status: "local",
-          });
+          };
 
-          await enqueuePointageSync({
-            clientUuid,
-            workerId: worker.id,
-            activityId: session.activityId,
-            quantity: Number(value.quantity),
-            date: session.date,
-            createdByClientAt: nowIso,
-            status: "local",
-          });
+          await db.pointages.add(pointage);
+          pendingSync.push(pointage);
 
           if (value.photoBlob) {
             await db.media.put({
@@ -163,6 +158,10 @@ export default function BatchEntry() {
           }
         }
       });
+
+      for (const pointage of pendingSync) {
+        await enqueuePointageSync(pointage);
+      }
 
       if (navigator.onLine) {
         const result = await syncNow();

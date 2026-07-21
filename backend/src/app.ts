@@ -27,10 +27,15 @@ export function createApp(): Express {
   app.use(requestContext);
   app.use(pinoHttp({ logger }));
 
-  // Strict on auth: anti-bruteforce.
+  // Strict on auth: anti-bruteforce (relaxed in dev/CI for E2E and local testing).
   app.use(
     "/api/v1/auth",
-    rateLimit({ windowMs: 5 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false }),
+    rateLimit({
+      windowMs: 5 * 60 * 1000,
+      limit: process.env.NODE_ENV === "production" ? 10 : 1000,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
   );
   // Generous on sync: never penalize a large resync after a long field outage.
   app.use(

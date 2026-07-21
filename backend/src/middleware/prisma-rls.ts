@@ -302,6 +302,11 @@ type QueryHandler = (args: QueryArgs) => Promise<unknown>;
 
 function scopedReadHandler(model: ScopedModel) {
   return async ({ args, query }: { args: QueryArgs; query: QueryHandler }) => {
+    const ctx = getRequestContext();
+    // Unauthenticated routes (login, refresh) must read users without RLS scope.
+    if (!ctx?.role) {
+      return query(args);
+    }
     const scope = getModelScopeFilter(model);
     if (scope) {
       args = { ...args, where: mergeWhere(args.where, scope) };

@@ -6,7 +6,8 @@
   "workspaces": [
     "backend",
     "admin",
-    "pwa"
+    "pwa",
+    "e2e"
   ],
   "scripts": {
     "dev": "concurrently -n backend,admin,pwa -c cyan,green,magenta \"npm run dev -w backend\" \"npm run dev -w admin\" \"npm run dev -w pwa\"",
@@ -16,6 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run test -w backend",
+    "test:e2e": "npm run test -w e2e",
     "docker:dev:up": "docker compose up -d",
     "docker:dev:down": "docker compose down"
   },

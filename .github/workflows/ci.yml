@@ -45,3 +45,45 @@ jobs:
       - run: npm test -w backend
 
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: alterra_test
+          POSTGRES_USER: alterra
+          POSTGRES_PASSWORD: alterra_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U alterra"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://alterra:alterra_test@localhost:5432/alterra_test
+      JWT_SECRET: ci-only-secret-not-for-prod-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-for-prod-bbbbbbbbbbbbbbbbb
+      NODE_ENV: development
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Prisma migrate + seed
+        run: npx prisma migrate deploy && npm run db:seed
+        working-directory: backend
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: e2e
+
+      - name: E2E tests
+        run: npm run test:e2e
