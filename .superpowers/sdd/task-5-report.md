@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Branch:** `feat/backlog-implementation`  
-**Commit:** _(see git log)_  
+**Commit:** `5bb35cd`  
 **Status:** ✅ Complet — requireRole typé, Prisma RLS, audit log + triggers PostgreSQL
 
 ---
@@ -110,3 +110,32 @@ npm run test -w backend  → PASS
 - Double barrière RBAC : guards Express (`requireRole`) + filtrage Prisma automatique (RLS extension)
 - Audit applicatif (userId, ip, userAgent) complété par triggers PostgreSQL pour les accès SQL directs
 - Les tokens existants sans `teamId` continueront de fonctionner (`teamId: null` implicite après re-login)
+
+---
+
+## Review fixes (Task 5 review)
+
+**Commit:** `f42dcaa`  
+**Status:** ✅ Findings critiques et importants corrigés
+
+| # | Sévérité | Finding | Correction |
+| - | -------- | ------- | ---------- |
+| 1 | Critique | RLS mutations absentes | Extension `$extends` étendue à create/update/delete/upsert/updateMany/deleteMany sur Worker, Pointage, Payment, Team, User ; validation workerId/siteId/teamId en scope |
+| 2 | Critique | Fail-open si siteId/teamId manquant | `getModelScopeFilter`, `getSiteFilter`, `getTeamFilter` retournent `{ id: '00000000-0000-0000-0000-000000000000' }` (fail-closed) |
+| 3 | Important | AuditLog mutable | Trigger `audit_log_append_only` BEFORE UPDATE OR DELETE sur AuditLog |
+| 4 | Important | Double source audit | Extension Prisma audit supprimée ; triggers PG = source canonique mutations entités ; `writeAuditLog()` réservé aux actions explicites (LOGIN, EXPORT) |
+| 5 | Important | Audit non-atomique | N/A — plus d'audit post-mutation applicatif sur entités |
+
+### Tests ajoutés (`rbac.test.ts`)
+
+- Fail-closed : CHEF_SERVICE sans siteId, CHEF_EQUIPE sans teamId
+- `getModelScopeFilter` : impossible filter vs null (ADMIN)
+- `validateDirectFieldsInScope` : Worker in/out scope, Team interdit CDE
+
+### Tests & lint (post-review)
+
+```
+npm run lint -w backend  → PASS
+npm run test -w backend  → PASS
+  (28 passed | 1 skipped, 29 total)
+```

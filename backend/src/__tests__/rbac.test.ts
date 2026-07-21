@@ -4,9 +4,13 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import {
+  getModelScopeFilter,
   getSiteFilter,
   getTeamFilter,
+  IMPOSSIBLE_SCOPE_FILTER,
+  RlsScopeError,
   runWithRequestContext,
+  validateDirectFieldsInScope,
 } from "../middleware/prisma-rls.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 
@@ -133,6 +137,94 @@ describe("RBAC", () => {
         { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(getTeamFilter()).toEqual({});
+        },
+      );
+    });
+
+    it("getSiteFilter returns impossible filter when CHEF_SERVICE has no siteId", () => {
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+        expect(getSiteFilter()).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+      });
+    });
+
+    it("getTeamFilter returns impossible filter when CHEF_EQUIPE has no teamId", () => {
+      runWithRequestContext({ role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(getTeamFilter()).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+      });
+    });
+  });
+
+  describe("getModelScopeFilter fail-closed", () => {
+    it("returns impossible filter when CHEF_SERVICE has no siteId", () => {
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+        expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+        expect(getModelScopeFilter("Pointage")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+      });
+    });
+
+    it("returns impossible filter when CHEF_EQUIPE has no teamId", () => {
+      runWithRequestContext({ role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+        expect(getModelScopeFilter("Team")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+      });
+    });
+
+    it("returns null for ADMIN (no filter)", () => {
+      runWithRequestContext({ role: Role.ADMIN, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(getModelScopeFilter("Worker")).toBeNull();
+      });
+    });
+  });
+
+  describe("validateDirectFieldsInScope", () => {
+    it("accepts Worker create data matching CHEF_SERVICE siteId", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID, firstName: "A" }),
+          ).not.toThrow();
+        },
+      );
+    });
+
+    it("rejects Worker create data with wrong siteId", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope("Worker", {
+              siteId: "00000000-0000-4000-8000-000000000099",
+            }),
+          ).toThrow(RlsScopeError);
+        },
+      );
+    });
+
+    it("rejects Worker create when CHEF_SERVICE has no siteId (fail-closed)", () => {
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+        expect(() => validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID })).toThrow(
+          RlsScopeError,
+        );
+      });
+    });
+
+    it("rejects Pointage create without workerId at relation validation layer", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        () => {
+          expect(() => validateDirectFieldsInScope("Pointage", { quantity: 1 })).not.toThrow();
+        },
+      );
+    });
+
+    it("rejects Team create for CHEF_EQUIPE", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope("Team", { siteId: MOCK_SITE_ID, name: "Equipe B" }),
+          ).toThrow(RlsScopeError);
         },
       );
     });

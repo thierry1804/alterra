@@ -1,5 +1,6 @@
--- Defense-in-depth audit triggers on sensitive tables.
--- Application-level audit (Prisma extension) remains the primary source with userId/ip.
+-- Canonical audit source for Worker/Pointage/Payment mutations (defense-in-depth).
+-- Explicit actions (LOGIN, EXPORT) use writeAuditLog() at application level.
+-- AuditLog table is append-only: UPDATE/DELETE forbidden.
 
 CREATE OR REPLACE FUNCTION audit_row_change()
 RETURNS TRIGGER AS $$
@@ -47,3 +48,15 @@ DROP TRIGGER IF EXISTS audit_payment_changes ON "Payment";
 CREATE TRIGGER audit_payment_changes
   AFTER INSERT OR UPDATE OR DELETE ON "Payment"
   FOR EACH ROW EXECUTE FUNCTION audit_row_change();
+
+CREATE OR REPLACE FUNCTION prevent_audit_log_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'AuditLog is append-only: UPDATE and DELETE are forbidden';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS audit_log_append_only ON "AuditLog";
+CREATE TRIGGER audit_log_append_only
+  BEFORE UPDATE OR DELETE ON "AuditLog"
+  FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
