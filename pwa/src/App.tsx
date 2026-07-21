@@ -13,6 +13,9 @@ import TeamManagement from "./pages/TeamManagement";
 import NfcScan from "./pages/NfcScan";
 import BiometricCapture from "./pages/BiometricCapture";
 import Sync from "./pages/Sync";
+import ClarificationRequest from "./pages/ClarificationRequest";
+import ActivityRequest from "./pages/ActivityRequest";
+import WorkerRequest from "./pages/WorkerRequest";
 
 export default function App() {
   return (
@@ -36,10 +39,13 @@ export default function App() {
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>
                 <Route path="/validation" element={<Validation />} />
+                <Route path="/activity-requests" element={<ActivityRequest />} />
+                <Route path="/worker-requests" element={<WorkerRequest />} />
               </Route>
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"]} />}>
                 <Route path="/teams" element={<TeamManagement />} />
+                <Route path="/clarifications" element={<ClarificationRequest />} />
               </Route>
 
               <Route path="/sync" element={<Sync />} />

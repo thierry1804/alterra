@@ -54,6 +54,9 @@ export default function AppShell() {
             <Link to="/nfc" className={navClass("/nfc")}>
               Présence
             </Link>
+            <Link to="/clarifications" className={navClass("/clarifications")}>
+              Précisions
+            </Link>
             <Link to="/teams" className={navClass("/teams")}>
               Équipes
             </Link>
@@ -63,6 +66,15 @@ export default function AppShell() {
           <>
             <Link to="/validation" className={navClass("/validation")}>
               Validation
+            </Link>
+            <Link to="/clarifications" className={navClass("/clarifications")}>
+              Précisions
+            </Link>
+            <Link to="/activity-requests" className={navClass("/activity-requests")}>
+              Activités
+            </Link>
+            <Link to="/worker-requests" className={navClass("/worker-requests")}>
+              MOC
             </Link>
             <Link to="/teams" className={navClass("/teams")}>
               Équipes

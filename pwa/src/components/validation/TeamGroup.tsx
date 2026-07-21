@@ -70,6 +70,12 @@ export default function TeamGroup({
                 >
                   Contrôle bio
                 </Link>
+                <Link
+                  to={`/clarifications?pointageId=${pointage.id}`}
+                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700"
+                >
+                  Précisions
+                </Link>
                 <button
                   type="button"
                   disabled={busy}

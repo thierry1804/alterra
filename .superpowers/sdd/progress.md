@@ -37,4 +37,5 @@ Task 30: complete (FE-PWA-NFC scan présence Web NFC, log local Dexie, mode manu
 Task 31: complete (BE-NFC presence/sync, badges CRUD, sync PWA badges et présences)
 Task 32: complete (FE-PWA-BIO cache templates chiffrés, face-api offline, check-offline sync)
 Task 33: complete (BE-WF workflows activity/worker/clarification, 15 endpoints, state machine)
+Task 34: complete (FE-PWA-WF pages précisions/activité/MOC, upload photo, nav terrain)
 Task 6: complete (CRUD référentiels sites/activités/workers/users + import Excel)

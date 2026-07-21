@@ -26,6 +26,7 @@ import {
   getClarificationRequest,
   listClarificationRequests,
 } from "../services/workflows/clarification-request.service.js";
+import { workflowPhotoUploadUrl } from "../services/storage/presigned-url.service.js";
 
 export const workflowsRouter = Router();
 
@@ -202,6 +203,19 @@ workflowsRouter.get(
   },
 );
 
+workflowsRouter.post(
+  "/worker-requests/photo-upload-url",
+  requireAuth,
+  requireRole(...WF_CDS_ADMIN),
+  async (_req, res, next) => {
+    try {
+      res.json(await workflowPhotoUploadUrl("worker-requests"));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 workflowsRouter.get(
   "/worker-requests/:id",
   requireAuth,
@@ -305,6 +319,19 @@ workflowsRouter.get(
         req.query as z.infer<typeof listClarificationQuery>,
       );
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.post(
+  "/clarification-requests/photo-upload-url",
+  requireAuth,
+  requireRole(Role.CHEF_EQUIPE, Role.ADMIN),
+  async (_req, res, next) => {
+    try {
+      res.json(await workflowPhotoUploadUrl("clarifications"));
     } catch (err) {
       next(err);
     }
