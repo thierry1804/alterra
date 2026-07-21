@@ -174,6 +174,10 @@ describe("RBAC", () => {
         expect(getModelScopeFilter("Worker")).toBeNull();
       });
     });
+
+    it("returns impossible filter when no request context", () => {
+      expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+    });
   });
 
   describe("validateDirectFieldsInScope", () => {
@@ -224,6 +228,17 @@ describe("RBAC", () => {
         () => {
           expect(() =>
             validateDirectFieldsInScope("Team", { siteId: MOCK_SITE_ID, name: "Equipe B" }),
+          ).toThrow(RlsScopeError);
+        },
+      );
+    });
+
+    it("rejects User create without siteId for CHEF_SERVICE", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope("User", { email: "x@test.mg", role: Role.CHEF_EQUIPE }),
           ).toThrow(RlsScopeError);
         },
       );

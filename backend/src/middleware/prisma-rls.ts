@@ -106,10 +106,11 @@ function isImpossibleScope(scope: Record<string, unknown>): boolean {
   return scope.id === IMPOSSIBLE_SCOPE_ID;
 }
 
-/** Returns null for ADMIN (no filter), scope filter for scoped roles, or impossible filter when scope is missing. */
+/** Returns null for ADMIN (no filter), scope filter for scoped roles, or impossible filter when scope/context is missing. */
 export function getModelScopeFilter(model: ScopedModel): Record<string, unknown> | null {
   const ctx = getRequestContext();
-  if (!ctx?.role || ctx.role === Role.ADMIN) return null;
+  if (!ctx?.role) return IMPOSSIBLE_SCOPE_FILTER;
+  if (ctx.role === Role.ADMIN) return null;
 
   switch (model) {
     case "Worker":
@@ -228,11 +229,21 @@ export function validateDirectFieldsInScope(model: ScopedModel, data: Record<str
     case "User": {
       const siteId = extractField(data, "siteId");
       const teamId = extractField(data, "teamId");
-      if ("siteId" in scope && siteId !== undefined && siteId !== scope.siteId) {
-        throw new RlsScopeError("User siteId out of scope");
+      if ("siteId" in scope) {
+        if (siteId === undefined) {
+          throw new RlsScopeError("User requires scoped siteId");
+        }
+        if (siteId !== scope.siteId) {
+          throw new RlsScopeError("User siteId out of scope");
+        }
       }
-      if ("teamId" in scope && teamId !== undefined && teamId !== scope.teamId) {
-        throw new RlsScopeError("User teamId out of scope");
+      if ("teamId" in scope) {
+        if (teamId === undefined) {
+          throw new RlsScopeError("User requires scoped teamId");
+        }
+        if (teamId !== scope.teamId) {
+          throw new RlsScopeError("User teamId out of scope");
+        }
       }
       break;
     }
