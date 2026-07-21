@@ -6,6 +6,11 @@ import { workersRouter } from "./workers.routes.js";
 import { activitiesRouter } from "./activities.routes.js";
 import { usersRouter } from "./users.routes.js";
 import { pointagesRouter } from "./pointages.routes.js";
+import { paymentsRouter } from "./payments.routes.js";
+import { dashboardRouter } from "./dashboard.routes.js";
+import { auditRouter } from "./audit.routes.js";
+import { reportsRouter } from "./reports.routes.js";
+import { biometricRouter } from "./biometric.routes.js";
 
 export const apiRouter = Router();
 
@@ -16,3 +21,8 @@ apiRouter.use(activitiesRouter);
 apiRouter.use(workersRouter);
 apiRouter.use("/users", usersRouter);
 apiRouter.use(pointagesRouter);
+apiRouter.use(paymentsRouter);
+apiRouter.use(dashboardRouter);
+apiRouter.use(auditRouter);
+apiRouter.use(reportsRouter);
+apiRouter.use(biometricRouter);

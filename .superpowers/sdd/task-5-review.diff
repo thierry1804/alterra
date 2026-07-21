@@ -1,0 +1,930 @@
+﻿diff --git a/.superpowers/sdd/task-5-report.md b/.superpowers/sdd/task-5-report.md
+new file mode 100644
+index 0000000..2f1bd63
+--- /dev/null
++++ b/.superpowers/sdd/task-5-report.md
+@@ -0,0 +1,112 @@
++# Task 5 Report ÔÇö Module BE-RBAC : RBAC et audit
++
++**Date:** 2026-07-21  
++**Branch:** `feat/backlog-implementation`  
++**Commit:** _(see git log)_  
++**Status:** Ô£à Complet ÔÇö requireRole typ├®, Prisma RLS, audit log + triggers PostgreSQL
++
++---
++
++## Checklist
++
++| Step | Item | Status |
++| ---- | ---- | ------ |
++| 1 | Guard r├┤les param├®trable (403 typ├® via ApiError) | Ô£à |
++| 2 | Middleware Prisma filtrage siteId (CDS) / teamId (CDE) | Ô£à |
++| 3 | Audit log append-only (extension Prisma + triggers PG) | Ô£à |
++| 4 | Tests RBAC par r├┤le (vitest, mocks Prisma) | Ô£à |
++| 5 | `npm run lint -w backend && npm run test -w backend` | Ô£à PASS |
++
++---
++
++## Changements principaux
++
++### RBAC (`backend/src/middleware/rbac.ts`)
++
++- `requireRole()` l├¿ve `ApiError(403, "FORBIDDEN", ÔÇª)` avec `details: { requiredRoles, actualRole }`
++- `siteScope()` ÔÇö attache `req.siteScope` pour CDS (compl├®ment au filtrage Prisma)
++- `teamScope()` ÔÇö attache `req.teamScope` pour CDE
++
++### Prisma RLS (`backend/src/middleware/prisma-rls.ts`)
++
++- `AsyncLocalStorage` pour `{ userId, role, siteId, teamId, ip, userAgent }`
++- `requestContext` middleware (app.ts, apr├¿s cookieParser)
++- `updateRequestContext()` appel├® dans `requireAuth` apr├¿s v├®rification JWT
++- Extension `$extends` sur lectures : Worker, Pointage, Payment, Team, User
++  - ADMIN : pas de filtre
++  - CHEF_SERVICE : `siteId` (ou `worker.siteId` pour Pointage/Payment)
++  - CHEF_EQUIPE : `teamId` (ou `worker.teamId`, `Team.id` pour Team)
++- Helpers export├®s : `getSiteFilter()`, `getTeamFilter()`
++
++### JWT (`backend/src/lib/jwt.ts`)
++
++- Payload enrichi : `{ sub, role, siteId, teamId }` pour alimenter le contexte RLS
++
++### Audit
++
++- **Service** (`backend/src/services/audit/audit.service.ts`) : `writeAuditLog({ userId, action, entityType, entityId, before, after, ip, userAgent })`
++- **Extension Prisma** (`backend/src/middleware/audit.interceptor.ts`) : auto-audit CREATE/UPDATE/DELETE sur Worker, Pointage, Payment
++- **Middleware Express** `auditSensitiveRoutes()` : marque les routes sensibles sur `/api/v1`
++- **Migration PG** (`backend/prisma/migrations/20260721180000_audit_triggers/migration.sql`) : triggers AFTER INSERT/UPDATE/DELETE (defense in depth)
++
++### Prisma client (`backend/src/lib/prisma-base.ts`, `prisma.ts`)
++
++- Client de base s├®par├® pour ├®viter la r├®cursion audit
++- Client export├® = base + RLS + audit extensions
++
++### Routes simplifi├®es
++
++- `workers.routes.ts`, `pointages.routes.ts` : suppression du filtrage manuel `req.siteScope` (d├®l├®gu├® ├á l'extension Prisma)
++
++### App wiring (`backend/src/app.ts`)
++
++- `requestContext` apr├¿s `cookieParser`
++- `auditSensitiveRoutes` sur le pr├®fixe `/api/v1`
++
++---
++
++## Tests & lint
++
++```
++npm run lint -w backend  ÔåÆ PASS
++npm run test -w backend  ÔåÆ PASS
++  Ô£ô rbac: ADMIN allowed on admin-only route
++  Ô£ô rbac: CDE forbidden ÔåÆ 403 FORBIDDEN + details
++  Ô£ô rbac: getSiteFilter / getTeamFilter per role (├ù4)
++  Ô£ô rbac: writeAuditLog shape
++  Ô£ô auth endpoints (├ù9)
++  Ô£ô health endpoints (├ù2)
++  ÔåÀ seed data counts (skipped ÔÇö DB unavailable)
++  (18 passed | 1 skipped, 19 total)
++```
++
++---
++
++## Fichiers cr├®├®s / modifi├®s
++
++| Fichier | Action |
++| ------- | ------ |
++| `backend/src/middleware/rbac.ts` | Modifi├® |
++| `backend/src/middleware/prisma-rls.ts` | Cr├®├® |
++| `backend/src/middleware/audit.interceptor.ts` | Cr├®├® |
++| `backend/src/services/audit/audit.service.ts` | Cr├®├® |
++| `backend/src/lib/prisma-base.ts` | Cr├®├® |
++| `backend/src/lib/prisma.ts` | Modifi├® |
++| `backend/src/lib/jwt.ts` | Modifi├® |
++| `backend/src/middleware/auth.ts` | Modifi├® |
++| `backend/src/app.ts` | Modifi├® |
++| `backend/src/routes/auth.routes.ts` | Modifi├® |
++| `backend/src/routes/workers.routes.ts` | Modifi├® |
++| `backend/src/routes/pointages.routes.ts` | Modifi├® |
++| `backend/src/services/auth/refresh.service.ts` | Modifi├® |
++| `backend/prisma/migrations/20260721180000_audit_triggers/migration.sql` | Cr├®├® |
++| `backend/src/__tests__/rbac.test.ts` | Cr├®├® |
++| `backend/src/__tests__/auth.test.ts` | Modifi├® (teamId dans JWT) |
++
++---
++
++## Notes
++
++- Double barri├¿re RBAC : guards Express (`requireRole`) + filtrage Prisma automatique (RLS extension)
++- Audit applicatif (userId, ip, userAgent) compl├®t├® par triggers PostgreSQL pour les acc├¿s SQL directs
++- Les tokens existants sans `teamId` continueront de fonctionner (`teamId: null` implicite apr├¿s re-login)
+diff --git a/backend/prisma/migrations/20260721180000_audit_triggers/migration.sql b/backend/prisma/migrations/20260721180000_audit_triggers/migration.sql
+new file mode 100644
+index 0000000..9a62d1c
+--- /dev/null
++++ b/backend/prisma/migrations/20260721180000_audit_triggers/migration.sql
+@@ -0,0 +1,49 @@
++-- Defense-in-depth audit triggers on sensitive tables.
++-- Application-level audit (Prisma extension) remains the primary source with userId/ip.
++
++CREATE OR REPLACE FUNCTION audit_row_change()
++RETURNS TRIGGER AS $$
++DECLARE
++  entity_id TEXT;
++  old_json JSONB;
++  new_json JSONB;
++BEGIN
++  IF TG_OP = 'INSERT' THEN
++    entity_id := NEW."id"::TEXT;
++    new_json := to_jsonb(NEW);
++    INSERT INTO "AuditLog" ("action", "entityType", "entityId", "after", "createdAt")
++    VALUES ('CREATE', TG_TABLE_NAME, entity_id, new_json, NOW());
++    RETURN NEW;
++  ELSIF TG_OP = 'UPDATE' THEN
++    entity_id := NEW."id"::TEXT;
++    old_json := to_jsonb(OLD);
++    new_json := to_jsonb(NEW);
++    INSERT INTO "AuditLog" ("action", "entityType", "entityId", "before", "after", "createdAt")
++    VALUES ('UPDATE', TG_TABLE_NAME, entity_id, old_json, new_json, NOW());
++    RETURN NEW;
++  ELSIF TG_OP = 'DELETE' THEN
++    entity_id := OLD."id"::TEXT;
++    old_json := to_jsonb(OLD);
++    INSERT INTO "AuditLog" ("action", "entityType", "entityId", "before", "createdAt")
++    VALUES ('DELETE', TG_TABLE_NAME, entity_id, old_json, NOW());
++    RETURN OLD;
++  END IF;
++
++  RETURN NULL;
++END;
++$$ LANGUAGE plpgsql;
++
++DROP TRIGGER IF EXISTS audit_worker_changes ON "Worker";
++CREATE TRIGGER audit_worker_changes
++  AFTER INSERT OR UPDATE OR DELETE ON "Worker"
++  FOR EACH ROW EXECUTE FUNCTION audit_row_change();
++
++DROP TRIGGER IF EXISTS audit_pointage_changes ON "Pointage";
++CREATE TRIGGER audit_pointage_changes
++  AFTER INSERT OR UPDATE OR DELETE ON "Pointage"
++  FOR EACH ROW EXECUTE FUNCTION audit_row_change();
++
++DROP TRIGGER IF EXISTS audit_payment_changes ON "Payment";
++CREATE TRIGGER audit_payment_changes
++  AFTER INSERT OR UPDATE OR DELETE ON "Payment"
++  FOR EACH ROW EXECUTE FUNCTION audit_row_change();
+diff --git a/backend/src/__tests__/auth.test.ts b/backend/src/__tests__/auth.test.ts
+index 15b4223..d792c8b 100644
+--- a/backend/src/__tests__/auth.test.ts
++++ b/backend/src/__tests__/auth.test.ts
+@@ -24,6 +24,7 @@ const mockUser = {
+   active: true,
+   mfaSecret: null as string | null,
+   siteId: MOCK_SITE_ID,
++  teamId: null,
+   lastLoginAt: null,
+ };
+ 
+@@ -50,7 +51,7 @@ vi.mock("../lib/prisma.js", () => ({
+ import { prisma } from "../lib/prisma.js";
+ 
+ function adminAuthHeader() {
+-  return `Bearer ${signAccessToken({ sub: mockUser.id, role: mockUser.role, siteId: mockUser.siteId })}`;
++  return `Bearer ${signAccessToken({ sub: mockUser.id, role: mockUser.role, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
+ }
+ 
+ describe("auth endpoints", () => {
+diff --git a/backend/src/__tests__/rbac.test.ts b/backend/src/__tests__/rbac.test.ts
+new file mode 100644
+index 0000000..b83ae7f
+--- /dev/null
++++ b/backend/src/__tests__/rbac.test.ts
+@@ -0,0 +1,180 @@
++import { Role } from "@prisma/client";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import request from "supertest";
++import { createApp } from "../app.js";
++import { signAccessToken } from "../lib/jwt.js";
++import {
++  getSiteFilter,
++  getTeamFilter,
++  runWithRequestContext,
++} from "../middleware/prisma-rls.js";
++import { writeAuditLog } from "../services/audit/audit.service.js";
++
++const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
++const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
++const MOCK_CDE_ID = "00000000-0000-4000-8000-000000000003";
++const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
++const MOCK_TEAM_ID = "00000000-0000-4000-8000-000000000020";
++
++vi.mock("../lib/prisma.js", () => ({
++  prisma: {
++    user: {
++      findUnique: vi.fn(),
++      findUniqueOrThrow: vi.fn(),
++    },
++    auditLog: {
++      create: vi.fn(),
++    },
++  },
++  basePrisma: {
++    auditLog: {
++      create: vi.fn(),
++    },
++  },
++}));
++
++vi.mock("../lib/prisma-base.js", () => ({
++  basePrisma: {
++    auditLog: {
++      create: vi.fn(),
++    },
++  },
++}));
++
++import { prisma } from "../lib/prisma.js";
++import { basePrisma } from "../lib/prisma-base.js";
++
++function adminAuthHeader() {
++  return `Bearer ${signAccessToken({
++    sub: MOCK_ADMIN_ID,
++    role: Role.ADMIN,
++    siteId: MOCK_SITE_ID,
++    teamId: null,
++  })}`;
++}
++
++function cdeAuthHeader() {
++  return `Bearer ${signAccessToken({
++    sub: MOCK_CDE_ID,
++    role: Role.CHEF_EQUIPE,
++    siteId: MOCK_SITE_ID,
++    teamId: MOCK_TEAM_ID,
++  })}`;
++}
++
++describe("RBAC", () => {
++  beforeEach(() => {
++    vi.clearAllMocks();
++    vi.mocked(prisma.user.findUniqueOrThrow).mockResolvedValue({
++      id: MOCK_ADMIN_ID,
++      email: "admin@alterra.mg",
++      role: Role.ADMIN,
++      siteId: MOCK_SITE_ID,
++      teamId: null,
++    } as never);
++  });
++
++  describe("requireRole", () => {
++    it("allows ADMIN on admin-only route", async () => {
++      const app = createApp();
++      const res = await request(app)
++        .post("/api/v1/auth/mfa/setup")
++        .set("Authorization", adminAuthHeader());
++
++      expect(res.status).not.toBe(403);
++    });
++
++    it("returns 403 FORBIDDEN with details when CDE hits admin-only route", async () => {
++      const app = createApp();
++      const res = await request(app)
++        .post("/api/v1/auth/mfa/setup")
++        .set("Authorization", cdeAuthHeader());
++
++      expect(res.status).toBe(403);
++      expect(res.body.code).toBe("FORBIDDEN");
++      expect(res.body.details).toEqual({
++        requiredRoles: [Role.ADMIN],
++        actualRole: Role.CHEF_EQUIPE,
++      });
++    });
++  });
++
++  describe("scope filter helpers", () => {
++    afterEach(() => {
++      vi.restoreAllMocks();
++    });
++
++    it("getSiteFilter returns siteId for CHEF_SERVICE", () => {
++      runWithRequestContext(
++        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
++        () => {
++          expect(getSiteFilter()).toEqual({ siteId: MOCK_SITE_ID });
++        },
++      );
++    });
++
++    it("getSiteFilter returns empty for ADMIN", () => {
++      runWithRequestContext({ role: Role.ADMIN, siteId: MOCK_SITE_ID, teamId: null }, () => {
++        expect(getSiteFilter()).toEqual({});
++      });
++    });
++
++    it("getTeamFilter returns teamId for CHEF_EQUIPE", () => {
++      runWithRequestContext(
++        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
++        () => {
++          expect(getTeamFilter()).toEqual({ teamId: MOCK_TEAM_ID });
++        },
++      );
++    });
++
++    it("getTeamFilter returns empty for CHEF_SERVICE", () => {
++      runWithRequestContext(
++        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
++        () => {
++          expect(getTeamFilter()).toEqual({});
++        },
++      );
++    });
++  });
++
++  describe("writeAuditLog", () => {
++    it("persists audit entry with expected shape", async () => {
++      vi.mocked(basePrisma.auditLog.create).mockResolvedValue({
++        id: BigInt(1),
++        userId: MOCK_CDS_ID,
++        action: "CREATE",
++        entityType: "Worker",
++        entityId: "worker-1",
++        before: null,
++        after: { id: "worker-1" },
++        ip: "127.0.0.1",
++        userAgent: "vitest",
++        createdAt: new Date(),
++      });
++
++      await writeAuditLog({
++        userId: MOCK_CDS_ID,
++        action: "CREATE",
++        entityType: "Worker",
++        entityId: "worker-1",
++        after: { id: "worker-1", matricule: "W001" },
++        ip: "127.0.0.1",
++        userAgent: "vitest",
++      });
++
++      expect(basePrisma.auditLog.create).toHaveBeenCalledWith({
++        data: {
++          userId: MOCK_CDS_ID,
++          action: "CREATE",
++          entityType: "Worker",
++          entityId: "worker-1",
++          before: undefined,
++          after: { id: "worker-1", matricule: "W001" },
++          ip: "127.0.0.1",
++          userAgent: "vitest",
++        },
++      });
++    });
++  });
++});
+diff --git a/backend/src/app.ts b/backend/src/app.ts
+index 433d7e5..a9e43bf 100644
+--- a/backend/src/app.ts
++++ b/backend/src/app.ts
+@@ -7,7 +7,9 @@ import rateLimit from "express-rate-limit";
+ import { logger } from "./lib/logger.js";
+ import { apiRouter } from "./routes/index.js";
+ import { healthRouter } from "./routes/health.routes.js";
++import { auditSensitiveRoutes } from "./middleware/audit.interceptor.js";
+ import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
++import { requestContext } from "./middleware/prisma-rls.js";
+ 
+ const ORIGINS = [process.env.ADMIN_ORIGIN, process.env.PWA_ORIGIN]
+   .filter(Boolean)
+@@ -22,6 +24,7 @@ export function createApp(): Express {
+   app.use(cors({ origin: ORIGINS, credentials: true }));
+   app.use(express.json({ limit: "2mb" }));
+   app.use(cookieParser());
++  app.use(requestContext);
+   app.use(pinoHttp({ logger }));
+ 
+   // Strict on auth: anti-bruteforce.
+@@ -41,7 +44,7 @@ export function createApp(): Express {
+   );
+ 
+   app.use(healthRouter);
+-  app.use("/api/v1", apiRouter);
++  app.use("/api/v1", auditSensitiveRoutes, apiRouter);
+ 
+   app.use(notFoundHandler);
+   app.use(errorHandler);
+diff --git a/backend/src/lib/jwt.ts b/backend/src/lib/jwt.ts
+index d91ddb9..8b57528 100644
+--- a/backend/src/lib/jwt.ts
++++ b/backend/src/lib/jwt.ts
+@@ -5,6 +5,7 @@ export interface AccessTokenPayload {
+   sub: string;
+   role: Role;
+   siteId: string | null;
++  teamId: string | null;
+ }
+ 
+ const ACCESS_SECRET = process.env.JWT_SECRET!;
+diff --git a/backend/src/lib/prisma-base.ts b/backend/src/lib/prisma-base.ts
+new file mode 100644
+index 0000000..8239415
+--- /dev/null
++++ b/backend/src/lib/prisma-base.ts
+@@ -0,0 +1,6 @@
++import { PrismaClient } from "@prisma/client";
++
++/** Raw Prisma client ÔÇö used internally for audit writes and bypassing extensions. */
++export const basePrisma = new PrismaClient({
++  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
++});
+diff --git a/backend/src/lib/prisma.ts b/backend/src/lib/prisma.ts
+index e84ed73..81a2bc3 100644
+--- a/backend/src/lib/prisma.ts
++++ b/backend/src/lib/prisma.ts
+@@ -1,5 +1,9 @@
+-import { PrismaClient } from "@prisma/client";
++import { basePrisma } from "./prisma-base.js";
++import { createAuditExtension } from "../middleware/audit.interceptor.js";
++import { createRlsExtension } from "../middleware/prisma-rls.js";
+ 
+-export const prisma = new PrismaClient({
+-  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+-});
++export const prisma = basePrisma
++  .$extends(createRlsExtension())
++  .$extends(createAuditExtension(basePrisma));
++
++export { basePrisma };
+diff --git a/backend/src/middleware/audit.interceptor.ts b/backend/src/middleware/audit.interceptor.ts
+new file mode 100644
+index 0000000..ea4a5ab
+--- /dev/null
++++ b/backend/src/middleware/audit.interceptor.ts
+@@ -0,0 +1,114 @@
++import type { PrismaClient } from "@prisma/client";
++import type { NextFunction, Request, Response } from "express";
++import { getRequestContext } from "./prisma-rls.js";
++import { writeAuditLog } from "../services/audit/audit.service.js";
++
++const AUDITED_MODELS = [
++  { key: "worker", entityType: "Worker" },
++  { key: "pointage", entityType: "Pointage" },
++  { key: "payment", entityType: "Payment" },
++] as const;
++
++type MutationArgs = {
++  where?: Record<string, unknown>;
++  data?: unknown;
++  create?: unknown;
++  update?: unknown;
++};
++
++type MutationHandler = (args: MutationArgs) => Promise<{ id: string } & Record<string, unknown>>;
++
++function auditContext() {
++  const ctx = getRequestContext();
++  return {
++    userId: ctx?.userId ?? null,
++    ip: ctx?.ip ?? null,
++    userAgent: ctx?.userAgent ?? null,
++  };
++}
++
++function createHandler(
++  basePrisma: PrismaClient,
++  modelKey: string,
++  entityType: string,
++  operation: "create" | "update" | "delete" | "upsert",
++) {
++  // eslint-disable-next-line @typescript-eslint/no-explicit-any
++  const delegate = (basePrisma as any)[modelKey];
++
++  return async ({ args, query }: { args: MutationArgs; query: MutationHandler }) => {
++    let before: unknown;
++    if (operation === "update" || operation === "delete" || operation === "upsert") {
++      if (args.where) {
++        before = await delegate.findUnique({ where: args.where });
++      }
++    }
++
++    const result = await query(args);
++
++    const action =
++      operation === "create" ? "CREATE" : operation === "delete" ? "DELETE" : "UPDATE";
++
++    await writeAuditLog({
++      ...auditContext(),
++      action,
++      entityType,
++      entityId: result?.id ?? (before as { id?: string } | null)?.id ?? null,
++      before: action === "CREATE" ? undefined : before,
++      after: action === "DELETE" ? undefined : result,
++    });
++
++    return result;
++  };
++}
++
++/** Prisma Client extension ÔÇö auto-audit CREATE/UPDATE/DELETE on sensitive models. */
++export function createAuditExtension(basePrisma: PrismaClient) {
++  const query: Record<string, Record<string, ReturnType<typeof createHandler>>> = {};
++
++  for (const { key, entityType } of AUDITED_MODELS) {
++    query[key] = {
++      create: createHandler(basePrisma, key, entityType, "create"),
++      update: createHandler(basePrisma, key, entityType, "update"),
++      delete: createHandler(basePrisma, key, entityType, "delete"),
++      upsert: createHandler(basePrisma, key, entityType, "upsert"),
++    };
++  }
++
++  return { query };
++}
++
++const SENSITIVE_PATHS = [
++  { method: "POST", pattern: /^\/workers\/?$/ },
++  { method: "PATCH", pattern: /^\/workers\/[^/]+$/ },
++  { method: "DELETE", pattern: /^\/workers\/[^/]+$/ },
++  { method: "POST", pattern: /^\/pointages(\/sync)?\/?$/ },
++  { method: "PATCH", pattern: /^\/pointages\/[^/]+\/(validate|reject)$/ },
++  { method: "POST", pattern: /^\/payments\/?$/ },
++  { method: "PATCH", pattern: /^\/payments\/[^/]+$/ },
++  { method: "DELETE", pattern: /^\/payments\/[^/]+$/ },
++];
++
++function matchesSensitiveRoute(method: string, path: string): boolean {
++  return SENSITIVE_PATHS.some((r) => r.method === method && r.pattern.test(path));
++}
++
++/**
++ * Express middleware ÔÇö documents sensitive mutation routes.
++ * Actual audit writes happen via Prisma extension (createAuditExtension).
++ */
++export function auditSensitiveRoutes(req: Request, _res: Response, next: NextFunction): void {
++  if (matchesSensitiveRoute(req.method, req.path)) {
++    req.auditSensitive = true;
++  }
++  next();
++}
++
++declare global {
++  // eslint-disable-next-line @typescript-eslint/no-namespace
++  namespace Express {
++    interface Request {
++      auditSensitive?: boolean;
++    }
++  }
++}
+diff --git a/backend/src/middleware/auth.ts b/backend/src/middleware/auth.ts
+index 901927e..59f72d2 100644
+--- a/backend/src/middleware/auth.ts
++++ b/backend/src/middleware/auth.ts
+@@ -1,5 +1,6 @@
+ import type { NextFunction, Request, Response } from "express";
+ import { verifyAccessToken, type AccessTokenPayload } from "../lib/jwt.js";
++import { updateRequestContext } from "./prisma-rls.js";
+ 
+ declare global {
+   // eslint-disable-next-line @typescript-eslint/no-namespace
+@@ -18,6 +19,12 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
+ 
+   try {
+     req.user = verifyAccessToken(header.slice("Bearer ".length));
++    updateRequestContext({
++      userId: req.user.sub,
++      role: req.user.role,
++      siteId: req.user.siteId,
++      teamId: req.user.teamId,
++    });
+     next();
+   } catch {
+     return res.status(401).json({ code: "INVALID_TOKEN", message: "Invalid or expired token" });
+diff --git a/backend/src/middleware/prisma-rls.ts b/backend/src/middleware/prisma-rls.ts
+new file mode 100644
+index 0000000..3880203
+--- /dev/null
++++ b/backend/src/middleware/prisma-rls.ts
+@@ -0,0 +1,136 @@
++import { AsyncLocalStorage } from "node:async_hooks";
++import { Role } from "@prisma/client";
++import type { NextFunction, Request, Response } from "express";
++
++export interface RequestContext {
++  userId?: string;
++  role?: Role;
++  siteId?: string | null;
++  teamId?: string | null;
++  ip?: string;
++  userAgent?: string;
++}
++
++const requestContextStorage = new AsyncLocalStorage<RequestContext>();
++
++const SCOPED_MODELS = ["Worker", "Pointage", "Payment", "Team", "User"] as const;
++type ScopedModel = (typeof SCOPED_MODELS)[number];
++
++const READ_OPERATIONS = [
++  "findMany",
++  "findFirst",
++  "findUnique",
++  "findUniqueOrThrow",
++  "findFirstOrThrow",
++  "count",
++  "aggregate",
++  "groupBy",
++] as const;
++
++export function getRequestContext(): RequestContext | undefined {
++  return requestContextStorage.getStore();
++}
++
++export function updateRequestContext(partial: Partial<RequestContext>): void {
++  const store = requestContextStorage.getStore();
++  if (store) {
++    Object.assign(store, partial);
++  }
++}
++
++export function runWithRequestContext<T>(ctx: RequestContext, fn: () => T): T {
++  return requestContextStorage.run(ctx, fn);
++}
++
++/** Initialise AsyncLocalStorage per request (ip, userAgent). Auth middleware enriches user fields. */
++export function requestContext(req: Request, _res: Response, next: NextFunction): void {
++  runWithRequestContext(
++    {
++      ip: req.ip,
++      userAgent:
++        typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
++    },
++    () => next(),
++  );
++}
++
++export function getSiteFilter(): Record<string, string> {
++  const ctx = getRequestContext();
++  if (!ctx?.role || ctx.role === Role.ADMIN || !ctx.siteId) return {};
++  if (ctx.role === Role.CHEF_SERVICE) return { siteId: ctx.siteId };
++  return {};
++}
++
++export function getTeamFilter(): Record<string, string> {
++  const ctx = getRequestContext();
++  if (!ctx?.role || ctx.role === Role.ADMIN || !ctx.teamId) return {};
++  if (ctx.role === Role.CHEF_EQUIPE) return { teamId: ctx.teamId };
++  return {};
++}
++
++function mergeWhere(
++  existing: Record<string, unknown> | undefined,
++  scope: Record<string, unknown>,
++): Record<string, unknown> {
++  if (!existing || Object.keys(existing).length === 0) return scope;
++  return { AND: [existing, scope] };
++}
++
++function getModelScopeFilter(model: ScopedModel): Record<string, unknown> | null {
++  const ctx = getRequestContext();
++  if (!ctx?.role || ctx.role === Role.ADMIN) return null;
++
++  switch (model) {
++    case "Worker":
++      if (ctx.role === Role.CHEF_SERVICE && ctx.siteId) return { siteId: ctx.siteId };
++      if (ctx.role === Role.CHEF_EQUIPE && ctx.teamId) return { teamId: ctx.teamId };
++      break;
++    case "Pointage":
++    case "Payment":
++      if (ctx.role === Role.CHEF_SERVICE && ctx.siteId) return { worker: { siteId: ctx.siteId } };
++      if (ctx.role === Role.CHEF_EQUIPE && ctx.teamId) return { worker: { teamId: ctx.teamId } };
++      break;
++    case "Team":
++      if (ctx.role === Role.CHEF_SERVICE && ctx.siteId) return { siteId: ctx.siteId };
++      if (ctx.role === Role.CHEF_EQUIPE && ctx.teamId) return { id: ctx.teamId };
++      break;
++    case "User":
++      if (ctx.role === Role.CHEF_SERVICE && ctx.siteId) return { siteId: ctx.siteId };
++      if (ctx.role === Role.CHEF_EQUIPE && ctx.teamId) return { teamId: ctx.teamId };
++      break;
++  }
++
++  return null;
++}
++
++function modelKey(model: ScopedModel): string {
++  return model.charAt(0).toLowerCase() + model.slice(1);
++}
++
++type QueryArgs = { where?: Record<string, unknown> };
++type QueryHandler = (args: QueryArgs) => Promise<unknown>;
++
++function scopedReadHandler(model: ScopedModel) {
++  return async ({ args, query }: { args: QueryArgs; query: QueryHandler }) => {
++    const scope = getModelScopeFilter(model);
++    if (scope) {
++      args = { ...args, where: mergeWhere(args.where, scope) };
++    }
++    return query(args);
++  };
++}
++
++/** Prisma Client extension ÔÇö automatic row-level filtering on read operations. */
++export function createRlsExtension() {
++  const query: Record<string, Record<string, ReturnType<typeof scopedReadHandler>>> = {};
++
++  for (const model of SCOPED_MODELS) {
++    const key = modelKey(model);
++    query[key] = {};
++    for (const op of READ_OPERATIONS) {
++      query[key][op] = scopedReadHandler(model);
++    }
++  }
++
++  return { query };
++}
+diff --git a/backend/src/middleware/rbac.ts b/backend/src/middleware/rbac.ts
+index a9a24f8..fcc375c 100644
+--- a/backend/src/middleware/rbac.ts
++++ b/backend/src/middleware/rbac.ts
+@@ -1,26 +1,43 @@
+ import type { NextFunction, Request, Response } from "express";
+ import { Role } from "@prisma/client";
++import { ApiError } from "./error-handler.js";
+ 
+ /** Guard: restrict route to the given roles. Must run after requireAuth. */
+ export function requireRole(...roles: Role[]) {
+-  return (req: Request, res: Response, next: NextFunction) => {
++  return (req: Request, _res: Response, next: NextFunction) => {
+     if (!req.user) {
+-      return res.status(401).json({ code: "UNAUTHENTICATED", message: "Missing user context" });
++      return next(new ApiError(401, "UNAUTHENTICATED", "Missing user context"));
+     }
+     if (!roles.includes(req.user.role)) {
+-      return res.status(403).json({ code: "FORBIDDEN", message: "Insufficient role" });
++      return next(
++        new ApiError(403, "FORBIDDEN", "Insufficient role", {
++          requiredRoles: roles,
++          actualRole: req.user.role,
++        }),
++      );
+     }
+     next();
+   };
+ }
+ 
+ /**
+- * Site scoping: CHEF_SERVICE / CHEF_EQUIPE are confined to their own site.
+- * ADMIN sees everything. Attaches `req.siteScope` for services to apply as a
+- * Prisma `where` filter ÔÇö the second barrier alongside route guards.
++ * Site scoping helper: CHEF_SERVICE is confined to their own site.
++ * ADMIN sees everything. Attaches `req.siteScope` for explicit where clauses.
++ * Prisma RLS extension applies the same filter automatically on reads.
+  */
+ export function siteScope(req: Request, _res: Response, next: NextFunction) {
+-  req.siteScope = req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
++  req.siteScope =
++    req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
++  next();
++}
++
++/**
++ * Team scoping helper: CHEF_EQUIPE is confined to their own team.
++ * ADMIN sees everything. Attaches `req.teamScope` for explicit where clauses.
++ */
++export function teamScope(req: Request, _res: Response, next: NextFunction) {
++  req.teamScope =
++    req.user?.role === Role.CHEF_EQUIPE ? (req.user?.teamId ?? undefined) : undefined;
+   next();
+ }
+ 
+@@ -29,6 +46,7 @@ declare global {
+   namespace Express {
+     interface Request {
+       siteScope?: string;
++      teamScope?: string;
+     }
+   }
+ }
+diff --git a/backend/src/routes/auth.routes.ts b/backend/src/routes/auth.routes.ts
+index 48d5009..4b8aec7 100644
+--- a/backend/src/routes/auth.routes.ts
++++ b/backend/src/routes/auth.routes.ts
+@@ -46,7 +46,12 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) =>
+       }
+     }
+ 
+-    const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
++    const accessToken = signAccessToken({
++      sub: user.id,
++      role: user.role,
++      siteId: user.siteId,
++      teamId: user.teamId,
++    });
+     await issueRefreshToken(user.id, res, req.headers["user-agent"]);
+ 
+     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+diff --git a/backend/src/routes/pointages.routes.ts b/backend/src/routes/pointages.routes.ts
+index ad55836..f26ed69 100644
+--- a/backend/src/routes/pointages.routes.ts
++++ b/backend/src/routes/pointages.routes.ts
+@@ -3,7 +3,7 @@ import { z } from "zod";
+ import { Prisma, Role } from "@prisma/client";
+ import { prisma } from "../lib/prisma.js";
+ import { requireAuth } from "../middleware/auth.js";
+-import { requireRole, siteScope } from "../middleware/rbac.js";
++import { requireRole } from "../middleware/rbac.js";
+ import { validate } from "../middleware/validate.js";
+ 
+ export const pointagesRouter = Router();
+@@ -93,13 +93,13 @@ pointagesRouter.post(
+   },
+ );
+ 
+-pointagesRouter.get("/pointages", requireAuth, siteScope, async (req, res, next) => {
++pointagesRouter.get("/pointages", requireAuth, async (req, res, next) => {
+   try {
+     const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+     const take = 50;
+ 
+     const pointages = await prisma.pointage.findMany({
+-      where: req.siteScope ? { worker: { siteId: req.siteScope } } : {},
++      where: {},
+       take: take + 1,
+       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+       orderBy: { createdAt: "desc" },
+diff --git a/backend/src/routes/workers.routes.ts b/backend/src/routes/workers.routes.ts
+index a91d50a..2df84bc 100644
+--- a/backend/src/routes/workers.routes.ts
++++ b/backend/src/routes/workers.routes.ts
+@@ -3,15 +3,15 @@ import { z } from "zod";
+ import { Role, WorkerStatus } from "@prisma/client";
+ import { prisma } from "../lib/prisma.js";
+ import { requireAuth } from "../middleware/auth.js";
+-import { requireRole, siteScope } from "../middleware/rbac.js";
++import { requireRole } from "../middleware/rbac.js";
+ import { validate } from "../middleware/validate.js";
+ 
+ export const workersRouter = Router();
+ 
+-workersRouter.get("/workers", requireAuth, siteScope, async (req, res, next) => {
++workersRouter.get("/workers", requireAuth, async (req, res, next) => {
+   try {
+     const workers = await prisma.worker.findMany({
+-      where: { siteId: req.siteScope, deletedAt: null },
++      where: { deletedAt: null },
+       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+       take: 100,
+     });
+diff --git a/backend/src/services/audit/audit.service.ts b/backend/src/services/audit/audit.service.ts
+new file mode 100644
+index 0000000..8f6e27c
+--- /dev/null
++++ b/backend/src/services/audit/audit.service.ts
+@@ -0,0 +1,34 @@
++import type { Prisma } from "@prisma/client";
++import { basePrisma } from "../../lib/prisma-base.js";
++
++export interface WriteAuditLogParams {
++  userId?: string | null;
++  action: string;
++  entityType: string;
++  entityId?: string | null;
++  before?: unknown;
++  after?: unknown;
++  ip?: string | null;
++  userAgent?: string | null;
++}
++
++function toJson(value: unknown): Prisma.InputJsonValue | undefined {
++  if (value === undefined || value === null) return undefined;
++  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
++}
++
++/** Append-only audit entry ÔÇö uses base client to avoid extension recursion. */
++export async function writeAuditLog(params: WriteAuditLogParams): Promise<void> {
++  await basePrisma.auditLog.create({
++    data: {
++      userId: params.userId ?? null,
++      action: params.action,
++      entityType: params.entityType,
++      entityId: params.entityId ?? null,
++      before: toJson(params.before),
++      after: toJson(params.after),
++      ip: params.ip ?? null,
++      userAgent: params.userAgent ?? null,
++    },
++  });
++}
+diff --git a/backend/src/services/auth/refresh.service.ts b/backend/src/services/auth/refresh.service.ts
+index 0fe395a..b750a73 100644
+--- a/backend/src/services/auth/refresh.service.ts
++++ b/backend/src/services/auth/refresh.service.ts
+@@ -94,7 +94,12 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
+   await blacklistRefreshToken(tokenHash, ttl);
+   res.cookie(REFRESH_COOKIE, newRaw, cookieOptions());
+ 
+-  const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
++  const accessToken = signAccessToken({
++    sub: user.id,
++    role: user.role,
++    siteId: user.siteId,
++    teamId: user.teamId,
++  });
+   return { accessToken, user };
+ }
+ 

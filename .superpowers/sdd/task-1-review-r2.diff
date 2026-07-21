@@ -1,0 +1,1302 @@
+﻿=== COMMITS ===
+d33dd0b docs: fix Task 1 cadrage per review findings
+451ac36 docs: cadrage Sprint 1 ÔÇö compte-rendu, MoSCoW, wireframes, MVola
+
+=== STAT ===
+ .superpowers/sdd/task-1-report.md     |  95 +++++++
+ docs/cadrage/ateliers-compte-rendu.md | 201 +++++++++++++++
+ docs/cadrage/backlog-moscow.md        | 281 +++++++++++++++++++++
+ docs/cadrage/maquettes-figma-liens.md | 462 ++++++++++++++++++++++++++++++++++
+ docs/cadrage/mvola-format.md          | 222 ++++++++++++++++
+ 5 files changed, 1261 insertions(+)
+diff --git a/.superpowers/sdd/task-1-report.md b/.superpowers/sdd/task-1-report.md
+new file mode 100644
+index 0000000..91dbd8c
+--- /dev/null
++++ b/.superpowers/sdd/task-1-report.md
+@@ -0,0 +1,95 @@
++# Task 1 Report ÔÇö Module CAD ÔÇö Cadrage projet
++
++**Date :** 21 juillet 2026  
++**Branche :** `feat/backlog-implementation`  
++**Statut :** DONE (review fixes appliqu├®es)
++
++---
++
++## Objectif
++
++Produire les livrables de cadrage Sprint 1 (UC-CAD-01 ├á UC-CAD-03) : compte-rendu atelier, backlog MoSCoW V1, wireframes ├®crans cl├®s, documentation format MVola.
++
++---
++
++## Livrables cr├®├®s
++
++| Fichier | Step | Description |
++|---------|------|-------------|
++| `docs/cadrage/ateliers-compte-rendu.md` | Step 1 | CR synth├®tique ┬½ cadrage document├® en attente validation m├®tier ┬╗ + 20 questions ouvertes |
++| `docs/cadrage/backlog-moscow.md` | Step 2 | MoSCoW complet V1 (55 UC) avec crit├¿res d'acceptation r├®sum├®s |
++| `docs/cadrage/maquettes-figma-liens.md` | Step 3 | Wireframes d├®taill├®s 4 ├®crans (layout, composants, champs, interactions) |
++| `docs/cadrage/mvola-format.md` | Step 4 | Spec format Bulk Transfer 5 colonnes + import retour ; statut ├®chantillon |
++
++---
++
++## Self-review vs brief
++
++| Step | Brief | R├®alis├® | ├ëcart |
++|------|-------|---------|-------|
++| Step 1 | Atelier m├®tier live CDS+Admin | Synth├¿se documentaire + questions ouvertes | Atelier r├®el non tenu (contrainte session) |
++| Step 2 | Backlog prioris├® + CA par UC | MoSCoW V1 complet | OK |
++| Step 3 | Maquettes Figma 4 ├®crans | Wireframes specs designer-ready ; lien Figma placeholder | Fichiers Figma non produits |
++| Step 4 | ├ëchantillon Excel MVola | Spec document├®e ; `modele.xlsx` = backlog, pas MVola | ├ëchantillon ALTERRA en attente |
++
++---
++
++## Concerns
++
++1. **Atelier m├®tier non anim├®** ÔÇö validation m├®tier requise avant figer specs.
++2. **Figma non produit** ÔÇö wireframes textuels suffisants pour designer ; maquettes HF ├á planifier.
++3. **├ëchantillon MVola absent** ÔÇö `basedocs/modele.xlsx` est un fichier backlog/chiffrage, pas un template MVola. Condition Sprint 1 non remplie c├┤t├® ALTERRA.
++4. **D├®cisions D1ÔÇôD6** propos├®es mais non sign├®es par r├®f├®rent ALTERRA.
++
++---
++
++## Tests
++
++N/A ÔÇö livrables documentation uniquement.
++
++---
++
++## Commit
++
++Message : `docs: cadrage Sprint 1 ÔÇö compte-rendu, MoSCoW, wireframes, MVola`
++
++---
++
++## Prochaines actions recommand├®es
++
++1. Planifier atelier ALTERRA (2 ├ù ┬¢ journ├®e) et mettre ├á jour `ateliers-compte-rendu.md`.
++2. Demander ├®chantillon MVola Bulk Transfer (export + retour).
++3. Brief designer UX pour production Figma depuis `maquettes-figma-liens.md`.
++4. Valider MoSCoW avec PO apr├¿s atelier.
++
++---
++
++## Review fixes (2026-07-21)
++
++Corrections appliqu├®es suite ├á la revue Task 1 :
++
++| # | S├®v├®rit├® | Fichier | Correction |
++|---|----------|---------|------------|
++| 1 | Critique | `backlog-moscow.md` | Budget V1 align├® **50 j-h firm** ; marge ~7 j-h (`UC-MARGE-V1`) s├®par├®e |
++| 2 | Critique | `backlog-moscow.md` | Stack : **npm workspaces + Express** (suppression mandats NestJS/Fastify/pnpm/Turborepo) |
++| 3 | Critique | `backlog-moscow.md`, `ateliers-compte-rendu.md` | MFA TOTP Admin repass├® en **Must** (D6 + MoSCoW) |
++| 4 | Important | `mvola-format.md`, `maquettes-figma-liens.md` | RG-03 : pas de ligne paiement sans bio OK ; mode d├®grad├® `N/A` + audit uniquement |
++| 5 | Important | `backlog-moscow.md` | JWT **HS256** explicite dans crit├¿res auth |
++| 6 | Important | `backlog-moscow.md` | Note : synth├¿se MoSCoW d├®riv├®e du backlog d├®taill├® (pas duplicate US) |
++| 7 | Mineur | `ateliers-compte-rendu.md` | Questions ouvertes r├®duites ├á 5 prioritaires ; reste en annexe 9.1 |
++| 8 | Mineur | `maquettes-figma-liens.md` | Statut Figma `NOT_CREATED` explicite |
++
++**Tests :** N/A ÔÇö livrables documentation uniquement.
++
++**Commit :** `docs: fix Task 1 cadrage per review findings`
++
++---
++
++## R├®f├®rences sources utilis├®es
++
++- `basedocs/ALTERRA - Sp├®cification fonctionnelle d├®taill├®e.md`
++- `basedocs/ALTERRA - Sp├®cification technique d├®taill├®e.md`
++- `basedocs/ALTERRA - Backlog d├®taill├®.md`
++- `basedocs/ALTERRA_Cursor_Prompt_Dashboard_KPIs.md`
++- `basedocs/ALTERRA - Brief Chef de Projet.md`
++- `basedocs/modele.xlsx` (inspect├® ÔÇö backlog, pas MVola)
+diff --git a/docs/cadrage/ateliers-compte-rendu.md b/docs/cadrage/ateliers-compte-rendu.md
+new file mode 100644
+index 0000000..89f6246
+--- /dev/null
++++ b/docs/cadrage/ateliers-compte-rendu.md
+@@ -0,0 +1,201 @@
++# ALTERRA ÔÇö Compte-rendu atelier m├®tier (cadrage document├®)
++
++**Statut :** Cadrage document├® en attente de validation m├®tier  
++**Date de synth├¿se :** 21 juillet 2026  
++**Sources :** Specs fonctionnelles/techniques d├®taill├®es, backlog V1, brief Chef de Projet  
++**Participants pr├®vus (non tenus) :** R├®f├®rent Admin ALTERRA, 1ÔÇô2 Chefs de Service, PO NextA, Tech Lead
++
++---
++
++## 1. Contexte et objectif
++
++L'atelier m├®tier pr├®vu (2ÔÇô3 demi-journ├®es, UC-CAD-01) vise ├á figer le workflow op├®rationnel r├®el d'ALTERRA : cycle campagne, r├¿gles biom├®triques, format MVola, rythme de validation et de paiement. En l'absence de session live avec les parties prenantes, ce document synth├®tise les hypoth├¿ses issues des specs existantes et liste les questions ouvertes ├á valider en atelier.
++
++---
++
++## 2. Workflow op├®rationnel retenu (hypoth├¿se V1)
++
++### 2.1 Cycle campagne
++
++| ├ël├®ment | Hypoth├¿se document├®e | Source |
++|---------|---------------------|--------|
++| Dur├®e campagne | 1er juillet ÔåÆ 30 juin | RG-14 |
++| Sites actifs | 5 sites simultan├®s | Spec fonctionnelle ┬º1.2 |
++| Volum├®trie | ~600 MOC actifs, jusqu'├á 1 000/campagne | Brief CP |
++| Rythme pointage | Quotidien, ├á la t├óche, par Chef d'├ëquipe (CDE) | UC-08 ├á UC-11 |
++| Rythme validation | Hebdomadaire, vendredi, par Chef de Service (CDS) | UC-13 ├á UC-15 |
++| Rythme paiement | Hebdomadaire (Admin g├®n├¿re bordereau + Excel MVola) | UC-24 ├á UC-27 |
++
++### 2.2 Cha├«ne de valeur hebdomadaire
++
++```mermaid
++flowchart LR
++    A[LundiÔÇôJeudi<br/>CDE saisit quantit├®s offline] --> B[Vendredi matin<br/>Sync PWA ÔåÆ serveur]
++    B --> C[Vendredi<br/>CDS contr├┤le bio + validation]
++    C --> D[Vendredi/soir<br/>CDS cl├┤ture semaine PDF]
++    D --> E[Lundi suivant<br/>Admin g├®n├¿re bordereau]
++    E --> F[Admin export Excel MVola]
++    F --> G[Soumission manuelle portail MVola]
++    G --> H[Import retour statuts PAID/FAILED]
++```
++
++### 2.3 R├┤les et p├®rim├¿tres
++
++| R├┤le | Effectif | P├®rim├¿tre donn├®es | Interface |
++|------|----------|-------------------|-----------|
++| Administrateur | 1 | Tous sites | Web App Admin |
++| Chef de Service (CDS) | 5 (1/site) | Son site uniquement (RG-05) | PWA mode validation |
++| Chef d'├ëquipe (CDE) | 15 (~3/site) | Son ├®quipe uniquement (RG-06) | PWA mode pointage |
++| MOC | ~600 | Non utilisateur direct | B├®n├®ficiaire paiement |
++
++---
++
++## 3. R├¿gles biom├®triques (hypoth├¿se V1)
++
++| R├¿gle | Description | Statut |
++|-------|-------------|--------|
++| RG-03 | BiometricCheck OK requis avant inclusion bordereau ; **aucune ligne export├®e MVola sans bio OK** ; exception unique : mode d├®grad├® manuel CDS (valeur `N/A`, audit trail obligatoire) | Document├® |
++| Moment du contr├┤le | Vendredi, convocation MOC au camp, photo prise par CDS | UC-14 |
++| Provider V1 | Adapter interchangeable : Mock / Manual / AXIAN (env `BIOMETRIC_PROVIDER`) | UC-BE-BIO-ADAPT |
++| Seuils | OK ÔëÑ seuil, DOUBT entre 0.5 et seuil, KO < 0.5 | UC-14 |
++| Stockage photo V1 | Photo non stock├®e apr├¿s envoi AXIAN | UC-14 |
++| Mode d├®grad├® | Si AXIAN indisponible ÔåÆ validation manuelle avec tra├ºabilit├® (BIO-503) | Spec erreurs ┬º9 |
++| Colonne Excel | ┬½ Bio Valid├®e ┬╗ : OUI / NON / N/A dans export MVola | ┬º7.4 |
++
++**D├®pendance externe :** Engagement AXIAN (API Key, sandbox, doc) ├á formaliser avant Sprint 4 (biom├®trie).
++
++---
++
++## 4. R├¿gles MVola et paiement (hypoth├¿se V1)
++
++| R├¿gle | Description | Source |
++|-------|-------------|--------|
++| Mode paiement | Jamais par API ; fichier Excel Bulk Transfer soumis manuellement | Spec v3 ┬º1.2 |
++| Agr├®gation | Somme(quantit├® ├ù tarif snapshot) par MOC, pointages VALIDATED uniquement | UC-24, RG-01 |
++| Format export | 5 colonnes : T├®l├®phone, Description, P├®riode, Montant, Bio Valid├®e | ┬º7.4 |
++| Description | ┬½ Pr├®nom Paiement Code_site ┬╗, tronqu├®e ~30 car. (RG-09) | RG-09 |
++| P├®riode | Sxx (semaine ISO) ou Dxxx (jour) selon cycle retenu (RG-10) | RG-10 |
++| Import retour | Match num├®ro MVola + montant ÔåÆ PAID / FAILED | UC-27 |
++| Codes sites paiement | MNK, ANJ, etc. (3 lettres) | Spec v3 tableau sites |
++
++**D├®pendance externe :** ├ëchantillon fichier MVola Bulk Transfer r├®el non disponible ├á ce jour (voir `mvola-format.md`).
++
++---
++
++## 5. Processus pointage et validation
++
++### 5.1 Saisie CDE (offline-first)
++
++1. S├®lection activit├® du jour (cache local obligatoire si offline).
++2. Saisie en lot ~40 MOC : quantit├® num├®rique, recherche instantan├®e, quantit├® par d├®faut applicable.
++3. Enregistrement IndexedDB avec `clientUuid` (RG-02 idempotence).
++4. Sync auto 60 s ou manuelle, batch Ôëñ 100.
++
++### 5.2 Validation CDS
++
++1. Consultation pointages semaine, group├®s par ├®quipe.
++2. Contr├┤le biom├®trique par MOC (photo ÔåÆ AXIAN ou manuel).
++3. Validation unitaire ou rejet avec motif obligatoire.
++4. Cl├┤ture semaine ÔåÆ PDF rapport + facture + signature ├®lectronique ÔåÆ email Admin.
++
++### 5.3 Corrections Admin
++
++- Correction pointage : motif obligatoire, audit complet (RG-07).
++- Modification ligne paiement : nouveau montant + motif (UC-25).
++
++---
++
++## 6. D├®cisions de cadrage propos├®es (├á valider)
++
++| # | D├®cision | Proposition | Impact |
++|---|----------|-------------|--------|
++| D1 | P├®riode paiement V1 | Semaine ISO (Sxx) uniquement ; cl├┤ture quotidienne (Dxxx) report├®e V2 | Export MVola, UC-22 |
++| D2 | Composition ├®quipes V1 | Admin cr├®e ├®quipes et affecte MOC ; pas de composition CDS en V1 | UC-07 report├® V2 |
++| D3 | Cr├®ation MOC V1 | Admin uniquement (pas de workflow demande CDS) | UC-05 vs UC-FE-PWA-WKRREQ |
++| D4 | Auth CDE V1 | Email + mot de passe (OTP SMS optionnel / report├®) | UC-01 |
++| D5 | Provider biom├®trique initial | Mock en dev, Manual en recette si AXIAN absent | Sprint 4 |
++| D6 | MFA Admin | **TOTP obligatoire pour comptes Admin** (Must V1) ; recommand├® pour CDS | UC-BE-AUTH |
++
++---
++
++## 7. Questions ouvertes pour l'atelier m├®tier (top 5 prioritaires)
++
++| ID | Question | Responsable validation | Priorit├® |
++|----|----------|------------------------|----------|
++| Q-PAY-01 | Fournir un ├®chantillon r├®el fichier Bulk Transfer (export + retour) | Admin | **Critique S1** ÔÇö condition Sprint 1 |
++| Q-BIO-02 | Contact AXIAN et disponibilit├® sandbox avant quand ? | Admin / CP | **Haute** ÔÇö d├®pendance Sprint 4 |
++| Q-WF-03 | Que faire des MOC absents vendredi (bio non faite) : report semaine suivante ou mode d├®grad├® audit├® ? | Admin | **Haute** ÔÇö impact RG-03 |
++| Q-PAY-02 | Limite exacte caract├¿res colonne Description MVola | Admin / MVola | **Haute** ÔÇö risque rejet export |
++| Q-REF-01 | Liste d├®finitive des 5 sites + codes 3 lettres pour paiement | Admin | **Haute** ÔÇö r├®f├®rentiel bloquant |
++
++---
++
++## 8. Prochaines ├®tapes
++
++| Action | ├ëch├®ance | Owner |
++|--------|----------|-------|
++| Planifier atelier 1 (workflow + biom├®trie) ÔÇö ┬¢ journ├®e | S1 | PO |
++| Planifier atelier 2 (MVola + r├®f├®rentiels) ÔÇö ┬¢ journ├®e | S1 | PO |
++| Obtenir ├®chantillon MVola Bulk Transfer | Fin S1 (condition Sprint 1) | Admin ALTERRA |
++| Valider d├®cisions D1ÔÇôD6 | Post-atelier 1 | PO + Admin |
++| Mettre ├á jour specs si ├®carts constat├®s | S2 | Tech Lead |
++
++---
++
++## 9. Annexes
++
++### 9.1 Questions ouvertes secondaires (report atelier)
++
++#### Workflow et calendrier
++
++| ID | Question | Responsable validation |
++|----|----------|------------------------|
++| Q-WF-01 | Le paiement est-il strictement hebdomadaire ou certains sites paient-ils en fin de journ├®e ? | Admin + CDS |
++| Q-WF-02 | Quel jour/heure exact pour la convocation biom├®trique vendredi ? | CDS |
++| Q-WF-04 | Processus actuel papier/Excel : quelles ├®tapes disparaissent vs conserv├®es en parall├¿le ? | Admin |
++| Q-WF-05 | Qui signe la facture si le CDS est indisponible ? | Admin |
++
++#### Biom├®trie
++
++| ID | Question | Responsable validation |
++|----|----------|------------------------|
++| Q-BIO-01 | Seuil acceptable pour DOUBT : validation CDS motiv├®e ou blocage syst├®matique ? | Admin + CDS |
++| Q-BIO-03 | Photo MOC ├á l'embauche : qui la prend en V1 (Admin ou CDS) ? | Admin |
++| Q-BIO-04 | MOC sans num├®ro MVola : peuvent-ils ├¬tre pay├®s autrement ou exclus ? | Admin |
++
++#### MVola et comptabilit├®
++
++| ID | Question | Responsable validation |
++|----|----------|------------------------|
++| Q-PAY-03 | Traitement des ├®checs FAILED : r├®g├®n├®ration ligne seule ou nouveau fichier complet ? | Admin |
++| Q-PAY-04 | Montant minimum/maximum par transfert MVola | Admin |
++| Q-PAY-05 | Un MOC peut-il avoir plusieurs num├®ros MVola dans le temps ? | Admin |
++
++#### R├®f├®rentiels et donn├®es
++
++| ID | Question | Responsable validation |
++|----|----------|------------------------|
++| Q-REF-02 | Liste activit├®s et tarifs campagne en cours (trouaison, d├®frichage, etc.) | Admin |
++| Q-REF-03 | Format fichier Excel import MOC initial (colonnes obligatoires) | Admin |
++| Q-REF-04 | R├®partition ├®quipes/MOC par site pour campagne pilote | CDS |
++
++#### Adoption terrain
++
++| ID | Question | Responsable validation |
++|----|----------|------------------------|
++| Q-UX-01 | Mod├¿les smartphones CDE cibles (Android, version Chrome) | CDS |
++| Q-UX-02 | Langue interface : fran├ºais uniquement ou malgache pour labels terrain ? | Admin + CDS |
++| Q-UX-03 | Site pilote recette V1 : lequel ? | Admin |
++
++### 9.2 R├®f├®rences documentaires
++
++- Spec fonctionnelle d├®taill├®e : `basedocs/ALTERRA - Sp├®cification fonctionnelle d├®taill├®e.md`
++- Spec technique d├®taill├®e : `basedocs/ALTERRA - Sp├®cification technique d├®taill├®e.md`
++- Backlog V1 : `basedocs/ALTERRA - Backlog d├®taill├®.md`
++- MoSCoW V1 : `docs/cadrage/backlog-moscow.md`
++- Wireframes ├®crans cl├®s : `docs/cadrage/maquettes-figma-liens.md`
++- Format MVola : `docs/cadrage/mvola-format.md`
++
++---
++
++*Document g├®n├®r├® par synth├¿se documentaire ÔÇö ├á remplacer par un CR sign├® apr├¿s atelier(s) r├®el(s).*
+diff --git a/docs/cadrage/backlog-moscow.md b/docs/cadrage/backlog-moscow.md
+new file mode 100644
+index 0000000..6829382
+--- /dev/null
++++ b/docs/cadrage/backlog-moscow.md
+@@ -0,0 +1,281 @@
++# ALTERRA ÔÇö Backlog V1 prioris├® MoSCoW
++
++**Statut :** Priorisation documentaire ÔÇö validation PO apr├¿s atelier m├®tier  
++**Date :** 21 juillet 2026  
++**P├®rim├¿tre :** Tous les Use Cases V1 (Sprints 1 ├á 6)  
++**Budget V1 firm :** **50 j-h** (c┼ôur fonctionnel contractuel)  
++**Marge impr├®vus :** provision s├®par├®e (`UC-MARGE-V1`, ~7 j-h) ÔÇö hors budget 50 j-h, r├®serv├®e risques AXIAN/MVola/UX  
++**L├®gende MoSCoW :** **M** = Must Have ┬À **S** = Should Have ┬À **C** = Could Have ┬À **W** = Won't Have (V1)
++
++> **Nature du document :** synth├¿se MoSCoW d├®riv├®e du backlog d├®taill├® (`basedocs/ALTERRA - Backlog d├®taill├®.md`). Ce fichier ne duplique pas les user stories compl├¿tes ni les estimations ligne ├á ligne ; il priorise et r├®sume les crit├¿res d'acceptation par UC pour le cadrage Sprint 1.
++
++---
++
++## Synth├¿se par priorit├®
++
++| Priorit├® | Nb UC | Charge (j-h) | Commentaire |
++|----------|-------|--------------|-------------|
++| **Must Have** | 39 | ~40 | Chemin critique livraison V1 (incl. MFA Admin) |
++| **Should Have** | 14 | ~8 | Forte valeur, l├®ger report possible |
++| **Could Have** | 2 | ~2 | Nice-to-have V1 |
++| **Won't Have (V1)** | ÔÇö | ÔÇö | Explicitement V2 (backlog s├®par├®) |
++| **Total V1 firm** | **55** | **~50** | Align├® budget contractuel |
++| **Marge (hors firm)** | 1 | ~7 | `UC-MARGE-V1` ÔÇö buffer impr├®vus, non compt├® dans les 50 j-h |
++
++---
++
++## Sprint 1 ÔÇö Cadrage et socle technique
++
++### Module CAD ÔÇö Cadrage projet
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-CAD-01` | Atelier m├®tier ALTERRA pour figer workflow | **M** | CR atelier sign├® ; workflow campagne/bio/MVola valid├® ; questions ouvertes Ôëñ 5 |
++| `UC-CAD-02` | Spec + backlog prioris├® MoSCoW | **M** | Ce document + specs ├á jour ; chaque UC V1 a crit├¿res testables |
++| `UC-CAD-03` | Maquettes Figma ├®crans cl├®s | **M** | 4 ├®crans wirefram├®s (Dashboard, Saisie lot, Validation CDS, Bordereau) ; specs suffisantes pour designer |
++
++### Module BE-0 ÔÇö Setup infrastructure
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-SETUP` | Monorepo npm workspaces | **M** | `npm install` + build packages OK ; packages `@alterra/ui`, `@alterra/api-types` partag├®s (contrainte globale : pas de pnpm/Turborepo) |
++| `UC-BE-SETUP` | API Express + Prisma | **M** | Node.js 22 + Express 4 ; `/health` retourne 200 ; Prisma connect├® PostgreSQL (contrainte globale : pas de NestJS/Fastify) |
++| `UC-BE-SETUP` | Docker Compose local | **M** | `docker compose up` lance api + postgres + redis + minio ; `.env.example` document├® |
++
++### Module BE-DB ÔÇö Mod├¿le de donn├®es
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-SCHEMA` | Sch├®ma Prisma V1 (13 mod├¿les) | **M** | Mod├¿les User, Site, Activity, Worker, Team, Pointage, Payment, BiometricCheck, AuditLog, RefreshToken, PasswordReset ; enums typ├®s |
++| `UC-BE-MIGR` | Migrations + seed d├®terministe | **M** | `prisma migrate dev` + seed : 1 admin, 5 CDS, 15 CDE, 5 sites, 10 activit├®s, 50 MOC |
++
++### Module BE-AUTH ÔÇö Authentification
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-AUTH` | Login email/mot de passe | **M** | POST `/auth/login` ; Argon2id ; JWT **HS256** access 15 min + refresh cookie 7 j HttpOnly ; secret ÔëÑ 256 bits |
++| `UC-BE-AUTH` | Refresh token silencieux | **M** | Rotation refresh ; blacklist Redis ; nouveau access token |
++| `UC-BE-AUTH` | Logout | **M** | R├®voque refresh ; supprime cookie ; blacklist |
++| `UC-BE-AUTH` | MFA TOTP Admin | **M** | Obligatoire pour r├┤le Admin ; secret + QR ; v├®rif 6 chiffres ; secret chiffr├® AES-256-GCM en base ; login bloqu├® si MFA non configur├® |
++
++### Module BE-RBAC ÔÇö RBAC et audit
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-RBAC` | Guard `@Roles()` | **M** | D├®corateur + guard ; 403 typ├® si r├┤le insuffisant |
++| `UC-BE-RBAC` | Filtres Prisma site/├®quipe | **M** | CDS filtr├® par siteId ; CDE par teamId ; double barri├¿re API + Prisma |
++| `UC-BE-AUDIT` | Audit log actions sensibles | **S** | Interceptor + triggers PostgreSQL ; table append-only ; Worker/Pointage/Payment trac├®s |
++
++---
++
++## Sprint 2 ÔÇö API m├®tier V1 + Admin start
++
++### Module BE-REF ÔÇö R├®f├®rentiels
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-SITES` | CRUD /sites | **M** | 5 endpoints REST ; shortCode unique ; validation Zod ; audit |
++| `UC-BE-ACT` | CRUD /activities + versioning tarif | **M** | Modification tarif = fermeture ancien + nouveau (RG-04) ; historique pr├®serv├® |
++| `UC-BE-WORKERS` | CRUD /workers | **M** | Filtres site/team/status ; recherche full-text ; upload photo URL pr├®-sign├®e |
++| `UC-BE-IMPORT` | Import MOC Excel | **S** | Parse xlsx ; preview erreurs ligne par ligne ; insertion transactionnelle |
++| `UC-BE-USERS` | CRUD /users | **M** | Reset mot de passe forc├® ; d├®sactivation + blacklist Redis |
++
++### Module BE-PNT ÔÇö Pointages
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-PNT-SYNC` | POST /pointages/sync batch | **M** | Batch Ôëñ100 ; upsert clientUuid ; retour created/already_exists/rejected ; idempotent |
++| `UC-BE-PNT-LIST` | GET /pointages filtr├®s | **M** | Cursor pagination 50 ; filtres p├®riode/worker/activity/status ; sous-requ├¬te bio |
++| `UC-BE-PNT-VAL` | Valider/rejeter pointage | **M** | Bio OK requis validation ; motif obligatoire rejet |
++| `UC-BE-PNT-COR` | Correction Admin | **S** | Modification quantit├®/activity/date ; motif obligatoire ; audit complet |
++
++### Module BE-PAY ÔÇö Paiements
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-PAY-GEN` | G├®n├®rer bordereau p├®riode | **M** | Agr├®gation VALIDATED ; quantity ├ù unitRateSnapshot ; Payment PENDING |
++| `UC-BE-PAY-EXP` | Export Excel MVola | **M** | 5 colonnes spec ; descriptions tronqu├®es ; statut EXPORTED ; archivage MinIO |
++| `UC-BE-PAY-IMP` | Import retour MVola | **M** | Match num├®ro + montant ; PAID/FAILED ; rapport import |
++
++### Module FE-ADMIN-0 ÔÇö Setup Admin
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-SETUP` | Init React + Vite + shadcn | **M** | Build OK ; composants base ; router ; TanStack Query |
++| `UC-FE-ADM-AUTH` | Login + navigation | **M** | Form login ; intercepteur refresh ; guards ; layout sidebar + header |
++
++### Module FE-ADMIN-DASH ÔÇö Dashboard
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-KPI` | Dashboard KPIs | **S** | 4 KPI cards ; graphe pr├®sence 7j ; graphe effectifs ; bloc alertes ; refresh 60s |
++
++---
++
++## Sprint 3 ÔÇö Admin complet + PWA d├®marrage
++
++### Module FE-ADMIN-REF ÔÇö R├®f├®rentiels UI
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-SITES` | UI CRUD Sites | **M** | Table pagin├®e ; modal formulaire ; validation |
++| `UC-FE-ADM-ACT` | UI CRUD Activit├®s | **M** | Table ; drawer historique tarifs |
++| `UC-FE-ADM-WORKERS` | UI MOC 600+ lignes | **M** | Cursor pagination ; filtres ; fiche ; import Excel drag&drop |
++| `UC-FE-ADM-USERS` | UI Users | **M** | CRUD ; reset MDP ; activation/d├®sactivation |
++
++### Module FE-ADMIN-PNT ÔÇö Pointages UI
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-PNT` | UI consultation/correction pointages | **S** | Table filtrable ; drawer d├®tail ; correction motif obligatoire |
++
++### Module FE-ADMIN-PAY ÔÇö Paiements UI
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-PAY-BORD` | UI Bordereau | **M** | S├®lection p├®riode ; table 600 lignes ; statut bio ; ├®dition inline motif |
++| `UC-FE-ADM-PAY-EXP` | UI Export MVola | **M** | Bouton Exporter ; download ; historique exports |
++| `UC-FE-ADM-PAY-IMP` | UI Import statuts | **M** | Drag&drop ; preview ; r├®sum├® PAID/FAILED |
++
++### Module FE-ADMIN-REP ÔÇö Reporting + Audit UI
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-ADM-REP` | UI Reporting | **C** | 3 rapports pr├®d├®finis ; exports CSV/Excel/PDF via jobs |
++| `UC-FE-ADM-AUDIT` | UI Audit log | **S** | Table pagin├®e ; filtres ; drawer diff JSON |
++
++### Module FE-PWA-0 ÔÇö Setup PWA
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-PWA-SETUP` | Init PWA + Dexie + Workbox | **M** | manifest ; SW cache-first assets ; Dexie schema |
++| `UC-FE-PWA-AUTH` | Login PWA offline | **M** | Token IndexedDB chiffr├® WebCrypto ; PIN d├®verrouillage 30 min |
++
++---
++
++## Sprint 4 ÔÇö PWA compl├¿te + Biom├®trie + PDF
++
++### Module FE-PWA-CDE ÔÇö Chef d'├ëquipe
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-PWA-DAY` | S├®lection activit├® du jour | **M** | Liste cache ; s├®lection unique ; confirmation |
++| `UC-FE-PWA-BATCH` | Saisie en lot ~40 MOC | **M** | Photo miniature ; recherche ; champ num├®rique ; d├®faut applicable ; total pr├®visionnel ; < 5 min pour 40 MOC |
++| `UC-FE-PWA-PHOTO` | Photo pointage | **S** | Camera API ; compression 1 Mo ; blob IndexedDB |
++
++### Module FE-PWA-CDS ÔÇö Chef de Service
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-PWA-VAL` | Validation pointages | **M** | Liste par ├®quipe ; indicateur bio ; actions Valider/Rejeter |
++| `UC-FE-PWA-BIO` | Contr├┤le biom├®trique | **M** | Camera plein ├®cran ; POST /biometric/check ; pastille OK/DOUBT/KO |
++
++### Module FE-PWA-SYNC ÔÇö Synchronisation
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-FE-PWA-SYNC-ENG` | Sync engine auto | **M** | Queue clientUuid ; ping 60s ; batch Ôëñ100 ; retry backoff ; serveur autoritaire |
++| `UC-FE-PWA-SYNC-UI` | UI statut sync | **M** | Compteur attente ; derni├¿re sync ; bouton Forcer ; log r├®cent |
++
++### Module BE-BIO ÔÇö Biom├®trie backend
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-BIO-ADAPT` | Adapter Mock/Manual/AXIAN | **M** | Interface BiometricProvider ; choix env BIOMETRIC_PROVIDER |
++| `UC-BE-BIO-AXIAN` | Int├®gration AXIAN | **S** | Axios + API Key ; erreurs 5xx ÔåÆ UNAVAILABLE ; logs BiometricCheck |
++
++### Module BE-RPT ÔÇö Rapports PDF
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-BE-RPT-WEEK` | PDF rapport + facture hebdo | **S** | BullMQ ; Handlebars ÔåÆ Puppeteer ; MinIO ; email Admin |
++
++---
++
++## Sprint 5 ÔÇö Donn├®es, d├®ploiement, tests, formation
++
++### Module OPS-DATA ÔÇö Migration initiale
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-OPS-IMPORT` | Import donn├®es campagne | **M** | Templates Excel ; import sites/activit├®s/MOC ; rapport archiv├® |
++
++### Module OPS-DEPLOY ÔÇö D├®ploiement
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-OPS-VPS` | D├®ploiement VPS prod | **M** | Docker Compose prod ; Nginx ; TLS certbot ; backup B2 ; monitoring |
++
++### Module QA ÔÇö Assurance qualit├®
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-QA-E2E` | Tests E2E Playwright | **M** | Parcours CDE sync ; CDS validation ; Admin bordereau MVola |
++| `UC-QA-OFFLINE` | Test offline terrain | **M** | 1 journ├®e site pilote ; sync au retour ; bugs corrig├®s |
++| `UC-QA-REC` | Recette ALTERRA | **M** | Session 2j ; r├®f├®rent ALTERRA ; corrections J+1 ├á J+5 |
++
++### Module DOC ÔÇö Documentation
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-DOC-USER` | Guide utilisateur par r├┤le | **S** | PDF 15ÔÇô20 pages ; screenshots ; cas courants |
++| `UC-DOC-OPS` | Doc exploitation | **S** | Runbook ; backup/restore ; playbook MEP |
++| `UC-DOC-TRAIN` | Formation site pilote | **M** | ┬¢ j Admin+CDS ; ┬¢ j CDE terrain ; support S1 |
++
++---
++
++## Sprint 6 ÔÇö Hypercare V1
++
++### Module OPS-HYPERCARE
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-OPS-HC` | Support post-MEP 3 semaines | **M** | Astreinte ; bugs bloquants ; hotfix ; r├®union hebdo |
++
++### Module MARGE-V1 ÔÇö Provision impr├®vus
++
++| UC | User Story (r├®sum├®) | MoSCoW | Crit├¿res d'acceptation (r├®sum├®) |
++|----|---------------------|--------|----------------------------------|
++| `UC-MARGE-V1` | R├®serve impr├®vus V1 | **M** | Buffer ~7 j-h **hors budget firm 50 j-h** ; AXIAN, MVola, UX lot, volum├®trie document├® en risques |
++
++---
++
++## Won't Have V1 (explicitement V2)
++
++| Domaine | UC V2 | Raison report |
++|---------|-------|---------------|
++| NFC pr├®sence | `UC-FE-PWA-NFC-*`, `UC-BE-NFC` | Web NFC Chrome Android uniquement |
++| Biom├®trie offline | `UC-FE-PWA-BIO-CACHE/COMP` | Complexit├® RGPD + perf |
++| Workflows demandes | `UC-BE-WF`, `UC-FE-PWA-CLAR/ACTREQ/WKRREQ`, `UC-FE-ADM-WF` | Admin cr├®e directement en V1 |
++| Zone/Parcelle | `UC-BE-GEO-*`, `UC-FE-ADM-GEO` | Hi├®rarchie g├®o V2 |
++| Cartographie | `UC-FE-ADM-MAP` | Leaflet V2 |
++| Cl├┤ture quotidienne | `UC-BE-DAILY`, `UC-FE-PWA-CLOSE` | Paiement hebdo V1 |
++| Composition ├®quipes CDS | `UC-FE-PWA-CDS-TEAM` | Admin g├¿re ├®quipes V1 |
++| Cadrage V2 | `UC-CAD-V2` | Post-recette V1 |
++
++---
++
++## Mapping UC fonctionnels ÔåÆ backlog technique
++
++| UC fonctionnel (spec) | UC backlog associ├®s |
++|-----------------------|---------------------|
++| UC-01 Auth | `UC-BE-AUTH`, `UC-FE-ADM-AUTH`, `UC-FE-PWA-AUTH` |
++| UC-08ÔÇô11 Pointage CDE | `UC-FE-PWA-DAY/BATCH/PHOTO`, `UC-BE-PNT-SYNC`, `UC-FE-PWA-SYNC-*` |
++| UC-13ÔÇô17 Validation CDS | `UC-FE-PWA-VAL/BIO`, `UC-BE-PNT-VAL`, `UC-BE-BIO-*` |
++| UC-22 Cl├┤ture semaine | `UC-BE-RPT-WEEK` |
++| UC-24ÔÇô27 Paiement MVola | `UC-BE-PAY-*`, `UC-FE-ADM-PAY-*` |
++| UC-28 Dashboard | `UC-FE-ADM-KPI` |
++
++---
++
++## Crit├¿res d'acceptation globaux V1 (rappel)
++
++- CDE : 40 pointages en < 5 minutes
++- CDS : validation 120 MOC en < 90 minutes (bio incluse)
++- Admin : export MVola 600 MOC en < 30 secondes
++- Z├®ro perte de donn├®es offline
++- Toute correction manuelle trac├®e avec motif
++
++---
++
++*R├®f├®rence : `basedocs/ALTERRA - Backlog d├®taill├®.md` ┬À Spec fonctionnelle ┬º10*
+diff --git a/docs/cadrage/maquettes-figma-liens.md b/docs/cadrage/maquettes-figma-liens.md
+new file mode 100644
+index 0000000..c5372f4
+--- /dev/null
++++ b/docs/cadrage/maquettes-figma-liens.md
+@@ -0,0 +1,462 @@
++# ALTERRA ÔÇö Sp├®cifications wireframes (cible Figma)
++
++**Statut Figma :** `NOT_CREATED` ÔÇö aucun fichier Figma produit ; wireframes textuels designer-ready uniquement  
++**Date :** 21 juillet 2026  
++**UC :** `UC-CAD-03`  
++**Lien Figma :** _Non applicable ÔÇö statut `NOT_CREATED`. Placeholder r├®serv├® : `https://figma.com/file/ALTERRA-V1-wireframes` (ne pas utiliser)_
++
++---
++
++## Conventions design
++
++| ├ël├®ment | Valeur |
++|---------|--------|
++| Admin viewport | Desktop 1280├ù800 min, sidebar fixe 240px |
++| PWA viewport | Mobile 360├ù640 (Android), safe-area respect├®e |
++| Grille Admin | 12 colonnes, gutter 24px, padding page 24px |
++| Grille PWA | 4 colonnes, gutter 16px, padding 16px |
++| Typo Admin | System stack projet (├á d├®finir design system) ; body 14px, h1 24px |
++| Typo PWA | Body 16px min (lisibilit├® terrain), labels 14px |
++| Touch targets PWA | Min 48├ù48px |
++| Couleurs statut | Valid├® `#16a34a` ┬À En attente `#ca8a04` ┬À Rejet├® `#dc2626` ┬À Bio KO `#dc2626` ┬À Bio DOUBT `#ea580c` |
++| Composants | shadcn/ui (Admin) ┬À composants custom touch-friendly (PWA) |
++
++---
++
++## ├ëcran 1 ÔÇö Dashboard Admin
++
++**Route :** `/dashboard`  
++**R├┤le :** Admin uniquement  
++**R├®f├®rence spec :** ┬º5.1.2, `UC-FE-ADM-KPI`
++
++### Objectif
++
++Vue synth├®tique op├®rations multi-sites : effectifs, pr├®sence semaine, masse salariale, alertes sync/bio/litiges.
++
++### Layout (desktop)
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé SIDEBAR  Ôöé HEADER : ┬½ Tableau de bord ┬╗ + [Site Ôû╝ Tous] [Semaine ÔùÇ ÔûÂ]  Ôöé
++Ôöé 240px    Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé ROW KPI (5 cards equal width, height 96px)                  Ôöé
++Ôöé Logo     Ôöé [Effectif] [Pr├®sence %] [Masse sal.] [Litiges] [Sync pend.] Ôöé
++Ôöé Nav      Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ┬À Dash ÔùÅ Ôöé Parit├® H/F (donut 280px)    Ôöé Pr├®sence par site (bar horiz) Ôöé
++Ôöé ┬À Sites  Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ┬À MOC    Ôöé Histogramme pr├®sence 4 semaines (full width, height 300)   Ôöé
++Ôöé ┬À Point. Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ┬À Paie   Ôöé Courbe masse salariale 3 mois (full width, height 280)     Ôöé
++Ôöé ┬À Audit  Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé Table ┬½ Derni├¿re sync par CDS ┬╗ (full width)                 Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++### Composants d├®taill├®s
++
++#### Sidebar (persistante)
++
++| Zone | Contenu |
++|------|---------|
++| Haut | Logo ALTERRA 32px + label ┬½ Admin ┬╗ |
++| Nav links | Dashboard, Sites, Activit├®s, MOC, Utilisateurs, Pointages, Paiements, Rapports, Audit |
++| Bas | Avatar Admin + nom + D├®connexion |
++
++#### Filtres header
++
++| Composant | Type | Donn├®es | Comportement |
++|-----------|------|---------|--------------|
++| S├®lecteur site | Combobox | Liste 5 sites + ┬½ Tous les sites ┬╗ | Filtre tous KPIs ; valeur URL `?siteId=` |
++| S├®lecteur semaine | Stepper date | Semaine ISO courante par d├®faut | ÔùÇ ÔûÂ change weekStart ; URL `?weekStart=` |
++| Rafra├«chir | Button ghost | ÔÇö | Invalide cache TanStack Query |
++
++#### KPI Cards (5)
++
++| Card | Label | Valeur source | Format | Alerte |
++|------|-------|---------------|--------|--------|
++| 1 | Effectif actif | `workforce.totalActive` | Nombre entier | ÔÇö |
++| 2 | Pr├®sence globale | `attendance.globalRate` | XX % | Bordure orange si < 70% |
++| 3 | Masse salariale | `payroll.currentWeekAmount` | XXX XXX Ar | ÔÇö |
++| 4 | Litiges paiements | `payroll.disputeCount` | N | Bordure rouge si > 0 |
++| 5 | Sync en attente | `sync.pendingPointages` | N items | Bordure orange si > 5 |
++
++**Interaction :** click card ÔåÆ navigation drill-down (MOC, Pointages, Paiements, etc.)
++
++#### Graphiques
++
++| Graphique | Type | Donn├®es API | Axes / l├®gende |
++|-----------|------|-------------|----------------|
++| Parit├® H/F | Donut Recharts | `workforce.byGender` | Homme bleu, Femme rose, Non sp├®c. gris ; ratio centr├® |
++| Pr├®sence par site | Bar horizontal | `attendance.bySite` | Barre rouge <70%, orange <85%, vert sinon |
++| Histogramme 4 sem | Bar group├® | `GET /dashboard/presence-chart?weeks=4` | X = semaines, couleur = site |
++| Masse salariale | Area chart | `GET /dashboard/payroll-chart?months=3` | Paid vert, Pending orange |
++
++#### Table sync CDS
++
++| Colonne | Contenu | Tri |
++|---------|---------|-----|
++| Chef de Service | Nom complet | Oui |
++| Site | Nom site | Oui |
++| Derni├¿re sync | Relatif (┬½ il y a 2h ┬╗) + datetime tooltip | Oui desc |
++| Statut | Badge OK / Alerte (>24h rouge) | ÔÇö |
++
++#### ├ëtats
++
++| ├ëtat | Comportement |
++|------|--------------|
++| Loading | Skeleton sur chaque section |
++| Erreur API | Toast + bouton retry par section |
++| Empty | Message ┬½ Aucune donn├®e pour cette p├®riode ┬╗ |
++
++#### Refresh
++
++- TanStack Query `staleTime: 5 min` + polling optionnel 60s sur KPIs
++
++---
++
++## ├ëcran 2 ÔÇö Saisie en lot PWA (CDE)
++
++**Route :** `/pointage/saisie`  
++**R├┤le :** Chef d'├ëquipe  
++**R├®f├®rence spec :** ┬º5.2.4, `UC-FE-PWA-BATCH`
++
++### Objectif
++
++Saisir rapidement les quantit├®s r├®alis├®es par ~40 MOC pour l'activit├® du jour, offline-first.
++
++### Layout (mobile portrait)
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé STATUS BAR : [Offline/Online] [Sync 3]Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ACTIVIT├ë : Trouaison ┬À 150 Ar/trou    Ôöé
++Ôöé [Changer activit├®]                    Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé [­ƒöì Rechercher un MOC____________]    Ôöé
++Ôöé [Appliquer d├®faut: 50 Ôû╝] [Tous=50]   Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ Ôöé
++Ôöé Ôöé [photo 48] Rakoto R.  MAT-001   Ôöé Ôöé
++Ôöé Ôöé            [____50____] trou  ­ƒôÀÔöé Ôöé
++Ôöé Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ Ôöé
++Ôöé Ôöé [photo 48] Rasoa M.   MAT-002   Ôöé Ôöé
++Ôöé Ôöé            [____45____] trou  ­ƒôÀÔöé Ôöé
++Ôöé Ôöé ... scroll ~40 lignes ...       Ôöé Ôöé
++Ôöé ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé TOTAL PR├ëVISIONNEL : 1 875 000 Ar   Ôöé
++Ôöé [        ENREGISTRER (48px)       ] Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++### Composants d├®taill├®s
++
++#### Bandeau statut (fixe top)
++
++| ├ël├®ment | Contenu |
++|---------|---------|
++| Connexion | Badge ┬½ En ligne ┬╗ vert / ┬½ Hors ligne ┬╗ gris |
++| Sync | Chip ┬½ 3 en attente ┬╗ ÔåÆ tap ouvre ├®cran sync |
++| Date | Date du jour (non ├®ditable) |
++
++#### En-t├¬te activit├®
++
++| Champ | Source | Action |
++|-------|--------|--------|
++| Libell├® + tarif | Activit├® s├®lectionn├®e (UC-FE-PWA-DAY) | Tap ┬½ Changer ┬╗ ÔåÆ retour s├®lection |
++| Unit├® | Ex. ┬½ trou ┬╗, ┬½ m┬▓ ┬╗ | Affich├® apr├¿s quantit├® |
++
++#### Barre outils saisie
++
++| Composant | Comportement |
++|-----------|--------------|
++| Recherche | Filtre instantan├® nom/matricule ; debounce 150ms |
++| Quantit├® d├®faut | Number input ; bouton ┬½ Tous = X ┬╗ remplit lignes vides |
++| Compteur | ┬½ 38/40 saisis ┬╗ discret |
++
++#### Ligne MOC (r├®p├®t├®e)
++
++| Zone | Spec |
++|------|------|
++| Photo | 48├ù48px, rond, placeholder initiales si absent |
++| Identit├® | Pr├®nom Nom (truncate) + matricule 12px muted |
++| Quantit├® | Input number, clavier num├®rique, min 0, step 1, largeur 80px |
++| Unit├® | Label unit├® activit├® |
++| Photo pointage | Ic├┤ne cam├®ra 44px ; badge si photo attach├®e |
++| Absent | Quantit├® vide = pas de pointage cr├®├® |
++
++#### Footer fixe
++
++| ├ël├®ment | Spec |
++|---------|------|
++| Total pr├®visionnel | Somme(qty ├ù tarif jour) ; format Ar sans d├®cimales |
++| Bouton Enregistrer | Primary full-width 48px ; disabled si 0 saisi |
++| Feedback | Toast ┬½ 38 pointages enregistr├®s localement ┬╗ |
++
++#### Interactions
++
++| Action | R├®sultat |
++|--------|----------|
++| Enregistrer | Cr├®e N Pointage en IndexedDB, status PENDING_SYNC, clientUuid v4 each |
++| Tap photo | Ouvre cam├®ra (UC-FE-PWA-PHOTO) ; compression 1 Mo |
++| Scroll | Virtual list si >30 MOC (perf) |
++| Retour arri├¿re | Dialog ┬½ Quitter sans enregistrer ? ┬╗ si champs modifi├®s |
++
++#### ├ëtats offline
++
++- Tout fonctionne sans r├®seau si activit├® + MOC en cache
++- Bandeau ┬½ Synchronisation au retour de connexion ┬╗
++
++#### Crit├¿res UX
++
++- 40 MOC saisis en < 5 minutes
++- Pas de perte saisie au scroll ou rotation ├®cran
++- Gros touch targets (min 48px)
++
++---
++
++## ├ëcran 3 ÔÇö Validation CDS (PWA)
++
++**Route :** `/validation`  
++**R├┤le :** Chef de Service  
++**R├®f├®rence spec :** ┬º5.2.5, `UC-FE-PWA-VAL`, `UC-FE-PWA-BIO`
++
++### Objectif
++
++Consulter les pointages de la semaine par ├®quipe, effectuer contr├┤le biom├®trique, valider ou rejeter par MOC.
++
++### Layout (mobile/tablette)
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé Validation ┬À Semaine 29 (S29)  [Ôû╝]  Ôöé
++Ôöé ├ëquipe [Toutes Ôû╝]  [Filtrer statut] Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé ├ëQUIPE Alpha ÔÇö Chef: Jean R.        Ôöé
++Ôöé ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ Ôöé
++Ôöé ÔöéÔùÅ Rakoto R.  3 pnt ┬À 125 000 Ar  Ôöé Ôöé
++Ôöé Ôöé  Bio [­ƒƒó OK]  [Bio] [Valider] [Ô£ò]Ôöé Ôöé
++Ôöé Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ Ôöé
++Ôöé ÔöéÔùÅ Rasoa M.   2 pnt ┬À  98 500 Ar  Ôöé Ôöé
++Ôöé Ôöé  Bio [­ƒƒá DOUBT] [Bio] [Valider*] Ôöé Ôöé
++Ôöé Ôöé ...                             Ôöé Ôöé
++Ôöé ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ Ôöé
++Ôöé ├ëQUIPE Beta ÔÇö ...                   Ôöé
++Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé R├®sum├® : 85/120 valid├®s ┬À 2 450 000Ôöé
++Ôöé [    Cl├┤turer la semaine (V1)     ] Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++### Composants d├®taill├®s
++
++#### Filtres
++
++| Filtre | Options | D├®faut |
++|--------|---------|--------|
++| Semaine | S├®lecteur semaine ISO | Semaine courante |
++| ├ëquipe | Toutes + liste ├®quipes site | Toutes |
++| Statut | Tous / En attente / Valid├® / Rejet├® / Bio manquante | En attente |
++
++#### Groupe ├®quipe (accord├®on)
++
++| Header | Nom ├®quipe + chef d'├®quipe + compteur MOC |
++| Body | Liste cartes MOC |
++
++#### Carte MOC
++
++| Zone | Contenu |
++|------|---------|
++| Avatar + nom | Photo 40px + nom complet |
++| R├®sum├® | ┬½ N pointages ┬À XXX Ar pr├®visionnel ┬╗ |
++| Pastille bio | ­ƒƒó OK ┬À ­ƒƒá DOUBT ┬À ­ƒö┤ KO ┬À ÔÜ¬ Non fait |
++| Actions | Boutons 44px : Bio ┬À Valider ┬À Rejeter |
++
++| Bouton | ├ëtat enabled | Action |
++|--------|--------------|--------|
++| Bio | Toujours | Ouvre ├®cran cam├®ra biom├®trique |
++| Valider | Bio OK ou DOUBT+confirm | PATCH validate all MOC week |
++| Rejeter | Toujours | Modal motif obligatoire ÔåÆ reject |
++
++#### Modal rejet
++
++| Champ | Validation |
++|-------|------------|
++| Motif | Textarea min 10 car., required |
++| Actions | Annuler ┬À Confirmer rejet |
++
++#### ├ëcran biom├®trique (overlay full-screen)
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé Ô£ò                          MOC: RakotoÔöé
++Ôöé                                       Ôöé
++Ôöé         ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ           Ôöé
++Ôöé         Ôöé  OVAL GUIDE     Ôöé           Ôöé
++Ôöé         Ôöé  (cam├®ra live)  Ôöé           Ôöé
++Ôöé         ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ           Ôöé
++Ôöé                                       Ôöé
++Ôöé         [   CAPTURE (64px)   ]        Ôöé
++Ôöé                                       Ôöé
++Ôöé R├®sultat: OK ÔÇö score 0.92             Ôöé
++Ôöé [Valider quand m├¬me] [Nouvelle photo] Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++| ├ël├®ment | Spec |
++|---------|------|
++| Guide facial | Oval overlay SVG, instructions ┬½ Centrer le visage ┬╗ |
++| Capture | POST /biometric/check ; loader 2ÔÇô5s |
++| R├®sultat | Pastille + score ; auto-retour liste apr├¿s 2s si OK |
++| Mode d├®grad├® | Lien ┬½ Validation manuelle ┬╗ si BIO-503 |
++
++#### Footer r├®sum├®
++
++| M├®trique | Calcul |
++|----------|--------|
++| Valid├®s / Total | MOC avec tous pointages VALIDATED |
++| Montant | Somme montants valid├®s semaine |
++
++#### Cl├┤ture semaine
++
++- Bouton visible si ÔëÑ90% valid├®s ou confirmation explicite
++- D├®clenche UC-22 (PDF + signature)
++
++---
++
++## ├ëcran 4 ÔÇö Bordereau paiement (Admin)
++
++**Route :** `/paiements/bordereau`  
++**R├┤le :** Admin uniquement  
++**R├®f├®rence spec :** ┬º5.1.6, `UC-FE-ADM-PAY-BORD/EXP/IMP`
++
++### Objectif
++
++G├®n├®rer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire consolid├® (5 sites).
++
++### Layout (desktop)
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé SIDEBAR  Ôöé Paiements ÔÇ║ Bordereau                                       Ôöé
++Ôöé          Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé P├®riode [Semaine 29 Ôû╝]  Site [Tous Ôû╝]  [G├®n├®rer bordereau] Ôöé
++Ôöé          Ôöé Statut: 520 PENDING ┬À 80 EXPORTED ┬À 12 PAID               Ôöé
++Ôöé          Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé [Exporter MVola] [Importer retour] [Historique exports]     Ôöé
++Ôöé          Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé TABLE (virtualized, ~600 rows)                            Ôöé
++Ôöé          Ôöé ÔÿÉ Pr├®nom Nom | Site | MVola | Montant | Bio | Statut | Ô£Ä  Ôöé
++Ôöé          Ôöé ÔÿÉ Rakoto R.  | MNK  | 034ÔÇª | 125 000 | OUI | PENDING | Ô£Ä  Ôöé
++Ôöé          Ôöé ...                                                         Ôöé
++Ôöé          Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
++Ôöé          Ôöé TOTAL : 45 230 000 Ar ┬À 612 lignes ┬À 3 bio NON             Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++### Composants d├®taill├®s
++
++#### Barre actions p├®riode
++
++| Composant | Comportement |
++|-----------|--------------|
++| S├®lecteur p├®riode | Semaine ISO ; disabled si bordereau EXPORTED sans mode correctif |
++| Filtre site | Optionnel pour preview ; export toujours tous sites |
++| G├®n├®rer | POST /payments/generate ; confirm si bordereau existant (PAY-CONFLICT) |
++
++#### Barre export/import
++
++| Bouton | Action | Feedback |
++|--------|--------|----------|
++| Exporter MVola | GET /payments/:period/export | Progress bar ; download `.xlsx` ; toast succ├¿s |
++| Importer retour | Ouvre modal drag&drop | Preview PAID/FAILED avant confirm |
++| Historique | Drawer liste exports archiv├®s MinIO | Re-download |
++
++#### Table bordereau
++
++| Colonne | Type | ├ëditable | Notes |
++|---------|------|----------|-------|
++| ÔÿÉ | Checkbox | ÔÇö | S├®lection batch (future) |
++| Pr├®nom Nom | Text | Non | Lien ÔåÆ fiche MOC |
++| Site | Badge | Non | Code 3 lettres |
++| N┬░ MVola | Text mono | Non | Format 034XXXXXXX |
++| Montant (Ar) | Number | Oui inline | ├ëdition ÔåÆ modal motif obligatoire |
++| Bio valid├®e | Badge | Non | OUI / NON / N/A |
++| Statut | Badge | Non | PENDING/EXPORTED/PAID/FAILED |
++| Actions | Icon Ô£Ä | ÔÇö | Ouvre drawer d├®tail |
++
++#### Badge statut paiement
++
++| Statut | Couleur | Signification |
++|--------|---------|---------------|
++| PENDING | Jaune | G├®n├®r├®, non export├® |
++| EXPORTED | Bleu | Fichier MVola produit |
++| PAID | Vert | Retour MVola OK |
++| FAILED | Rouge | ├ëchec MVola ; tooltip motif |
++
++#### Drawer d├®tail ligne
++
++| Section | Contenu |
++|---------|---------|
++| MOC | Fiche r├®sum├®e + photo |
++| D├®tail calcul | Liste pointages VALIDATED agr├®g├®s (activit├®, qty, tarif, sous-total) |
++| Bio | Dernier BiometricCheck : date, r├®sultat, provider |
++| Historique | Modifications montant (audit) |
++| Actions | Corriger montant ┬À Exclure ligne (motif) |
++
++#### Modal correction montant
++
++| Champ | Validation |
++|-------|------------|
++| Montant actuel | Read-only |
++| Nouveau montant | Number > 0, integer |
++| Motif | Required min 10 car. |
++
++#### Modal import retour MVola
++
++```
++ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
++Ôöé Importer fichier retour MVola           Ôöé
++Ôöé ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ Ôöé
++Ôöé Ôöé  Glisser le fichier .xlsx ici       Ôöé Ôöé
++Ôöé ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ Ôöé
++Ôöé Preview:                                Ôöé
++Ôöé  Ô£ô 580 PAID ┬À Ô£ù 12 FAILED ┬À ? 3 non matchÔöé
++Ôöé [Annuler]              [Appliquer statuts]Ôöé
++ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
++```
++
++#### Cas limites
++
++| Cas | Comportement |
++|-----|--------------|
++| 600+ lignes | Virtual scroll TanStack Virtual ; pagination server 50 |
++| Bio NON / absente | Ligne **exclue** du bordereau (RG-03) ; non exportable MVola ; action ┬½ Forcer mode d├®grad├® ┬╗ r├®serv├®e CDS avec audit |
++| Mode d├®grad├® (N/A) | Ligne exportable si audit trail complet ; badge distinct |
++| Doublon p├®riode | Dialog correctif vs annuler |
++| Export partiel | Non support├® V1 ÔÇö export complet p├®riode |
++
++---
++
++## Livrables Figma attendus (post-design ÔÇö statut `NOT_CREATED`)
++
++| Frame Figma | ├ëcrans | Variantes | Statut |
++|-------------|--------|-----------|--------|
++| `Admin/Dashboard` | Desktop 1280 | Loading, empty, alertes | `NOT_CREATED` |
++| `Admin/Bordereau` | Desktop 1280 | PENDING, post-export, import modal | `NOT_CREATED` |
++| `PWA/Saisie-lot` | Mobile 360 | Online, offline, avec photos | `NOT_CREATED` |
++| `PWA/Validation-CDS` | Mobile + Tablet 768 | Liste, bio overlay, rejet modal | `NOT_CREATED` |
++
++---
++
++## Prochaines ├®tapes design
++
++1. Valider wireframes avec PO + 1 CDS (30 min review)
++2. Produire maquettes haute-fid├®lit├® Figma
++3. Mettre ├á jour ce document avec liens Figma r├®els
++4. Test prototype saisie lot sur device Android cible
++
++---
++
++*R├®f├®rences : Spec fonctionnelle ┬º5 ┬À Backlog UC-CAD-03 ┬À Prompt Dashboard KPIs*
+diff --git a/docs/cadrage/mvola-format.md b/docs/cadrage/mvola-format.md
+new file mode 100644
+index 0000000..c6d14c3
+--- /dev/null
++++ b/docs/cadrage/mvola-format.md
+@@ -0,0 +1,222 @@
++# ALTERRA ÔÇö Format Excel MVola Bulk Transfer
++
++**Statut :** Sp├®cification documentaire ÔÇö **├®chantillon r├®el ├á valider avec ALTERRA**  
++**Date :** 21 juillet 2026  
++**UC associ├®s :** `UC-BE-PAY-EXP`, `UC-BE-PAY-IMP`, `UC-FE-ADM-PAY-EXP`, `UC-FE-ADM-PAY-IMP`  
++**Condition Sprint 1 :** Obtenir un ├®chantillon fichier MVola (export + retour) aupr├¿s d'ALTERRA
++
++---
++
++## 1. Contexte
++
++ALTERRA ne paie **jamais par API MVola**. Le flux V1 est :
++
++1. Admin g├®n├¿re bordereau dans ALTERRA (pointages VALIDATED agr├®g├®s).
++2. Admin exporte fichier `.xlsx` format Bulk Transfer.
++3. Admin soumet manuellement via portail/application marchand MVola.
++4. Admin r├®cup├¿re fichier retour et l'importe dans ALTERRA pour mettre ├á jour statuts PAID/FAILED.
++
++---
++
++## 2. Fichier `basedocs/modele.xlsx`
++
++| ├ël├®ment | Constat |
++|---------|---------|
++| Pr├®sence | Oui, fichier existant |
++| Contenu r├®el | **Backlog / chiffrage projet** (feuilles ┬½ Backlog ┬╗, ┬½ Charges Compl├®mentaires ┬╗, ┬½ Macro-Planning ┬╗) |
++| Colonnes observ├®es | Use Case, User Story, Acteur, T├óche, Description, Estimations UI/BE |
++| Conclusion | **Ce fichier n'est PAS un template MVola Bulk Transfer** |
++
++**Action requise :** Demander ├á ALTERRA un ├®chantillon r├®el de :
++- Fichier soumis au portail MVola (export)
++- Fichier retour apr├¿s traitement (import statuts)
++
++---
++
++## 3. Format export ALTERRA ÔåÆ MVola (spec V1)
++
++Source : Spec fonctionnelle d├®taill├®e ┬º7.4, Spec v3 ┬º8.2, RG-09, RG-10.
++
++### 3.1 M├®tadonn├®es fichier
++
++| ├ël├®ment | Valeur |
++|---------|--------|
++| Extension | `.xlsx` (Excel 2007+) |
++| Nom fichier | `ALTERRA_MVola_{periodIso}_{yyyyMMdd_HHmm}.xlsx` |
++| Exemple | `ALTERRA_MVola_S18_20260428_0920.xlsx` |
++| Feuille unique | Nom : `Paiements` |
++| Encodage texte | UTF-8 via Excel ; colonne t├®l├®phone en **format texte** |
++| Archivage | Copie stock├®e MinIO ├á chaque export |
++
++### 3.2 Structure colonnes (ligne 1 = header)
++
++| Col | Header exact | Type | Obligatoire | Description | Exemple |
++|-----|--------------|------|-------------|-------------|---------|
++| A | `Num├®ro t├®l├®phone` | Texte | Oui | 10 chiffres, pr├®fixe 034 | `0341234567` |
++| B | `Description` | Texte | Oui | ┬½ Pr├®nom Paiement Code_site ┬╗ | `Rakoto Paiement MNK` |
++| C | `P├®riode` | Texte | Oui | Semaine ISO `Sxx` ou jour `Dxxx` | `S18` ou `D138` |
++| D | `Montant` | Entier | Oui | Ariary, sans s├®parateur d├®cimal | `125000` |
++| E | `Bio Valid├®e` | Enum | Oui | `OUI` / `NON` / `N/A` | `OUI` |
++
++### 3.3 R├¿gles par colonne
++
++#### Colonne A ÔÇö Num├®ro t├®l├®phone
++
++- Format : 10 chiffres commen├ºant par `034` (MVola Madagascar)
++- Source : champ `Worker.mvolaNumber`
++- Validation export : rejeter lignes sans num├®ro ou format invalide
++- Excel : cellule format `@` (texte) pour ├®viter perte z├®ros initiaux
++
++#### Colonne B ÔÇö Description
++
++- Pattern : `{Pr├®nom} Paiement {CodeSite}`
++- Code site : 3 lettres (`shortCode` du Site, ex. MNK, ANJ)
++- Limite : ~30 caract├¿res (RG-09) ÔÇö **limite exacte ├á confirmer avec ├®chantillon MVola**
++- Troncature : si d├®passement, tronquer pr├®nom en pr├®servant ` Paiement XXX` (3 lettres site en fin)
++- Exemple tronqu├® : `Rak Paiement MNK` si ┬½ Rakoto Paiement MNK ┬╗ trop long
++
++#### Colonne C ÔÇö P├®riode
++
++- V1 recommand├® : semaine ISO `S01` ├á `S53` (RG-10)
++- V2 option : jour `D001` ├á `D366` si cl├┤ture quotidienne
++- Source : p├®riode du bordereau g├®n├®r├®
++
++#### Colonne D ÔÇö Montant
++
++- Devise : Ariary malgache (MGA)
++- Format : entier positif, pas de s├®parateur milliers dans cellule
++- Source : somme agr├®g├®e pointages VALIDATED par MOC (RG-01)
++- Arrondi : entier (pas de d├®cimales)
++
++#### Colonne E ÔÇö Bio Valid├®e
++
++| Valeur | Condition |
++|--------|-----------|
++| `OUI` | BiometricCheck OK pour la p├®riode |
++| `NON` | Bio KO ou absente ÔÇö **ligne exclue du bordereau et de l'export MVola** (RG-03) |
++| `N/A` | Mode d├®grad├® manuel CDS uniquement : AXIAN indisponible (BIO-503), validation motiv├®e, **audit trail obligatoire** (who/when/motif) |
++
++### 3.4 Exemple contenu (lignes 2+)
++
++| Num├®ro t├®l├®phone | Description | P├®riode | Montant | Bio Valid├®e |
++|------------------|-------------|---------|---------|-------------|
++| 0341234567 | Rakoto Paiement MNK | S18 | 125000 | OUI |
++| 0349876543 | Rasoa Paiement MNK | S18 | 98500 | OUI |
++| 0345551234 | Hery Paiement ANJ | S18 | 12500 | N/A |
++
++> **RG-03 :** une ligne avec `Bio Valid├®e = NON` ne doit **jamais** appara├«tre dans un export MVola. Seules les lignes `OUI` ou `N/A` (mode d├®grad├® audit├®) sont exportables.
++
++---
++
++## 4. Format import retour MVola ÔåÆ ALTERRA
++
++**Statut :** Hypoth├¿se ÔÇö structure exacte **├á valider avec ├®chantillon ALTERRA**
++
++### 4.1 Comportement attendu (UC-27)
++
++| ├ëtape | Description |
++|-------|-------------|
++| 1 | Admin upload fichier `.xlsx` retour portail MVola |
++| 2 | Parse colonnes identifi├®es |
++| 3 | Match ligne ALTERRA par **num├®ro MVola + montant** |
++| 4 | Update Payment ÔåÆ `PAID` ou `FAILED` |
++| 5 | Rapport : compteurs PAID/FAILED/non match├®s |
++
++### 4.2 Colonnes retour suppos├®es (├á confirmer)
++
++| Colonne suppos├®e | Usage matching |
++|------------------|----------------|
++| Num├®ro t├®l├®phone / MSISDN | Cl├® primaire match |
++| Montant | Cl├® secondaire match (├®vite homonymes) |
++| Statut transaction | SUCCESS ÔåÆ PAID ┬À FAILED/REJECTED ÔåÆ FAILED |
++| Motif ├®chec | Stock├® pour affichage Admin (RG-19) |
++| R├®f├®rence MVola | Tra├ºabilit├® optionnelle |
++
++### 4.3 R├¿gles import
++
++| R├¿gle | Description |
++|-------|-------------|
++| Fichier non conforme | Erreur IMPORT-BADFORMAT avec d├®tail ligne/colonne |
++| Ligne non match├®e | List├®e s├®par├®ment ; statut inchang├® |
++| Doublon match | Alerte Admin ; pas d'├®crasement silencieux |
++| Idempotence | R├®-import m├¬me fichier ÔåÆ pas de double update |
++
++---
++
++## 5. Mapping donn├®es ALTERRA ÔåÆ export
++
++```
++Payment (PENDING)
++  ÔööÔöÇÔöÇ Worker.mvolaNumber     ÔåÆ Col A
++  ÔööÔöÇÔöÇ Worker.firstName       ÔåÆ Col B (partie pr├®nom)
++  ÔööÔöÇÔöÇ Site.shortCode         ÔåÆ Col B (partie code)
++  ÔööÔöÇÔöÇ Payment.periodIso      ÔåÆ Col C
++  ÔööÔöÇÔöÇ Payment.amount         ÔåÆ Col D
++  ÔööÔöÇÔöÇ BiometricCheck.result  ÔåÆ Col E (OUI/NON/N/A)
++```
++
++### Statuts Payment (workflow)
++
++```
++PENDING ÔåÆ (export) ÔåÆ EXPORTED ÔåÆ (import retour) ÔåÆ PAID | FAILED
++```
++
++---
++
++## 6. Validations pr├®-export (Admin UI)
++
++| Check | Comportement |
++|-------|--------------|
++| MVola manquant | Bloquer ligne ou exclure avec warning |
++| Montant = 0 | Exclure automatiquement |
++| Bio NON / absente | **Bloquer** inclusion bordereau et export ; message ┬½ N lignes sans bio OK ÔÇö corriger ou activer mode d├®grad├® CDS ┬╗ |
++| Mode d├®grad├® (N/A) | Autoriser export **uniquement** si audit trail complet (CDS, date, motif, provider UNAVAILABLE) |
++| P├®riode d├®j├á EXPORTED | Dialog correctif (PAY-CONFLICT) |
++
++---
++
++## 7. Performance
++
++| Crit├¿re | Cible |
++|---------|-------|
++| G├®n├®ration 600 lignes | < 30 secondes (crit├¿re acceptation global ┬º10.1) |
++| Librairie | exceljs (backend) |
++| Taille fichier estim├®e | < 500 Ko |
++
++---
++
++## 8. Risques et mitigations
++
++| Risque | Niveau | Mitigation |
++|--------|--------|------------|
++| Format MVola non document├® officiellement | Moyen | ├ëchantillon Sprint 1 ; couche export configurable (mapping colonnes en config) |
++| Limite description inconnue | Moyen | RG-09 troncature ; param├¿tre `MVOLA_DESC_MAX_LEN` configurable |
++| Retour MVola format variable | Moyen | Parser configurable ; tests avec ├®chantillon r├®el |
++| `modele.xlsx` incorrect | Faible | Document├® ici ; demande explicit├® ├á ALTERRA |
++
++**Provision marge :** 1 j-h pr├®vu dans `UC-MARGE-V1` si ├®cart format.
++
++---
++
++## 9. Checklist validation ALTERRA
++
++- [ ] Fournir 1 fichier export Bulk Transfer r├®el (anonymis├® si besoin)
++- [ ] Fournir 1 fichier retour correspondant
++- [ ] Confirmer headers exacts (casse, accents, ordre colonnes)
++- [ ] Confirmer limite caract├¿res Description
++- [ ] Confirmer format num├®ro (034 obligatoire ?)
++- [ ] Confirmer codes site 3 lettres utilis├®s historiquement
++- [ ] Confirmer si colonne Bio requise par MVola ou interne ALTERRA uniquement
++
++---
++
++## 10. R├®f├®rences
++
++- `basedocs/ALTERRA - Sp├®cification fonctionnelle d├®taill├®e.md` ┬º7.4
++- `basedocs/ALTERRA - Specs fonctionnelles et techniques.md` ┬º8.2
++- `basedocs/ALTERRA - Brief Chef de Projet.md` (condition ├®chantillon S1)
++- `basedocs/modele.xlsx` ÔÇö **backlog projet, pas template MVola**
++
++---
++
++*├ëchantillon MVola : **EN ATTENTE VALIDATION ALTERRA***

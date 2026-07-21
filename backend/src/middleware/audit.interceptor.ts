@@ -16,9 +16,9 @@ const SENSITIVE_PATHS = [
   { method: "POST", pattern: /^\/users\/[^/]+\/(reset-password|deactivate)$/ },
   { method: "POST", pattern: /^\/pointages(\/sync)?\/?$/ },
   { method: "PATCH", pattern: /^\/pointages\/[^/]+\/(validate|reject)$/ },
-  { method: "POST", pattern: /^\/payments\/?$/ },
+  { method: "POST", pattern: /^\/payments\/generate\/?$/ },
   { method: "PATCH", pattern: /^\/payments\/[^/]+$/ },
-  { method: "DELETE", pattern: /^\/payments\/[^/]+$/ },
+  { method: "POST", pattern: /^\/payments\/import-status\/?$/ },
 ];
 
 function matchesSensitiveRoute(method: string, path: string): boolean {

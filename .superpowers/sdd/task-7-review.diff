@@ -1,0 +1,844 @@
+﻿diff --git a/backend/src/__tests__/pointages.test.ts b/backend/src/__tests__/pointages.test.ts
+new file mode 100644
+index 0000000..119323e
+--- /dev/null
++++ b/backend/src/__tests__/pointages.test.ts
+@@ -0,0 +1,260 @@
++import { Prisma, Role, PointageStatus } from "@prisma/client";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import request from "supertest";
++import { createApp } from "../app.js";
++import { signAccessToken } from "../lib/jwt.js";
++
++const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
++const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
++const MOCK_CDE_ID = "00000000-0000-4000-8000-000000000003";
++const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
++const MOCK_TEAM_ID = "00000000-0000-4000-8000-000000000020";
++const MOCK_WORKER_ID = "00000000-0000-4000-8000-000000000040";
++const MOCK_ACTIVITY_ID = "00000000-0000-4000-8000-000000000050";
++const MOCK_POINTAGE_ID = "00000000-0000-4000-8000-000000000060";
++const MOCK_CLIENT_UUID = "00000000-0000-4000-8000-000000000070";
++
++const mockActivity = {
++  id: MOCK_ACTIVITY_ID,
++  label: "Plantation",
++  unit: "plant",
++  unitRate: new Prisma.Decimal("150.00"),
++  validFrom: new Date("2026-01-01"),
++  validTo: null,
++  siteId: MOCK_SITE_ID,
++  active: true,
++  createdAt: new Date(),
++};
++
++const mockPointage = {
++  id: MOCK_POINTAGE_ID,
++  clientUuid: MOCK_CLIENT_UUID,
++  workerId: MOCK_WORKER_ID,
++  activityId: MOCK_ACTIVITY_ID,
++  quantity: new Prisma.Decimal("10"),
++  unitRateSnapshot: new Prisma.Decimal("150.00"),
++  amount: new Prisma.Decimal("1500.00"),
++  date: new Date("2026-07-15"),
++  parcelleId: null,
++  geoLat: null,
++  geoLng: null,
++  photoKey: null,
++  notes: null,
++  status: PointageStatus.PENDING,
++  enteredById: MOCK_CDE_ID,
++  validatedById: null,
++  validatedAt: null,
++  rejectionReason: null,
++  bioCheckId: null,
++  createdByClientAt: new Date("2026-07-15T08:00:00Z"),
++  syncedAt: new Date(),
++  createdAt: new Date(),
++  updatedAt: new Date(),
++};
++
++vi.mock("../lib/prisma.js", () => ({
++  prisma: {
++    activity: {
++      findUniqueOrThrow: vi.fn(),
++    },
++    pointage: {
++      create: vi.fn(),
++      findUnique: vi.fn(),
++      findUniqueOrThrow: vi.fn(),
++      findMany: vi.fn(),
++      update: vi.fn(),
++    },
++    biometricCheck: {
++      findFirst: vi.fn(),
++      findMany: vi.fn(),
++    },
++  },
++}));
++
++vi.mock("../lib/prisma-base.js", () => ({
++  basePrisma: {
++    auditLog: {
++      create: vi.fn(),
++    },
++  },
++}));
++
++import { prisma } from "../lib/prisma.js";
++import { basePrisma } from "../lib/prisma-base.js";
++
++function adminAuthHeader() {
++  return `Bearer ${signAccessToken({
++    sub: MOCK_ADMIN_ID,
++    role: Role.ADMIN,
++    siteId: MOCK_SITE_ID,
++    teamId: null,
++  })}`;
++}
++
++function cdsAuthHeader() {
++  return `Bearer ${signAccessToken({
++    sub: MOCK_CDS_ID,
++    role: Role.CHEF_SERVICE,
++    siteId: MOCK_SITE_ID,
++    teamId: null,
++  })}`;
++}
++
++function cdeAuthHeader() {
++  return `Bearer ${signAccessToken({
++    sub: MOCK_CDE_ID,
++    role: Role.CHEF_EQUIPE,
++    siteId: MOCK_SITE_ID,
++    teamId: MOCK_TEAM_ID,
++  })}`;
++}
++
++describe("Pointages", () => {
++  beforeEach(() => {
++    vi.clearAllMocks();
++    vi.mocked(prisma.activity.findUniqueOrThrow).mockResolvedValue(mockActivity as never);
++    vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
++  });
++
++  describe("POST /pointages/sync", () => {
++    const syncPayload = {
++      batch: [
++        {
++          clientUuid: MOCK_CLIENT_UUID,
++          workerId: MOCK_WORKER_ID,
++          activityId: MOCK_ACTIVITY_ID,
++          quantity: 10,
++          date: "2026-07-15",
++          createdByClientAt: "2026-07-15T08:00:00Z",
++        },
++      ],
++    };
++
++    it("returns already_exists on duplicate clientUuid", async () => {
++      vi.mocked(prisma.pointage.create).mockRejectedValue(
++        new Prisma.PrismaClientKnownRequestError("Unique constraint", {
++          code: "P2002",
++          clientVersion: "5.20.0",
++        }),
++      );
++      vi.mocked(prisma.pointage.findUnique).mockResolvedValue(mockPointage as never);
++
++      const app = createApp();
++      const res = await request(app)
++        .post("/api/v1/pointages/sync")
++        .set("Authorization", cdeAuthHeader())
++        .send(syncPayload);
++
++      expect(res.status).toBe(200);
++      expect(res.body.results).toEqual([
++        {
++          clientUuid: MOCK_CLIENT_UUID,
++          status: "already_exists",
++          id: MOCK_POINTAGE_ID,
++        },
++      ]);
++    });
++  });
++
++  describe("PATCH /pointages/:id/validate", () => {
++    it("blocks validation when bio is not OK", async () => {
++      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
++      vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue(null);
++
++      const app = createApp();
++      const res = await request(app)
++        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/validate`)
++        .set("Authorization", cdsAuthHeader());
++
++      expect(res.status).toBe(422);
++      expect(res.body.code).toBe("BIO_NOT_OK");
++    });
++
++    it("succeeds when bio is OK", async () => {
++      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
++      vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
++        id: "bio-1",
++        workerId: MOCK_WORKER_ID,
++        result: "OK",
++        context: "WEEKLY_VALIDATION",
++        performedAt: new Date("2026-07-14T10:00:00Z"),
++        weekIso: "2026-W29",
++      } as never);
++      vi.mocked(prisma.pointage.update).mockResolvedValue({
++        ...mockPointage,
++        status: PointageStatus.VALIDATED,
++        validatedById: MOCK_CDS_ID,
++        validatedAt: new Date(),
++      } as never);
++
++      const app = createApp();
++      const res = await request(app)
++        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/validate`)
++        .set("Authorization", cdsAuthHeader());
++
++      expect(res.status).toBe(200);
++      expect(res.body.status).toBe("VALIDATED");
++      expect(prisma.pointage.update).toHaveBeenCalledWith(
++        expect.objectContaining({
++          where: { id: MOCK_POINTAGE_ID },
++          data: expect.objectContaining({
++            status: "VALIDATED",
++            validatedById: MOCK_CDS_ID,
++          }),
++        }),
++      );
++    });
++  });
++
++  describe("PATCH /pointages/:id/reject", () => {
++    it("requires rejectionReason", async () => {
++      const app = createApp();
++      const res = await request(app)
++        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/reject`)
++        .set("Authorization", cdsAuthHeader())
++        .send({ rejectionReason: "no" });
++
++      expect(res.status).toBe(422);
++      expect(res.body.code).toBe("VALIDATION_ERROR");
++    });
++  });
++
++  describe("PATCH /pointages/:id (admin correction)", () => {
++    it("requires correctionReason", async () => {
++      const app = createApp();
++      const res = await request(app)
++        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}`)
++        .set("Authorization", adminAuthHeader())
++        .send({ quantity: 12, correctionReason: "too short" });
++
++      expect(res.status).toBe(422);
++      expect(res.body.code).toBe("VALIDATION_ERROR");
++    });
++
++    it("applies correction with audit log when reason is valid", async () => {
++      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
++      vi.mocked(prisma.pointage.update).mockResolvedValue({
++        ...mockPointage,
++        quantity: new Prisma.Decimal("12"),
++        amount: new Prisma.Decimal("1800.00"),
++      } as never);
++
++      const app = createApp();
++      const res = await request(app)
++        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}`)
++        .set("Authorization", adminAuthHeader())
++        .send({ quantity: 12, correctionReason: "Erreur de saisie terrain corrig├®e" });
++
++      expect(res.status).toBe(200);
++      expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
++        expect.objectContaining({
++          data: expect.objectContaining({
++            action: "CORRECT",
++            entityType: "Pointage",
++            entityId: MOCK_POINTAGE_ID,
++          }),
++        }),
++      );
++    });
++  });
++});
+diff --git a/backend/src/lib/week-iso.ts b/backend/src/lib/week-iso.ts
+new file mode 100644
+index 0000000..70a1d64
+--- /dev/null
++++ b/backend/src/lib/week-iso.ts
+@@ -0,0 +1,9 @@
++/** ISO week string for BiometricCheck.weekIso (e.g. 2026-W18). */
++export function getIsoWeekString(date: Date): string {
++  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
++  const dayNum = d.getUTCDay() || 7;
++  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
++  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
++  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
++  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
++}
+diff --git a/backend/src/routes/pointages.routes.ts b/backend/src/routes/pointages.routes.ts
+index f26ed69..c92b6d5 100644
+--- a/backend/src/routes/pointages.routes.ts
++++ b/backend/src/routes/pointages.routes.ts
+@@ -1,10 +1,16 @@
+ import { Router } from "express";
+ import { z } from "zod";
+-import { Prisma, Role } from "@prisma/client";
+-import { prisma } from "../lib/prisma.js";
++import { PointageStatus, Role } from "@prisma/client";
+ import { requireAuth } from "../middleware/auth.js";
+ import { requireRole } from "../middleware/rbac.js";
+ import { validate } from "../middleware/validate.js";
++import { syncPointageBatch } from "../services/pointages/sync.service.js";
++import { listPointages } from "../services/pointages/list.service.js";
++import {
++  rejectPointage,
++  validatePointage,
++} from "../services/pointages/validation.service.js";
++import { correctPointage } from "../services/pointages/correction.service.js";
+ 
+ export const pointagesRouter = Router();
+ 
+@@ -25,11 +31,26 @@ const syncBatchSchema = z.object({
+   batch: z.array(syncItemSchema).min(1).max(100),
+ });
+ 
+-/**
+- * Idempotent batch sync ÔÇö the mechanism that makes offline PWA capture safe.
+- * clientUuid carries a unique DB constraint; replaying an already-synced
+- * item returns 'already_exists' instead of erroring or duplicating.
+- */
++const listPointagesQuery = z.object({
++  cursor: z.string().uuid().optional(),
++  status: z.nativeEnum(PointageStatus).optional(),
++  workerId: z.string().uuid().optional(),
++  activityId: z.string().uuid().optional(),
++  dateFrom: z.coerce.date().optional(),
++  dateTo: z.coerce.date().optional(),
++});
++
++const pointageIdParams = z.object({ id: z.string().uuid() });
++
++const rejectSchema = z.object({ rejectionReason: z.string().min(3) });
++
++const correctionSchema = z.object({
++  quantity: z.number().positive().optional(),
++  activityId: z.string().uuid().optional(),
++  date: z.coerce.date().optional(),
++  correctionReason: z.string().min(10),
++});
++
+ pointagesRouter.post(
+   "/pointages/sync",
+   requireAuth,
+@@ -38,54 +59,7 @@ pointagesRouter.post(
+   async (req, res, next) => {
+     try {
+       const { batch } = req.body as z.infer<typeof syncBatchSchema>;
+-      const results: Array<{ clientUuid: string; status: string; id?: string; reason?: string }> =
+-        [];
+-
+-      for (const item of batch) {
+-        try {
+-          const activity = await prisma.activity.findUniqueOrThrow({
+-            where: { id: item.activityId },
+-          });
+-          const amount = item.quantity * Number(activity.unitRate);
+-
+-          const created = await prisma.pointage.create({
+-            data: {
+-              clientUuid: item.clientUuid,
+-              workerId: item.workerId,
+-              activityId: item.activityId,
+-              quantity: item.quantity,
+-              unitRateSnapshot: activity.unitRate,
+-              amount,
+-              date: item.date,
+-              parcelleId: item.parcelleId,
+-              geoLat: item.geoLat,
+-              geoLng: item.geoLng,
+-              notes: item.notes,
+-              enteredById: req.user!.sub,
+-              createdByClientAt: item.createdByClientAt,
+-            },
+-          });
+-          results.push({ clientUuid: item.clientUuid, status: "created", id: created.id });
+-        } catch (err) {
+-          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+-            const existing = await prisma.pointage.findUnique({
+-              where: { clientUuid: item.clientUuid },
+-            });
+-            results.push({
+-              clientUuid: item.clientUuid,
+-              status: "already_exists",
+-              id: existing?.id,
+-            });
+-          } else {
+-            results.push({
+-              clientUuid: item.clientUuid,
+-              status: "rejected",
+-              reason: err instanceof Error ? err.message : "unknown_error",
+-            });
+-          }
+-        }
+-      }
+-
++      const results = await syncPointageBatch(batch, req.user!.sub);
+       res.json({ results });
+     } catch (err) {
+       next(err);
+@@ -93,37 +67,29 @@ pointagesRouter.post(
+   },
+ );
+ 
+-pointagesRouter.get("/pointages", requireAuth, async (req, res, next) => {
+-  try {
+-    const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+-    const take = 50;
+-
+-    const pointages = await prisma.pointage.findMany({
+-      where: {},
+-      take: take + 1,
+-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+-      orderBy: { createdAt: "desc" },
+-    });
+-
+-    const hasMore = pointages.length > take;
+-    const data = hasMore ? pointages.slice(0, take) : pointages;
+-
+-    res.json({ data, nextCursor: hasMore ? data[data.length - 1].id : null, hasMore });
+-  } catch (err) {
+-    next(err);
+-  }
+-});
++pointagesRouter.get(
++  "/pointages",
++  requireAuth,
++  validate(listPointagesQuery, "query"),
++  async (req, res, next) => {
++    try {
++      const filters = req.query as z.infer<typeof listPointagesQuery>;
++      const result = await listPointages(filters);
++      res.json(result);
++    } catch (err) {
++      next(err);
++    }
++  },
++);
+ 
+ pointagesRouter.patch(
+   "/pointages/:id/validate",
+   requireAuth,
+   requireRole(Role.CHEF_SERVICE, Role.ADMIN),
++  validate(pointageIdParams, "params"),
+   async (req, res, next) => {
+     try {
+-      const pointage = await prisma.pointage.update({
+-        where: { id: req.params.id },
+-        data: { status: "VALIDATED", validatedById: req.user!.sub, validatedAt: new Date() },
+-      });
++      const pointage = await validatePointage(req.params.id, req.user!.sub);
+       res.json(pointage);
+     } catch (err) {
+       next(err);
+@@ -131,18 +97,35 @@ pointagesRouter.patch(
+   },
+ );
+ 
+-const rejectSchema = z.object({ rejectionReason: z.string().min(3) });
+-
+ pointagesRouter.patch(
+   "/pointages/:id/reject",
+   requireAuth,
+   requireRole(Role.CHEF_SERVICE, Role.ADMIN),
++  validate(pointageIdParams, "params"),
+   validate(rejectSchema),
+   async (req, res, next) => {
+     try {
+-      const pointage = await prisma.pointage.update({
+-        where: { id: req.params.id },
+-        data: { status: "REJECTED", rejectionReason: req.body.rejectionReason },
++      const { rejectionReason } = req.body as z.infer<typeof rejectSchema>;
++      const pointage = await rejectPointage(req.params.id, req.user!.sub, rejectionReason);
++      res.json(pointage);
++    } catch (err) {
++      next(err);
++    }
++  },
++);
++
++pointagesRouter.patch(
++  "/pointages/:id",
++  requireAuth,
++  requireRole(Role.ADMIN),
++  validate(pointageIdParams, "params"),
++  validate(correctionSchema),
++  async (req, res, next) => {
++    try {
++      const body = req.body as z.infer<typeof correctionSchema>;
++      const pointage = await correctPointage(req.params.id, body, {
++        ip: req.ip,
++        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+       });
+       res.json(pointage);
+     } catch (err) {
+diff --git a/backend/src/services/pointages/correction.service.ts b/backend/src/services/pointages/correction.service.ts
+new file mode 100644
+index 0000000..6f09067
+--- /dev/null
++++ b/backend/src/services/pointages/correction.service.ts
+@@ -0,0 +1,73 @@
++import { prisma } from "../../lib/prisma.js";
++import { ApiError } from "../../middleware/error-handler.js";
++import { getRequestContext } from "../../middleware/prisma-rls.js";
++import { writeAuditLog } from "../audit/audit.service.js";
++
++export interface CorrectPointageInput {
++  quantity?: number;
++  activityId?: string;
++  date?: Date;
++  correctionReason: string;
++}
++
++export async function correctPointage(
++  id: string,
++  input: CorrectPointageInput,
++  auditMeta?: { ip?: string; userAgent?: string },
++) {
++  if (input.correctionReason.trim().length < 10) {
++    throw new ApiError(
++      422,
++      "CORRECTION_REASON_REQUIRED",
++      "Correction reason must be at least 10 characters",
++    );
++  }
++
++  const before = await prisma.pointage.findUniqueOrThrow({ where: { id } });
++
++  const updateData: Record<string, unknown> = {};
++
++  if (input.date !== undefined) {
++    updateData.date = input.date;
++  }
++
++  let unitRate = Number(before.unitRateSnapshot);
++  let quantity = Number(before.quantity);
++
++  if (input.activityId !== undefined) {
++    const activity = await prisma.activity.findUniqueOrThrow({
++      where: { id: input.activityId },
++    });
++    updateData.activityId = input.activityId;
++    updateData.unitRateSnapshot = activity.unitRate;
++    unitRate = Number(activity.unitRate);
++  }
++
++  if (input.quantity !== undefined) {
++    updateData.quantity = input.quantity;
++    quantity = input.quantity;
++  }
++
++  if (input.quantity !== undefined || input.activityId !== undefined) {
++    updateData.amount = quantity * unitRate;
++  }
++
++  const after = await prisma.pointage.update({
++    where: { id },
++    data: updateData,
++  });
++
++  const ctx = getRequestContext();
++  await writeAuditLog({
++    userId: ctx?.userId,
++    action: "CORRECT",
++    entityType: "Pointage",
++    entityId: id,
++    before,
++    after,
++    ip: auditMeta?.ip ?? ctx?.ip,
++    userAgent: auditMeta?.userAgent ?? ctx?.userAgent,
++  });
++
++  return after;
++}
+diff --git a/backend/src/services/pointages/list.service.ts b/backend/src/services/pointages/list.service.ts
+new file mode 100644
+index 0000000..42f1444
+--- /dev/null
++++ b/backend/src/services/pointages/list.service.ts
+@@ -0,0 +1,116 @@
++import { PointageStatus, Prisma } from "@prisma/client";
++import { prisma } from "../../lib/prisma.js";
++import { getIsoWeekString } from "../../lib/week-iso.js";
++
++export interface ListPointagesFilters {
++  cursor?: string;
++  status?: PointageStatus;
++  workerId?: string;
++  activityId?: string;
++  dateFrom?: Date;
++  dateTo?: Date;
++}
++
++export interface PointageBioCheckSummary {
++  result: string;
++  performedAt: Date;
++}
++
++export interface PointageListItem {
++  id: string;
++  clientUuid: string;
++  workerId: string;
++  activityId: string;
++  quantity: Prisma.Decimal;
++  unitRateSnapshot: Prisma.Decimal;
++  amount: Prisma.Decimal;
++  date: Date;
++  parcelleId: string | null;
++  geoLat: number | null;
++  geoLng: number | null;
++  photoKey: string | null;
++  notes: string | null;
++  status: PointageStatus;
++  enteredById: string;
++  validatedById: string | null;
++  validatedAt: Date | null;
++  rejectionReason: string | null;
++  bioCheckId: string | null;
++  createdByClientAt: Date;
++  syncedAt: Date;
++  createdAt: Date;
++  updatedAt: Date;
++  bioCheck: PointageBioCheckSummary | null;
++}
++
++function buildWhere(filters: ListPointagesFilters): Prisma.PointageWhereInput {
++  const where: Prisma.PointageWhereInput = {};
++  if (filters.status) where.status = filters.status;
++  if (filters.workerId) where.workerId = filters.workerId;
++  if (filters.activityId) where.activityId = filters.activityId;
++  if (filters.dateFrom || filters.dateTo) {
++    where.date = {};
++    if (filters.dateFrom) where.date.gte = filters.dateFrom;
++    if (filters.dateTo) where.date.lte = filters.dateTo;
++  }
++  return where;
++}
++
++async function fetchLatestBioChecksByWorkerWeek(
++  pairs: Array<{ workerId: string; weekIso: string }>,
++): Promise<Map<string, PointageBioCheckSummary>> {
++  const map = new Map<string, PointageBioCheckSummary>();
++  if (pairs.length === 0) return map;
++
++  const checks = await prisma.biometricCheck.findMany({
++    where: { OR: pairs.map(({ workerId, weekIso }) => ({ workerId, weekIso })) },
++    orderBy: { performedAt: "desc" },
++    select: { workerId: true, weekIso: true, result: true, performedAt: true },
++  });
++
++  for (const check of checks) {
++    if (!check.weekIso) continue;
++    const key = `${check.workerId}:${check.weekIso}`;
++    if (!map.has(key)) {
++      map.set(key, { result: check.result, performedAt: check.performedAt });
++    }
++  }
++
++  return map;
++}
++
++export async function listPointages(filters: ListPointagesFilters) {
++  const take = 50;
++  const where = buildWhere(filters);
++
++  const pointages = await prisma.pointage.findMany({
++    where,
++    take: take + 1,
++    ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
++    orderBy: { createdAt: "desc" },
++  });
++
++  const hasMore = pointages.length > take;
++  const page = hasMore ? pointages.slice(0, take) : pointages;
++
++  const workerWeekPairs = page.map((p) => ({
++    workerId: p.workerId,
++    weekIso: getIsoWeekString(p.date),
++  }));
++  const uniquePairs = [
++    ...new Map(workerWeekPairs.map((pair) => [`${pair.workerId}:${pair.weekIso}`, pair])).values(),
++  ];
++  const bioByKey = await fetchLatestBioChecksByWorkerWeek(uniquePairs);
++
++  const data: PointageListItem[] = page.map((pointage) => {
++    const weekIso = getIsoWeekString(pointage.date);
++    const bioCheck = bioByKey.get(`${pointage.workerId}:${weekIso}`) ?? null;
++    return { ...pointage, bioCheck };
++  });
++
++  return {
++    data,
++    nextCursor: hasMore ? data[data.length - 1]?.id ?? null : null,
++    hasMore,
++  };
++}
+diff --git a/backend/src/services/pointages/sync.service.ts b/backend/src/services/pointages/sync.service.ts
+new file mode 100644
+index 0000000..28fd57c
+--- /dev/null
++++ b/backend/src/services/pointages/sync.service.ts
+@@ -0,0 +1,78 @@
++import { Prisma } from "@prisma/client";
++import { prisma } from "../../lib/prisma.js";
++
++export interface SyncPointageItem {
++  clientUuid: string;
++  workerId: string;
++  activityId: string;
++  quantity: number;
++  date: Date;
++  parcelleId?: string;
++  geoLat?: number;
++  geoLng?: number;
++  notes?: string;
++  createdByClientAt: Date;
++}
++
++export type SyncPointageResultStatus = "created" | "already_exists" | "rejected";
++
++export interface SyncPointageResult {
++  clientUuid: string;
++  status: SyncPointageResultStatus;
++  id?: string;
++  reason?: string;
++}
++
++export async function syncPointageBatch(
++  batch: SyncPointageItem[],
++  enteredById: string,
++): Promise<SyncPointageResult[]> {
++  const results: SyncPointageResult[] = [];
++
++  for (const item of batch) {
++    try {
++      const activity = await prisma.activity.findUniqueOrThrow({
++        where: { id: item.activityId },
++      });
++      const amount = item.quantity * Number(activity.unitRate);
++
++      const created = await prisma.pointage.create({
++        data: {
++          clientUuid: item.clientUuid,
++          workerId: item.workerId,
++          activityId: item.activityId,
++          quantity: item.quantity,
++          unitRateSnapshot: activity.unitRate,
++          amount,
++          date: item.date,
++          parcelleId: item.parcelleId,
++          geoLat: item.geoLat,
++          geoLng: item.geoLng,
++          notes: item.notes,
++          enteredById,
++          createdByClientAt: item.createdByClientAt,
++        },
++      });
++      results.push({ clientUuid: item.clientUuid, status: "created", id: created.id });
++    } catch (err) {
++      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
++        const existing = await prisma.pointage.findUnique({
++          where: { clientUuid: item.clientUuid },
++        });
++        results.push({
++          clientUuid: item.clientUuid,
++          status: "already_exists",
++          id: existing?.id,
++        });
++      } else {
++        results.push({
++          clientUuid: item.clientUuid,
++          status: "rejected",
++          reason: err instanceof Error ? err.message : "unknown_error",
++        });
++      }
++    }
++  }
++
++  return results;
++}
+diff --git a/backend/src/services/pointages/validation.service.ts b/backend/src/services/pointages/validation.service.ts
+new file mode 100644
+index 0000000..cd8ba5f
+--- /dev/null
++++ b/backend/src/services/pointages/validation.service.ts
+@@ -0,0 +1,66 @@
++import { BioContext, BioResult } from "@prisma/client";
++import { prisma } from "../../lib/prisma.js";
++import { ApiError } from "../../middleware/error-handler.js";
++import { getIsoWeekString } from "../../lib/week-iso.js";
++
++const VALIDATION_BIO_CONTEXTS: BioContext[] = [
++  BioContext.WEEKLY_VALIDATION,
++  BioContext.POINTAGE_TASK,
++];
++
++export async function assertBioOkForValidation(workerId: string, pointageDate: Date): Promise<void> {
++  const weekIso = getIsoWeekString(pointageDate);
++
++  const bioCheck = await prisma.biometricCheck.findFirst({
++    where: {
++      workerId,
++      weekIso,
++      result: BioResult.OK,
++      context: { in: VALIDATION_BIO_CONTEXTS },
++    },
++    orderBy: { performedAt: "desc" },
++  });
++
++  if (!bioCheck) {
++    throw new ApiError(
++      422,
++      "BIO_NOT_OK",
++      "Biometric check OK required for validation in the pointage week",
++    );
++  }
++}
++
++export async function validatePointage(id: string, validatedById: string) {
++  const existing = await prisma.pointage.findUniqueOrThrow({ where: { id } });
++  await assertBioOkForValidation(existing.workerId, existing.date);
++
++  return prisma.pointage.update({
++    where: { id },
++    data: {
++      status: "VALIDATED",
++      validatedById,
++      validatedAt: new Date(),
++      rejectionReason: null,
++    },
++  });
++}
++
++export async function rejectPointage(
++  id: string,
++  validatedById: string,
++  rejectionReason: string,
++) {
++  if (rejectionReason.trim().length < 3) {
++    throw new ApiError(422, "REJECTION_REASON_REQUIRED", "Rejection reason must be at least 3 characters");
++  }
++
++  return prisma.pointage.update({
++    where: { id },
++    data: {
++      status: "REJECTED",
++      rejectionReason: rejectionReason.trim(),
++      validatedById,
++      validatedAt: new Date(),
++    },
++  });
++}

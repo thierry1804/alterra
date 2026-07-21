@@ -65,6 +65,7 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
         lastName: user.lastName,
         role: user.role,
         siteId: user.siteId,
+        teamId: user.teamId,
       },
     });
   } catch (err) {
@@ -131,6 +132,7 @@ authRouter.get("/me", requireAuth, async (req, res, next) => {
       lastName: user.lastName,
       role: user.role,
       siteId: user.siteId,
+      teamId: user.teamId,
     });
   } catch (err) {
     next(err);

@@ -1,0 +1,878 @@
+﻿diff --git a/.env.example b/.env.example
+index 9ac1155..d051ffe 100644
+--- a/.env.example
++++ b/.env.example
+@@ -22,6 +22,9 @@ JWT_REFRESH_SECRET="change-me-256-bits-minimum-dev-only-refresh-secret"
+ JWT_ACCESS_TTL="15m"
+ JWT_REFRESH_TTL="7d"
+ 
++# --- MFA TOTP (32 bytes hex = 64 chars) ---
++MFA_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
++
+ # --- Server ---
+ NODE_ENV="development"
+ PORT=3001
+diff --git a/.superpowers/sdd/task-4-report.md b/.superpowers/sdd/task-4-report.md
+new file mode 100644
+index 0000000..1da6484
+--- /dev/null
++++ b/.superpowers/sdd/task-4-report.md
+@@ -0,0 +1,105 @@
++# Task 4 Report ÔÇö Module BE-AUTH : Authentification
++
++**Date:** 2026-07-21  
++**Branch:** `feat/backlog-implementation`  
++**Commit:** _(see git log)_  
++**Status:** Ô£à Complet ÔÇö login, refresh rotation, logout, MFA TOTP Admin
++
++---
++
++## Checklist
++
++| Step | Item | Status |
++| ---- | ---- | ------ |
++| 1 | Login Argon2id + JWT HS256 (access 15 min) | Ô£à |
++| 2 | Refresh token HttpOnly 7j avec rotation + blacklist Redis | Ô£à |
++| 3 | Logout r├®vocation DB + blacklist + clear cookie | Ô£à |
++| 4 | MFA TOTP Admin (secret chiffr├® AES-256-GCM) | Ô£à |
++| 5 | Tests unitaires auth (vitest + supertest, mocks Prisma) | Ô£à |
++| 6 | `npm run lint -w backend && npm run test -w backend` | Ô£à PASS |
++
++---
++
++## Changements principaux
++
++### Redis (`backend/src/lib/redis.ts`)
++
++- Client lazy via `REDIS_URL`
++- Fallback in-memory automatique si `NODE_ENV=test` ou si Redis injoignable
++- Fonctions `blacklistRefreshToken()` / `isRefreshTokenBlacklisted()` avec pr├®fixe `refresh:blacklist:`
++
++### Refresh token service (`backend/src/services/auth/refresh.service.ts`)
++
++- Token al├®atoire 32 bytes (base64url), hash SHA-256 en DB (`RefreshToken.tokenHash`)
++- Cookie HttpOnly `refreshToken`, 7 jours, SameSite strict
++- Rotation : r├®voque l'ancien, blacklist Redis (TTL = dur├®e restante), ├®met nouveau token + access JWT
++- Logout : r├®vocation DB + blacklist + `clearCookie`
++
++### JWT (`backend/src/lib/jwt.ts`)
++
++- Algorithme explicite `HS256` sur sign et verify
++- Payload access : `{ sub, role, siteId }`
++- Suppression des refresh JWT (remplac├®s par tokens opaques)
++
++### MFA (`backend/src/services/auth/mfa.service.ts`)
++
++- `otplib` v13 (`generateSecret`, `generateURI`, `verifySync`)
++- Chiffrement AES-256-GCM via `MFA_ENCRYPTION_KEY` (64 hex = 32 bytes)
++- Endpoints :
++  - `POST /auth/mfa/setup` ÔÇö ADMIN, retourne `otpauthUrl`
++  - `POST /auth/mfa/verify` ÔÇö ADMIN, active MFA apr├¿s code TOTP
++- Login : si `role=ADMIN` et `mfaSecret` d├®fini ÔåÆ `mfaCode` obligatoire
++
++### Routes (`backend/src/routes/auth.routes.ts`)
++
++- Login, refresh, logout, me, mfa/setup, mfa/verify refactoris├®s
++
++### Env
++
++- `.env.example` : ajout `MFA_ENCRYPTION_KEY`
++
++### Tests (`backend/src/__tests__/auth.test.ts`)
++
++- Mock Prisma (pas de Docker requis)
++- 5 tests : credentials invalides, login OK, HS256, refresh sans cookie, MFA requis
++
++---
++
++## Tests & lint
++
++```
++npm run lint -w backend  ÔåÆ PASS
++npm run test -w backend  ÔåÆ PASS
++  Ô£ô auth: invalid credentials ÔåÆ 401
++  Ô£ô auth: valid login ÔåÆ 200 + accessToken + cookie
++  Ô£ô auth: JWT header alg = HS256
++  Ô£ô auth: refresh without cookie ÔåÆ 401
++  Ô£ô auth: MFA required when mfaSecret set
++  Ô£ô health endpoints (├ù2)
++  ÔåÀ seed data counts (skipped ÔÇö DB unavailable)
++  (7 passed | 1 skipped, 8 total)
++```
++
++---
++
++## Notes techniques
++
++- **Redis test** : `vitest.config.ts` force `NODE_ENV=test` ÔåÆ store in-memory, pas de Docker Redis
++- **otplib v13** : API fonctionnelle (`generateSecret`, `verifySync`) ÔÇö pas de namespace `authenticator`
++- **Pending MFA** : secret temporaire en m├®moire (Map) pendant 10 min entre setup et verify
++
++---
++
++## Fichiers touch├®s
++
++| Fichier | Action |
++| ------- | ------ |
++| `backend/src/lib/redis.ts` | Cr├®├® |
++| `backend/src/services/auth/refresh.service.ts` | Cr├®├® |
++| `backend/src/services/auth/mfa.service.ts` | Cr├®├® |
++| `backend/src/lib/jwt.ts` | Modifi├® |
++| `backend/src/routes/auth.routes.ts` | Modifi├® |
++| `backend/src/__tests__/auth.test.ts` | Cr├®├® |
++| `backend/vitest.config.ts` | Modifi├® |
++| `backend/package.json` | +otplib |
++| `.env.example` | +MFA_ENCRYPTION_KEY |
+diff --git a/backend/package.json b/backend/package.json
+index 0002f9b..cb49760 100644
+--- a/backend/package.json
++++ b/backend/package.json
+@@ -28,6 +28,7 @@
+     "helmet": "^7.1.0",
+     "jsonwebtoken": "^9.0.2",
+     "minio": "^8.0.1",
++    "otplib": "^13.4.1",
+     "pino": "^9.4.0",
+     "pino-http": "^10.3.0",
+     "rate-limit-redis": "^4.2.0",
+diff --git a/backend/src/__tests__/auth.test.ts b/backend/src/__tests__/auth.test.ts
+new file mode 100644
+index 0000000..93ee166
+--- /dev/null
++++ b/backend/src/__tests__/auth.test.ts
+@@ -0,0 +1,138 @@
++import { Role } from "@prisma/client";
++import argon2 from "argon2";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import request from "supertest";
++import { createApp } from "../app.js";
++import { decodeTokenHeader } from "../lib/jwt.js";
++import { resetRedisForTests } from "../lib/redis.js";
++import { encryptMfaSecret, clearPendingMfaForTests } from "../services/auth/mfa.service.js";
++import { generateSecret, generateSync } from "otplib";
++
++const MOCK_USER_ID = "00000000-0000-4000-8000-000000000001";
++const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
++
++const mockUser = {
++  id: MOCK_USER_ID,
++  email: "admin@alterra.mg",
++  passwordHash: "",
++  role: Role.ADMIN,
++  firstName: "Admin",
++  lastName: "ALTERRA",
++  active: true,
++  mfaSecret: null as string | null,
++  siteId: MOCK_SITE_ID,
++  lastLoginAt: null,
++};
++
++vi.mock("../lib/prisma.js", () => ({
++  prisma: {
++    user: {
++      findUnique: vi.fn(),
++      findUniqueOrThrow: vi.fn(),
++      update: vi.fn(),
++    },
++    refreshToken: {
++      create: vi.fn(),
++      findUnique: vi.fn(),
++      update: vi.fn(),
++    },
++    $queryRaw: vi.fn(),
++  },
++}));
++
++import { prisma } from "../lib/prisma.js";
++
++describe("auth endpoints", () => {
++  beforeEach(async () => {
++    vi.clearAllMocks();
++    await resetRedisForTests();
++    clearPendingMfaForTests();
++    mockUser.passwordHash = await argon2.hash("ChangeMe123!", { type: argon2.argon2id });
++    mockUser.mfaSecret = null;
++
++    vi.mocked(prisma.user.findUnique).mockImplementation(async ({ where }) => {
++      if ("email" in where && where.email === mockUser.email) return { ...mockUser };
++      if ("id" in where && where.id === mockUser.id) return { ...mockUser };
++      return null;
++    });
++    vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
++    vi.mocked(prisma.refreshToken.create).mockResolvedValue({
++      id: "rt-1",
++      userId: MOCK_USER_ID,
++      tokenHash: "hash",
++      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
++      revokedAt: null,
++      deviceInfo: null,
++      createdAt: new Date(),
++    });
++    vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error("DB unavailable"));
++  });
++
++  afterEach(async () => {
++    await resetRedisForTests();
++    clearPendingMfaForTests();
++  });
++
++  it("POST /auth/login with invalid credentials returns 401", async () => {
++    const app = createApp();
++    const res = await request(app)
++      .post("/api/v1/auth/login")
++      .send({ email: "admin@alterra.mg", password: "wrong-password" });
++
++    expect(res.status).toBe(401);
++    expect(res.body.code).toBe("INVALID_CREDENTIALS");
++  });
++
++  it("POST /auth/login with valid credentials returns 200 and accessToken", async () => {
++    const app = createApp();
++    const res = await request(app)
++      .post("/api/v1/auth/login")
++      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
++
++    expect(res.status).toBe(200);
++    expect(res.body.accessToken).toBeTypeOf("string");
++    expect(res.body.user.email).toBe("admin@alterra.mg");
++    expect(prisma.refreshToken.create).toHaveBeenCalledOnce();
++    expect(res.headers["set-cookie"]).toBeDefined();
++  });
++
++  it("access token is signed with HS256", async () => {
++    const app = createApp();
++    const res = await request(app)
++      .post("/api/v1/auth/login")
++      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
++
++    const header = decodeTokenHeader(res.body.accessToken);
++    expect(header.alg).toBe("HS256");
++  });
++
++  it("POST /auth/refresh without cookie returns 401", async () => {
++    const app = createApp();
++    const res = await request(app).post("/api/v1/auth/refresh");
++
++    expect(res.status).toBe(401);
++    expect(res.body.code).toBe("MISSING_REFRESH_TOKEN");
++  });
++
++  it("POST /auth/login requires MFA when admin has mfaSecret set", async () => {
++    const secret = generateSecret();
++    mockUser.mfaSecret = encryptMfaSecret(secret);
++
++    const app = createApp();
++
++    const withoutMfa = await request(app)
++      .post("/api/v1/auth/login")
++      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
++
++    expect(withoutMfa.status).toBe(401);
++    expect(withoutMfa.body.code).toBe("MFA_REQUIRED");
++
++    const code = generateSync({ secret });
++    const withMfa = await request(app)
++      .post("/api/v1/auth/login")
++      .send({ email: "admin@alterra.mg", password: "ChangeMe123!", mfaCode: code });
++
++    expect(withMfa.status).toBe(200);
++    expect(withMfa.body.accessToken).toBeTypeOf("string");
++  });
++});
+diff --git a/backend/src/lib/jwt.ts b/backend/src/lib/jwt.ts
+index 22ef681..d91ddb9 100644
+--- a/backend/src/lib/jwt.ts
++++ b/backend/src/lib/jwt.ts
+@@ -8,26 +8,29 @@ export interface AccessTokenPayload {
+ }
+ 
+ const ACCESS_SECRET = process.env.JWT_SECRET!;
+-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
+ const ACCESS_TTL = (process.env.JWT_ACCESS_TTL ?? "15m") as jwt.SignOptions["expiresIn"];
+-const REFRESH_TTL = (process.env.JWT_REFRESH_TTL ?? "7d") as jwt.SignOptions["expiresIn"];
++const JWT_ALGORITHM = "HS256" as const;
+ 
+-if (!ACCESS_SECRET || !REFRESH_SECRET) {
+-  throw new Error("JWT_SECRET / JWT_REFRESH_SECRET must be set");
++if (!ACCESS_SECRET) {
++  throw new Error("JWT_SECRET must be set");
+ }
+ 
+ export function signAccessToken(payload: AccessTokenPayload): string {
+-  return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_TTL });
+-}
+-
+-export function signRefreshToken(userId: string): string {
+-  return jwt.sign({ sub: userId }, REFRESH_SECRET, { expiresIn: REFRESH_TTL });
++  return jwt.sign(payload, ACCESS_SECRET, {
++    expiresIn: ACCESS_TTL,
++    algorithm: JWT_ALGORITHM,
++  });
+ }
+ 
+ export function verifyAccessToken(token: string): AccessTokenPayload {
+-  return jwt.verify(token, ACCESS_SECRET) as AccessTokenPayload;
++  return jwt.verify(token, ACCESS_SECRET, { algorithms: [JWT_ALGORITHM] }) as AccessTokenPayload;
+ }
+ 
+-export function verifyRefreshToken(token: string): { sub: string } {
+-  return jwt.verify(token, REFRESH_SECRET) as { sub: string };
++/** Decode JWT header without verifying signature (tests). */
++export function decodeTokenHeader(token: string): jwt.JwtHeader {
++  const decoded = jwt.decode(token, { complete: true });
++  if (!decoded || typeof decoded === "string") {
++    throw new Error("Invalid token");
++  }
++  return decoded.header;
+ }
+diff --git a/backend/src/lib/redis.ts b/backend/src/lib/redis.ts
+new file mode 100644
+index 0000000..85f6776
+--- /dev/null
++++ b/backend/src/lib/redis.ts
+@@ -0,0 +1,81 @@
++import { createClient, type RedisClientType } from "redis";
++import { logger } from "./logger.js";
++
++const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
++const USE_IN_MEMORY =
++  process.env.NODE_ENV === "test" || process.env.REDIS_IN_MEMORY === "true";
++
++type RedisLike = {
++  setEx(key: string, ttlSeconds: number, value: string): Promise<void>;
++  get(key: string): Promise<string | null>;
++};
++
++class InMemoryRedis implements RedisLike {
++  private store = new Map<string, { value: string; expiresAt: number }>();
++
++  async setEx(key: string, ttlSeconds: number, value: string): Promise<void> {
++    this.store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
++  }
++
++  async get(key: string): Promise<string | null> {
++    const entry = this.store.get(key);
++    if (!entry) return null;
++    if (Date.now() > entry.expiresAt) {
++      this.store.delete(key);
++      return null;
++    }
++    return entry.value;
++  }
++}
++
++let client: RedisLike | null = null;
++let initPromise: Promise<RedisLike> | null = null;
++
++async function connectRedis(): Promise<RedisLike> {
++  if (USE_IN_MEMORY) {
++    logger.info("Redis: in-memory fallback (test or REDIS_IN_MEMORY=true)");
++    return new InMemoryRedis();
++  }
++
++  const redis = createClient({ url: REDIS_URL }) as RedisClientType;
++  redis.on("error", (err) => logger.warn({ err }, "Redis client error"));
++
++  try {
++    await redis.connect();
++    logger.info("Redis: connected");
++    return {
++      setEx: (key, ttl, value) => redis.setEx(key, ttl, value),
++      get: (key) => redis.get(key),
++    };
++  } catch (err) {
++    logger.warn({ err }, "Redis unavailable ÔÇö using in-memory fallback");
++    return new InMemoryRedis();
++  }
++}
++
++/** Lazy singleton. Falls back to in-memory store in test or when Redis is down. */
++export async function getRedis(): Promise<RedisLike> {
++  if (client) return client;
++  if (!initPromise) initPromise = connectRedis().then((c) => (client = c));
++  return initPromise;
++}
++
++const BLACKLIST_PREFIX = "refresh:blacklist:";
++
++export async function blacklistRefreshToken(tokenHash: string, ttlSeconds: number): Promise<void> {
++  if (ttlSeconds <= 0) return;
++  const redis = await getRedis();
++  await redis.setEx(`${BLACKLIST_PREFIX}${tokenHash}`, ttlSeconds, "1");
++}
++
++export async function isRefreshTokenBlacklisted(tokenHash: string): Promise<boolean> {
++  const redis = await getRedis();
++  const value = await redis.get(`${BLACKLIST_PREFIX}${tokenHash}`);
++  return value !== null;
++}
++
++/** Reset client between tests. */
++export async function resetRedisForTests(): Promise<void> {
++  client = null;
++  initPromise = null;
++}
+diff --git a/backend/src/routes/auth.routes.ts b/backend/src/routes/auth.routes.ts
+index 8e3af9f..ab1cb08 100644
+--- a/backend/src/routes/auth.routes.ts
++++ b/backend/src/routes/auth.routes.ts
+@@ -1,46 +1,56 @@
+ import { Router } from "express";
+ import argon2 from "argon2";
++import { Role } from "@prisma/client";
+ import { z } from "zod";
+ import { prisma } from "../lib/prisma.js";
+-import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt.js";
++import { signAccessToken } from "../lib/jwt.js";
+ import { validate } from "../middleware/validate.js";
+ import { requireAuth } from "../middleware/auth.js";
++import { requireRole } from "../middleware/rbac.js";
+ import { ApiError } from "../middleware/error-handler.js";
++import {
++  REFRESH_COOKIE,
++  issueRefreshToken,
++  revokeRefreshToken,
++  rotateRefreshToken,
++} from "../services/auth/refresh.service.js";
++import { activateMfa, setupMfa, verifyLoginMfa } from "../services/auth/mfa.service.js";
+ 
+ export const authRouter = Router();
+ 
+-const REFRESH_COOKIE = "refreshToken";
+-const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+-
+ const loginSchema = z.object({
+   email: z.string().email(),
+   password: z.string().min(8),
+   mfaCode: z.string().length(6).optional(),
+ });
+ 
++const mfaVerifySchema = z.object({
++  code: z.string().length(6),
++});
++
+ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => {
+   try {
+-    const { email, password } = req.body;
++    const { email, password, mfaCode } = req.body;
+     const user = await prisma.user.findUnique({ where: { email } });
+ 
+     if (!user || !user.active || !(await argon2.verify(user.passwordHash, password))) {
+       throw new ApiError(401, "INVALID_CREDENTIALS", "Email ou mot de passe incorrect");
+     }
+ 
+-    // TODO V1: v├®rifier mfaCode si user.mfaSecret est d├®fini (obligatoire ADMIN).
++    if (user.role === Role.ADMIN && user.mfaSecret) {
++      if (!mfaCode) {
++        throw new ApiError(401, "MFA_REQUIRED", "MFA code required for admin login");
++      }
++      if (!verifyLoginMfa(user.mfaSecret, mfaCode)) {
++        throw new ApiError(401, "INVALID_MFA_CODE", "Invalid MFA code");
++      }
++    }
+ 
+     const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
+-    const refreshToken = signRefreshToken(user.id);
++    await issueRefreshToken(user.id, res, req.headers["user-agent"]);
+ 
+     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+ 
+-    res.cookie(REFRESH_COOKIE, refreshToken, {
+-      httpOnly: true,
+-      secure: process.env.NODE_ENV === "production",
+-      sameSite: "strict",
+-      maxAge: REFRESH_MAX_AGE_MS,
+-    });
+-
+     res.json({
+       accessToken,
+       user: {
+@@ -62,23 +72,50 @@ authRouter.post("/auth/refresh", async (req, res, next) => {
+     const token = req.cookies?.[REFRESH_COOKIE];
+     if (!token) throw new ApiError(401, "MISSING_REFRESH_TOKEN", "No refresh cookie present");
+ 
+-    const { sub } = verifyRefreshToken(token);
+-    const user = await prisma.user.findUnique({ where: { id: sub } });
+-    if (!user || !user.active)
+-      throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
+-
+-    const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
++    const { accessToken } = await rotateRefreshToken(token, res);
+     res.json({ accessToken });
+   } catch (err) {
+     next(err);
+   }
+ });
+ 
+-authRouter.post("/auth/logout", requireAuth, (_req, res) => {
+-  res.clearCookie(REFRESH_COOKIE);
+-  res.status(204).send();
++authRouter.post("/auth/logout", requireAuth, async (req, res, next) => {
++  try {
++    await revokeRefreshToken(req.cookies?.[REFRESH_COOKIE], res);
++    res.status(204).send();
++  } catch (err) {
++    next(err);
++  }
++});
++
++authRouter.post("/auth/mfa/setup", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
++  try {
++    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.sub } });
++    if (!user.email) {
++      throw new ApiError(400, "EMAIL_REQUIRED", "Admin account must have an email for MFA setup");
++    }
++    const { otpauthUrl } = setupMfa(user.id, user.email);
++    res.json({ otpauthUrl });
++  } catch (err) {
++    next(err);
++  }
+ });
+ 
++authRouter.post(
++  "/auth/mfa/verify",
++  requireAuth,
++  requireRole(Role.ADMIN),
++  validate(mfaVerifySchema),
++  async (req, res, next) => {
++    try {
++      await activateMfa(req.user!.sub, req.body.code);
++      res.json({ activated: true });
++    } catch (err) {
++      next(err);
++    }
++  },
++);
++
+ authRouter.get("/me", requireAuth, async (req, res, next) => {
+   try {
+     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.sub } });
+diff --git a/backend/src/services/auth/mfa.service.ts b/backend/src/services/auth/mfa.service.ts
+new file mode 100644
+index 0000000..b1146cf
+--- /dev/null
++++ b/backend/src/services/auth/mfa.service.ts
+@@ -0,0 +1,80 @@
++import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
++import { generateSecret, generateURI, verifySync } from "otplib";
++import { prisma } from "../../lib/prisma.js";
++import { ApiError } from "../../middleware/error-handler.js";
++
++const ALGORITHM = "aes-256-gcm";
++const IV_LENGTH = 12;
++const PENDING_TTL_MS = 10 * 60 * 1000;
++
++interface PendingMfa {
++  secret: string;
++  expiresAt: number;
++}
++
++const pendingSecrets = new Map<string, PendingMfa>();
++
++function getEncryptionKey(): Buffer {
++  const raw = process.env.MFA_ENCRYPTION_KEY;
++  if (!raw || raw.length !== 64) {
++    throw new Error("MFA_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)");
++  }
++  return Buffer.from(raw, "hex");
++}
++
++export function encryptMfaSecret(plaintext: string): string {
++  const key = getEncryptionKey();
++  const iv = randomBytes(IV_LENGTH);
++  const cipher = createCipheriv(ALGORITHM, key, iv);
++  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
++  const authTag = cipher.getAuthTag();
++  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
++}
++
++export function decryptMfaSecret(stored: string): string {
++  const key = getEncryptionKey();
++  const [ivHex, authTagHex, dataHex] = stored.split(":");
++  if (!ivHex || !authTagHex || !dataHex) {
++    throw new Error("Invalid encrypted MFA secret format");
++  }
++  const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
++  decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
++  return Buffer.concat([decipher.update(Buffer.from(dataHex, "hex")), decipher.final()]).toString(
++    "utf8",
++  );
++}
++
++/** Generate TOTP secret and otpauth URL; pending until verified. */
++export function setupMfa(userId: string, email: string) {
++  const secret = generateSecret();
++  pendingSecrets.set(userId, { secret, expiresAt: Date.now() + PENDING_TTL_MS });
++  const otpauthUrl = generateURI({ issuer: "ALTERRA", label: email, secret });
++  return { otpauthUrl, secret };
++}
++
++/** Confirm TOTP code and persist encrypted secret. */
++export async function activateMfa(userId: string, code: string): Promise<void> {
++  const pending = pendingSecrets.get(userId);
++  if (!pending || pending.expiresAt < Date.now()) {
++    throw new ApiError(400, "MFA_SETUP_EXPIRED", "MFA setup session expired ÔÇö restart setup");
++  }
++
++  if (!verifySync({ secret: pending.secret, token: code }).valid) {
++    throw new ApiError(401, "INVALID_MFA_CODE", "Invalid MFA code");
++  }
++
++  const encrypted = encryptMfaSecret(pending.secret);
++  await prisma.user.update({ where: { id: userId }, data: { mfaSecret: encrypted } });
++  pendingSecrets.delete(userId);
++}
++
++/** Verify TOTP at login for Admin users with MFA enabled. */
++export function verifyLoginMfa(encryptedSecret: string, code: string): boolean {
++  const secret = decryptMfaSecret(encryptedSecret);
++  return verifySync({ secret, token: code }).valid;
++}
++
++/** Clear pending MFA state (tests). */
++export function clearPendingMfaForTests(): void {
++  pendingSecrets.clear();
++}
+diff --git a/backend/src/services/auth/refresh.service.ts b/backend/src/services/auth/refresh.service.ts
+new file mode 100644
+index 0000000..ef8383e
+--- /dev/null
++++ b/backend/src/services/auth/refresh.service.ts
+@@ -0,0 +1,101 @@
++import { createHash, randomBytes } from "node:crypto";
++import type { Response } from "express";
++import { prisma } from "../../lib/prisma.js";
++import { blacklistRefreshToken, isRefreshTokenBlacklisted } from "../../lib/redis.js";
++import { signAccessToken } from "../../lib/jwt.js";
++import { ApiError } from "../../middleware/error-handler.js";
++
++export const REFRESH_COOKIE = "refreshToken";
++export const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
++
++function hashToken(raw: string): string {
++  return createHash("sha256").update(raw).digest("hex");
++}
++
++function cookieOptions() {
++  return {
++    httpOnly: true,
++    secure: process.env.NODE_ENV === "production",
++    sameSite: "strict" as const,
++    maxAge: REFRESH_MAX_AGE_MS,
++  };
++}
++
++function remainingTtlSeconds(expiresAt: Date): number {
++  return Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
++}
++
++export function generateRawRefreshToken(): string {
++  return randomBytes(32).toString("base64url");
++}
++
++/** Issue a new refresh token, persist hash in DB, set HttpOnly cookie. */
++export async function issueRefreshToken(
++  userId: string,
++  res: Response,
++  deviceInfo?: string,
++): Promise<void> {
++  const raw = generateRawRefreshToken();
++  const tokenHash = hashToken(raw);
++  const expiresAt = new Date(Date.now() + REFRESH_MAX_AGE_MS);
++
++  await prisma.refreshToken.create({
++    data: { userId, tokenHash, expiresAt, deviceInfo },
++  });
++
++  res.cookie(REFRESH_COOKIE, raw, cookieOptions());
++}
++
++/** Rotate refresh token: verify, revoke old, blacklist, issue new access + refresh. */
++export async function rotateRefreshToken(rawToken: string, res: Response) {
++  const tokenHash = hashToken(rawToken);
++
++  if (await isRefreshTokenBlacklisted(tokenHash)) {
++    throw new ApiError(401, "REVOKED_REFRESH_TOKEN", "Refresh token has been revoked");
++  }
++
++  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
++  if (!stored || stored.revokedAt || stored.expiresAt <= new Date()) {
++    throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
++  }
++
++  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
++  if (!user || !user.active) {
++    throw new ApiError(401, "INVALID_REFRESH_TOKEN", "User not found or inactive");
++  }
++
++  const ttl = remainingTtlSeconds(stored.expiresAt);
++  await prisma.refreshToken.update({
++    where: { id: stored.id },
++    data: { revokedAt: new Date() },
++  });
++  await blacklistRefreshToken(tokenHash, ttl);
++
++  await issueRefreshToken(user.id, res, stored.deviceInfo ?? undefined);
++
++  const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
++  return { accessToken, user };
++}
++
++/** Revoke a refresh token from cookie value, blacklist in Redis, clear cookie. */
++export async function revokeRefreshToken(rawToken: string | undefined, res: Response): Promise<void> {
++  res.clearCookie(REFRESH_COOKIE, {
++    httpOnly: true,
++    secure: process.env.NODE_ENV === "production",
++    sameSite: "strict",
++  });
++
++  if (!rawToken) return;
++
++  const tokenHash = hashToken(rawToken);
++  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
++
++  if (stored && !stored.revokedAt) {
++    const ttl = remainingTtlSeconds(stored.expiresAt);
++    await prisma.refreshToken.update({
++      where: { id: stored.id },
++      data: { revokedAt: new Date() },
++    });
++    await blacklistRefreshToken(tokenHash, ttl);
++  }
++}
+diff --git a/backend/vitest.config.ts b/backend/vitest.config.ts
+index ca48c5e..bda4821 100644
+--- a/backend/vitest.config.ts
++++ b/backend/vitest.config.ts
+@@ -3,6 +3,7 @@ import { config } from "dotenv";
+ import { resolve } from "node:path";
+ 
+ config({ path: resolve(import.meta.dirname, ".env") });
++process.env.NODE_ENV = "test";
+ 
+ export default defineConfig({
+   test: {
+diff --git a/package-lock.json b/package-lock.json
+index a17c81c..9f211e6 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -59,6 +59,7 @@
+         "helmet": "^7.1.0",
+         "jsonwebtoken": "^9.0.2",
+         "minio": "^8.0.1",
++        "otplib": "^13.4.1",
+         "pino": "^9.4.0",
+         "pino-http": "^10.3.0",
+         "rate-limit-redis": "^4.2.0",
+@@ -2593,6 +2594,74 @@
+         "node": ">= 8"
+       }
+     },
++    "node_modules/@otplib/core": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/core/-/core-13.4.1.tgz",
++      "integrity": "sha512-KIXgK1hNtWJEBMTastbe1bpmuais+3f+ATeO8TkMs2rNkfGO1FbQy8+/UWVEu3TR/iTJerU0idkPudaPmLP2BA==",
++      "license": "MIT"
++    },
++    "node_modules/@otplib/hotp": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/hotp/-/hotp-13.4.1.tgz",
++      "integrity": "sha512-g9q04SwpG5ZtMnVkUcgcoAlwCH4YLROZN1qhyBwgkBzqYYVSYhpP6gSGaxGHwePLt1c+e6NqDlgIZN+e1/XPuA==",
++      "license": "MIT",
++      "dependencies": {
++        "@otplib/core": "13.4.1",
++        "@otplib/uri": "13.4.1"
++      }
++    },
++    "node_modules/@otplib/plugin-base32-scure": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/plugin-base32-scure/-/plugin-base32-scure-13.4.1.tgz",
++      "integrity": "sha512-Fs/r5qisC05SRhT6xWXaypB6PVC0vgWf6zztmi0J5RnQ09OJiPDWCJFH6cDm6ANsrdvB9di7X+Jb7L13BoEbUA==",
++      "license": "MIT",
++      "dependencies": {
++        "@otplib/core": "13.4.1",
++        "@scure/base": "^2.2.0"
++      }
++    },
++    "node_modules/@otplib/plugin-crypto-noble": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/plugin-crypto-noble/-/plugin-crypto-noble-13.4.1.tgz",
++      "integrity": "sha512-PJfVW8/1hdS6CfxLheKPZSLTwDq4TijZbN4yRjxlv0ODdzmxpM+wGwWr1JXMdy0xJPxLziydQD5gdVqrR4/gAg==",
++      "license": "MIT",
++      "dependencies": {
++        "@noble/hashes": "^2.2.0",
++        "@otplib/core": "13.4.1"
++      }
++    },
++    "node_modules/@otplib/plugin-crypto-noble/node_modules/@noble/hashes": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.2.0.tgz",
++      "integrity": "sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 20.19.0"
++      },
++      "funding": {
++        "url": "https://paulmillr.com/funding/"
++      }
++    },
++    "node_modules/@otplib/totp": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/totp/-/totp-13.4.1.tgz",
++      "integrity": "sha512-QOkBVPrf6AM4qZaReZPSk9/I8ATVdZpIISJz115MqeVtcrbcr5llPZ0J7804tpnjnp1vCRkI5Qjd47HhgVteBQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@otplib/core": "13.4.1",
++        "@otplib/hotp": "13.4.1",
++        "@otplib/uri": "13.4.1"
++      }
++    },
++    "node_modules/@otplib/uri": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/@otplib/uri/-/uri-13.4.1.tgz",
++      "integrity": "sha512-xaIm7bvICMhoB2rZIR5luiaMdssWR5nY5nXnR1fdezUgZuEO58D6zrGzLp7pQuBmlpmL0HagnscDQFoskp9yiA==",
++      "license": "MIT",
++      "dependencies": {
++        "@otplib/core": "13.4.1"
++      }
++    },
+     "node_modules/@paralleldrive/cuid2": {
+       "version": "2.3.1",
+       "resolved": "https://registry.npmjs.org/@paralleldrive/cuid2/-/cuid2-2.3.1.tgz",
+@@ -3257,6 +3326,15 @@
+         "win32"
+       ]
+     },
++    "node_modules/@scure/base": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/@scure/base/-/base-2.2.0.tgz",
++      "integrity": "sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://paulmillr.com/funding/"
++      }
++    },
+     "node_modules/@tanstack/query-core": {
+       "version": "5.101.3",
+       "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.101.3.tgz",
+@@ -7972,6 +8050,20 @@
+         "node": ">= 0.8.0"
+       }
+     },
++    "node_modules/otplib": {
++      "version": "13.4.1",
++      "resolved": "https://registry.npmjs.org/otplib/-/otplib-13.4.1.tgz",
++      "integrity": "sha512-o5CxfDw6bh7hoDv0NUUIcc0RqzJ9ipfUrzeKheKJ+vs4rXZnDlA9n4a/7R1cDjpmLjKLix4BgNVRmoDkm5rLSQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@otplib/core": "13.4.1",
++        "@otplib/hotp": "13.4.1",
++        "@otplib/plugin-base32-scure": "13.4.1",
++        "@otplib/plugin-crypto-noble": "13.4.1",
++        "@otplib/totp": "13.4.1",
++        "@otplib/uri": "13.4.1"
++      }
++    },
+     "node_modules/own-keys": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/own-keys/-/own-keys-1.0.1.tgz",

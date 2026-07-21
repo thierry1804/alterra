@@ -7,28 +7,29 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      includeAssets: ["icons/icon-192.svg", "icons/icon-512.svg"],
+      manifest: false,
       workbox: {
-        // App shell: cache-first. API calls are handled by SyncManager/IndexedDB, not Workbox.
-        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         runtimeCaching: [
           {
-            urlPattern: /\/api\/v1\/(sites|activities|workers)\b/,
+            urlPattern: /\/api\/v1\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              networkTimeoutSeconds: 10,
+              expiration: { maxEntries: 64, maxAgeSeconds: 60 * 5 },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === "image",
             handler: "CacheFirst",
             options: {
-              cacheName: "referentiels-cache",
-              expiration: { maxAgeSeconds: 60 * 60 * 24 },
+              cacheName: "image-cache",
+              expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
         ],
-      },
-      manifest: {
-        name: "ALTERRA Terrain",
-        short_name: "ALTERRA",
-        start_url: "/",
-        display: "standalone",
-        background_color: "#0f172a",
-        theme_color: "#0f172a",
-        icons: [],
       },
     }),
   ],

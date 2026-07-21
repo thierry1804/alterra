@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { syncNow } from "../sync/SyncManager";
 
 export default function Sync() {
-  const pending = useLiveQuery(() => db.pointings_pending.toArray(), []) ?? [];
+  const pending = useLiveQuery(() => db.pointages.toArray(), []) ?? [];
   const [syncing, setSyncing] = useState(false);
 
   async function onSyncClick() {

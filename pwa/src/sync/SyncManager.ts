@@ -24,7 +24,7 @@ function toSyncPayload(p: PointagePending) {
 export async function syncNow(): Promise<{ synced: number; rejected: number }> {
   if (!navigator.onLine) return { synced: 0, rejected: 0 };
 
-  const pending = await db.pointings_pending.where("status").anyOf("local", "rejected").toArray();
+  const pending = await db.pointages.where("status").anyOf("local", "rejected").toArray();
   if (pending.length === 0) return { synced: 0, rejected: 0 };
 
   let synced = 0;
@@ -32,14 +32,14 @@ export async function syncNow(): Promise<{ synced: number; rejected: number }> {
 
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
     const chunk = pending.slice(i, i + BATCH_SIZE);
-    await db.pointings_pending.bulkPut(chunk.map((p) => ({ ...p, status: "syncing" as const })));
+    await db.pointages.bulkPut(chunk.map((p) => ({ ...p, status: "syncing" as const })));
 
     try {
       const { data } = await api.post<{ results: SyncResult[] }>("/pointages/sync", {
         batch: chunk.map(toSyncPayload),
       });
 
-      await db.transaction("rw", db.pointings_pending, db.pointings_synced, async () => {
+      await db.transaction("rw", db.pointages, db.pointings_synced, async () => {
         for (const result of data.results) {
           if (result.status === "created" || result.status === "already_exists") {
             const local = chunk.find((c) => c.clientUuid === result.clientUuid)!;
@@ -49,10 +49,10 @@ export async function syncNow(): Promise<{ synced: number; rejected: number }> {
               workerId: local.workerId,
               date: local.date,
             });
-            await db.pointings_pending.delete(result.clientUuid);
+            await db.pointages.delete(result.clientUuid);
             synced++;
           } else {
-            await db.pointings_pending.update(result.clientUuid, {
+            await db.pointages.update(result.clientUuid, {
               status: "rejected",
               reason: result.reason,
             });
@@ -64,7 +64,7 @@ export async function syncNow(): Promise<{ synced: number; rejected: number }> {
       consecutiveFailures = 0;
     } catch {
       consecutiveFailures++;
-      await db.pointings_pending.bulkPut(chunk.map((p) => ({ ...p, status: "local" as const })));
+      await db.pointages.bulkPut(chunk.map((p) => ({ ...p, status: "local" as const })));
 
       if (consecutiveFailures <= BACKOFF_DELAYS_MS.length) {
         await new Promise((r) => setTimeout(r, BACKOFF_DELAYS_MS[consecutiveFailures - 1]));

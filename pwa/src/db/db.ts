@@ -8,6 +8,7 @@ export interface WorkerRecord {
   lastName: string;
   teamId: string | null;
   matricule: string;
+  siteId?: string;
 }
 
 export interface ActivityRecord {
@@ -20,23 +21,23 @@ export interface ActivityRecord {
 }
 
 export interface PointagePending {
-  clientUuid: string; // uuid v7, primary key
+  clientUuid: string;
   workerId: string;
   activityId: string;
   quantity: number;
-  date: string; // ISO date
+  date: string;
   parcelleId?: string;
   geoLat?: number;
   geoLng?: number;
   notes?: string;
-  createdByClientAt: string; // ISO datetime
+  createdByClientAt: string;
   status: PointageLocalStatus;
-  reason?: string; // set when status === 'rejected'
+  reason?: string;
 }
 
 export interface PointageSynced {
   clientUuid: string;
-  id: string; // server id
+  id: string;
   workerId: string;
   date: string;
 }
@@ -48,21 +49,42 @@ export interface MediaRecord {
   uploaded: boolean;
 }
 
+export type SyncQueueStatus = "pending" | "processing" | "failed";
+
+export interface SyncQueueItem {
+  id?: number;
+  type: "pointage" | "media" | "referential";
+  payload: string;
+  status: SyncQueueStatus;
+  attempts: number;
+  lastError?: string;
+  createdAt: string;
+}
+
+export interface SettingRecord {
+  key: string;
+  value: string;
+}
+
+/** @deprecated v1 — migrated to settings */
 export interface MetaRecord {
-  key: string; // 'accessToken' | 'lastSyncAt' | ...
+  key: string;
   value: string;
 }
 
 class AlterraDB extends Dexie {
   workers!: Table<WorkerRecord, string>;
   activities!: Table<ActivityRecord, string>;
-  pointings_pending!: Table<PointagePending, string>;
+  pointages!: Table<PointagePending, string>;
   pointings_synced!: Table<PointageSynced, string>;
   media!: Table<MediaRecord, string>;
+  syncQueue!: Table<SyncQueueItem, number>;
+  settings!: Table<SettingRecord, string>;
   meta!: Table<MetaRecord, string>;
 
   constructor() {
     super("alterra");
+
     this.version(1).stores({
       workers: "id, teamId, [firstName+lastName]",
       activities: "id, siteId, active",
@@ -71,7 +93,47 @@ class AlterraDB extends Dexie {
       media: "clientUuid, refType, uploaded",
       meta: "key",
     });
+
+    this.version(2)
+      .stores({
+        workers: "id, teamId, matricule, [firstName+lastName]",
+        activities: "id, siteId, active",
+        pointages: "clientUuid, workerId, date, status",
+        pointings_synced: "clientUuid, id, workerId, date",
+        media: "clientUuid, refType, uploaded",
+        syncQueue: "++id, type, status, createdAt",
+        settings: "key",
+      })
+      .upgrade(async (tx) => {
+        const legacyPending = tx.table("pointings_pending");
+        if (legacyPending) {
+          const rows = await legacyPending.toArray();
+          if (rows.length > 0) {
+            await tx.table("pointages").bulkPut(rows);
+          }
+        }
+
+        const legacyMeta = tx.table("meta");
+        if (legacyMeta) {
+          const metaRows = await legacyMeta.toArray();
+          if (metaRows.length > 0) {
+            await tx.table("settings").bulkPut(metaRows);
+          }
+        }
+      });
   }
 }
 
 export const db = new AlterraDB();
+
+export async function getSetting(key: string): Promise<string | undefined> {
+  return (await db.settings.get(key))?.value;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await db.settings.put({ key, value });
+}
+
+export async function deleteSetting(key: string): Promise<void> {
+  await db.settings.delete(key);
+}

@@ -1,52 +1,111 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [needsMfa, setNeedsMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
+
     try {
-      await login(email, password);
+      await login(email, password, needsMfa ? mfaCode : undefined);
       navigate("/");
-    } catch {
-      setError("Email ou mot de passe incorrect.");
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.data?.code === "MFA_REQUIRED") {
+        setNeedsMfa(true);
+        setError("Saisissez le code MFA à 6 chiffres.");
+      } else if (isAxiosError(err) && err.response?.data?.code === "INVALID_MFA_CODE") {
+        setNeedsMfa(true);
+        setError("Code MFA invalide.");
+      } else {
+        setError("Email ou mot de passe incorrect.");
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-100">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border bg-white p-8 shadow-sm"
+        className="w-full max-w-sm space-y-4 rounded-lg border border-zinc-200 bg-white p-8 shadow-sm"
       >
-        <h1 className="text-xl font-semibold">ALTERRA — Connexion</h1>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <input
-          type="email"
-          placeholder="email@alterra.mg"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-          required
-        />
-        <button type="submit" className="w-full rounded bg-slate-900 py-2 text-white">
-          Se connecter
-        </button>
+        <div>
+          <h1 className="text-lg font-semibold text-zinc-900">ALTERRA</h1>
+          <p className="mt-1 text-sm text-zinc-600">Connexion administration</p>
+        </div>
+
+        {error && (
+          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium text-zinc-700">
+            Email
+          </label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="username"
+            placeholder="email@alterra.mg"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+            Mot de passe
+          </label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        {needsMfa && (
+          <div className="space-y-2">
+            <label htmlFor="mfaCode" className="text-sm font-medium text-zinc-700">
+              Code MFA
+            </label>
+            <Input
+              id="mfaCode"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="000000"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              maxLength={6}
+              required
+            />
+          </div>
+        )}
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Connexion…" : "Se connecter"}
+        </Button>
       </form>
     </div>
   );
