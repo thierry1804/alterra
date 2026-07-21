@@ -5,7 +5,8 @@ import {
   CreditCard,
   FileText,
   LayoutDashboard,
-  MapPin,
+  Map,
+  MapPinned,
   ScrollText,
   Users,
   UsersRound,
@@ -29,7 +30,13 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: "Sites",
     path: "/sites",
-    icon: MapPin,
+    icon: Map,
+    roles: ["ADMIN"],
+  },
+  {
+    label: "Zones",
+    path: "/zones",
+    icon: MapPinned,
     roles: ["ADMIN"],
   },
   {

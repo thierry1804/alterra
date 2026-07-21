@@ -42,6 +42,47 @@ sitesRouter.get("/sites", requireAuth, async (req, res, next) => {
 });
 
 sitesRouter.get(
+  "/sites/geo",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  async (req, res, next) => {
+    try {
+      const sites = await prisma.site.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          shortCode: true,
+          geoLat: true,
+          geoLng: true,
+          zones: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              geoPolygon: true,
+              parcelles: {
+                orderBy: { name: "asc" },
+                select: {
+                  id: true,
+                  name: true,
+                  surfaceHa: true,
+                  geoPolygon: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      res.json({ data: sites });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+sitesRouter.get(
   "/sites/:id",
   requireAuth,
   validate(siteIdParams, "params"),

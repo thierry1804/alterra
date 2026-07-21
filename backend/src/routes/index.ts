@@ -11,6 +11,8 @@ import { dashboardRouter } from "./dashboard.routes.js";
 import { auditRouter } from "./audit.routes.js";
 import { reportsRouter } from "./reports.routes.js";
 import { biometricRouter } from "./biometric.routes.js";
+import { zonesRouter } from "./zones.routes.js";
+import { parcelsRouter } from "./parcels.routes.js";
 
 export const apiRouter = Router();
 
@@ -26,3 +28,5 @@ apiRouter.use(dashboardRouter);
 apiRouter.use(auditRouter);
 apiRouter.use(reportsRouter);
 apiRouter.use(biometricRouter);
+apiRouter.use(zonesRouter);
+apiRouter.use(parcelsRouter);
