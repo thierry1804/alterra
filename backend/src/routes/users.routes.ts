@@ -11,6 +11,7 @@ import {
   deactivateUser,
   generateTempPassword,
   hashPassword,
+  resetUserPassword,
 } from "../services/users/user-admin.service.js";
 
 export const usersRouter = Router();
@@ -226,10 +227,7 @@ usersRouter.post(
       const tempPassword = req.body.password ?? generateTempPassword();
       const passwordHash = await hashPassword(tempPassword);
 
-      await prisma.user.update({
-        where: { id: req.params.id },
-        data: { passwordHash },
-      });
+      await resetUserPassword(req.params.id, passwordHash);
 
       await writeAuditLog({
         userId: req.user!.sub,

@@ -41,7 +41,25 @@ const createWorkerSchema = z.object({
   childrenCount: z.coerce.number().int().min(0).optional(),
 });
 
-const updateWorkerSchema = createWorkerSchema.partial();
+const updateWorkerSchema = createWorkerSchema.partial().extend({
+  photoKey: z.string().min(1).optional(),
+});
+
+const confirmPhotoSchema = z.object({
+  photoKey: z.string().min(1),
+});
+
+/** Case-insensitive partial match on firstName, lastName, matricule, mvolaNumber (Prisma ilike). */
+function buildSearchFilter(q: string): Prisma.WorkerWhereInput {
+  return {
+    OR: [
+      { firstName: { contains: q, mode: "insensitive" } },
+      { lastName: { contains: q, mode: "insensitive" } },
+      { matricule: { contains: q, mode: "insensitive" } },
+      { mvolaNumber: { contains: q, mode: "insensitive" } },
+    ],
+  };
+}
 
 const importBodySchema = z.object({
   contentBase64: z.string().min(1),
@@ -54,15 +72,11 @@ const importQuerySchema = z.object({
     .transform((v) => v !== "false"),
 });
 
-function buildSearchFilter(q: string): Prisma.WorkerWhereInput {
-  return {
-    OR: [
-      { firstName: { contains: q, mode: "insensitive" } },
-      { lastName: { contains: q, mode: "insensitive" } },
-      { matricule: { contains: q, mode: "insensitive" } },
-      { mvolaNumber: { contains: q, mode: "insensitive" } },
-    ],
-  };
+function assertPhotoKeyForWorker(workerId: string, photoKey: string) {
+  const expectedPrefix = `workers/${workerId}/`;
+  if (!photoKey.startsWith(expectedPrefix)) {
+    throw new ApiError(422, "INVALID_PHOTO_KEY", "Clé photo invalide pour ce travailleur");
+  }
 }
 
 workersRouter.get(
@@ -198,6 +212,43 @@ workersRouter.delete(
         entityId: worker.id,
         before,
         after: worker,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      res.json(worker);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workersRouter.post(
+  "/workers/:id/photo",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(workerIdParams, "params"),
+  validate(confirmPhotoSchema),
+  async (req, res, next) => {
+    try {
+      const before = await prisma.worker.findFirst({
+        where: { id: req.params.id, deletedAt: null },
+      });
+      if (!before) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+
+      const { photoKey } = req.body as z.infer<typeof confirmPhotoSchema>;
+      assertPhotoKeyForWorker(before.id, photoKey);
+
+      const worker = await prisma.worker.update({
+        where: { id: before.id },
+        data: { photoKey },
+      });
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "Worker",
+        entityId: worker.id,
+        before: { photoKey: before.photoKey },
+        after: { photoKey: worker.photoKey },
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });

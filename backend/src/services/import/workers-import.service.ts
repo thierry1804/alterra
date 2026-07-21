@@ -73,6 +73,93 @@ function isUuid(value: string): boolean {
   );
 }
 
+function detectFileDuplicates(rows: ValidImportRow[]): ImportRowError[] {
+  const errors: ImportRowError[] = [];
+  const matriculeRows = new Map<string, number[]>();
+  const mvolaRows = new Map<string, number[]>();
+
+  for (const row of rows) {
+    const matriculeKey = row.matricule.toLowerCase();
+    const matriculeList = matriculeRows.get(matriculeKey) ?? [];
+    matriculeList.push(row.row);
+    matriculeRows.set(matriculeKey, matriculeList);
+
+    const mvolaList = mvolaRows.get(row.mvolaNumber) ?? [];
+    mvolaList.push(row.row);
+    mvolaRows.set(row.mvolaNumber, mvolaList);
+  }
+
+  for (const [matricule, rowNumbers] of matriculeRows) {
+    if (rowNumbers.length <= 1) continue;
+    for (const row of rowNumbers) {
+      errors.push({
+        row,
+        field: "matricule",
+        message: `Matricule dupliqué dans le fichier (${matricule})`,
+      });
+    }
+  }
+
+  for (const [mvola, rowNumbers] of mvolaRows) {
+    if (rowNumbers.length <= 1) continue;
+    for (const row of rowNumbers) {
+      errors.push({
+        row,
+        field: "mvolaNumber",
+        message: `Numéro MVola dupliqué dans le fichier (${mvola})`,
+      });
+    }
+  }
+
+  return errors;
+}
+
+async function validateRowsAgainstDb(rows: ValidImportRow[]): Promise<ImportRowError[]> {
+  if (rows.length === 0) return [];
+
+  const errors: ImportRowError[] = [];
+  const siteIds = [...new Set(rows.map((r) => r.siteId))];
+  const teamIds = [...new Set(rows.map((r) => r.teamId).filter(Boolean))] as string[];
+  const matricules = rows.map((r) => r.matricule);
+  const mvolaNumbers = rows.map((r) => r.mvolaNumber);
+
+  const [sites, teams, existingWorkers] = await Promise.all([
+    prisma.site.findMany({ where: { id: { in: siteIds } }, select: { id: true } }),
+    teamIds.length > 0
+      ? prisma.team.findMany({ where: { id: { in: teamIds } }, select: { id: true } })
+      : Promise.resolve([]),
+    prisma.worker.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ matricule: { in: matricules } }, { mvolaNumber: { in: mvolaNumbers } }],
+      },
+      select: { matricule: true, mvolaNumber: true },
+    }),
+  ]);
+
+  const knownSiteIds = new Set(sites.map((s) => s.id));
+  const knownTeamIds = new Set(teams.map((t) => t.id));
+  const existingMatricules = new Set(existingWorkers.map((w) => w.matricule.toLowerCase()));
+  const existingMvolas = new Set(existingWorkers.map((w) => w.mvolaNumber));
+
+  for (const row of rows) {
+    if (!knownSiteIds.has(row.siteId)) {
+      errors.push({ row: row.row, field: "siteId", message: "Site introuvable" });
+    }
+    if (row.teamId && !knownTeamIds.has(row.teamId)) {
+      errors.push({ row: row.row, field: "teamId", message: "Équipe introuvable" });
+    }
+    if (existingMatricules.has(row.matricule.toLowerCase())) {
+      errors.push({ row: row.row, field: "matricule", message: "Matricule déjà en base" });
+    }
+    if (existingMvolas.has(row.mvolaNumber)) {
+      errors.push({ row: row.row, field: "mvolaNumber", message: "Numéro MVola déjà en base" });
+    }
+  }
+
+  return errors;
+}
+
 export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPreviewResult> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
@@ -151,7 +238,22 @@ export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPrevie
     });
   }
 
-  return { valid, errors };
+  errors.push(...detectFileDuplicates(valid));
+
+  const rowsWithoutFileDupes = valid.filter(
+    (row) =>
+      !errors.some(
+        (e) => e.row === row.row && (e.field === "matricule" || e.field === "mvolaNumber"),
+      ),
+  );
+
+  const dbErrors = await validateRowsAgainstDb(rowsWithoutFileDupes);
+  errors.push(...dbErrors);
+
+  const invalidRows = new Set(errors.map((e) => e.row));
+  const finalValid = valid.filter((row) => !invalidRows.has(row.row));
+
+  return { valid: finalValid, errors };
 }
 
 export async function importWorkersRows(rows: ValidImportRow[]) {

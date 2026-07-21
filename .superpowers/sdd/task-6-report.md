@@ -122,3 +122,35 @@ npm run test -w backend  → PASS
 - Import workers : payload JSON `{ contentBase64 }` ; `dryRun=true` par défaut
 - Colonnes Excel attendues : matricule, firstName, lastName, mvolaNumber, siteId, hiredAt (+ optionnels teamId, cinNumber, status)
 - Audit explicite via `writeAuditLog()` sur actions admin sensibles (CREATE, UPDATE, DEACTIVATE, IMPORT, RESET_PASSWORD)
+
+---
+
+## Review fixes (2026-07-21)
+
+**Commit:** `af3a750`  
+**Status:** ✅ DONE — 9 findings corrigés
+
+| # | Finding | Fix |
+| - | ------- | --- |
+| 1 | `requireAuth` sans check blocklist | `isUserBlocked()` → 401 `USER_BLOCKED` |
+| 2 | GET `/activities` sans filtre site non-admin | OR `siteId null` + site utilisateur |
+| 3 | PATCH tarif sans champs associés | Overrides `label/unit/siteId/validFrom/active` passés à RG-04 |
+| 4 | RG-04 dates incorrectes | `computeRateChangeDates()` basé sur `validFrom` + edge case même jour |
+| 5 | Import dry-run incomplet | Doublons fichier + DB, vérif site/team existants |
+| 6 | Photo worker non confirmée | `POST /workers/:id/photo` + `photoKey` en PATCH |
+| 7 | Reset MDP sans revoke | `resetUserPassword()` revoke tokens + block Redis 15 min |
+| 8 | `shortCode` sans validation | Regex `^[A-Z]{2,3}$` + P2002 → 409 |
+| 9 | Recherche workers | OR Prisma `mode: insensitive` (documenté) |
+
+### Tests & lint (post-review)
+
+```
+npm run lint -w backend  → PASS
+npm run test -w backend  → PASS
+  ✓ referentials: 12 tests (+ blocked 401, import dupes, reset-password revoke)
+  ✓ rbac (×19)
+  ✓ auth (×9)
+  ✓ health (×2)
+  ↷ seed (skipped)
+  (42 passed | 1 skipped, 43 total)
+```

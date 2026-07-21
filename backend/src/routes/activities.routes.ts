@@ -56,7 +56,12 @@ activitiesRouter.get(
       const { siteId, active, history } = req.query as z.infer<typeof listActivitiesQuery>;
 
       const where: Prisma.ActivityWhereInput = {};
-      if (siteId !== undefined) where.siteId = siteId;
+      if (siteId !== undefined) {
+        where.siteId = siteId;
+      } else if (req.user!.role !== Role.ADMIN) {
+        const userSiteId = req.user!.siteId;
+        where.OR = [{ siteId: null }, ...(userSiteId ? [{ siteId: userSiteId }] : [])];
+      }
       if (active !== undefined) where.active = active;
       if (!history) {
         where.validTo = null;
@@ -131,7 +136,13 @@ activitiesRouter.patch(
       const { unitRate, ...otherFields } = req.body as z.infer<typeof updateActivitySchema>;
 
       if (unitRate !== undefined && !ratesEqual(current.unitRate, unitRate)) {
-        const created = await applyActivityRateChange(current, unitRate);
+        const created = await applyActivityRateChange(current, unitRate, {
+          label: otherFields.label,
+          unit: otherFields.unit,
+          siteId: otherFields.siteId,
+          validFrom: otherFields.validFrom,
+          active: otherFields.active,
+        });
         await writeAuditLog({
           userId: req.user!.sub,
           action: "RATE_CHANGE",

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAccessToken, type AccessTokenPayload } from "../lib/jwt.js";
+import { isUserBlocked } from "../lib/redis.js";
 import { updateRequestContext } from "./prisma-rls.js";
 
 declare global {
@@ -11,7 +12,7 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     return res.status(401).json({ code: "UNAUTHENTICATED", message: "Missing bearer token" });
@@ -19,6 +20,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   try {
     req.user = verifyAccessToken(header.slice("Bearer ".length));
+
+    if (await isUserBlocked(req.user.sub)) {
+      return res.status(401).json({ code: "USER_BLOCKED", message: "Compte utilisateur désactivé" });
+    }
+
     updateRequestContext({
       userId: req.user.sub,
       role: req.user.role,

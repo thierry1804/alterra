@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
@@ -14,7 +14,9 @@ const siteIdParams = z.object({ id: z.string().uuid() });
 
 const createSiteSchema = z.object({
   name: z.string().min(2),
-  shortCode: z.string().min(2).max(10),
+  shortCode: z
+    .string()
+    .regex(/^[A-Z]{2,3}$/, "Code site : 2 à 3 lettres majuscules (ex. MNK)"),
   location: z.string().optional(),
   geoLat: z.number().optional(),
   geoLng: z.number().optional(),
@@ -78,6 +80,9 @@ sitesRouter.post(
       });
       res.status(201).json(site);
     } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return next(new ApiError(409, "DUPLICATE", "Un site avec ce code existe déjà"));
+      }
       next(err);
     }
   },

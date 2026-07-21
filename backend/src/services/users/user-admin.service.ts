@@ -16,6 +16,26 @@ export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password, { type: argon2.argon2id });
 }
 
+export async function revokeUserRefreshTokens(userId: string): Promise<number> {
+  const result = await basePrisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return result.count;
+}
+
+/** Brief block (access-token TTL) to invalidate in-flight sessions after password reset. */
+const PASSWORD_RESET_BLOCK_TTL_SECONDS = 15 * 60;
+
+export async function resetUserPassword(userId: string, passwordHash: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+  await revokeUserRefreshTokens(userId);
+  await blockUser(userId, PASSWORD_RESET_BLOCK_TTL_SECONDS);
+}
+
 export async function deactivateUser(userId: string, auditMeta?: { ip?: string; userAgent?: string }) {
   const ctx = getRequestContext();
 
@@ -24,11 +44,7 @@ export async function deactivateUser(userId: string, auditMeta?: { ip?: string; 
     data: { active: false },
   });
 
-  await basePrisma.refreshToken.updateMany({
-    where: { userId, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-
+  await revokeUserRefreshTokens(userId);
   await blockUser(userId);
 
   await writeAuditLog({
