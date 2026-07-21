@@ -8,6 +8,7 @@ const USE_IN_MEMORY =
 type RedisLike = {
   setEx(key: string, ttlSeconds: number, value: string): Promise<void>;
   get(key: string): Promise<string | null>;
+  del(key: string): Promise<void>;
 };
 
 class InMemoryRedis implements RedisLike {
@@ -25,6 +26,10 @@ class InMemoryRedis implements RedisLike {
       return null;
     }
     return entry.value;
+  }
+
+  async del(key: string): Promise<void> {
+    this.store.delete(key);
   }
 }
 
@@ -46,6 +51,7 @@ async function connectRedis(): Promise<RedisLike> {
     return {
       setEx: (key, ttl, value) => redis.setEx(key, ttl, value),
       get: (key) => redis.get(key),
+      del: (key) => redis.del(key).then(() => undefined),
     };
   } catch (err) {
     logger.warn({ err }, "Redis unavailable — using in-memory fallback");
@@ -72,6 +78,24 @@ export async function isRefreshTokenBlacklisted(tokenHash: string): Promise<bool
   const redis = await getRedis();
   const value = await redis.get(`${BLACKLIST_PREFIX}${tokenHash}`);
   return value !== null;
+}
+
+const MFA_PENDING_PREFIX = "mfa:pending:";
+const MFA_PENDING_TTL_SECONDS = 10 * 60;
+
+export async function storePendingMfaSecret(userId: string, encryptedSecret: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.setEx(`${MFA_PENDING_PREFIX}${userId}`, MFA_PENDING_TTL_SECONDS, encryptedSecret);
+}
+
+export async function getPendingMfaSecret(userId: string): Promise<string | null> {
+  const redis = await getRedis();
+  return redis.get(`${MFA_PENDING_PREFIX}${userId}`);
+}
+
+export async function deletePendingMfaSecret(userId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.del(`${MFA_PENDING_PREFIX}${userId}`);
 }
 
 /** Reset client between tests. */

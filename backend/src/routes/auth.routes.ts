@@ -94,8 +94,8 @@ authRouter.post("/auth/mfa/setup", requireAuth, requireRole(Role.ADMIN), async (
     if (!user.email) {
       throw new ApiError(400, "EMAIL_REQUIRED", "Admin account must have an email for MFA setup");
     }
-    const { otpauthUrl } = setupMfa(user.id, user.email);
-    res.json({ otpauthUrl });
+    const { otpauthUrl, qrCodeDataUrl } = await setupMfa(user.id, user.email);
+    res.json({ otpauthUrl, qrCodeDataUrl });
   } catch (err) {
     next(err);
   }

@@ -86,7 +86,29 @@ npm run test -w backend  → PASS
 
 - **Redis test** : `vitest.config.ts` force `NODE_ENV=test` → store in-memory, pas de Docker Redis
 - **otplib v13** : API fonctionnelle (`generateSecret`, `verifySync`) — pas de namespace `authenticator`
-- **Pending MFA** : secret temporaire en mémoire (Map) pendant 10 min entre setup et verify
+- **Pending MFA** : secret temporaire chiffré AES-256-GCM en Redis (TTL 10 min) ; fallback Map in-memory en test
+
+---
+
+## Review fixes (2026-07-21)
+
+| Fix | Détail | Status |
+| --- | ------ | ------ |
+| Rotation atomique | `$transaction` + `updateMany` où `revokedAt: null` ; count=0 → 401 | ✅ |
+| MFA QR code | `qrcode` → `qrCodeDataUrl` dans `POST /auth/mfa/setup` | ✅ |
+| Pending MFA Redis | `storePendingMfaSecret` / `getPendingMfaSecret` / `deletePendingMfaSecret` | ✅ |
+| Tests auth | refresh OK, token réutilisé → 401, logout, MFA setup QR | ✅ |
+
+### Tests & lint (post-review)
+
+```
+npm run lint -w backend  → PASS
+npm run test -w backend  → PASS
+  ✓ auth endpoints (×9)
+  ✓ health endpoints (×2)
+  ↷ seed data counts (skipped)
+  (11 passed | 1 skipped, 12 total)
+```
 
 ---
 
@@ -101,5 +123,5 @@ npm run test -w backend  → PASS
 | `backend/src/routes/auth.routes.ts` | Modifié |
 | `backend/src/__tests__/auth.test.ts` | Créé |
 | `backend/vitest.config.ts` | Modifié |
-| `backend/package.json` | +otplib |
+| `backend/package.json` | +otplib, +qrcode |
 | `.env.example` | +MFA_ENCRYPTION_KEY |

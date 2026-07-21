@@ -54,10 +54,23 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
     throw new ApiError(401, "REVOKED_REFRESH_TOKEN", "Refresh token has been revoked");
   }
 
-  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
-  if (!stored || stored.revokedAt || stored.expiresAt <= new Date()) {
-    throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
-  }
+  const stored = await prisma.$transaction(async (tx) => {
+    const row = await tx.refreshToken.findUnique({ where: { tokenHash } });
+    if (!row || row.revokedAt || row.expiresAt <= new Date()) {
+      throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
+    }
+
+    const { count } = await tx.refreshToken.updateMany({
+      where: { id: row.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    if (count === 0) {
+      throw new ApiError(401, "INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
+    }
+
+    return row;
+  });
 
   const user = await prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user || !user.active) {
@@ -65,12 +78,7 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
   }
 
   const ttl = remainingTtlSeconds(stored.expiresAt);
-  await prisma.refreshToken.update({
-    where: { id: stored.id },
-    data: { revokedAt: new Date() },
-  });
   await blacklistRefreshToken(tokenHash, ttl);
-
   await issueRefreshToken(user.id, res, stored.deviceInfo ?? undefined);
 
   const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
