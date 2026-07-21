@@ -54,7 +54,7 @@ flowchart LR
 
 | Règle | Description | Statut |
 |-------|-------------|--------|
-| RG-03 | BiometricCheck OK requis avant inclusion bordereau ; exception mode dégradé manuel CDS | Documenté |
+| RG-03 | BiometricCheck OK requis avant inclusion bordereau ; **aucune ligne exportée MVola sans bio OK** ; exception unique : mode dégradé manuel CDS (valeur `N/A`, audit trail obligatoire) | Documenté |
 | Moment du contrôle | Vendredi, convocation MOC au camp, photo prise par CDS | UC-14 |
 | Provider V1 | Adapter interchangeable : Mock / Manual / AXIAN (env `BIOMETRIC_PROVIDER`) | UC-BE-BIO-ADAPT |
 | Seuils | OK ≥ seuil, DOUBT entre 0.5 et seuil, KO < 0.5 | UC-14 |
@@ -114,57 +114,19 @@ flowchart LR
 | D3 | Création MOC V1 | Admin uniquement (pas de workflow demande CDS) | UC-05 vs UC-FE-PWA-WKRREQ |
 | D4 | Auth CDE V1 | Email + mot de passe (OTP SMS optionnel / reporté) | UC-01 |
 | D5 | Provider biométrique initial | Mock en dev, Manual en recette si AXIAN absent | Sprint 4 |
-| D6 | MFA Admin | TOTP activable mais non obligatoire en V1 | UC-BE-AUTH |
+| D6 | MFA Admin | **TOTP obligatoire pour comptes Admin** (Must V1) ; recommandé pour CDS | UC-BE-AUTH |
 
 ---
 
-## 7. Questions ouvertes pour l'atelier métier
+## 7. Questions ouvertes pour l'atelier métier (top 5 prioritaires)
 
-### 7.1 Workflow et calendrier
-
-| ID | Question | Responsable validation |
-|----|----------|------------------------|
-| Q-WF-01 | Le paiement est-il strictement hebdomadaire ou certains sites paient-ils en fin de journée ? | Admin + CDS |
-| Q-WF-02 | Quel jour/heure exact pour la convocation biométrique vendredi ? | CDS |
-| Q-WF-03 | Que faire des MOC absents vendredi (bio non faite) : report semaine suivante ou mode dégradé ? | Admin |
-| Q-WF-04 | Processus actuel papier/Excel : quelles étapes disparaissent vs conservées en parallèle ? | Admin |
-| Q-WF-05 | Qui signe la facture si le CDS est indisponible ? | Admin |
-
-### 7.2 Biométrie
-
-| ID | Question | Responsable validation |
-|----|----------|------------------------|
-| Q-BIO-01 | Seuil acceptable pour DOUBT : validation CDS motivée ou blocage systématique ? | Admin + CDS |
-| Q-BIO-02 | Contact AXIAN et disponibilité sandbox avant quand ? | Admin / CP |
-| Q-BIO-03 | Photo MOC à l'embauche : qui la prend en V1 (Admin ou CDS) ? | Admin |
-| Q-BIO-04 | MOC sans numéro MVola : peuvent-ils être payés autrement ou exclus ? | Admin |
-
-### 7.3 MVola et comptabilité
-
-| ID | Question | Responsable validation |
-|----|----------|------------------------|
-| Q-PAY-01 | Fournir un échantillon réel fichier Bulk Transfer (export + retour) | Admin |
-| Q-PAY-02 | Limite exacte caractères colonne Description MVola | Admin / MVola |
-| Q-PAY-03 | Traitement des échecs FAILED : régénération ligne seule ou nouveau fichier complet ? | Admin |
-| Q-PAY-04 | Montant minimum/maximum par transfert MVola | Admin |
-| Q-PAY-05 | Un MOC peut-il avoir plusieurs numéros MVola dans le temps ? | Admin |
-
-### 7.4 Référentiels et données
-
-| ID | Question | Responsable validation |
-|----|----------|------------------------|
-| Q-REF-01 | Liste définitive des 5 sites + codes 3 lettres pour paiement | Admin |
-| Q-REF-02 | Liste activités et tarifs campagne en cours (trouaison, défrichage, etc.) | Admin |
-| Q-REF-03 | Format fichier Excel import MOC initial (colonnes obligatoires) | Admin |
-| Q-REF-04 | Répartition équipes/MOC par site pour campagne pilote | CDS |
-
-### 7.5 Adoption terrain
-
-| ID | Question | Responsable validation |
-|----|----------|------------------------|
-| Q-UX-01 | Modèles smartphones CDE cibles (Android, version Chrome) | CDS |
-| Q-UX-02 | Langue interface : français uniquement ou malgache pour labels terrain ? | Admin + CDS |
-| Q-UX-03 | Site pilote recette V1 : lequel ? | Admin |
+| ID | Question | Responsable validation | Priorité |
+|----|----------|------------------------|----------|
+| Q-PAY-01 | Fournir un échantillon réel fichier Bulk Transfer (export + retour) | Admin | **Critique S1** — condition Sprint 1 |
+| Q-BIO-02 | Contact AXIAN et disponibilité sandbox avant quand ? | Admin / CP | **Haute** — dépendance Sprint 4 |
+| Q-WF-03 | Que faire des MOC absents vendredi (bio non faite) : report semaine suivante ou mode dégradé audité ? | Admin | **Haute** — impact RG-03 |
+| Q-PAY-02 | Limite exacte caractères colonne Description MVola | Admin / MVola | **Haute** — risque rejet export |
+| Q-REF-01 | Liste définitive des 5 sites + codes 3 lettres pour paiement | Admin | **Haute** — référentiel bloquant |
 
 ---
 
@@ -181,6 +143,51 @@ flowchart LR
 ---
 
 ## 9. Annexes
+
+### 9.1 Questions ouvertes secondaires (report atelier)
+
+#### Workflow et calendrier
+
+| ID | Question | Responsable validation |
+|----|----------|------------------------|
+| Q-WF-01 | Le paiement est-il strictement hebdomadaire ou certains sites paient-ils en fin de journée ? | Admin + CDS |
+| Q-WF-02 | Quel jour/heure exact pour la convocation biométrique vendredi ? | CDS |
+| Q-WF-04 | Processus actuel papier/Excel : quelles étapes disparaissent vs conservées en parallèle ? | Admin |
+| Q-WF-05 | Qui signe la facture si le CDS est indisponible ? | Admin |
+
+#### Biométrie
+
+| ID | Question | Responsable validation |
+|----|----------|------------------------|
+| Q-BIO-01 | Seuil acceptable pour DOUBT : validation CDS motivée ou blocage systématique ? | Admin + CDS |
+| Q-BIO-03 | Photo MOC à l'embauche : qui la prend en V1 (Admin ou CDS) ? | Admin |
+| Q-BIO-04 | MOC sans numéro MVola : peuvent-ils être payés autrement ou exclus ? | Admin |
+
+#### MVola et comptabilité
+
+| ID | Question | Responsable validation |
+|----|----------|------------------------|
+| Q-PAY-03 | Traitement des échecs FAILED : régénération ligne seule ou nouveau fichier complet ? | Admin |
+| Q-PAY-04 | Montant minimum/maximum par transfert MVola | Admin |
+| Q-PAY-05 | Un MOC peut-il avoir plusieurs numéros MVola dans le temps ? | Admin |
+
+#### Référentiels et données
+
+| ID | Question | Responsable validation |
+|----|----------|------------------------|
+| Q-REF-02 | Liste activités et tarifs campagne en cours (trouaison, défrichage, etc.) | Admin |
+| Q-REF-03 | Format fichier Excel import MOC initial (colonnes obligatoires) | Admin |
+| Q-REF-04 | Répartition équipes/MOC par site pour campagne pilote | CDS |
+
+#### Adoption terrain
+
+| ID | Question | Responsable validation |
+|----|----------|------------------------|
+| Q-UX-01 | Modèles smartphones CDE cibles (Android, version Chrome) | CDS |
+| Q-UX-02 | Langue interface : français uniquement ou malgache pour labels terrain ? | Admin + CDS |
+| Q-UX-03 | Site pilote recette V1 : lequel ? | Admin |
+
+### 9.2 Références documentaires
 
 - Spec fonctionnelle détaillée : `basedocs/ALTERRA - Spécification fonctionnelle détaillée.md`
 - Spec technique détaillée : `basedocs/ALTERRA - Spécification technique détaillée.md`

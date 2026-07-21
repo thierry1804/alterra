@@ -2,8 +2,12 @@
 
 **Statut :** Priorisation documentaire — validation PO après atelier métier  
 **Date :** 21 juillet 2026  
-**Périmètre :** Tous les Use Cases V1 (Sprints 1 à 6, 57,25 j-h)  
+**Périmètre :** Tous les Use Cases V1 (Sprints 1 à 6)  
+**Budget V1 firm :** **50 j-h** (cœur fonctionnel contractuel)  
+**Marge imprévus :** provision séparée (`UC-MARGE-V1`, ~7 j-h) — hors budget 50 j-h, réservée risques AXIAN/MVola/UX  
 **Légende MoSCoW :** **M** = Must Have · **S** = Should Have · **C** = Could Have · **W** = Won't Have (V1)
+
+> **Nature du document :** synthèse MoSCoW dérivée du backlog détaillé (`basedocs/ALTERRA - Backlog détaillé.md`). Ce fichier ne duplique pas les user stories complètes ni les estimations ligne à ligne ; il priorise et résume les critères d'acceptation par UC pour le cadrage Sprint 1.
 
 ---
 
@@ -11,10 +15,12 @@
 
 | Priorité | Nb UC | Charge (j-h) | Commentaire |
 |----------|-------|--------------|-------------|
-| **Must Have** | 38 | ~42 | Chemin critique livraison V1 |
-| **Should Have** | 14 | ~10 | Forte valeur, léger report possible |
-| **Could Have** | 3 | ~1,5 | Nice-to-have V1 |
+| **Must Have** | 39 | ~40 | Chemin critique livraison V1 (incl. MFA Admin) |
+| **Should Have** | 14 | ~8 | Forte valeur, léger report possible |
+| **Could Have** | 2 | ~2 | Nice-to-have V1 |
 | **Won't Have (V1)** | — | — | Explicitement V2 (backlog séparé) |
+| **Total V1 firm** | **55** | **~50** | Aligné budget contractuel |
+| **Marge (hors firm)** | 1 | ~7 | `UC-MARGE-V1` — buffer imprévus, non compté dans les 50 j-h |
 
 ---
 
@@ -32,8 +38,8 @@
 
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
-| `UC-BE-SETUP` | Monorepo pnpm + Turborepo | **M** | `pnpm install` + `turbo build` OK ; packages `@alterra/ui`, `@alterra/api-types` partagés |
-| `UC-BE-SETUP` | NestJS 10 + Fastify + Prisma | **M** | `/health` retourne 200 ; Prisma connecté PostgreSQL |
+| `UC-BE-SETUP` | Monorepo npm workspaces | **M** | `npm install` + build packages OK ; packages `@alterra/ui`, `@alterra/api-types` partagés (contrainte globale : pas de pnpm/Turborepo) |
+| `UC-BE-SETUP` | API Express + Prisma | **M** | Node.js 22 + Express 4 ; `/health` retourne 200 ; Prisma connecté PostgreSQL (contrainte globale : pas de NestJS/Fastify) |
 | `UC-BE-SETUP` | Docker Compose local | **M** | `docker compose up` lance api + postgres + redis + minio ; `.env.example` documenté |
 
 ### Module BE-DB — Modèle de données
@@ -47,10 +53,10 @@
 
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
-| `UC-BE-AUTH` | Login email/mot de passe | **M** | POST `/auth/login` ; Argon2id ; JWT 15 min + refresh cookie 7 j HttpOnly |
+| `UC-BE-AUTH` | Login email/mot de passe | **M** | POST `/auth/login` ; Argon2id ; JWT **HS256** access 15 min + refresh cookie 7 j HttpOnly ; secret ≥ 256 bits |
 | `UC-BE-AUTH` | Refresh token silencieux | **M** | Rotation refresh ; blacklist Redis ; nouveau access token |
 | `UC-BE-AUTH` | Logout | **M** | Révoque refresh ; supprime cookie ; blacklist |
-| `UC-BE-AUTH` | MFA TOTP Admin | **C** | Secret + QR ; vérif 6 chiffres ; secret chiffré en base |
+| `UC-BE-AUTH` | MFA TOTP Admin | **M** | Obligatoire pour rôle Admin ; secret + QR ; vérif 6 chiffres ; secret chiffré AES-256-GCM en base ; login bloqué si MFA non configuré |
 
 ### Module BE-RBAC — RBAC et audit
 
@@ -230,7 +236,7 @@
 
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
-| `UC-MARGE-V1` | Réserve imprévus V1 | **M** | Buffer AXIAN, MVola, UX lot, volumétrie documenté en risques |
+| `UC-MARGE-V1` | Réserve imprévus V1 | **M** | Buffer ~7 j-h **hors budget firm 50 j-h** ; AXIAN, MVola, UX lot, volumétrie documenté en risques |
 
 ---
 

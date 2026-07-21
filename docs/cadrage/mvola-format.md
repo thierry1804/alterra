@@ -93,8 +93,8 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 | Valeur | Condition |
 |--------|-----------|
 | `OUI` | BiometricCheck OK pour la période |
-| `NON` | Bio KO ou absente (RG-03 — export possible avec warning Admin) |
-| `N/A` | Mode dégradé manuel CDS documenté |
+| `NON` | Bio KO ou absente — **ligne exclue du bordereau et de l'export MVola** (RG-03) |
+| `N/A` | Mode dégradé manuel CDS uniquement : AXIAN indisponible (BIO-503), validation motivée, **audit trail obligatoire** (who/when/motif) |
 
 ### 3.4 Exemple contenu (lignes 2+)
 
@@ -102,7 +102,9 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 |------------------|-------------|---------|---------|-------------|
 | 0341234567 | Rakoto Paiement MNK | S18 | 125000 | OUI |
 | 0349876543 | Rasoa Paiement MNK | S18 | 98500 | OUI |
-| 0345551234 | Hery Paiement ANJ | S18 | 12500 | NON |
+| 0345551234 | Hery Paiement ANJ | S18 | 12500 | N/A |
+
+> **RG-03 :** une ligne avec `Bio Validée = NON` ne doit **jamais** apparaître dans un export MVola. Seules les lignes `OUI` ou `N/A` (mode dégradé audité) sont exportables.
 
 ---
 
@@ -167,7 +169,8 @@ PENDING → (export) → EXPORTED → (import retour) → PAID | FAILED
 |-------|--------------|
 | MVola manquant | Bloquer ligne ou exclure avec warning |
 | Montant = 0 | Exclure automatiquement |
-| Bio NON | Warning « N lignes sans bio OK » ; export possible avec confirm |
+| Bio NON / absente | **Bloquer** inclusion bordereau et export ; message « N lignes sans bio OK — corriger ou activer mode dégradé CDS » |
+| Mode dégradé (N/A) | Autoriser export **uniquement** si audit trail complet (CDS, date, motif, provider UNAVAILABLE) |
 | Période déjà EXPORTED | Dialog correctif (PAY-CONFLICT) |
 
 ---

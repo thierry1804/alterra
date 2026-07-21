@@ -1,9 +1,9 @@
 # ALTERRA — Spécifications wireframes (cible Figma)
 
-**Statut :** Spécifications détaillées pour designer — fichiers Figma non produits en session  
+**Statut Figma :** `NOT_CREATED` — aucun fichier Figma produit ; wireframes textuels designer-ready uniquement  
 **Date :** 21 juillet 2026  
 **UC :** `UC-CAD-03`  
-**Lien Figma :** _À compléter après production par UX — placeholder : `https://figma.com/file/ALTERRA-V1-wireframes`_
+**Lien Figma :** _Non applicable — statut `NOT_CREATED`. Placeholder réservé : `https://figma.com/file/ALTERRA-V1-wireframes` (ne pas utiliser)_
 
 ---
 
@@ -432,20 +432,21 @@ Générer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire 
 | Cas | Comportement |
 |-----|--------------|
 | 600+ lignes | Virtual scroll TanStack Virtual ; pagination server 50 |
-| Bio NON | Ligne surlignée orange ; warning export « 3 lignes bio NON » |
+| Bio NON / absente | Ligne **exclue** du bordereau (RG-03) ; non exportable MVola ; action « Forcer mode dégradé » réservée CDS avec audit |
+| Mode dégradé (N/A) | Ligne exportable si audit trail complet ; badge distinct |
 | Doublon période | Dialog correctif vs annuler |
 | Export partiel | Non supporté V1 — export complet période |
 
 ---
 
-## Livrables Figma attendus (post-design)
+## Livrables Figma attendus (post-design — statut `NOT_CREATED`)
 
-| Frame Figma | Écrans | Variantes |
-|-------------|--------|-----------|
-| `Admin/Dashboard` | Desktop 1280 | Loading, empty, alertes |
-| `Admin/Bordereau` | Desktop 1280 | PENDING, post-export, import modal |
-| `PWA/Saisie-lot` | Mobile 360 | Online, offline, avec photos |
-| `PWA/Validation-CDS` | Mobile + Tablet 768 | Liste, bio overlay, rejet modal |
+| Frame Figma | Écrans | Variantes | Statut |
+|-------------|--------|-----------|--------|
+| `Admin/Dashboard` | Desktop 1280 | Loading, empty, alertes | `NOT_CREATED` |
+| `Admin/Bordereau` | Desktop 1280 | PENDING, post-export, import modal | `NOT_CREATED` |
+| `PWA/Saisie-lot` | Mobile 360 | Online, offline, avec photos | `NOT_CREATED` |
+| `PWA/Validation-CDS` | Mobile + Tablet 768 | Liste, bio overlay, rejet modal | `NOT_CREATED` |
 
 ---
 
