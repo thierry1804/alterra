@@ -1,4 +1,4 @@
-import { BioResult } from "@prisma/client";
+import { BioProvider, BioResult } from "@prisma/client";
 import type {
   BiometricProvider,
   BiometricVerificationInput,
@@ -7,6 +7,8 @@ import type {
 
 /** Provider de développement — OK si photo fournie, sinon KO. */
 export class MockBiometricProvider implements BiometricProvider {
+  readonly provider = BioProvider.MOCK;
+
   async verify(input: BiometricVerificationInput): Promise<BiometricVerificationResult> {
     if (input.photoBase64 && input.photoBase64.length > 32) {
       return {

@@ -1,7 +1,8 @@
-import type { BioResult } from "@prisma/client";
+import type { BioProvider, BioResult } from "@prisma/client";
 
 export interface BiometricVerificationInput {
   workerId: string;
+  mvolaNumber?: string;
   photoBase64?: string;
 }
 
@@ -12,5 +13,6 @@ export interface BiometricVerificationResult {
 }
 
 export interface BiometricProvider {
+  readonly provider: BioProvider;
   verify(input: BiometricVerificationInput): Promise<BiometricVerificationResult>;
 }

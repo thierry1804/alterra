@@ -22,4 +22,5 @@ Task 15: complete (FE-PWA-0 setup PWA, Dexie v2, login chiffré, PIN inactivité
 Task 16: complete (FE-PWA-CDE activité jour, saisie lot, photo compressée)
 Task 17: complete (FE-PWA-CDS validation MOC, bio mock, groupement équipes)
 Task 18: complete (FE-PWA-SYNC moteur sync, ConflictResolver, SyncStatusBar)
+Task 19: complete (BE-BIO Mock/Manual/AXIAN providers, score mapping, tests)
 Task 6: complete (CRUD référentiels sites/activités/workers/users + import Excel)

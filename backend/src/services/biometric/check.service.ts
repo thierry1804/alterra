@@ -25,20 +25,16 @@ export interface BiometricCheckResponse {
 export async function performBiometricCheck(
   input: PerformBiometricCheckInput,
 ): Promise<BiometricCheckResponse> {
-  await prisma.worker.findUniqueOrThrow({ where: { id: input.workerId } });
+  const worker = await prisma.worker.findUniqueOrThrow({ where: { id: input.workerId } });
 
   const referenceDate = input.referenceDate ?? new Date();
   const weekIso = getIsoWeekString(referenceDate);
   const provider = getBiometricProvider();
   const verification = await provider.verify({
     workerId: input.workerId,
+    mvolaNumber: worker.mvolaNumber,
     photoBase64: input.photoBase64,
   });
-
-  const providerName = (process.env.BIOMETRIC_PROVIDER ?? "MOCK").toUpperCase();
-  const providerEnum = Object.values(BioProvider).includes(providerName as BioProvider)
-    ? (providerName as BioProvider)
-    : BioProvider.MOCK;
 
   const created = await prisma.biometricCheck.create({
     data: {
@@ -46,7 +42,7 @@ export async function performBiometricCheck(
       context: input.context ?? BioContext.WEEKLY_VALIDATION,
       result: verification.result,
       score: verification.score,
-      provider: providerEnum in BioProvider ? providerEnum : BioProvider.MOCK,
+      provider: provider.provider,
       performedById: input.performedById,
       weekIso,
       rawResponse: verification.rawResponse ?? undefined,

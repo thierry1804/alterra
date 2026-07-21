@@ -35,6 +35,7 @@ describe("biometric endpoints", () => {
     vi.clearAllMocks();
     vi.mocked(prisma.worker.findUniqueOrThrow).mockResolvedValue({
       id: MOCK_WORKER_ID,
+      mvolaNumber: "0340000001",
     } as never);
     vi.mocked(prisma.biometricCheck.create).mockResolvedValue({
       id: "bio-1",
