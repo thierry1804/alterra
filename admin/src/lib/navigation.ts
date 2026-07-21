@@ -5,6 +5,7 @@ import {
   CreditCard,
   FileText,
   Inbox,
+  Layers,
   LayoutDashboard,
   Map,
   MapPinned,
@@ -38,6 +39,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Zones",
     path: "/zones",
     icon: MapPinned,
+    roles: ["ADMIN"],
+  },
+  {
+    label: "Carte",
+    path: "/map",
+    icon: Layers,
     roles: ["ADMIN"],
   },
   {

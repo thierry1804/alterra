@@ -39,4 +39,5 @@ Task 32: complete (FE-PWA-BIO cache templates chiffrés, face-api offline, check
 Task 33: complete (BE-WF workflows activity/worker/clarification, 15 endpoints, state machine)
 Task 34: complete (FE-PWA-WF pages précisions/activité/MOC, upload photo, nav terrain)
 Task 35: complete (FE-ADMIN-WF file demandes, drawer, accepter/refuser/complément)
+Task 36: complete (FE-ADMIN-MAP Leaflet sites/zones/parcelles, tuiles OSM/MapTiler)
 Task 6: complete (CRUD référentiels sites/activités/workers/users + import Excel)

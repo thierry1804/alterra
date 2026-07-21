@@ -13,6 +13,7 @@ import PaymentsPage from "./pages/Payments";
 import ReportsPage from "./pages/Reports";
 import AuditLogPage from "./pages/AuditLog";
 import RequestsPage from "./pages/Requests";
+import MapPage from "./pages/Map";
 import ProtectedRoute, { GuestRoute } from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import RoleGuard from "./components/layout/RoleGuard";
@@ -51,6 +52,7 @@ export default function App() {
                 <Route path="/activities" element={<ActivitiesPage />} />
                 <Route path="/workers" element={<WorkersPage />} />
                 <Route path="/requests" element={<RequestsPage />} />
+                <Route path="/map" element={<MapPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
