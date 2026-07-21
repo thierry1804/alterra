@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Branch:** `feat/backlog-implementation`  
-**Commit:** _(voir ci-dessous après commit)_  
+**Commit:** `6adb531` — `feat(db): schéma V1 complet + seed déterministe`  
 **Status:** ⚠️ Partiel — schéma + seed + migration prêts ; `db:setup` non exécuté (Docker/Postgres indisponible)
 
 ---
