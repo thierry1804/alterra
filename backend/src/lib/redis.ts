@@ -98,6 +98,19 @@ export async function deletePendingMfaSecret(userId: string): Promise<void> {
   await redis.del(`${MFA_PENDING_PREFIX}${userId}`);
 }
 
+const USER_BLOCKED_PREFIX = "user:blocked:";
+const USER_BLOCKED_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+export async function blockUser(userId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.setEx(`${USER_BLOCKED_PREFIX}${userId}`, USER_BLOCKED_TTL_SECONDS, "1");
+}
+
+export async function isUserBlocked(userId: string): Promise<boolean> {
+  const redis = await getRedis();
+  return (await redis.get(`${USER_BLOCKED_PREFIX}${userId}`)) !== null;
+}
+
 /** Reset client between tests. */
 export async function resetRedisForTests(): Promise<void> {
   client = null;

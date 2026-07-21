@@ -1,9 +1,19 @@
 import type { NextFunction, Request, Response } from "express";
 
 const SENSITIVE_PATHS = [
+  { method: "POST", pattern: /^\/sites\/?$/ },
+  { method: "PATCH", pattern: /^\/sites\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/sites\/[^/]+$/ },
+  { method: "POST", pattern: /^\/activities\/?$/ },
+  { method: "PATCH", pattern: /^\/activities\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/activities\/[^/]+$/ },
   { method: "POST", pattern: /^\/workers\/?$/ },
+  { method: "POST", pattern: /^\/workers\/import\/?$/ },
   { method: "PATCH", pattern: /^\/workers\/[^/]+$/ },
   { method: "DELETE", pattern: /^\/workers\/[^/]+$/ },
+  { method: "POST", pattern: /^\/users\/?$/ },
+  { method: "PATCH", pattern: /^\/users\/[^/]+$/ },
+  { method: "POST", pattern: /^\/users\/[^/]+\/(reset-password|deactivate)$/ },
   { method: "POST", pattern: /^\/pointages(\/sync)?\/?$/ },
   { method: "PATCH", pattern: /^\/pointages\/[^/]+\/(validate|reject)$/ },
   { method: "POST", pattern: /^\/payments\/?$/ },
