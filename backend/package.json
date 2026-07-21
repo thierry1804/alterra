@@ -15,7 +15,9 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "import:templates": "tsx scripts/generate-import-templates.ts",
+    "import:initial": "tsx scripts/import-initial-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
