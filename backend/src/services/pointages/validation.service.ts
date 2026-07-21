@@ -1,27 +1,20 @@
-import { BioContext, BioResult } from "@prisma/client";
+import { BioResult } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
 
-const VALIDATION_BIO_CONTEXTS: BioContext[] = [
-  BioContext.WEEKLY_VALIDATION,
-  BioContext.POINTAGE_TASK,
-];
-
 export async function assertBioOkForValidation(workerId: string, pointageDate: Date): Promise<void> {
   const weekIso = getIsoWeekString(pointageDate);
 
-  const bioCheck = await prisma.biometricCheck.findFirst({
+  const latestBioCheck = await prisma.biometricCheck.findFirst({
     where: {
       workerId,
       weekIso,
-      result: BioResult.OK,
-      context: { in: VALIDATION_BIO_CONTEXTS },
     },
     orderBy: { performedAt: "desc" },
   });
 
-  if (!bioCheck) {
+  if (!latestBioCheck || latestBioCheck.result !== BioResult.OK) {
     throw new ApiError(
       422,
       "BIO_NOT_OK",

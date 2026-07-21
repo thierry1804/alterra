@@ -269,20 +269,22 @@ async function assertWorkerIdInScope(basePrisma: PrismaClient, workerId: string)
   }
 }
 
-async function validateRelatedIdsInScope(
+export async function validateRelatedIdsInScope(
   basePrisma: PrismaClient,
   model: ScopedModel,
   data: Record<string, unknown>,
+  options?: { requireWorkerId?: boolean },
 ): Promise<void> {
   assertNotImpossibleScope(model);
   validateDirectFieldsInScope(model, data);
 
   if (model === "Pointage" || model === "Payment") {
     const workerId = extractField(data, "workerId");
-    if (!workerId) {
+    if (workerId) {
+      await assertWorkerIdInScope(basePrisma, workerId);
+    } else if (options?.requireWorkerId !== false) {
       throw new RlsScopeError(`${model} requires workerId in scope`);
     }
-    await assertWorkerIdInScope(basePrisma, workerId);
   }
 }
 
@@ -313,7 +315,7 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
     const scope = getModelScopeFilter(model);
 
     if (operation === "create") {
-      await validateRelatedIdsInScope(basePrisma, model, args.data ?? {});
+      await validateRelatedIdsInScope(basePrisma, model, args.data ?? {}, { requireWorkerId: true });
       return query(args);
     }
 
@@ -322,7 +324,7 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
         args = { ...args, where: mergeWhere(args.where, scope) };
       }
       if (args.data) {
-        await validateRelatedIdsInScope(basePrisma, model, args.data);
+        await validateRelatedIdsInScope(basePrisma, model, args.data, { requireWorkerId: false });
       }
       return query(args);
     }
@@ -332,7 +334,7 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
         args = { ...args, where: mergeWhere(args.where, scope) };
       }
       if (args.data) {
-        await validateRelatedIdsInScope(basePrisma, model, args.data);
+        await validateRelatedIdsInScope(basePrisma, model, args.data, { requireWorkerId: false });
       }
       return query(args);
     }
@@ -341,9 +343,9 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
       if (scope) {
         args = { ...args, where: mergeWhere(args.where, scope) };
       }
-      await validateRelatedIdsInScope(basePrisma, model, args.create ?? {});
+      await validateRelatedIdsInScope(basePrisma, model, args.create ?? {}, { requireWorkerId: true });
       if (args.update) {
-        await validateRelatedIdsInScope(basePrisma, model, args.update);
+        await validateRelatedIdsInScope(basePrisma, model, args.update, { requireWorkerId: false });
       }
       return query(args);
     }

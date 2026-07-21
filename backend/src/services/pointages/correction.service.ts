@@ -1,13 +1,19 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getRequestContext } from "../../middleware/prisma-rls.js";
-import { writeAuditLog } from "../audit/audit.service.js";
 
 export interface CorrectPointageInput {
   quantity?: number;
   activityId?: string;
   date?: Date;
   correctionReason: string;
+}
+
+function toJson(value: unknown): Prisma.InputJsonValue | undefined {
+  if (value === undefined || value === null) return undefined;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
 export async function correctPointage(
@@ -24,6 +30,7 @@ export async function correctPointage(
   }
 
   const before = await prisma.pointage.findUniqueOrThrow({ where: { id } });
+  const correctionReason = input.correctionReason.trim();
 
   const updateData: Record<string, unknown> = {};
 
@@ -52,22 +59,27 @@ export async function correctPointage(
     updateData.amount = quantity * unitRate;
   }
 
-  const after = await prisma.pointage.update({
-    where: { id },
-    data: updateData,
-  });
-
   const ctx = getRequestContext();
-  await writeAuditLog({
-    userId: ctx?.userId,
-    action: "CORRECT",
-    entityType: "Pointage",
-    entityId: id,
-    before,
-    after,
-    ip: auditMeta?.ip ?? ctx?.ip,
-    userAgent: auditMeta?.userAgent ?? ctx?.userAgent,
-  });
 
-  return after;
+  return prisma.$transaction(async (tx) => {
+    const after = await tx.pointage.update({
+      where: { id },
+      data: updateData,
+    });
+
+    await basePrisma.auditLog.create({
+      data: {
+        userId: ctx?.userId ?? null,
+        action: "CORRECT",
+        entityType: "Pointage",
+        entityId: id,
+        before: toJson({ ...before, correctionReason }),
+        after: toJson({ ...after, correctionReason }),
+        ip: auditMeta?.ip ?? ctx?.ip ?? null,
+        userAgent: auditMeta?.userAgent ?? ctx?.userAgent ?? null,
+      },
+    });
+
+    return after;
+  });
 }

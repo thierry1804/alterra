@@ -68,6 +68,7 @@ vi.mock("../lib/prisma.js", () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -114,6 +115,9 @@ describe("Pointages", () => {
     vi.clearAllMocks();
     vi.mocked(prisma.activity.findUniqueOrThrow).mockResolvedValue(mockActivity as never);
     vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+      typeof fn === "function" ? fn(prisma as never) : fn,
+    );
   });
 
   describe("POST /pointages/sync", () => {
@@ -157,7 +161,33 @@ describe("Pointages", () => {
   });
 
   describe("PATCH /pointages/:id/validate", () => {
-    it("blocks validation when bio is not OK", async () => {
+    it("blocks validation when latest bio is not OK", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
+        id: "bio-ko",
+        workerId: MOCK_WORKER_ID,
+        result: "KO",
+        context: "WEEKLY_VALIDATION",
+        performedAt: new Date("2026-07-16T10:00:00Z"),
+        weekIso: "2026-W29",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/validate`)
+        .set("Authorization", cdsAuthHeader());
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("BIO_NOT_OK");
+      expect(prisma.biometricCheck.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { workerId: MOCK_WORKER_ID, weekIso: "2026-W29" },
+          orderBy: { performedAt: "desc" },
+        }),
+      );
+    });
+
+    it("blocks validation when no bio check exists", async () => {
       vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
       vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue(null);
 
@@ -170,7 +200,7 @@ describe("Pointages", () => {
       expect(res.body.code).toBe("BIO_NOT_OK");
     });
 
-    it("succeeds when bio is OK", async () => {
+    it("succeeds when latest bio is OK", async () => {
       vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
       vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
         id: "bio-1",
@@ -232,6 +262,7 @@ describe("Pointages", () => {
     });
 
     it("applies correction with audit log when reason is valid", async () => {
+      const correctionReason = "Erreur de saisie terrain corrigée";
       vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
       vi.mocked(prisma.pointage.update).mockResolvedValue({
         ...mockPointage,
@@ -243,15 +274,18 @@ describe("Pointages", () => {
       const res = await request(app)
         .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}`)
         .set("Authorization", adminAuthHeader())
-        .send({ quantity: 12, correctionReason: "Erreur de saisie terrain corrigée" });
+        .send({ quantity: 12, correctionReason });
 
       expect(res.status).toBe(200);
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             action: "CORRECT",
             entityType: "Pointage",
             entityId: MOCK_POINTAGE_ID,
+            before: expect.objectContaining({ correctionReason }),
+            after: expect.objectContaining({ correctionReason }),
           }),
         }),
       );

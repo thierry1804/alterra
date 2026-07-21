@@ -11,6 +11,7 @@ import {
   RlsScopeError,
   runWithRequestContext,
   validateDirectFieldsInScope,
+  validateRelatedIdsInScope,
 } from "../middleware/prisma-rls.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 
@@ -218,6 +219,33 @@ describe("RBAC", () => {
         { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(() => validateDirectFieldsInScope("Pointage", { quantity: 1 })).not.toThrow();
+        },
+      );
+    });
+
+    it("requires workerId on Pointage create", async () => {
+      await runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        async () => {
+          await expect(
+            validateRelatedIdsInScope(basePrisma as never, "Pointage", { quantity: 1 }),
+          ).rejects.toThrow(RlsScopeError);
+        },
+      );
+    });
+
+    it("allows Pointage update without workerId in patch data", async () => {
+      await runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        async () => {
+          await expect(
+            validateRelatedIdsInScope(
+              basePrisma as never,
+              "Pointage",
+              { status: "VALIDATED", validatedById: MOCK_CDS_ID },
+              { requireWorkerId: false },
+            ),
+          ).resolves.toBeUndefined();
         },
       );
     });
