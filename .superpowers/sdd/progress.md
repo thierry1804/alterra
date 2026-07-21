@@ -41,4 +41,5 @@ Task 34: complete (FE-PWA-WF pages précisions/activité/MOC, upload photo, nav 
 Task 35: complete (FE-ADMIN-WF file demandes, drawer, accepter/refuser/complément)
 Task 36: complete (FE-ADMIN-MAP Leaflet sites/zones/parcelles, tuiles OSM/MapTiler)
 Task 37: complete (BE-DAILY rapport journalier PDF, clôture CDS PWA, email Admin)
+Task 38: complete (QA-V2 E2E NFC/bio/workflows, recette-v2, hypercare-v2)
 Task 6: complete (CRUD référentiels sites/activités/workers/users + import Excel)

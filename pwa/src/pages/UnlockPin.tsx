@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { getMemoryUser } from "../lib/session";
 
@@ -35,6 +35,7 @@ function PinInput({
 export default function UnlockPin() {
   const { needsPinSetup, completePinSetup, unlock, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const setupMode = needsPinSetup || searchParams.get("setup") === "1";
 
@@ -70,7 +71,13 @@ export default function UnlockPin() {
         await unlock(pin);
       }
       const role = getMemoryUser()?.role;
-      navigate(role === "CHEF_SERVICE" ? "/validation" : "/");
+      const defaultPath = role === "CHEF_SERVICE" ? "/validation" : "/";
+      const from = (location.state as { from?: { pathname?: string; search?: string } } | null)
+        ?.from;
+      const returnPath = from?.pathname
+        ? `${from.pathname}${from.search ?? ""}`
+        : defaultPath;
+      navigate(returnPath);
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       if (code === "PIN_INCORRECT") {

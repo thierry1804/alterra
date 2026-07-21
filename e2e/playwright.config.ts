@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       name: "pwa",
-      testMatch: ["**/cde-*.spec.ts", "**/cds-*.spec.ts", "**/offline-*.spec.ts"],
+      testMatch: ["**/cde-*.spec.ts", "**/cds-*.spec.ts", "**/offline-*.spec.ts", "**/nfc-*.spec.ts", "**/bio-*.spec.ts", "**/workflows.spec.ts"],
       use: {
         ...devices["Pixel 7"],
         baseURL: pwaBaseUrl,

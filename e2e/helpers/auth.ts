@@ -36,3 +36,16 @@ export async function loginPwa(
 
   await page.waitForURL(/\/(validation|$|batch|sync)/, { timeout: 15_000 });
 }
+
+export async function unlockPwaIfNeeded(page: Page, pin: string): Promise<void> {
+  const unlockHeading = page.getByRole("heading", { name: "Déverrouiller" });
+  const onUnlock = await unlockHeading
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!onUnlock) return;
+
+  await page.locator("#pin").fill(pin);
+  await page.getByRole("button", { name: "Déverrouiller" }).click();
+  await expect(unlockHeading).not.toBeVisible({ timeout: 15_000 });
+}
