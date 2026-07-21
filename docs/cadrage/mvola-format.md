@@ -56,7 +56,7 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 | B | `Description` | Texte | Oui | « Prénom Paiement Code_site » | `Rakoto Paiement MNK` |
 | C | `Période` | Texte | Oui | Semaine ISO `Sxx` ou jour `Dxxx` | `S18` ou `D138` |
 | D | `Montant` | Entier | Oui | Ariary, sans séparateur décimal | `125000` |
-| E | `Bio Validée` | Enum | Oui | `OUI` / `NON` / `N/A` | `OUI` |
+| E | `Bio Validée` | Enum | Oui | `OUI` uniquement en export bulk ; `NON` / `N/A` = interne ALTERRA, jamais exportées | `OUI` |
 
 ### 3.3 Règles par colonne
 
@@ -90,11 +90,22 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 
 #### Colonne E — Bio Validée
 
-| Valeur | Condition |
-|--------|-----------|
-| `OUI` | BiometricCheck OK pour la période |
-| `NON` | Bio KO ou absente — **ligne exclue du bordereau et de l'export MVola** (RG-03) |
-| `N/A` | Mode dégradé manuel CDS uniquement : AXIAN indisponible (BIO-503), validation motivée, **audit trail obligatoire** (who/when/motif) |
+| Valeur | Condition | Export bulk MVola |
+|--------|-----------|-------------------|
+| `OUI` | BiometricCheck **OK** pour la période | **Incluse** — seule valeur autorisée en export |
+| `NON` | Bio KO, DOUBT ou absente | **Exclue** — ligne absente du fichier export (RG-03) |
+| `N/A` | Statut interne uniquement (mode dégradé Admin) | **Exclue** — jamais incluse en export bulk |
+
+> **RG-03 (strict) :** seules les lignes avec `Bio Validée = OUI` (BiometricCheck OK) entrent dans le bordereau exportable et le fichier MVola bulk. **DOUBT**, **KO**, **absence de bio** et **N/A** bloquent validation paiement et export — aucun chemin d'export dégradé.
+
+#### Mode dégradé (hors export bulk)
+
+Lorsque AXIAN est indisponible (BIO-503) ou cas exceptionnel validé métier :
+
+1. **Admin** déclenche une validation manuelle par ligne (override), jamais le CDS en bulk.
+2. **Audit trail obligatoire** : who / when / motif / provider UNAVAILABLE.
+3. La ligne reste **hors export MVola bulk** ; paiement traité manuellement (virement unitaire, correction hors fichier, ou report semaine suivante après bio OK).
+4. Le statut interne peut être marqué `N/A` pour traçabilité, mais cette valeur **n'apparaît jamais** dans un fichier `.xlsx` Bulk Transfer.
 
 ### 3.4 Exemple contenu (lignes 2+)
 
@@ -102,9 +113,8 @@ Source : Spec fonctionnelle détaillée §7.4, Spec v3 §8.2, RG-09, RG-10.
 |------------------|-------------|---------|---------|-------------|
 | 0341234567 | Rakoto Paiement MNK | S18 | 125000 | OUI |
 | 0349876543 | Rasoa Paiement MNK | S18 | 98500 | OUI |
-| 0345551234 | Hery Paiement ANJ | S18 | 12500 | N/A |
 
-> **RG-03 :** une ligne avec `Bio Validée = NON` ne doit **jamais** apparaître dans un export MVola. Seules les lignes `OUI` ou `N/A` (mode dégradé audité) sont exportables.
+> Les lignes DOUBT, KO, absentes ou en mode dégradé (`N/A` interne) sont **listées dans l'UI Admin** pour suivi mais **exclues** du fichier exporté.
 
 ---
 
@@ -152,7 +162,7 @@ Payment (PENDING)
   └── Site.shortCode         → Col B (partie code)
   └── Payment.periodIso      → Col C
   └── Payment.amount         → Col D
-  └── BiometricCheck.result  → Col E (OUI/NON/N/A)
+  └── BiometricCheck.result  → Col E (`OUI` si OK uniquement ; lignes DOUBT/KO/absentes/N/A exclues de l'export)
 ```
 
 ### Statuts Payment (workflow)
@@ -169,8 +179,8 @@ PENDING → (export) → EXPORTED → (import retour) → PAID | FAILED
 |-------|--------------|
 | MVola manquant | Bloquer ligne ou exclure avec warning |
 | Montant = 0 | Exclure automatiquement |
-| Bio NON / absente | **Bloquer** inclusion bordereau et export ; message « N lignes sans bio OK — corriger ou activer mode dégradé CDS » |
-| Mode dégradé (N/A) | Autoriser export **uniquement** si audit trail complet (CDS, date, motif, provider UNAVAILABLE) |
+| Bio DOUBT / KO / absente | **Bloquer** validation et export ; message « N lignes sans bio OK — bio requise avant paiement » |
+| Mode dégradé Admin | Override manuel ligne par ligne avec audit ; **jamais** inclus dans export bulk MVola ; paiement hors fichier |
 | Période déjà EXPORTED | Dialog correctif (PAY-CONFLICT) |
 
 ---

@@ -3,9 +3,9 @@
 **Statut :** Priorisation documentaire — validation PO après atelier métier  
 **Date :** 21 juillet 2026  
 **Périmètre :** Tous les Use Cases V1 (Sprints 1 à 6)  
-**Budget V1 firm :** **50 j-h** (cœur fonctionnel contractuel)  
-**Marge imprévus :** provision séparée (`UC-MARGE-V1`, ~7 j-h) — hors budget 50 j-h, réservée risques AXIAN/MVola/UX  
-**Légende MoSCoW :** **M** = Must Have · **S** = Should Have · **C** = Could Have · **W** = Won't Have (V1)
+**Budget V1 firm :** **50 j-h** (cœur fonctionnel contractuel — livrable Must Have)  
+**Réserve imprévus :** `UC-MARGE-V1` (~7 j-h) — **contingence hors périmètre firm 50 j-h**, non additive au scope Must ; consommée sur décision PO uniquement  
+**Légende MoSCoW :** **M** = Must Have · **S** = Should Have · **C** = Could Have · **W** = Won't Have (V1) · **R** = Réserve / contingence (hors budget firm)
 
 > **Nature du document :** synthèse MoSCoW dérivée du backlog détaillé (`basedocs/ALTERRA - Backlog détaillé.md`). Ce fichier ne duplique pas les user stories complètes ni les estimations ligne à ligne ; il priorise et résume les critères d'acceptation par UC pour le cadrage Sprint 1.
 
@@ -15,12 +15,12 @@
 
 | Priorité | Nb UC | Charge (j-h) | Commentaire |
 |----------|-------|--------------|-------------|
-| **Must Have** | 39 | ~40 | Chemin critique livraison V1 (incl. MFA Admin) |
-| **Should Have** | 14 | ~8 | Forte valeur, léger report possible |
+| **Must Have** | 38 | **~50** | Livrable contractuel V1 — somme Must ≤ 50 j-h firm (incl. MFA Admin) |
+| **Should Have** | 14 | ~8 | Forte valeur, absorbée dans buffer interne ou report si dépassement |
 | **Could Have** | 2 | ~2 | Nice-to-have V1 |
 | **Won't Have (V1)** | — | — | Explicitement V2 (backlog séparé) |
-| **Total V1 firm** | **55** | **~50** | Aligné budget contractuel |
-| **Marge (hors firm)** | 1 | ~7 | `UC-MARGE-V1` — buffer imprévus, non compté dans les 50 j-h |
+| **Total V1 firm** | **54** | **~50** | Scope Must+Should+Could planifié dans l'enveloppe 50 j-h |
+| **Réserve (hors firm)** | 1 | ~7 | `UC-MARGE-V1` — contingence contractuelle, **pas** un Must additive |
 
 ---
 
@@ -62,9 +62,9 @@
 
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
-| `UC-BE-RBAC` | Guard `@Roles()` | **M** | Décorateur + guard ; 403 typé si rôle insuffisant |
+| `UC-BE-RBAC` | Middleware `requireRole()` | **M** | Middleware Express par route ; 403 typé si rôle insuffisant |
 | `UC-BE-RBAC` | Filtres Prisma site/équipe | **M** | CDS filtré par siteId ; CDE par teamId ; double barrière API + Prisma |
-| `UC-BE-AUDIT` | Audit log actions sensibles | **S** | Interceptor + triggers PostgreSQL ; table append-only ; Worker/Pointage/Payment tracés |
+| `UC-BE-AUDIT` | Audit log actions sensibles | **S** | Middleware audit + triggers PostgreSQL ; table append-only ; Worker/Pointage/Payment tracés |
 
 ---
 
@@ -86,7 +86,7 @@
 |----|---------------------|--------|----------------------------------|
 | `UC-BE-PNT-SYNC` | POST /pointages/sync batch | **M** | Batch ≤100 ; upsert clientUuid ; retour created/already_exists/rejected ; idempotent |
 | `UC-BE-PNT-LIST` | GET /pointages filtrés | **M** | Cursor pagination 50 ; filtres période/worker/activity/status ; sous-requête bio |
-| `UC-BE-PNT-VAL` | Valider/rejeter pointage | **M** | Bio OK requis validation ; motif obligatoire rejet |
+| `UC-BE-PNT-VAL` | Valider/rejeter pointage | **M** | Bio **OK** requis validation (RG-03) ; DOUBT/KO/absent bloquent ; motif obligatoire rejet |
 | `UC-BE-PNT-COR` | Correction Admin | **S** | Modification quantité/activity/date ; motif obligatoire ; audit complet |
 
 ### Module BE-PAY — Paiements
@@ -94,7 +94,7 @@
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
 | `UC-BE-PAY-GEN` | Générer bordereau période | **M** | Agrégation VALIDATED ; quantity × unitRateSnapshot ; Payment PENDING |
-| `UC-BE-PAY-EXP` | Export Excel MVola | **M** | 5 colonnes spec ; descriptions tronquées ; statut EXPORTED ; archivage MinIO |
+| `UC-BE-PAY-EXP` | Export Excel MVola | **M** | 5 colonnes spec ; **uniquement lignes Bio OK** (RG-03) ; mode dégradé Admin hors bulk ; archivage MinIO |
 | `UC-BE-PAY-IMP` | Import retour MVola | **M** | Match numéro + montant ; PAID/FAILED ; rapport import |
 
 ### Module FE-ADMIN-0 — Setup Admin
@@ -232,11 +232,11 @@
 |----|---------------------|--------|----------------------------------|
 | `UC-OPS-HC` | Support post-MEP 3 semaines | **M** | Astreinte ; bugs bloquants ; hotfix ; réunion hebdo |
 
-### Module MARGE-V1 — Provision imprévus
+### Module MARGE-V1 — Réserve contingence (hors firm 50 j-h)
 
 | UC | User Story (résumé) | MoSCoW | Critères d'acceptation (résumé) |
 |----|---------------------|--------|----------------------------------|
-| `UC-MARGE-V1` | Réserve imprévus V1 | **M** | Buffer ~7 j-h **hors budget firm 50 j-h** ; AXIAN, MVola, UX lot, volumétrie documenté en risques |
+| `UC-MARGE-V1` | Réserve imprévus V1 | **R** | Contingence ~7 j-h **hors périmètre firm 50 j-h** — non comptée dans le livrable Must ; consommation sur arbitrage PO ; risques AXIAN/MVola/UX/volumétrie documentés |
 
 ---
 

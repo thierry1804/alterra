@@ -276,7 +276,7 @@ Consulter les pointages de la semaine par équipe, effectuer contrôle biométri
 | Bouton | État enabled | Action |
 |--------|--------------|--------|
 | Bio | Toujours | Ouvre écran caméra biométrique |
-| Valider | Bio OK ou DOUBT+confirm | PATCH validate all MOC week |
+| Valider | **Bio OK uniquement** | PATCH validate all MOC week ; DOUBT/KO/absent → bouton disabled + tooltip « Bio OK requise (RG-03) » |
 | Rejeter | Toujours | Modal motif obligatoire → reject |
 
 #### Modal rejet
@@ -309,7 +309,7 @@ Consulter les pointages de la semaine par équipe, effectuer contrôle biométri
 | Guide facial | Oval overlay SVG, instructions « Centrer le visage » |
 | Capture | POST /biometric/check ; loader 2–5s |
 | Résultat | Pastille + score ; auto-retour liste après 2s si OK |
-| Mode dégradé | Lien « Validation manuelle » si BIO-503 |
+| Mode dégradé | Lien « Signaler indisponibilité AXIAN » si BIO-503 → alerte Admin ; **pas** de validation CDS ni export tant que bio OK absente |
 
 #### Footer résumé
 
@@ -432,8 +432,8 @@ Générer, consulter, ajuster et exporter le bordereau de paiement hebdomadaire 
 | Cas | Comportement |
 |-----|--------------|
 | 600+ lignes | Virtual scroll TanStack Virtual ; pagination server 50 |
-| Bio NON / absente | Ligne **exclue** du bordereau (RG-03) ; non exportable MVola ; action « Forcer mode dégradé » réservée CDS avec audit |
-| Mode dégradé (N/A) | Ligne exportable si audit trail complet ; badge distinct |
+| Bio DOUBT / KO / absente | Ligne visible UI en alerte ; **exclue** bordereau exportable et export MVola (RG-03 strict) |
+| Mode dégradé Admin | Override manuel ligne par ligne (motif + audit) ; badge `N/A` interne ; **jamais** inclus export bulk MVola ; paiement traité hors fichier |
 | Doublon période | Dialog correctif vs annuler |
 | Export partiel | Non supporté V1 — export complet période |
 

@@ -85,6 +85,22 @@ Corrections appliquées suite à la revue Task 1 :
 
 ---
 
+## Review fixes round 2 (2026-07-21)
+
+Corrections appliquées suite à la revue Task 1 (findings restants) :
+
+| # | Sévérité | Fichier | Correction |
+|---|----------|---------|------------|
+| 1 | Critique | `mvola-format.md`, `maquettes-figma-liens.md`, `backlog-moscow.md` | **RG-03 strict** : seul Bio **OK** autorise validation et export MVola bulk ; DOUBT/KO/absent/N/A bloquent ; mode dégradé = override Admin + audit uniquement, jamais inclus export bulk |
+| 2 | Critique | `backlog-moscow.md` | Terminologie **Express** : `@Roles()`/Guard/Interceptor → middleware `requireRole()`, middleware audit |
+| 3 | Critique | `backlog-moscow.md` | **Budget 50 j-h firm** : `UC-MARGE-V1` repassé en **R** (réserve contingence hors firm) ; Must = 38 UC ~50 j-h livrable contractuel |
+
+**Tests :** N/A — livrables documentation uniquement.
+
+**Commit :** `docs: Task 1 cadrage — RG-03 strict, Express terms, budget scope`
+
+---
+
 ## Références sources utilisées
 
 - `basedocs/ALTERRA - Spécification fonctionnelle détaillée.md`
