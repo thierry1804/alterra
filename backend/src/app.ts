@@ -8,7 +8,10 @@ import { logger } from "./lib/logger.js";
 import { apiRouter } from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
-const ORIGINS = [process.env.ADMIN_ORIGIN, process.env.PWA_ORIGIN].filter(Boolean) as string[];
+const ORIGINS = [process.env.ADMIN_ORIGIN, process.env.PWA_ORIGIN]
+  .filter(Boolean)
+  .flatMap((origin) => origin!.split(",").map((value) => value.trim()))
+  .filter(Boolean) as string[];
 
 export function createApp(): Express {
   const app = express();
