@@ -101,6 +101,21 @@ Corrections appliquées suite à la revue Task 1 (findings restants) :
 
 ---
 
+## Consistency fixes (2026-07-21)
+
+Corrections finales d'alignement documentaire Task 1 :
+
+| # | Fichier | Correction |
+|---|---------|------------|
+| 1 | `ateliers-compte-rendu.md` | **RG-03 strict** : suppression exception mode dégradé CDS / `N/A` en export bulk ; override Admin + audit hors export MVola ; colonne Excel `OUI` uniquement |
+| 2 | `backlog-moscow.md` | Table budget : Must = **50 j-h firm** livrable contractuel ; Should/Could **non additifs** — négociation scope ou absorption capacité |
+
+**Tests :** N/A — livrables documentation uniquement.
+
+**Commit :** `docs: Task 1 — align atelier CR and budget table with RG-03`
+
+---
+
 ## Références sources utilisées
 
 - `basedocs/ALTERRA - Spécification fonctionnelle détaillée.md`

@@ -15,12 +15,12 @@
 
 | Priorité | Nb UC | Charge (j-h) | Commentaire |
 |----------|-------|--------------|-------------|
-| **Must Have** | 38 | **~50** | Livrable contractuel V1 — somme Must ≤ 50 j-h firm (incl. MFA Admin) |
-| **Should Have** | 14 | ~8 | Forte valeur, absorbée dans buffer interne ou report si dépassement |
-| **Could Have** | 2 | ~2 | Nice-to-have V1 |
+| **Must Have** | 38 | **~50** | **Livrable contractuel firm** — enveloppe 50 j-h garantie V1 (incl. MFA Admin) |
+| **Should Have** | 14 | ~8 | Priorisé backlog ; **non additif** au contrat 50 j-h — négociation scope ou absorption capacité Must |
+| **Could Have** | 2 | ~2 | Priorisé backlog ; **non additif** — nice-to-have, report V2 si pas de marge |
 | **Won't Have (V1)** | — | — | Explicitement V2 (backlog séparé) |
-| **Total V1 firm** | **54** | **~50** | Scope Must+Should+Could planifié dans l'enveloppe 50 j-h |
-| **Réserve (hors firm)** | 1 | ~7 | `UC-MARGE-V1` — contingence contractuelle, **pas** un Must additive |
+| **Total backlog V1** | **54** | ~60 (ref. interne) | Seul Must = périmètre firm 50 j-h ; Should/Could hors enveloppe contractuelle |
+| **Réserve (hors firm)** | 1 | ~7 | `UC-MARGE-V1` — contingence contractuelle, **pas** additive au scope Must |
 
 ---
 

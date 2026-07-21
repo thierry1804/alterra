@@ -54,13 +54,13 @@ flowchart LR
 
 | Règle | Description | Statut |
 |-------|-------------|--------|
-| RG-03 | BiometricCheck OK requis avant inclusion bordereau ; **aucune ligne exportée MVola sans bio OK** ; exception unique : mode dégradé manuel CDS (valeur `N/A`, audit trail obligatoire) | Documenté |
+| RG-03 | Bio **OK** requis avant validation pointage et inclusion bordereau ; **aucune ligne exportée MVola bulk sans bio OK** ; DOUBT/KO/absent bloquent | Documenté |
 | Moment du contrôle | Vendredi, convocation MOC au camp, photo prise par CDS | UC-14 |
 | Provider V1 | Adapter interchangeable : Mock / Manual / AXIAN (env `BIOMETRIC_PROVIDER`) | UC-BE-BIO-ADAPT |
 | Seuils | OK ≥ seuil, DOUBT entre 0.5 et seuil, KO < 0.5 | UC-14 |
 | Stockage photo V1 | Photo non stockée après envoi AXIAN | UC-14 |
-| Mode dégradé | Si AXIAN indisponible → validation manuelle avec traçabilité (BIO-503) | Spec erreurs §9 |
-| Colonne Excel | « Bio Validée » : OUI / NON / N/A dans export MVola | §7.4 |
+| Mode dégradé | Si AXIAN indisponible → override manuel **Admin** (motif + audit, BIO-503) ; **hors export bulk MVola** | Spec erreurs §9 |
+| Colonne Excel | « Bio Validée » : `OUI` uniquement en export bulk ; `NON` / `N/A` = statuts internes ALTERRA, jamais exportés | §7.4 |
 
 **Dépendance externe :** Engagement AXIAN (API Key, sandbox, doc) à formaliser avant Sprint 4 (biométrie).
 
