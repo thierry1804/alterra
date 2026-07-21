@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "test": "npm run test -w backend",
     "test:e2e": "npm run test -w e2e",
+    "docs:guides": "node scripts/generate-guide-pdfs.mjs",
     "docker:dev:up": "docker compose up -d",
     "docker:dev:down": "docker compose down"
   },

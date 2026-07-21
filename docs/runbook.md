@@ -1,5 +1,11 @@
 # Runbook d'exploitation — ALTERRA
 
+Documentation complémentaire :
+
+- Déploiement production : [docs/deploy/production.md](deploy/production.md)
+- Guides utilisateur : [docs/guides/](guides/)
+- Recette V1 : [docs/qa/recette-v1.md](qa/recette-v1.md)
+
 ## Contacts
 
 | Rôle                     | Contact | Astreinte   |
@@ -25,7 +31,26 @@ docker compose -f docker-compose.prod.yml restart api
 
 ### Déployer une nouvelle version
 
-Voir checklist complète : [docs/deploy/production.md](../deploy/production.md)
+Voir checklist complète : [docs/deploy/production.md](deploy/production.md)
+
+#### Playbook MEP (mise en production)
+
+| Étape | Action | Responsable | Durée cible |
+| ----- | ------ | ----------- | ------------- |
+| J-7 | Recette staging OK (`docs/qa/recette-v1.md`) | Métier + QA | — |
+| J-3 | Backup manuel + test restore sur staging | Ops | 30 min |
+| J-1 | Communication fenêtre maintenance (mardi 12h–14h) | ALTERRA | — |
+| J0 | Tag release Git + images GHCR buildées | Dev | 15 min |
+| J0 | `./scripts/deploy.sh` sur prod | Ops | 20 min |
+| J0 | Smoke test public + vérif KPI admin | Ops + métier | 15 min |
+| J+1 | Hypercare (Task 25) — astreinte réactive | Support | 3 semaines |
+
+**Go / No-go MEP** si :
+
+- [ ] Smoke test vert (`infra/scripts/smoke-test.sh`)
+- [ ] Migrations Prisma appliquées sans erreur
+- [ ] E2E CI vert sur le tag déployé
+- [ ] PV recette signé
 
 ```bash
 cd /opt/alterra/infra
@@ -52,11 +77,25 @@ TAG=<sha-precedent> ./scripts/rollback.sh
 HEALTHCHECK_URL=<url> ./scripts/backup-offsite.sh
 ```
 
+**Contenu sauvegardé :** dump PostgreSQL, buckets MinIO (photos, rapports PDF), métadonnées compose.
+
+**Fréquence prod :** cron quotidien 02h00 (`install-cron.sh`).
+
 ### Restauration (test mensuel obligatoire sur staging)
 
 ```bash
 COMPOSE_FILE=docker-compose.staging.yml ./scripts/restore.sh 2026-07-01
 ```
+
+**Procédure restore complète :**
+
+1. Arrêter les services applicatifs (`docker compose stop api nginx`)
+2. Lancer `restore.sh <date>` — sélectionne l'archive B2 du jour
+3. Vérifier intégrité : `psql` count sites/MOC, MinIO bucket list
+4. Redémarrer stack → smoke test
+5. Consigner ci-dessous (date, opérateur, durée, anomalies)
+
+**Ne jamais restaurer en prod** sans fenêtre maintenance et validation ALTERRA.
 
 Consigner chaque test de restauration ici : date, durée, résultat.
 
