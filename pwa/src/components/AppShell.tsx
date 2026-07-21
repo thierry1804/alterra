@@ -51,12 +51,20 @@ export default function AppShell() {
             <Link to="/batch" className={navClass("/batch")}>
               Saisie lot
             </Link>
+            <Link to="/teams" className={navClass("/teams")}>
+              Équipes
+            </Link>
           </>
         )}
         {isCds && (
-          <Link to="/validation" className={navClass("/validation")}>
-            Validation
-          </Link>
+          <>
+            <Link to="/validation" className={navClass("/validation")}>
+              Validation
+            </Link>
+            <Link to="/teams" className={navClass("/teams")}>
+              Équipes
+            </Link>
+          </>
         )}
         <Link to="/sync" className={navClass("/sync")}>
           Sync

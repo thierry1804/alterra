@@ -9,6 +9,7 @@ import UnlockPin from "./pages/UnlockPin";
 import ActivitySelect from "./pages/ActivitySelect";
 import BatchEntry from "./pages/BatchEntry";
 import Validation from "./pages/Validation";
+import TeamManagement from "./pages/TeamManagement";
 import BiometricCapture from "./pages/BiometricCapture";
 import Sync from "./pages/Sync";
 
@@ -33,6 +34,10 @@ export default function App() {
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>
                 <Route path="/validation" element={<Validation />} />
+              </Route>
+
+              <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"]} />}>
+                <Route path="/teams" element={<TeamManagement />} />
               </Route>
 
               <Route path="/sync" element={<Sync />} />
