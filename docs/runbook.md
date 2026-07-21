@@ -5,6 +5,8 @@ Documentation complémentaire :
 - Déploiement production : [docs/deploy/production.md](deploy/production.md)
 - Guides utilisateur : [docs/guides/](guides/)
 - Recette V1 : [docs/qa/recette-v1.md](qa/recette-v1.md)
+- Hypercare post-MEP : [docs/ops/hypercare-v1.md](ops/hypercare-v1.md)
+- Rétrospective V1 : [docs/retrospective-v1.md](retrospective-v1.md)
 
 ## Contacts
 
@@ -44,6 +46,8 @@ Voir checklist complète : [docs/deploy/production.md](deploy/production.md)
 | J0 | `./scripts/deploy.sh` sur prod | Ops | 20 min |
 | J0 | Smoke test public + vérif KPI admin | Ops + métier | 15 min |
 | J+1 | Hypercare (Task 25) — astreinte réactive | Support | 3 semaines |
+
+Voir [docs/ops/hypercare-v1.md](ops/hypercare-v1.md) : grille P1–P3, hotfix, bilan hebdo.
 
 **Go / No-go MEP** si :
 
