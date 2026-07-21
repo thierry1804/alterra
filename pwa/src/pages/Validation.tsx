@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../lib/pointages";
 import TeamGroup, { type TeamGroupItem } from "../components/validation/TeamGroup";
+import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
 
 async function fetchAllPendingPointages(): Promise<Pointage[]> {
   const rows: Pointage[] = [];
@@ -40,6 +41,7 @@ export default function Validation() {
     setLoading(true);
     setError(null);
     try {
+      void syncBiometricTemplatesFromServer().catch(() => undefined);
       const pending = await fetchAllPendingPointages();
       setPointages(pending);
 

@@ -2,9 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
-import { blobToBase64, submitBiometricCheck, type BiometricCheckResult } from "../lib/biometric";
+import {
+  blobToBase64,
+  queueOfflineBiometricCheck,
+  submitBiometricCheck,
+  submitBiometricCheckOffline,
+  type BiometricCheckResult,
+} from "../lib/biometric";
 import { bioResultLabel } from "../lib/pointages";
 import { compressPhoto } from "../lib/image";
+import { uuidv7 } from "../lib/uuid";
+import { getCachedBiometricTemplate } from "../services/biometric/TemplateCache";
+import { matchFaceBlobAgainstTemplate } from "../services/biometric/FaceMatcher";
 
 function resultBannerClass(result: BiometricCheckResult["result"]): string {
   switch (result) {
@@ -61,6 +70,56 @@ export default function BiometricCapture() {
       const compressed = await compressPhoto(file);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(compressed));
+
+      const cachedTemplate = await getCachedBiometricTemplate(workerId);
+      if (cachedTemplate) {
+        const match = await matchFaceBlobAgainstTemplate(compressed, cachedTemplate.descriptor);
+        if (match) {
+          const performedAt = new Date().toISOString();
+          const clientUuid = uuidv7();
+          const offlinePayload = {
+            clientUuid,
+            workerId,
+            result: match.result,
+            score: match.score,
+            referenceDate: pointageDate,
+            performedAt,
+          };
+
+          if (navigator.onLine) {
+            try {
+              const check = await submitBiometricCheckOffline(offlinePayload);
+              setResult(check);
+              return;
+            } catch {
+              // file d'attente offline ci-dessous
+            }
+          }
+
+          await queueOfflineBiometricCheck({
+            clientUuid,
+            workerId,
+            result: match.result,
+            score: match.score,
+            referenceDate: pointageDate,
+            performedAt,
+          });
+          setResult({
+            id: clientUuid,
+            workerId,
+            result: match.result,
+            score: match.score,
+            weekIso: null,
+            performedAt,
+          });
+          return;
+        }
+      }
+
+      if (!navigator.onLine) {
+        setError("Hors ligne — template biométrique indisponible ou visage non détecté.");
+        return;
+      }
 
       const photoBase64 = await blobToBase64(compressed);
       const check = await submitBiometricCheck({

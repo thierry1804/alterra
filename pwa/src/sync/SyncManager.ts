@@ -7,6 +7,7 @@ import {
 } from "./ConflictResolver";
 import type { PointageSyncResult, SyncLogEntry, SyncRunResult, SyncState } from "./sync-types";
 import { syncPresenceLogs } from "./PresenceSync";
+import { syncPendingOfflineBiometricChecks } from "../lib/biometric";
 
 const BATCH_SIZE = 100;
 const BACKOFF_DELAYS_MS = [1000, 2000, 5000, 15000, 60000, 300000];
@@ -220,6 +221,14 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
       await appendLog(
         "info",
         `Présences — ${presenceTotals.synced} synchronisée(s), ${presenceTotals.rejected} rejetée(s)`,
+      );
+    }
+
+    const bioTotals = await syncPendingOfflineBiometricChecks();
+    if (bioTotals.synced > 0 || bioTotals.rejected > 0) {
+      await appendLog(
+        "info",
+        `Bio offline — ${bioTotals.synced} envoyé(s), ${bioTotals.rejected} rejeté(s)`,
       );
     }
   } finally {

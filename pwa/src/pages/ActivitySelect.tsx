@@ -11,6 +11,7 @@ import {
   todayIsoDate,
 } from "../lib/day-session";
 import { syncReferentials } from "../sync/ReferentialSync";
+import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
 
 export default function ActivitySelect() {
   const { user } = useAuth();
@@ -55,7 +56,15 @@ export default function ActivitySelect() {
           siteId: user?.siteId,
           teamId: user?.teamId,
         });
-        setSyncMessage(`${result.workers} MOC · ${result.activities} activités en cache`);
+        let bioCount = 0;
+        try {
+          bioCount = await syncBiometricTemplatesFromServer();
+        } catch {
+          bioCount = 0;
+        }
+        setSyncMessage(
+          `${result.workers} MOC · ${result.activities} activités · ${bioCount} templates bio`,
+        );
       } catch {
         const cachedActivities = await db.activities.count();
         if (cachedActivities === 0) {

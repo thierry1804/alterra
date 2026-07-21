@@ -145,6 +145,10 @@ export async function getLastActivityAt(): Promise<Date | null> {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+export function getMemorySessionKey(): CryptoKey | null {
+  return memorySessionKey;
+}
+
 export function lockSession(): void {
   memorySessionKey = null;
   memoryAccessToken = null;

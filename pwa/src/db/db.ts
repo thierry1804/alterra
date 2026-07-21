@@ -86,6 +86,23 @@ export interface PresenceLogRecord {
   synced: boolean;
 }
 
+export interface BiometricTemplateRecord {
+  workerId: string;
+  encryptedPayload: string;
+  expiresAt: string;
+  syncedAt: string;
+}
+
+export interface BiometricOfflineCheckRecord {
+  clientUuid: string;
+  workerId: string;
+  result: "OK" | "KO" | "DOUBT";
+  score: number | null;
+  referenceDate?: string;
+  performedAt: string;
+  synced: boolean;
+}
+
 /** @deprecated v1 — migrated to settings */
 export interface MetaRecord {
   key: string;
@@ -103,6 +120,8 @@ class AlterraDB extends Dexie {
   meta!: Table<MetaRecord, string>;
   badges!: Table<BadgeRecord, string>;
   presenceLog!: Table<PresenceLogRecord, string>;
+  biometricTemplates!: Table<BiometricTemplateRecord, string>;
+  biometricOfflineChecks!: Table<BiometricOfflineCheckRecord, string>;
 
   constructor() {
     super("alterra");
@@ -154,6 +173,20 @@ class AlterraDB extends Dexie {
       settings: "key",
       badges: "nfcTagId, workerId",
       presenceLog: "clientUuid, date, arrivalTime, workerId, [workerId+date], status, synced",
+    });
+
+    this.version(4).stores({
+      workers: "id, teamId, matricule, [firstName+lastName]",
+      activities: "id, siteId, active",
+      pointages: "clientUuid, workerId, date, status",
+      pointings_synced: "clientUuid, id, workerId, date",
+      media: "clientUuid, refType, uploaded",
+      syncQueue: "++id, type, status, createdAt",
+      settings: "key",
+      badges: "nfcTagId, workerId",
+      presenceLog: "clientUuid, date, arrivalTime, workerId, [workerId+date], status, synced",
+      biometricTemplates: "workerId, expiresAt, syncedAt",
+      biometricOfflineChecks: "clientUuid, workerId, synced, performedAt",
     });
   }
 }

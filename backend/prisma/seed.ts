@@ -1,5 +1,9 @@
-import { PrismaClient, Role, WorkerStatus } from "@prisma/client";
+import { PrismaClient, BioProvider, Role, WorkerStatus } from "@prisma/client";
 import argon2 from "argon2";
+import {
+  buildMockDescriptor,
+  encodeTemplateData,
+} from "../src/services/biometric/template.service.js";
 import {
   ACTIVITIES,
   ADMIN_ID,
@@ -147,6 +151,21 @@ async function main() {
         teamId: tid,
         status: WorkerStatus.ACTIVE,
         hiredAt: new Date("2025-01-01"),
+      },
+    });
+  }
+
+  for (let n = 1; n <= Math.min(10, EXPECTED_SEED_COUNTS.workers); n += 1) {
+    const wid = workerId(n);
+    await prisma.biometricTemplate.upsert({
+      where: { workerId: wid },
+      update: {},
+      create: {
+        workerId: wid,
+        templateData: encodeTemplateData(buildMockDescriptor(wid)),
+        source: BioProvider.MOCK,
+        capturedAt: new Date("2026-01-01"),
+        expiresAt: new Date("2027-12-31"),
       },
     });
   }

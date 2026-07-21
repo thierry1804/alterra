@@ -21,6 +21,7 @@ import {
   persistSessionWithMemoryKey,
   unlockSessionWithPin,
 } from "../lib/session";
+import { clearBiometricTemplates } from "../services/biometric/TemplateCache";
 
 interface PendingSession {
   accessToken: string;
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api.post("/auth/logout").catch(() => undefined);
+    await clearBiometricTemplates().catch(() => undefined);
     await clearPersistedSession();
     setPendingSession(null);
     setNeedsPinSetup(false);
