@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { isAxiosError } from "axios";
+import Button from "../components/ui/Button";
+import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 
@@ -134,14 +136,15 @@ export default function DailyClose() {
             Vérifiez les pointages du jour, signez et générez le rapport PDF.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadPreview()}
-          className="text-xs text-zinc-600 underline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={() => void loadPreview()}>
           Actualiser
-        </button>
+        </Button>
       </header>
+
+      <ContextHelp id="daily-close" title="Clôture journalière">
+        <p>Vérifiez les compteurs avant signature. Si des pointages restent en attente, une confirmation explicite est requise.</p>
+        <GlossaryTerm term="Semaine ISO">Période de paie associée à la date clôturée.</GlossaryTerm>
+      </ContextHelp>
 
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -180,7 +183,7 @@ export default function DailyClose() {
               <dd className="font-medium text-zinc-900">{preview.validatedCount}</dd>
             </div>
             <div>
-              <dt className="text-zinc-500">MOC</dt>
+              <dt className="text-zinc-600">Travailleurs</dt>
               <dd className="font-medium text-zinc-900">{preview.workerCount}</dd>
             </div>
             <div>
@@ -235,14 +238,13 @@ export default function DailyClose() {
           />
           Je certifie l'exactitude des pointages validés pour cette journée.
         </label>
-        <button
+        <Button
           type="button"
           disabled={submitting || !certify || signatureText.trim().length < 3}
           onClick={() => void handleCloseDay()}
-          className="mt-4 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {submitting ? "Clôture en cours…" : "Clôturer et envoyer le rapport"}
-        </button>
+        </Button>
       </section>
 
       {jobStatus?.state === "completed" && jobStatus.result?.reportUrl && (

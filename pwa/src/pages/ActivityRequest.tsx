@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import Button from "../components/ui/Button";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import {
   fetchAllActivityRequests,
   requestStatusClass,
@@ -23,6 +25,7 @@ export default function ActivityRequest() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [cancelRequestId, setCancelRequestId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [proposedLabel, setProposedLabel] = useState("");
@@ -74,14 +77,15 @@ export default function ActivityRequest() {
     }
   }
 
-  async function handleCancel(requestId: string) {
-    if (!window.confirm("Annuler cette demande ?")) return;
-    setBusyId(requestId);
+  async function confirmCancel() {
+    if (!cancelRequestId) return;
+    setBusyId(cancelRequestId);
     setError(null);
     setMessage(null);
     try {
-      await api.patch(`/activity-requests/${requestId}/cancel`);
+      await api.patch(`/activity-requests/${cancelRequestId}/cancel`);
       setMessage("Demande annulée.");
+      setCancelRequestId(null);
       await loadRequests();
     } catch (err) {
       setError(workflowErrorMessage(err, "Annulation échouée."));
@@ -103,13 +107,9 @@ export default function ActivityRequest() {
             Proposez une nouvelle activité avec tarif — l'administrateur décidera.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadRequests()}
-          className="text-xs text-zinc-600 underline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={() => void loadRequests()}>
           Actualiser
-        </button>
+        </Button>
       </header>
 
       {error && (
@@ -177,8 +177,9 @@ export default function ActivityRequest() {
             />
           </div>
         </div>
-        <button
+        <Button
           type="button"
+          className="mt-3"
           disabled={
             submitting ||
             !proposedLabel.trim() ||
@@ -188,10 +189,9 @@ export default function ActivityRequest() {
             justification.trim().length < 10
           }
           onClick={() => void handleSubmit()}
-          className="mt-3 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           Envoyer à l'administrateur
-        </button>
+        </Button>
       </section>
 
       <section className="space-y-3">
@@ -210,7 +210,7 @@ export default function ActivityRequest() {
                 <p className="mt-1 text-xs text-zinc-500">{formatDate(request.createdAt)}</p>
               </div>
               <span
-                className={`rounded border px-1.5 py-0.5 text-[10px] ${requestStatusClass(request.status)}`}
+                className={`rounded border px-2 py-0.5 text-xs ${requestStatusClass(request.status)}`}
               >
                 {requestStatusLabel(request.status)}
               </span>
@@ -220,18 +220,31 @@ export default function ActivityRequest() {
               <p className="mt-2 text-xs text-zinc-500">Décision : {request.decisionReason}</p>
             )}
             {request.status === "PENDING" && (
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
+                className="mt-3"
                 disabled={busyId === request.id}
-                onClick={() => void handleCancel(request.id)}
-                className="mt-3 text-xs text-red-700 underline disabled:opacity-50"
+                onClick={() => setCancelRequestId(request.id)}
               >
                 Annuler
-              </button>
+              </Button>
             )}
           </article>
         ))}
       </section>
+
+      <ConfirmDialog
+        open={cancelRequestId !== null}
+        title="Annuler cette demande ?"
+        description="La demande ne sera plus visible par l'administrateur."
+        confirmLabel="Annuler la demande"
+        destructive
+        busy={cancelRequestId !== null && busyId === cancelRequestId}
+        onConfirm={() => void confirmCancel()}
+        onCancel={() => setCancelRequestId(null)}
+      />
     </div>
   );
 }

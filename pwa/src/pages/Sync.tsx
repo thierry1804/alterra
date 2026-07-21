@@ -1,5 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
+import Button from "../components/ui/Button";
+import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { db } from "../db/db";
 import { discardRejectedPointage } from "../sync/ConflictResolver";
 import { forceSync } from "../sync/SyncManager";
@@ -37,9 +39,18 @@ export default function Sync() {
       <header>
         <h1 className="text-lg font-semibold text-zinc-900">Synchronisation</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          File idempotente par clientUuid — batch ≤100, intervalle 60 s.
+          État de la connexion et des données en attente d&apos;envoi vers le serveur.
         </p>
       </header>
+
+      <ContextHelp id="sync" title="Synchronisation">
+        <GlossaryTerm term="En attente">
+          Données saisies sur le terrain pas encore confirmées par le serveur.
+        </GlossaryTerm>
+        <GlossaryTerm term="MVola">
+          Mobile money — canal de paiement des travailleurs.
+        </GlossaryTerm>
+      </ContextHelp>
 
       <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-4 sm:grid-cols-2">
         <div>
@@ -71,16 +82,16 @@ export default function Sync() {
         </div>
       </div>
 
-      <button
+      <Button
         type="button"
+        className="w-full"
         onClick={() => void handleForceSync()}
         disabled={busy || !state.online || state.isSyncing}
-        className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
       >
         {busy || state.isSyncing
           ? "Synchronisation…"
           : `Forcer la synchronisation (${state.pendingCount})`}
-      </button>
+      </Button>
 
       {rejected.length > 0 && (
         <section className="space-y-2">
@@ -94,16 +105,17 @@ export default function Sync() {
                 className="flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm"
               >
                 <div>
-                  <p className="font-medium text-red-800">{pointage.clientUuid.slice(0, 8)}…</p>
+                  <p className="font-medium text-red-800">Pointage local rejeté</p>
                   <p className="text-red-700">{pointage.reason ?? "Rejeté par le serveur"}</p>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   onClick={() => void discardRejectedPointage(pointage.clientUuid)}
-                  className="text-xs text-red-800 underline"
                 >
                   Abandonner
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -113,7 +125,12 @@ export default function Sync() {
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-zinc-900">Journal récent</h2>
         {state.recentLog.length === 0 && (
-          <p className="text-sm text-zinc-500">Aucune entrée pour le moment.</p>
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+            <p>Aucune entrée pour le moment.</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void handleForceSync()} disabled={!state.online}>
+              Lancer une sync
+            </Button>
+          </div>
         )}
         <ul className="space-y-2">
           {state.recentLog.map((entry) => (
@@ -123,7 +140,7 @@ export default function Sync() {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`font-medium ${logLevelClass(entry.level)}`}>{entry.message}</span>
-                <span className="shrink-0 text-[10px] text-zinc-500">
+                <span className="shrink-0 text-xs text-zinc-600">
                   {new Date(entry.at).toLocaleTimeString("fr-FR")}
                 </span>
               </div>

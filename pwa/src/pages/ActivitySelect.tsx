@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
+import Button from "../components/ui/Button";
+import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { db } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -63,7 +65,7 @@ export default function ActivitySelect() {
           bioCount = 0;
         }
         setSyncMessage(
-          `${result.workers} MOC · ${result.activities} activités · ${bioCount} templates bio`,
+          `${result.workers} travailleur(s) · ${result.activities} activités · ${bioCount} modèles bio`,
         );
       } catch {
         const cachedActivities = await db.activities.count();
@@ -113,6 +115,11 @@ export default function ActivitySelect() {
         </p>
       </header>
 
+      <ContextHelp id="activity-select" title="Activité du jour">
+        <p>Choisissez l&apos;activité et la quantité par défaut avant d&apos;ouvrir la saisie en lot.</p>
+        <GlossaryTerm term="MOC">Main-d&apos;œuvre communautaire — travailleur du programme.</GlossaryTerm>
+      </ContextHelp>
+
       {syncMessage && (
         <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
           {syncing ? "Synchronisation référentiel…" : syncMessage}
@@ -155,7 +162,9 @@ export default function ActivitySelect() {
       <div className="space-y-2">
         <p className="text-sm font-medium text-zinc-700">Activité</p>
         {activities.length === 0 && (
-          <p className="text-sm text-zinc-500">Aucune activité en cache. Connectez-vous pour synchroniser.</p>
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+            <p>Aucune activité en cache. Connectez-vous pour synchroniser le référentiel.</p>
+          </div>
         )}
         <div className="space-y-2">
           {activities.map((activity) => (
@@ -182,13 +191,9 @@ export default function ActivitySelect() {
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
 
-      <button
-        type="button"
-        onClick={() => void handleContinue()}
-        className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white"
-      >
+      <Button type="button" className="w-full" onClick={() => void handleContinue()}>
         Continuer vers la saisie lot
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { cn } from "../lib/utils";
 import PageHeader from "../components/shared/PageHeader";
 import RequestDetailDrawer, {
   type RequestSelection,
@@ -34,7 +35,7 @@ import {
 
 const TABS: { id: RequestTab; label: string }[] = [
   { id: "activities", label: "Activités" },
-  { id: "workers", label: "MOC" },
+  { id: "workers", label: "Travailleurs" },
   { id: "clarifications", label: "Précisions" },
 ];
 
@@ -100,6 +101,20 @@ export default function RequestsPage() {
     setStatusFilter(nextTab === "clarifications" ? "OPEN" : "PENDING");
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        return;
+      }
+      if (event.key === "1") handleTabChange("activities");
+      if (event.key === "2") handleTabChange("workers");
+      if (event.key === "3") handleTabChange("clarifications");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   function refreshCurrentTab() {
     if (tab === "activities") void activityQuery.refetch();
     if (tab === "workers") void workerQuery.refetch();
@@ -119,16 +134,19 @@ export default function RequestsPage() {
       />
 
       <div className="flex flex-wrap gap-2 border-b border-zinc-200 pb-2">
-        {TABS.map((item) => (
+        {TABS.map((item, index) => (
           <button
             key={item.id}
             type="button"
             onClick={() => handleTabChange(item.id)}
-            className={
+            className={cn(
+              "rounded-md px-3 py-2 text-sm transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
               tab === item.id
-                ? "border-b-2 border-zinc-900 px-3 py-2 text-sm font-medium text-zinc-900"
-                : "px-3 py-2 text-sm text-zinc-600"
-            }
+                ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
+                : "text-zinc-600 hover:text-zinc-900",
+            )}
+            title={`Raccourci ${index + 1}`}
           >
             {item.label}
           </button>
@@ -138,7 +156,7 @@ export default function RequestsPage() {
       <div className="flex flex-wrap gap-3">
         {tab === "clarifications" ? (
           <select
-            className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="alterra-focus h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
             value={statusFilter}
             onChange={(event) =>
               setStatusFilter(event.target.value as ClarificationStatus | "")
@@ -153,7 +171,7 @@ export default function RequestsPage() {
           </select>
         ) : (
           <select
-            className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="alterra-focus h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as RequestStatus | "")}
           >

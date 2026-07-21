@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { cn } from "../../lib/cn";
 import { forceSync } from "../../sync/SyncManager";
 import { useSyncState } from "../../hooks/useSyncState";
+import Button from "../ui/Button";
 
 function formatLastSync(iso: string | null): string {
   if (!iso) return "Jamais";
@@ -17,34 +19,41 @@ export default function SyncStatusBar() {
   const pendingTotal = state.pendingCount + state.syncingCount + state.queuePendingCount;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-100 px-4 py-2 text-xs text-zinc-700">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-100 px-4 py-2 text-sm text-zinc-700">
       <div className="flex flex-wrap items-center gap-3">
-        <span className={state.online ? "text-emerald-800" : "text-red-700"}>
+        <span className={state.online ? "font-medium text-emerald-800" : "font-medium text-red-700"}>
           {state.online ? "En ligne" : "Hors ligne"}
         </span>
         <span>
           {pendingTotal} en attente
           {state.mediaPendingCount > 0 ? ` · ${state.mediaPendingCount} photo(s)` : ""}
         </span>
-        <span>Dernière sync : {formatLastSync(state.lastSyncAt)}</span>
-        {state.isSyncing && <span className="text-zinc-900">Synchronisation…</span>}
+        <span className="text-zinc-600">Dernière sync : {formatLastSync(state.lastSyncAt)}</span>
+        {state.isSyncing && <span className="font-medium text-zinc-900">Synchronisation…</span>}
         {!state.autoSyncEnabled && (
-          <span className="text-amber-800">Sync auto suspendue</span>
+          <span className="font-medium text-amber-800">Sync auto suspendue</span>
         )}
       </div>
 
       <div className="flex items-center gap-2">
-        <Link to="/sync" className="underline">
+        <Link
+          to="/sync"
+          className={cn(
+            "inline-flex min-h-9 items-center text-sm text-zinc-700 underline-offset-2 hover:underline",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+          )}
+        >
           Détail
         </Link>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           disabled={!state.online || state.isSyncing}
           onClick={() => void forceSync()}
-          className="rounded border border-zinc-300 bg-white px-2 py-1 disabled:opacity-50"
         >
           Forcer
-        </button>
+        </Button>
       </div>
     </div>
   );

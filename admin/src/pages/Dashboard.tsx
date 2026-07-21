@@ -6,6 +6,7 @@ import KpiCards from "../components/dashboard/KpiCards";
 import PresenceChart from "../components/dashboard/PresenceChart";
 import WorkforceChart from "../components/dashboard/WorkforceChart";
 import AlertsBlock from "../components/dashboard/AlertsBlock";
+import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 
@@ -39,6 +40,15 @@ export default function Dashboard() {
           Rafraîchir
         </Button>
       </div>
+
+      <ContextHelp id="dashboard-admin" title="Tableau de bord" persistDismiss={false}>
+        <GlossaryTerm term="Présence semaine">
+          Taux de travailleurs pointés sur la période en cours.
+        </GlossaryTerm>
+        <GlossaryTerm term="Paiements en attente">
+          Montant MVola non encore exporté pour la campagne active.
+        </GlossaryTerm>
+      </ContextHelp>
 
       {isLoading && (
         <div className="space-y-4">

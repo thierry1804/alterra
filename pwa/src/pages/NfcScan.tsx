@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { db, type WorkerRecord } from "../db/db";
 import {
@@ -249,13 +250,9 @@ export default function NfcScan() {
       )}
 
       <section className="rounded-md border border-zinc-200 bg-white p-4">
-        <button
-          type="button"
-          onClick={() => setManualOpen((open) => !open)}
-          className="text-sm font-medium text-zinc-900 underline"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => setManualOpen((open) => !open)}>
           {manualOpen ? "Masquer le mode manuel" : "Mode manuel — dégradé"}
-        </button>
+        </Button>
 
         {manualOpen && (
           <form onSubmit={(event) => void handleManualSubmit(event)} className="mt-3 space-y-3">
@@ -268,20 +265,16 @@ export default function NfcScan() {
               className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
               required
             >
-              <option value="">Sélectionner un MOC</option>
+              <option value="">Sélectionner un travailleur</option>
               {teamWorkers.map((worker) => (
                 <option key={worker.id} value={worker.id}>
                   {workerLabel(worker)} ({worker.matricule})
                 </option>
               ))}
             </select>
-            <button
-              type="submit"
-              disabled={busy || !manualWorkerId}
-              className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-            >
+            <Button type="submit" className="w-full" disabled={busy || !manualWorkerId}>
               Enregistrer présence manuelle
-            </button>
+            </Button>
           </form>
         )}
       </section>

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { getMemoryUser } from "../lib/session";
 
@@ -124,22 +125,19 @@ export default function UnlockPin() {
           />
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-zinc-900 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Validation…" : setupMode ? "Enregistrer" : "Déverrouiller"}
-        </button>
+        </Button>
 
         {!setupMode && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            className="w-full"
             onClick={() => void logout().then(() => navigate("/login"))}
-            className="w-full text-sm text-zinc-600 underline"
           >
             Se déconnecter
-          </button>
+          </Button>
         )}
       </form>
     </div>

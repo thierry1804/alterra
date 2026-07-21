@@ -3,6 +3,8 @@ import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import type { TeamDetail, TeamSummary, WorkerSearchHit } from "../lib/teams";
+import Button, { ButtonLink } from "../components/ui/Button";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { syncReferentials } from "../sync/ReferentialSync";
 
 function memberLabel(member: { firstName: string; lastName: string; matricule: string }): string {
@@ -75,7 +77,7 @@ function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: Me
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-600" htmlFor={`search-${teamId}`}>
-        Ajouter un MOC
+        Ajouter un travailleur
       </label>
       <input
         id={`search-${teamId}`}
@@ -92,14 +94,15 @@ function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: Me
           {results.map((worker) => (
             <li key={worker.id} className="flex items-center justify-between gap-2 px-3 py-2">
               <span className="text-sm text-zinc-800">{memberLabel(worker)}</span>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 disabled={busyId === worker.id || disabled}
                 onClick={() => void handleAdd(worker.id)}
-                className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-800 disabled:opacity-50"
               >
                 Ajouter
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -116,6 +119,10 @@ interface TeamCardProps {
   onSyncCache: () => Promise<void>;
 }
 
+type TeamConfirmAction =
+  | { type: "deactivate" }
+  | { type: "remove"; workerId: string; workerName: string };
+
 function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: TeamCardProps) {
   const [expanded, setExpanded] = useState(!canEditStructure);
   const [name, setName] = useState(team.name);
@@ -123,6 +130,8 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [members, setMembers] = useState(team.members);
+  const [confirmAction, setConfirmAction] = useState<TeamConfirmAction | null>(null);
+  const panelId = `team-panel-${team.id}`;
 
   useEffect(() => {
     setName(team.name);
@@ -149,11 +158,11 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
   }
 
   async function deactivateTeam() {
-    if (!window.confirm(`Désactiver l'équipe « ${team.name} » ?`)) return;
     setBusy(true);
     setLocalError(null);
     try {
       await api.delete(`/teams/${team.id}`);
+      setConfirmAction(null);
       await onRefresh();
     } catch (err) {
       setLocalError(errorMessage(err, "Désactivation échouée."));
@@ -176,12 +185,12 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
   }
 
   async function removeMember(workerId: string) {
-    if (!window.confirm("Retirer ce MOC de l'équipe ?")) return;
     setBusy(true);
     setLocalError(null);
     try {
       await api.delete(`/teams/${team.id}/members/${workerId}`);
       setMembers((current) => current.filter((member) => member.id !== workerId));
+      setConfirmAction(null);
       await onSyncCache();
     } catch (err) {
       setLocalError(errorMessage(err, "Retrait échoué."));
@@ -190,26 +199,37 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
     }
   }
 
+  function handleConfirmAction() {
+    if (!confirmAction) return;
+    if (confirmAction.type === "deactivate") {
+      void deactivateTeam();
+      return;
+    }
+    void removeMember(confirmAction.workerId);
+  }
+
   return (
     <section className="rounded-md border border-zinc-200 bg-white">
       <button
         type="button"
+        aria-expanded={expanded}
+        aria-controls={panelId}
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400"
       >
         <div>
           <p className="text-sm font-medium text-zinc-900">{team.name}</p>
-          <p className="text-xs text-zinc-500">
-            {members.length} MOC
+          <p className="text-xs text-zinc-600">
+            {members.length} travailleur(s)
             {team.chef ? ` · Chef : ${team.chef.lastName} ${team.chef.firstName}` : ""}
             {!team.active ? " · Inactive" : ""}
           </p>
         </div>
-        <span className="text-xs text-zinc-500">{expanded ? "Masquer" : "Gérer"}</span>
+        <span className="shrink-0 text-xs font-medium text-zinc-600">{expanded ? "Masquer" : "Gérer"}</span>
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-zinc-200 px-4 py-4">
+        <div id={panelId} className="space-y-4 border-t border-zinc-200 px-4 py-4">
           {localError && (
             <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {localError}
@@ -251,22 +271,21 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
                 </select>
               </div>
               <div className="flex flex-wrap gap-2 sm:col-span-2">
-                <button
+                <Button
                   type="button"
                   disabled={busy || !name.trim()}
                   onClick={() => void saveStructure()}
-                  className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
                   Enregistrer
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
                   disabled={busy}
-                  onClick={() => void deactivateTeam()}
-                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
+                  onClick={() => setConfirmAction({ type: "deactivate" })}
                 >
                   Désactiver
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -274,20 +293,27 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
           <div>
             <p className="text-xs font-medium text-zinc-600">Membres</p>
             {members.length === 0 ? (
-              <p className="mt-2 text-sm text-zinc-500">Aucun MOC dans cette équipe.</p>
+              <p className="mt-2 text-sm text-zinc-600">Aucun travailleur dans cette équipe.</p>
             ) : (
               <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
                 {members.map((member) => (
                   <li key={member.id} className="flex items-center justify-between gap-2 px-3 py-2">
                     <span className="text-sm text-zinc-800">{memberLabel(member)}</span>
-                    <button
+                    <Button
                       type="button"
+                      variant="destructive"
+                      size="sm"
                       disabled={busy}
-                      onClick={() => void removeMember(member.id)}
-                      className="text-xs text-red-700 underline disabled:opacity-50"
+                      onClick={() =>
+                        setConfirmAction({
+                          type: "remove",
+                          workerId: member.id,
+                          workerName: `${member.firstName} ${member.lastName}`,
+                        })
+                      }
                     >
                       Retirer
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -303,6 +329,29 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
           />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={
+          confirmAction?.type === "deactivate"
+            ? "Désactiver l'équipe ?"
+            : "Retirer ce travailleur ?"
+        }
+        description={
+          confirmAction?.type === "deactivate"
+            ? `L'équipe « ${team.name} » ne sera plus active. Les travailleurs restent dans le référentiel.`
+            : confirmAction?.type === "remove"
+              ? `${confirmAction.workerName} sera retiré de l'équipe « ${team.name} ».`
+              : ""
+        }
+        confirmLabel={
+          confirmAction?.type === "deactivate" ? "Désactiver" : "Retirer"
+        }
+        destructive
+        busy={busy}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </section>
   );
 }
@@ -392,17 +441,13 @@ export default function TeamManagement() {
           <h1 className="text-lg font-semibold text-zinc-900">Équipes</h1>
           <p className="mt-1 text-sm text-zinc-600">
             {isCds
-              ? "Créez les équipes, assignez un chef et gérez les MOC."
-              : "Ajoutez ou retirez les MOC de votre équipe."}
+              ? "Créez les équipes, assignez un chef et gérez les travailleurs."
+              : "Ajoutez ou retirez les travailleurs de votre équipe."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadTeams()}
-          className="text-xs text-zinc-600 underline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={() => void loadTeams()}>
           Actualiser
-        </button>
+        </Button>
       </header>
 
       {error && (
@@ -454,14 +499,9 @@ export default function TeamManagement() {
               </select>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={creating || !newTeamName.trim()}
-            onClick={() => void createTeam()}
-            className="mt-3 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
+          <Button type="button" className="mt-3" disabled={creating || !newTeamName.trim()} onClick={() => void createTeam()}>
             Créer l'équipe
-          </button>
+          </Button>
         </section>
       )}
 

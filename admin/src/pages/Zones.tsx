@@ -29,6 +29,11 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+
+type DeleteConfirm =
+  | { type: "zone"; id: string; name: string }
+  | { type: "parcel"; id: string; name: string };
 
 type DialogMode = "zone-create" | "zone-edit" | "parcel-create" | "parcel-edit";
 
@@ -67,6 +72,7 @@ export default function ZonesPage() {
   const [parentZoneId, setParentZoneId] = useState<string | null>(null);
   const [zoneForm, setZoneForm] = useState<ZoneForm>(emptyZoneForm);
   const [parcelForm, setParcelForm] = useState<ParcelForm>(emptyParcelForm);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -170,6 +176,19 @@ export default function ZonesPage() {
       toast({ title: "Suppression impossible", description: String(message), variant: "destructive" });
     },
   });
+
+  function handleDeleteConfirm() {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === "zone") {
+      deleteZoneMutation.mutate(deleteConfirm.id, {
+        onSuccess: () => setDeleteConfirm(null),
+      });
+      return;
+    }
+    deleteParcelMutation.mutate(deleteConfirm.id, {
+      onSuccess: () => setDeleteConfirm(null),
+    });
+  }
 
   function openZoneCreate() {
     setDialogMode("zone-create");
@@ -316,11 +335,9 @@ export default function ZonesPage() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          if (window.confirm(`Supprimer la zone « ${zone.name} » ?`)) {
-                            deleteZoneMutation.mutate(zone.id);
-                          }
-                        }}
+                        onClick={() =>
+                          setDeleteConfirm({ type: "zone", id: zone.id, name: zone.name })
+                        }
                       >
                         Supprimer
                       </Button>
@@ -344,11 +361,13 @@ export default function ZonesPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (window.confirm(`Supprimer la parcelle « ${parcel.name} » ?`)) {
-                                deleteParcelMutation.mutate(parcel.id);
-                              }
-                            }}
+                            onClick={() =>
+                              setDeleteConfirm({
+                                type: "parcel",
+                                id: parcel.id,
+                                name: parcel.name,
+                              })
+                            }
                           >
                             Supprimer
                           </Button>
@@ -384,15 +403,16 @@ export default function ZonesPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="zone-geo">GeoJSON Polygon</Label>
-                  <button
+                  <Button
                     type="button"
-                    className="text-xs text-zinc-600 underline"
+                    variant="ghost"
+                    size="sm"
                     onClick={() =>
                       setZoneForm((f) => ({ ...f, geoPolygonText: EXAMPLE_GEO_POLYGON }))
                     }
                   >
                     Exemple
-                  </button>
+                  </Button>
                 </div>
                 <textarea
                   id="zone-geo"
@@ -429,15 +449,16 @@ export default function ZonesPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="parcel-geo">GeoJSON Polygon</Label>
-                  <button
+                  <Button
                     type="button"
-                    className="text-xs text-zinc-600 underline"
+                    variant="ghost"
+                    size="sm"
                     onClick={() =>
                       setParcelForm((f) => ({ ...f, geoPolygonText: EXAMPLE_GEO_POLYGON }))
                     }
                   >
                     Exemple
-                  </button>
+                  </Button>
                 </div>
                 <textarea
                   id="parcel-geo"
@@ -466,6 +487,27 @@ export default function ZonesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={
+          deleteConfirm?.type === "zone"
+            ? "Supprimer la zone ?"
+            : "Supprimer la parcelle ?"
+        }
+        description={
+          deleteConfirm
+            ? `« ${deleteConfirm.name} » sera définitivement supprimée. Cette action est irréversible.`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        destructive
+        busy={deleteZoneMutation.isPending || deleteParcelMutation.isPending}
+        onConfirm={handleDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

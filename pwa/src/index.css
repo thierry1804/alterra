@@ -1,7 +1,38 @@
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-  font-family: system-ui, sans-serif;
+@import "../../design/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-zinc-200;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply bg-white text-zinc-900 antialiased;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-zinc-400 ring-offset-2;
+  }
+}
+
+@layer components {
+  .alterra-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2;
+  }
 }

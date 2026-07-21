@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../lib/pointages";
 import PhotoCapture from "../components/pointage/PhotoCapture";
+import Button from "../components/ui/Button";
 import {
   clarificationStatusClass,
   clarificationStatusLabel,
@@ -229,13 +230,9 @@ export default function ClarificationRequest() {
               : "Demandez des précisions au chef d'équipe sur un pointage en attente."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadData()}
-          className="text-xs text-zinc-600 underline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={() => void loadData()}>
           Actualiser
-        </button>
+        </Button>
       </header>
 
       {error && (
@@ -292,14 +289,13 @@ export default function ClarificationRequest() {
               />
               Demander une photo dans la réponse
             </label>
-            <button
+            <Button
               type="button"
               disabled={creating || !selectedPointageId || question.trim().length < 10}
               onClick={() => void handleCreate()}
-              className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               Envoyer au chef d'équipe
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -322,7 +318,7 @@ export default function ClarificationRequest() {
                   <p className="mt-1 text-xs text-zinc-500">{formatDate(request.createdAt)}</p>
                 </div>
                 <span
-                  className={`rounded border px-1.5 py-0.5 text-[10px] ${clarificationStatusClass(request.status)}`}
+                  className={`rounded border px-2 py-0.5 text-xs ${clarificationStatusClass(request.status)}`}
                 >
                   {clarificationStatusLabel(request.status)}
                 </span>
@@ -369,27 +365,22 @@ export default function ClarificationRequest() {
                       onClear={() => updateAnswerDraft(request.id, { blob: null, previewUrl: null })}
                     />
                   )}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleAnswer(request)}
-                    className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  >
+                  <Button type="button" disabled={busy} onClick={() => void handleAnswer(request)}>
                     Envoyer la réponse
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {isCds && request.status === "ANSWERED" && (
                 <div className="mt-3 border-t border-zinc-200 pt-3">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     disabled={busy}
                     onClick={() => void handleClose(request.id)}
-                    className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
                   >
                     Clôturer et remettre en validation
-                  </button>
+                  </Button>
                 </div>
               )}
             </article>

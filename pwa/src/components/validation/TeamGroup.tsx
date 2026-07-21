@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { cn } from "../../lib/cn";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../../lib/pointages";
 import {
   bioResultClass,
   bioResultLabel,
   formatPointageAmount,
 } from "../../lib/pointages";
+import Button from "../ui/Button";
 
 export interface TeamGroupItem {
   pointage: Pointage;
@@ -14,29 +16,59 @@ export interface TeamGroupItem {
 
 interface TeamGroupProps {
   teamLabel: string;
+  teamKey: string;
   items: TeamGroupItem[];
   busyId: string | null;
+  bulkBusy?: boolean;
+  bulkProgress?: { done: number; total: number } | null;
   onValidate: (pointageId: string) => void;
   onReject: (pointageId: string) => void;
+  onValidateTeam?: (teamKey: string, items: TeamGroupItem[]) => void;
+}
+
+function isBioEligible(pointage: Pointage): boolean {
+  return pointage.bioCheck?.result === "OK";
 }
 
 export default function TeamGroup({
   teamLabel,
+  teamKey,
   items,
   busyId,
+  bulkBusy = false,
+  bulkProgress,
   onValidate,
   onReject,
+  onValidateTeam,
 }: TeamGroupProps) {
+  const eligibleCount = items.filter(({ pointage }) => isBioEligible(pointage)).length;
+  const isBulkActive = bulkProgress !== null && bulkProgress !== undefined;
+
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-900">{teamLabel}</h2>
-        <span className="text-xs text-zinc-500">{items.length} MOC</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900">{teamLabel}</h2>
+          <span className="text-xs text-zinc-600">{items.length} travailleur(s)</span>
+        </div>
+        {onValidateTeam && eligibleCount > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkBusy || busyId !== null}
+            onClick={() => onValidateTeam(teamKey, items)}
+          >
+            {isBulkActive
+              ? `Validation ${bulkProgress.done}/${bulkProgress.total}…`
+              : `Valider l'équipe (${eligibleCount})`}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-2">
         {items.map(({ pointage, worker, activity }) => {
-          const busy = busyId === pointage.id;
+          const busy = busyId === pointage.id || bulkBusy;
           return (
             <article
               key={pointage.id}
@@ -47,7 +79,7 @@ export default function TeamGroup({
                   <p className="text-sm font-medium text-zinc-900">
                     {worker.firstName} {worker.lastName}
                   </p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-zinc-600">
                     {worker.matricule} · {activity.label} · {pointage.date}
                   </p>
                 </div>
@@ -56,7 +88,10 @@ export default function TeamGroup({
                     {formatPointageAmount(pointage.amount)}
                   </p>
                   <span
-                    className={`mt-1 inline-block rounded border px-1.5 py-0.5 text-[10px] ${bioResultClass(pointage.bioCheck?.result)}`}
+                    className={cn(
+                      "mt-1 inline-block rounded border px-2 py-0.5 text-xs",
+                      bioResultClass(pointage.bioCheck?.result),
+                    )}
                   >
                     {bioResultLabel(pointage.bioCheck?.result)}
                   </span>
@@ -66,32 +101,33 @@ export default function TeamGroup({
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
                   to={`/validation/bio/${worker.id}?pointageId=${pointage.id}&date=${pointage.date}`}
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700"
+                  className={cn(
+                    "inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 text-sm text-zinc-700",
+                    "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+                  )}
                 >
                   Contrôle bio
                 </Link>
                 <Link
                   to={`/clarifications?pointageId=${pointage.id}`}
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700"
+                  className={cn(
+                    "inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 text-sm text-zinc-700",
+                    "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+                  )}
                 >
                   Précisions
                 </Link>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onValidate(pointage.id)}
-                  className="rounded-md bg-zinc-900 px-2 py-1 text-xs text-white disabled:opacity-50"
-                >
+                <Button size="sm" disabled={busy} onClick={() => onValidate(pointage.id)}>
                   Valider
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   disabled={busy}
                   onClick={() => onReject(pointage.id)}
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 disabled:opacity-50"
                 >
                   Rejeter
-                </button>
+                </Button>
               </div>
             </article>
           );

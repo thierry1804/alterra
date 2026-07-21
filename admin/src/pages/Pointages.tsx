@@ -207,8 +207,11 @@ export default function PointagesPage() {
               ))}
             {!pointagesQuery.isLoading && pointages.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-zinc-500">
-                  Aucun pointage.
+                <TableCell colSpan={9}>
+                  <div className="py-4 text-sm text-zinc-700">
+                    <p>Aucun pointage pour ces filtres.</p>
+                    <p className="mt-1 text-zinc-600">Élargissez la période ou réinitialisez les filtres.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

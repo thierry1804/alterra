@@ -55,6 +55,7 @@ export default function WorkersPage() {
   const [statusFilter, setStatusFilter] = useState<Worker["status"] | "">("");
   const [importOpen, setImportOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Worker | null>(null);
   const [editing, setEditing] = useState<Worker | null>(null);
   const [form, setForm] = useState<WorkerForm>(emptyForm);
 
@@ -117,7 +118,8 @@ export default function WorkersPage() {
     mutationFn: (worker: Worker) => api.delete(`/workers/${worker.id}`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workers"] });
-      toast({ title: "MOC supprimé" });
+      setDeleteTarget(null);
+      toast({ title: "Travailleur supprimé" });
     },
   });
 
@@ -174,8 +176,8 @@ export default function WorkersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="MOC"
-        description="Main-d'œuvre communautaire — référentiel travailleurs."
+        title="Travailleurs"
+        description="Main-d'œuvre communautaire — référentiel travailleurs (MOC)."
         action={
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
@@ -279,7 +281,8 @@ export default function WorkersPage() {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        onClick={() => deleteMutation.mutate(worker)}
+                        className="text-red-700 hover:text-red-800"
+                        onClick={() => setDeleteTarget(worker)}
                       >
                         Supprimer
                       </Button>
@@ -417,6 +420,32 @@ export default function WorkersPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer ce travailleur ?</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `${deleteTarget.firstName} ${deleteTarget.lastName} (${deleteTarget.matricule}) sera définitivement retiré du référentiel.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
+            >
+              {deleteMutation.isPending ? "Suppression…" : "Supprimer"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

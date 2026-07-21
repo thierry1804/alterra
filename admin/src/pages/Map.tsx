@@ -130,12 +130,9 @@ export default function MapPage() {
                   </dd>
                 </div>
               </dl>
-              <Link
-                to="/zones"
-                className="inline-block text-xs text-zinc-600 underline"
-              >
-                Gérer zones et parcelles
-              </Link>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/zones">Gérer zones et parcelles</Link>
+              </Button>
             </div>
           )}
 

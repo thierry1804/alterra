@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
+import Button from "../components/ui/Button";
 
 export default function Login() {
   const { login } = useAuth();
@@ -77,13 +78,9 @@ export default function Login() {
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-zinc-900 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Connexion…" : "Se connecter"}
-        </button>
+        </Button>
       </form>
     </div>
   );

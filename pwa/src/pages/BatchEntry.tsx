@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import WorkerRow, { type WorkerRowValue } from "../components/pointage/WorkerRow";
+import Button, { ButtonLink } from "../components/ui/Button";
 import { db, type ActivityRecord, type PointagePending, type WorkerRecord } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, type DaySession } from "../lib/day-session";
@@ -124,7 +125,7 @@ export default function BatchEntry() {
         });
 
       if (entries.length === 0) {
-        setError("Saisissez au moins un MOC avec une quantité > 0.");
+        setError("Saisissez au moins un travailleur avec une quantité > 0.");
         return;
       }
 
@@ -193,26 +194,22 @@ export default function BatchEntry() {
                 {activity?.label ?? "Activité"} · {session.date}
               </p>
             </div>
-            <Link to="/" className="text-xs text-zinc-600 underline">
+            <ButtonLink to="/" variant="ghost" size="sm">
               Changer
-            </Link>
+            </ButtonLink>
           </div>
 
           <input
             type="search"
-            placeholder="Rechercher un MOC…"
+            placeholder="Rechercher un travailleur…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
 
-          <button
-            type="button"
-            onClick={applyDefaultToAll}
-            className="text-xs text-zinc-600 underline"
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={applyDefaultToAll}>
             Appliquer quantité par défaut ({session.defaultQuantity}) à tous
-          </button>
+          </Button>
         </header>
 
         {error && (
@@ -239,25 +236,20 @@ export default function BatchEntry() {
         </div>
 
         {filteredWorkers.length === 0 && (
-          <p className="text-sm text-zinc-500">Aucun MOC trouvé pour cette équipe.</p>
+          <p className="text-sm text-zinc-600">Aucun travailleur trouvé pour cette équipe.</p>
         )}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between text-sm">
-          <span className="text-zinc-600">{stats.count} MOC saisi(s)</span>
+          <span className="text-zinc-600">{stats.count} travailleur(s) saisi(s)</span>
           <span className="font-medium text-zinc-900">
             Total prévisionnel : {stats.totalAmount.toLocaleString("fr-MG")} Ar
           </span>
         </div>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void handleSave()}
-          className="w-full rounded-md bg-zinc-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="button" className="w-full" disabled={saving} onClick={() => void handleSave()}>
           {saving ? "Enregistrement…" : "Enregistrer le lot"}
-        </button>
+        </Button>
       </div>
     </div>
   );

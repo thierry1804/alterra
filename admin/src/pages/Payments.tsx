@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
+import { ClipboardList, CreditCard, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
 import {
   currentIsoWeekInput,
@@ -8,6 +9,7 @@ import {
   type PaymentRow,
 } from "../lib/payments";
 import PageHeader from "../components/shared/PageHeader";
+import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
 import BordereauTable from "../components/payments/BordereauTable";
 import MvolaExportButton from "../components/payments/MvolaExportButton";
 import MvolaImportDialog from "../components/payments/MvolaImportDialog";
@@ -15,6 +17,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "../hooks/use-toast";
+import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
@@ -71,12 +74,52 @@ export default function PaymentsPage() {
     },
   });
 
+  const paymentStats = useMemo((): StatCardItem[] => {
+    return [
+      {
+        key: "total",
+        label: "Lignes",
+        icon: ClipboardList,
+        displayValue: String(stats.total),
+      },
+      {
+        key: "exportable",
+        label: "Exportables (bio OK)",
+        icon: Wallet,
+        displayValue: String(stats.exportable),
+      },
+      {
+        key: "blocked",
+        label: "Bloquées bio",
+        icon: ShieldAlert,
+        displayValue: String(stats.blocked),
+        valueClassName: stats.blocked > 0 ? "text-amber-700" : undefined,
+        highlight: stats.blocked > 0,
+      },
+      {
+        key: "amount",
+        label: "Masse totale",
+        icon: CreditCard,
+        displayValue: `${stats.totalAmount.toLocaleString("fr-MG")} Ar`,
+      },
+    ];
+  }, [stats]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Paiements"
         description="Bordereau MVola — génération, export et import retour."
       />
+
+      <ContextHelp id="payments-admin" title="Paiements MVola" persistDismiss={false}>
+        <GlossaryTerm term="Semaine ISO">
+          Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
+        </GlossaryTerm>
+        <GlossaryTerm term="Bio OK">
+          Travailleurs dont le contrôle biométrique autorise l&apos;export MVola.
+        </GlossaryTerm>
+      </ContextHelp>
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
         <div className="space-y-2">
@@ -106,24 +149,7 @@ export default function PaymentsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-zinc-200 p-3">
-          <p className="text-xs text-zinc-500">Lignes</p>
-          <p className="text-xl font-semibold">{stats.total}</p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-3">
-          <p className="text-xs text-zinc-500">Exportables (bio OK)</p>
-          <p className="text-xl font-semibold">{stats.exportable}</p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-3">
-          <p className="text-xs text-zinc-500">Bloquées bio</p>
-          <p className="text-xl font-semibold text-amber-700">{stats.blocked}</p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-3">
-          <p className="text-xs text-zinc-500">Masse totale</p>
-          <p className="text-xl font-semibold">{stats.totalAmount.toLocaleString("fr-MG")} Ar</p>
-        </div>
-      </div>
+      <KpiCards stats={paymentStats} />
 
       <BordereauTable rows={rows} loading={isLoading} onCorrected={() => void refetch()} />
 

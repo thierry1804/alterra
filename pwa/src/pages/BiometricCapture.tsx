@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import {
@@ -14,6 +14,7 @@ import { compressPhoto } from "../lib/image";
 import { uuidv7 } from "../lib/uuid";
 import { getCachedBiometricTemplate } from "../services/biometric/TemplateCache";
 import { matchFaceBlobAgainstTemplate } from "../services/biometric/FaceMatcher";
+import Button, { ButtonLink } from "../components/ui/Button";
 
 function resultBannerClass(result: BiometricCheckResult["result"]): string {
   switch (result) {
@@ -35,7 +36,7 @@ export default function BiometricCapture() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const pointageDate = searchParams.get("date") ?? undefined;
-  const [workerName, setWorkerName] = useState("MOC");
+  const [workerName, setWorkerName] = useState("Travailleur");
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<BiometricCheckResult | null>(null);
@@ -48,7 +49,7 @@ export default function BiometricCapture() {
       .then((response) => {
         setWorkerName(`${response.data.firstName} ${response.data.lastName}`);
       })
-      .catch(() => setWorkerName("MOC"));
+      .catch(() => setWorkerName("Travailleur"));
   }, [workerId]);
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function BiometricCapture() {
       }
 
       if (!navigator.onLine) {
-        setError("Hors ligne — template biométrique indisponible ou visage non détecté.");
+        setError("Hors ligne — modèle biométrique indisponible ou visage non détecté.");
         return;
       }
 
@@ -139,13 +140,15 @@ export default function BiometricCapture() {
   if (!workerId) {
     return (
       <div className="p-4">
-        <p className="text-sm text-red-700">MOC introuvable.</p>
-        <Link to="/validation" className="text-sm underline">
+        <p className="text-sm text-red-700">Travailleur introuvable.</p>
+        <ButtonLink to="/validation" variant="outline" className="mt-3">
           Retour validation
-        </Link>
+        </ButtonLink>
       </div>
     );
   }
+
+  const previewAlt = `Photo de contrôle biométrique — ${workerName}`;
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
@@ -154,18 +157,32 @@ export default function BiometricCapture() {
           <p className="text-sm font-medium">Contrôle biométrique</p>
           <p className="text-xs text-zinc-400">{workerName}</p>
         </div>
-        <Link to="/validation" className="text-xs text-zinc-300 underline">
+        <ButtonLink
+          to="/validation"
+          variant="outline"
+          size="sm"
+          className="border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
+        >
           Retour
-        </Link>
+        </ButtonLink>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
+        <div className="w-full max-w-md rounded-md border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-300">
+          <p className="font-medium text-zinc-100">Conseils de capture</p>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed">
+            <li>Visage centré, éclairage naturel de face</li>
+            <li>Retirez casquette ou masque si possible</li>
+            <li>En cas de doute, demandez une précision avant validation</li>
+          </ul>
+        </div>
+
         <div className="flex h-72 w-full max-w-md items-center justify-center overflow-hidden rounded-md border border-zinc-700 bg-zinc-900">
           {previewUrl ? (
-            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+            <img src={previewUrl} alt={previewAlt} className="h-full w-full object-cover" />
           ) : (
             <p className="px-4 text-center text-sm text-zinc-400">
-              Cadrez le visage du MOC puis capturez la photo.
+              Cadrez le visage du travailleur puis capturez la photo.
             </p>
           )}
         </div>
@@ -175,6 +192,11 @@ export default function BiometricCapture() {
             <p className="font-medium">{bioResultLabel(result.result)}</p>
             {result.score !== null && (
               <p className="mt-1 text-xs opacity-80">Score {Math.round(result.score * 100)} %</p>
+            )}
+            {(result.result === "KO" || result.result === "DOUBT") && (
+              <p className="mt-2 text-xs opacity-90">
+                Retournez à la validation pour corriger ou demander une précision au chef d&apos;équipe.
+              </p>
             )}
           </div>
         )}
@@ -190,23 +212,24 @@ export default function BiometricCapture() {
           onChange={(event) => void handleCapture(event)}
         />
 
-        <button
+        <Button
           type="button"
+          className="w-full max-w-md bg-zinc-100 text-zinc-900 hover:bg-white"
           disabled={loading}
           onClick={() => inputRef.current?.click()}
-          className="w-full max-w-md rounded-md bg-zinc-100 py-3 text-sm font-medium text-zinc-900 disabled:opacity-50"
         >
           {loading ? "Analyse en cours…" : "Capturer et analyser"}
-        </button>
+        </Button>
 
         {result && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            className="border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
             onClick={() => navigate("/validation")}
-            className="text-sm text-zinc-300 underline"
           >
             Retour à la validation
-          </button>
+          </Button>
         )}
       </div>
     </div>

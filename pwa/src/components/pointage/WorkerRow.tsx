@@ -86,6 +86,7 @@ export default function WorkerRow({
         <PhotoCapture
           previewUrl={value.photoPreview}
           disabled={disabled}
+          workerName={`${firstName} ${lastName}`}
           onCapture={handleCapture}
           onClear={handleClearPhoto}
         />
