@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
-import { startWeeklyPdfWorker, stopWeeklyPdfWorker } from "./jobs/pdf.worker.js";
+import { startDailyPdfWorker, startWeeklyPdfWorker, stopDailyPdfWorker, stopWeeklyPdfWorker } from "./jobs/pdf.worker.js";
 import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
 import { ensureBuckets } from "./services/storage/minio.js";
@@ -13,6 +13,7 @@ async function main() {
 
   if (process.env.PDF_WORKER_ENABLED !== "false") {
     startWeeklyPdfWorker();
+    startDailyPdfWorker();
   }
 
   const app = createApp();
@@ -24,6 +25,7 @@ async function main() {
     logger.info({ signal }, "Shutting down gracefully");
     server.close();
     await stopWeeklyPdfWorker();
+    await stopDailyPdfWorker();
     await prisma.$disconnect();
     process.exit(0);
   };

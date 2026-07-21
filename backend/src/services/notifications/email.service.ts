@@ -78,3 +78,32 @@ export async function notifyAdminsWeeklyReportsReady(
 
   await sendViaMailgun(recipients, subject, lines.join("\n"));
 }
+
+export interface DailyReportEmailInput {
+  siteName: string;
+  date: string;
+  periodIso: string;
+  reportKey: string;
+  reportUrl?: string;
+}
+
+export async function notifyAdminsDailyReportReady(
+  input: DailyReportEmailInput,
+): Promise<void> {
+  const recipients = await listAdminEmails();
+  if (recipients.length === 0) {
+    logger.warn("No admin email configured for daily report notification");
+    return;
+  }
+
+  const subject = `ALTERRA — Rapport journalier ${input.date} · ${input.siteName}`;
+  const lines = [
+    `Le rapport journalier pour ${input.siteName} (${input.date}, ${input.periodIso}) est disponible.`,
+    "",
+    `Rapport : ${input.reportKey}`,
+  ];
+
+  if (input.reportUrl) lines.push(`Lien : ${input.reportUrl}`);
+
+  await sendViaMailgun(recipients, subject, lines.join("\n"));
+}

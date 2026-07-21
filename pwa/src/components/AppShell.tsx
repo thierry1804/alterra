@@ -67,6 +67,9 @@ export default function AppShell() {
             <Link to="/validation" className={navClass("/validation")}>
               Validation
             </Link>
+            <Link to="/daily-close" className={navClass("/daily-close")}>
+              Clôture
+            </Link>
             <Link to="/clarifications" className={navClass("/clarifications")}>
               Précisions
             </Link>

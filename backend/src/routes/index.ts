@@ -18,6 +18,7 @@ import { teamsRouter } from "./teams.routes.js";
 import { presenceRouter } from "./presence.routes.js";
 import { badgesRouter } from "./badges.routes.js";
 import { workflowsRouter } from "./workflows.routes.js";
+import { dailyReportsRouter } from "./daily-reports.routes.js";
 
 export const apiRouter = Router();
 
@@ -40,3 +41,4 @@ apiRouter.use(teamsRouter);
 apiRouter.use(presenceRouter);
 apiRouter.use(badgesRouter);
 apiRouter.use(workflowsRouter);
+apiRouter.use(dailyReportsRouter);

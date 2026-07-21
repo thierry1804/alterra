@@ -16,6 +16,7 @@ import Sync from "./pages/Sync";
 import ClarificationRequest from "./pages/ClarificationRequest";
 import ActivityRequest from "./pages/ActivityRequest";
 import WorkerRequest from "./pages/WorkerRequest";
+import DailyClose from "./pages/DailyClose";
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>
                 <Route path="/validation" element={<Validation />} />
+                <Route path="/daily-close" element={<DailyClose />} />
                 <Route path="/activity-requests" element={<ActivityRequest />} />
                 <Route path="/worker-requests" element={<WorkerRequest />} />
               </Route>
