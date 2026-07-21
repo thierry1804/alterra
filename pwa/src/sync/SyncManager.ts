@@ -6,6 +6,7 @@ import {
   revertChunkToLocal,
 } from "./ConflictResolver";
 import type { PointageSyncResult, SyncLogEntry, SyncRunResult, SyncState } from "./sync-types";
+import { syncPresenceLogs } from "./PresenceSync";
 
 const BATCH_SIZE = 100;
 const BACKOFF_DELAYS_MS = [1000, 2000, 5000, 15000, 60000, 300000];
@@ -212,6 +213,14 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
       );
     } else if (totals.skipped > 0) {
       await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
+    }
+
+    const presenceTotals = await syncPresenceLogs();
+    if (presenceTotals.synced > 0 || presenceTotals.rejected > 0) {
+      await appendLog(
+        "info",
+        `Présences — ${presenceTotals.synced} synchronisée(s), ${presenceTotals.rejected} rejetée(s)`,
+      );
     }
   } finally {
     isSyncing = false;

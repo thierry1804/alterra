@@ -14,6 +14,8 @@ import { biometricRouter } from "./biometric.routes.js";
 import { zonesRouter } from "./zones.routes.js";
 import { parcelsRouter } from "./parcels.routes.js";
 import { teamsRouter } from "./teams.routes.js";
+import { presenceRouter } from "./presence.routes.js";
+import { badgesRouter } from "./badges.routes.js";
 
 export const apiRouter = Router();
 
@@ -32,3 +34,5 @@ apiRouter.use(biometricRouter);
 apiRouter.use(zonesRouter);
 apiRouter.use(parcelsRouter);
 apiRouter.use(teamsRouter);
+apiRouter.use(presenceRouter);
+apiRouter.use(badgesRouter);
