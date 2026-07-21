@@ -66,6 +66,26 @@ export interface SettingRecord {
   value: string;
 }
 
+export interface BadgeRecord {
+  nfcTagId: string;
+  workerId: string;
+}
+
+export type PresenceLogStatus = "ok" | "unknown";
+export type PresenceSource = "NFC" | "MANUAL";
+
+export interface PresenceLogRecord {
+  clientUuid: string;
+  nfcTagId: string;
+  workerId: string | null;
+  workerLabel: string;
+  date: string;
+  arrivalTime: string;
+  source: PresenceSource;
+  status: PresenceLogStatus;
+  synced: boolean;
+}
+
 /** @deprecated v1 — migrated to settings */
 export interface MetaRecord {
   key: string;
@@ -81,6 +101,8 @@ class AlterraDB extends Dexie {
   syncQueue!: Table<SyncQueueItem, number>;
   settings!: Table<SettingRecord, string>;
   meta!: Table<MetaRecord, string>;
+  badges!: Table<BadgeRecord, string>;
+  presenceLog!: Table<PresenceLogRecord, string>;
 
   constructor() {
     super("alterra");
@@ -121,6 +143,18 @@ class AlterraDB extends Dexie {
           }
         }
       });
+
+    this.version(3).stores({
+      workers: "id, teamId, matricule, [firstName+lastName]",
+      activities: "id, siteId, active",
+      pointages: "clientUuid, workerId, date, status",
+      pointings_synced: "clientUuid, id, workerId, date",
+      media: "clientUuid, refType, uploaded",
+      syncQueue: "++id, type, status, createdAt",
+      settings: "key",
+      badges: "nfcTagId, workerId",
+      presenceLog: "clientUuid, date, arrivalTime, workerId, [workerId+date], status, synced",
+    });
   }
 }
 

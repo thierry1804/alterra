@@ -51,6 +51,9 @@ export default function AppShell() {
             <Link to="/batch" className={navClass("/batch")}>
               Saisie lot
             </Link>
+            <Link to="/nfc" className={navClass("/nfc")}>
+              Présence
+            </Link>
             <Link to="/teams" className={navClass("/teams")}>
               Équipes
             </Link>

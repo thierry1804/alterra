@@ -10,6 +10,7 @@ import ActivitySelect from "./pages/ActivitySelect";
 import BatchEntry from "./pages/BatchEntry";
 import Validation from "./pages/Validation";
 import TeamManagement from "./pages/TeamManagement";
+import NfcScan from "./pages/NfcScan";
 import BiometricCapture from "./pages/BiometricCapture";
 import Sync from "./pages/Sync";
 
@@ -30,6 +31,7 @@ export default function App() {
               <Route element={<RoleRoute allowedRoles={["CHEF_EQUIPE", "ADMIN"]} />}>
                 <Route path="/" element={<ActivitySelect />} />
                 <Route path="/batch" element={<BatchEntry />} />
+                <Route path="/nfc" element={<NfcScan />} />
               </Route>
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>
