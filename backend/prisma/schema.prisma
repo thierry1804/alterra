@@ -242,6 +242,7 @@ model Pointage {
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])
+  clarifications ClarificationRequest[]
 }
 
 /// V2
@@ -367,6 +368,7 @@ model WorkerRequest {
 model ClarificationRequest {
   id             String              @id @default(uuid()) @db.Uuid
   pointageId     String              @db.Uuid
+  pointage       Pointage            @relation(fields: [pointageId], references: [id])
   question       String              @db.Text
   requestedPhoto Boolean             @default(false)
   status         ClarificationStatus @default(OPEN)
