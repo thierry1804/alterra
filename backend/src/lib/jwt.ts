@@ -5,6 +5,7 @@ export interface AccessTokenPayload {
   sub: string;
   role: Role;
   siteId: string | null;
+  teamId: string | null;
 }
 
 const ACCESS_SECRET = process.env.JWT_SECRET!;

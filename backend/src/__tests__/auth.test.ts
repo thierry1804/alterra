@@ -24,6 +24,7 @@ const mockUser = {
   active: true,
   mfaSecret: null as string | null,
   siteId: MOCK_SITE_ID,
+  teamId: null,
   lastLoginAt: null,
 };
 
@@ -50,7 +51,7 @@ vi.mock("../lib/prisma.js", () => ({
 import { prisma } from "../lib/prisma.js";
 
 function adminAuthHeader() {
-  return `Bearer ${signAccessToken({ sub: mockUser.id, role: mockUser.role, siteId: mockUser.siteId })}`;
+  return `Bearer ${signAccessToken({ sub: mockUser.id, role: mockUser.role, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
 }
 
 describe("auth endpoints", () => {

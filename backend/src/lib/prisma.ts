@@ -1,5 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import { basePrisma } from "./prisma-base.js";
+import { createAuditExtension } from "../middleware/audit.interceptor.js";
+import { createRlsExtension } from "../middleware/prisma-rls.js";
 
-export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
-});
+export const prisma = basePrisma
+  .$extends(createRlsExtension())
+  .$extends(createAuditExtension(basePrisma));
+
+export { basePrisma };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Prisma, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole, siteScope } from "../middleware/rbac.js";
+import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 
 export const pointagesRouter = Router();
@@ -93,13 +93,13 @@ pointagesRouter.post(
   },
 );
 
-pointagesRouter.get("/pointages", requireAuth, siteScope, async (req, res, next) => {
+pointagesRouter.get("/pointages", requireAuth, async (req, res, next) => {
   try {
     const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
     const take = 50;
 
     const pointages = await prisma.pointage.findMany({
-      where: req.siteScope ? { worker: { siteId: req.siteScope } } : {},
+      where: {},
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: "desc" },

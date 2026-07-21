@@ -46,7 +46,12 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
       }
     }
 
-    const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
+    const accessToken = signAccessToken({
+      sub: user.id,
+      role: user.role,
+      siteId: user.siteId,
+      teamId: user.teamId,
+    });
     await issueRefreshToken(user.id, res, req.headers["user-agent"]);
 
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

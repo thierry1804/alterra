@@ -3,15 +3,15 @@ import { z } from "zod";
 import { Role, WorkerStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole, siteScope } from "../middleware/rbac.js";
+import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 
 export const workersRouter = Router();
 
-workersRouter.get("/workers", requireAuth, siteScope, async (req, res, next) => {
+workersRouter.get("/workers", requireAuth, async (req, res, next) => {
   try {
     const workers = await prisma.worker.findMany({
-      where: { siteId: req.siteScope, deletedAt: null },
+      where: { deletedAt: null },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       take: 100,
     });

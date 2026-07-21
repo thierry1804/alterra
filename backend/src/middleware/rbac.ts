@@ -1,26 +1,43 @@
 import type { NextFunction, Request, Response } from "express";
 import { Role } from "@prisma/client";
+import { ApiError } from "./error-handler.js";
 
 /** Guard: restrict route to the given roles. Must run after requireAuth. */
 export function requireRole(...roles: Role[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ code: "UNAUTHENTICATED", message: "Missing user context" });
+      return next(new ApiError(401, "UNAUTHENTICATED", "Missing user context"));
     }
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ code: "FORBIDDEN", message: "Insufficient role" });
+      return next(
+        new ApiError(403, "FORBIDDEN", "Insufficient role", {
+          requiredRoles: roles,
+          actualRole: req.user.role,
+        }),
+      );
     }
     next();
   };
 }
 
 /**
- * Site scoping: CHEF_SERVICE / CHEF_EQUIPE are confined to their own site.
- * ADMIN sees everything. Attaches `req.siteScope` for services to apply as a
- * Prisma `where` filter — the second barrier alongside route guards.
+ * Site scoping helper: CHEF_SERVICE is confined to their own site.
+ * ADMIN sees everything. Attaches `req.siteScope` for explicit where clauses.
+ * Prisma RLS extension applies the same filter automatically on reads.
  */
 export function siteScope(req: Request, _res: Response, next: NextFunction) {
-  req.siteScope = req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
+  req.siteScope =
+    req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
+  next();
+}
+
+/**
+ * Team scoping helper: CHEF_EQUIPE is confined to their own team.
+ * ADMIN sees everything. Attaches `req.teamScope` for explicit where clauses.
+ */
+export function teamScope(req: Request, _res: Response, next: NextFunction) {
+  req.teamScope =
+    req.user?.role === Role.CHEF_EQUIPE ? (req.user?.teamId ?? undefined) : undefined;
   next();
 }
 
@@ -29,6 +46,7 @@ declare global {
   namespace Express {
     interface Request {
       siteScope?: string;
+      teamScope?: string;
     }
   }
 }

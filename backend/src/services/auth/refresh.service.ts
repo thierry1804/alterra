@@ -94,7 +94,12 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
   await blacklistRefreshToken(tokenHash, ttl);
   res.cookie(REFRESH_COOKIE, newRaw, cookieOptions());
 
-  const accessToken = signAccessToken({ sub: user.id, role: user.role, siteId: user.siteId });
+  const accessToken = signAccessToken({
+    sub: user.id,
+    role: user.role,
+    siteId: user.siteId,
+    teamId: user.teamId,
+  });
   return { accessToken, user };
 }
 

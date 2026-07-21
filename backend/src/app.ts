@@ -7,7 +7,9 @@ import rateLimit from "express-rate-limit";
 import { logger } from "./lib/logger.js";
 import { apiRouter } from "./routes/index.js";
 import { healthRouter } from "./routes/health.routes.js";
+import { auditSensitiveRoutes } from "./middleware/audit.interceptor.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
+import { requestContext } from "./middleware/prisma-rls.js";
 
 const ORIGINS = [process.env.ADMIN_ORIGIN, process.env.PWA_ORIGIN]
   .filter(Boolean)
@@ -22,6 +24,7 @@ export function createApp(): Express {
   app.use(cors({ origin: ORIGINS, credentials: true }));
   app.use(express.json({ limit: "2mb" }));
   app.use(cookieParser());
+  app.use(requestContext);
   app.use(pinoHttp({ logger }));
 
   // Strict on auth: anti-bruteforce.
@@ -41,7 +44,7 @@ export function createApp(): Express {
   );
 
   app.use(healthRouter);
-  app.use("/api/v1", apiRouter);
+  app.use("/api/v1", auditSensitiveRoutes, apiRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
