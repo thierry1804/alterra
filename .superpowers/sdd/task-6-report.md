@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Branch:** `feat/backlog-implementation`  
-**Commit:** _(see git log after commit)_  
+**Commit:** `6d3f967`  
 **Status:** ✅ Complet — CRUD sites, activités, workers, users + import Excel
 
 ---
