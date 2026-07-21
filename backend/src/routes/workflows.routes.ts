@@ -7,6 +7,7 @@ import { validate } from "../middleware/validate.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import {
   cancelActivityRequest,
+  complementActivityRequest,
   createActivityRequest,
   decideActivityRequest,
   getActivityRequest,
@@ -14,6 +15,7 @@ import {
 } from "../services/workflows/activity-request.service.js";
 import {
   cancelWorkerRequest,
+  complementWorkerRequest,
   createWorkerRequest,
   decideWorkerRequest,
   getWorkerRequest,
@@ -64,6 +66,10 @@ const createWorkerSchema = z.object({
 const decisionSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
   decisionReason: z.string().min(3).optional(),
+});
+
+const complementSchema = z.object({
+  comment: z.string().min(3),
 });
 
 const createClarificationSchema = z.object({
@@ -148,6 +154,33 @@ workflowsRouter.patch(
       await writeAuditLog({
         userId: req.user!.sub,
         action: "DECIDE",
+        entityType: "ActivityRequest",
+        entityId: row.id,
+        before,
+        after: row,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      res.json(row);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.patch(
+  "/activity-requests/:id/complement",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(idParams, "params"),
+  validate(complementSchema),
+  async (req, res, next) => {
+    try {
+      const before = await getActivityRequest(req.user!, req.params.id);
+      const row = await complementActivityRequest(req.user!, req.params.id, req.body);
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "COMPLEMENT",
         entityType: "ActivityRequest",
         entityId: row.id,
         before,
@@ -267,6 +300,33 @@ workflowsRouter.patch(
       await writeAuditLog({
         userId: req.user!.sub,
         action: "DECIDE",
+        entityType: "WorkerRequest",
+        entityId: row.id,
+        before,
+        after: row,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      res.json(row);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.patch(
+  "/worker-requests/:id/complement",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(idParams, "params"),
+  validate(complementSchema),
+  async (req, res, next) => {
+    try {
+      const before = await getWorkerRequest(req.user!, req.params.id);
+      const row = await complementWorkerRequest(req.user!, req.params.id, req.body);
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "COMPLEMENT",
         entityType: "WorkerRequest",
         entityId: row.id,
         before,

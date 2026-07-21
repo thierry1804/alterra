@@ -4,6 +4,7 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
+  Inbox,
   LayoutDashboard,
   Map,
   MapPinned,
@@ -49,6 +50,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "MOC",
     path: "/workers",
     icon: UsersRound,
+    roles: ["ADMIN"],
+  },
+  {
+    label: "Demandes",
+    path: "/requests",
+    icon: Inbox,
     roles: ["ADMIN"],
   },
   {

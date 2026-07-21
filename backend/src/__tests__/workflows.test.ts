@@ -221,4 +221,30 @@ describe("workflows routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ANSWERED");
   });
+
+  it("PATCH /activity-requests/:id/complement keeps request pending with comment", async () => {
+    vi.mocked(prisma.activityRequest.findUnique).mockResolvedValue({
+      id: MOCK_ACTIVITY_REQ_ID,
+      status: RequestStatus.PENDING,
+    } as never);
+    vi.mocked(prisma.activityRequest.findFirst).mockResolvedValue({
+      id: MOCK_ACTIVITY_REQ_ID,
+      status: RequestStatus.PENDING,
+    } as never);
+    vi.mocked(prisma.activityRequest.update).mockResolvedValue({
+      id: MOCK_ACTIVITY_REQ_ID,
+      status: RequestStatus.PENDING,
+      decisionReason: "Préciser la parcelle concernée",
+    } as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .patch(`/api/v1/activity-requests/${MOCK_ACTIVITY_REQ_ID}/complement`)
+      .set("Authorization", `Bearer ${adminToken()}`)
+      .send({ comment: "Préciser la parcelle concernée" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("PENDING");
+    expect(res.body.decisionReason).toBe("Préciser la parcelle concernée");
+  });
 });

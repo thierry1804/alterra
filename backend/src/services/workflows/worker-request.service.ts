@@ -28,6 +28,10 @@ export interface WorkerDecisionInput {
   decisionReason?: string;
 }
 
+export interface ComplementInput {
+  comment: string;
+}
+
 function listScopeWhere(user: AccessTokenPayload): Prisma.WorkerRequestWhereInput {
   if (user.role === Role.ADMIN) return {};
   if (user.role === Role.CHEF_SERVICE) {
@@ -170,6 +174,25 @@ export async function decideWorkerRequest(
         createdWorkerId: worker.id,
       },
     });
+  });
+}
+
+export async function complementWorkerRequest(
+  user: AccessTokenPayload,
+  id: string,
+  input: ComplementInput,
+) {
+  if (user.role !== Role.ADMIN) {
+    throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut demander un complément");
+  }
+
+  const request = await prisma.workerRequest.findUnique({ where: { id } });
+  if (!request) throw new ApiError(404, "NOT_FOUND", "Demande MOC introuvable");
+  assertActivityDecisionAllowed(request.status);
+
+  return prisma.workerRequest.update({
+    where: { id },
+    data: { decisionReason: input.comment.trim() },
   });
 }
 

@@ -26,6 +26,10 @@ export interface ActivityDecisionInput {
   decisionReason?: string;
 }
 
+export interface ComplementInput {
+  comment: string;
+}
+
 function listScopeWhere(user: AccessTokenPayload): Prisma.ActivityRequestWhereInput {
   if (user.role === Role.ADMIN) return {};
   if (user.role === Role.CHEF_SERVICE) {
@@ -136,6 +140,25 @@ export async function decideActivityRequest(
         createdActivityId: activity.id,
       },
     });
+  });
+}
+
+export async function complementActivityRequest(
+  user: AccessTokenPayload,
+  id: string,
+  input: ComplementInput,
+) {
+  if (user.role !== Role.ADMIN) {
+    throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut demander un complément");
+  }
+
+  const request = await prisma.activityRequest.findUnique({ where: { id } });
+  if (!request) throw new ApiError(404, "NOT_FOUND", "Demande activité introuvable");
+  assertActivityDecisionAllowed(request.status);
+
+  return prisma.activityRequest.update({
+    where: { id },
+    data: { decisionReason: input.comment.trim() },
   });
 }
 
