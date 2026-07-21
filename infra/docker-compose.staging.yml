@@ -16,17 +16,17 @@ services:
     ports: ["8443:443"]
 
   admin-static:
-    image: ghcr.io/alterra/admin:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/alterra}/admin:${TAG:-latest}
     restart: unless-stopped
     networks: [internal]
 
   pwa-static:
-    image: ghcr.io/alterra/pwa:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/alterra}/pwa:${TAG:-latest}
     restart: unless-stopped
     networks: [internal]
 
   api:
-    image: ghcr.io/alterra/api:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/alterra}/api:${TAG:-latest}
     restart: unless-stopped
     env_file: ../.env.staging
     depends_on:

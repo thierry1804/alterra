@@ -1,33 +1,40 @@
 #!/usr/bin/env bash
 # Deploy a given image tag to production: pull, migrate, then bring services up.
-# Usage: TAG=<git-sha> ./deploy.sh
+# Usage: TAG=<git-sha> [GHCR_IMAGE_PREFIX=ghcr.io/org/alterra] ./deploy.sh
 set -euo pipefail
 
 TAG="${TAG:?Set TAG=<git-sha> before running}"
+export GHCR_IMAGE_PREFIX="${GHCR_IMAGE_PREFIX:-ghcr.io/alterra}"
 cd "$(dirname "$0")/.."
+COMPOSE_FILE="docker-compose.prod.yml"
 
-echo "==> Pre-deploy backup"
-docker compose -f docker-compose.prod.yml exec -T postgres \
-  pg_dump -U alterra alterra | gzip > "./secrets/pre-deploy-$(date +%F-%H%M).sql.gz"
+compose() {
+  TAG="${TAG}" GHCR_IMAGE_PREFIX="${GHCR_IMAGE_PREFIX}" docker compose -f "${COMPOSE_FILE}" "$@"
+}
 
-echo "==> Pulling images (TAG=${TAG})"
-TAG="${TAG}" docker compose -f docker-compose.prod.yml pull
+echo "==> Pre-deploy backup (skip if postgres not running)"
+if compose ps postgres 2>/dev/null | grep -q "running"; then
+  mkdir -p ./secrets
+  compose exec -T postgres \
+    pg_dump -U alterra alterra | gzip > "./secrets/pre-deploy-$(date +%F-%H%M).sql.gz"
+else
+  echo "    Postgres not running — first deploy, skipping dump"
+fi
+
+echo "==> Pulling images (TAG=${TAG}, prefix=${GHCR_IMAGE_PREFIX})"
+compose pull
 
 echo "==> Applying Prisma migrations"
-TAG="${TAG}" docker compose -f docker-compose.prod.yml run --rm api npx prisma migrate deploy
+compose run --rm api npx prisma migrate deploy
 
 echo "==> Rolling update"
-TAG="${TAG}" docker compose -f docker-compose.prod.yml up -d
+compose up -d
 
-echo "==> Waiting for API health"
-for i in $(seq 1 30); do
-  if docker compose -f docker-compose.prod.yml exec -T api \
-      node -e "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1))" 2>/dev/null; then
-    echo "Deploy OK (TAG=${TAG})"
-    exit 0
-  fi
-  sleep 2
-done
+echo "==> Smoke test"
+if [[ "${SKIP_SMOKE:-}" != "1" ]]; then
+  COMPOSE_FILE="${COMPOSE_FILE}" ./scripts/smoke-test.sh
+else
+  echo "    SKIP_SMOKE=1 — smoke test ignored"
+fi
 
-echo "Deploy FAILED: API did not become healthy — consider ./rollback.sh" >&2
-exit 1
+echo "Deploy OK (TAG=${TAG})"

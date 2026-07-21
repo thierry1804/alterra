@@ -25,8 +25,19 @@ docker compose -f docker-compose.prod.yml restart api
 
 ### Déployer une nouvelle version
 
+Voir checklist complète : [docs/deploy/production.md](../deploy/production.md)
+
 ```bash
-TAG=<git-sha> ./scripts/deploy.sh
+cd /opt/alterra/infra
+GHCR_IMAGE_PREFIX=ghcr.io/VOTRE_ORG/alterra TAG=<git-sha> ./scripts/deploy.sh
+```
+
+Le déploiement inclut backup pre-deploy, migrations Prisma et smoke test automatique.
+
+```bash
+# Smoke test manuel (URLs publiques optionnelles)
+./scripts/smoke-test.sh
+SMOKE_APP_URL=https://app.alterra.mg ./scripts/smoke-test.sh
 ```
 
 ### Rollback
