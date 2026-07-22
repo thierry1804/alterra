@@ -26,8 +26,11 @@ async function main() {
     argon2.hash(USER_PASSWORD),
   ]);
 
+  /** IDs réels en base (peuvent différer des UUID seed-data si sites préexistants). */
+  const siteIdByShortCode = new Map<string, string>();
+  const teamIdBySiteAndName = new Map<string, string>();
   for (const site of SITES) {
-    await prisma.site.upsert({
+    const row = await prisma.site.upsert({
       where: { shortCode: site.shortCode },
       update: {
         name: site.name,
@@ -40,6 +43,7 @@ async function main() {
         location: site.location,
       },
     });
+    siteIdByShortCode.set(site.shortCode, row.id);
   }
 
   await prisma.user.upsert({
@@ -57,6 +61,7 @@ async function main() {
 
   for (let siteIndex = 1; siteIndex <= SITES.length; siteIndex++) {
     const site = SITES[siteIndex - 1]!;
+    const siteId = siteIdByShortCode.get(site.shortCode)!;
     const cdsEmail = `cds.${site.shortCode.toLowerCase()}@alterra.test`;
 
     await prisma.user.upsert({
@@ -69,7 +74,7 @@ async function main() {
         role: Role.CHEF_SERVICE,
         firstName: "Chef",
         lastName: `Service ${site.shortCode}`,
-        siteId: site.id,
+        siteId,
       },
     });
 
@@ -79,15 +84,16 @@ async function main() {
       const cdeEmail = `cde.${site.shortCode.toLowerCase()}${teamIndex}@alterra.test`;
       const cdeUserId = cdeId(siteIndex, teamIndex);
 
-      await prisma.team.upsert({
-        where: { siteId_name: { siteId: site.id, name: teamName } },
+      const teamRow = await prisma.team.upsert({
+        where: { siteId_name: { siteId, name: teamName } },
         update: {},
         create: {
           id: tid,
-          siteId: site.id,
+          siteId,
           name: teamName,
         },
       });
+      teamIdBySiteAndName.set(`${site.shortCode}::${teamName}`, teamRow.id);
 
       await prisma.user.upsert({
         where: { email: cdeEmail },
@@ -99,13 +105,13 @@ async function main() {
           role: Role.CHEF_EQUIPE,
           firstName: "Chef",
           lastName: `Équipe ${teamName}`,
-          siteId: site.id,
-          teamId: tid,
+          siteId,
+          teamId: teamRow.id,
         },
       });
 
       await prisma.team.update({
-        where: { id: tid },
+        where: { id: teamRow.id },
         data: { chefId: cdeUserId },
       });
     }
@@ -124,7 +130,7 @@ async function main() {
         unit: activity.unit,
         unitRate: activity.unitRate,
         validFrom: new Date("2026-01-01"),
-        siteId: site?.id ?? null,
+        siteId: site ? (siteIdByShortCode.get(site.shortCode) ?? null) : null,
       },
     });
   }
@@ -132,9 +138,11 @@ async function main() {
   for (let n = 1; n <= EXPECTED_SEED_COUNTS.workers; n++) {
     const siteIndex = Math.floor((n - 1) / 10);
     const site = SITES[siteIndex]!;
+    const siteId = siteIdByShortCode.get(site.shortCode)!;
     const teamIndex = ((n - 1) % 3) + 1;
     const workerInSite = ((n - 1) % 10) + 1;
-    const tid = teamId(siteIndex + 1, teamIndex);
+    const teamName = `${site.shortCode}-${teamIndex}`;
+    const resolvedTeamId = teamIdBySiteAndName.get(`${site.shortCode}::${teamName}`)!;
     const matricule = `MOC-${site.shortCode}-${pad(workerInSite, 2)}`;
     const mvolaNumber = `034${pad(n, 7)}`;
 
@@ -147,8 +155,8 @@ async function main() {
         firstName: "MOC",
         lastName: `${site.shortCode}-${pad(workerInSite, 2)}`,
         mvolaNumber,
-        siteId: site.id,
-        teamId: tid,
+        siteId,
+        teamId: resolvedTeamId,
         status: WorkerStatus.ACTIVE,
         hiredAt: new Date("2025-01-01"),
       },
