@@ -9,6 +9,18 @@
   --color-primary: #18181b;
   --color-primary-hover: #27272a;
   --color-focus-ring: #a1a1aa;
+  /* Brand — vert ALTERRA (logo). Version foncée pour texte/boutons (contraste AA). */
+  --color-brand: #0e6f48;
+  --color-brand-hover: #0a5638;
+  --color-brand-vivid: #189060; /* vert vif du logo — usage décoratif (icônes, aplats sans texte) */
+  --color-brand-tint: #e7f3ec;
+  --color-brand-ring: #7cb79b;
+  /* Corail — l'arbre du logo (reforestation communautaire). Accent hairline uniquement. */
+  --color-earth: #e45430;
+  /* Bleu « communauté » — les points du logo représentent les personnes (avatars travailleurs). */
+  --color-people-bg: #e7eff9;
+  --color-people-fg: #2f6199;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
   --color-success: #065f46;
   --color-success-bg: #ecfdf5;
   --color-error: #b91c1c;
@@ -16,5 +28,6 @@
   --color-warning: #92400e;
   --color-warning-bg: #fffbeb;
   --touch-target-min: 2.75rem;
+  --bottom-nav-h: 3.75rem;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }

@@ -27,12 +27,45 @@
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    @apply outline-none ring-2 ring-zinc-400 ring-offset-2;
+    @apply outline-none ring-2 ring-offset-2 ring-[color:var(--color-brand-ring)];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
   .alterra-focus {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-brand-ring)];
+  }
+
+  /* Micro-libellé institutionnel — eyebrow de section, usage sobre. */
+  .alterra-eyebrow {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.14em];
+    color: var(--color-brand);
+  }
+
+  /* Données de registre : matricules, quantités, montants Ariary. */
+  .alterra-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Filet latérite sous le bandeau — signature identité ALTERRA. */
+  .alterra-rule {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-earth) 0,
+      var(--color-earth) 2.5rem,
+      var(--color-border) 2.5rem,
+      var(--color-border) 100%
+    );
   }
 }

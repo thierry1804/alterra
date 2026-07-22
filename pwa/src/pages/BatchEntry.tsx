@@ -185,13 +185,15 @@ export default function BatchEntry() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="space-y-4 p-4 pb-28">
+      <div className="space-y-4 p-4 pb-32">
         <header className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-lg font-semibold text-zinc-900">Saisie lot</h1>
+              <p className="alterra-eyebrow">Étape 2 sur 2 · Saisie</p>
+              <h1 className="mt-1 text-lg font-semibold text-zinc-900">Saisie lot</h1>
               <p className="text-sm text-zinc-600">
-                {activity?.label ?? "Activité"} · {session.date}
+                {activity?.label ?? "Activité"} ·{" "}
+                <span className="alterra-num">{session.date}</span>
               </p>
             </div>
             <ButtonLink to="/" variant="ghost" size="sm">
@@ -240,11 +242,19 @@ export default function BatchEntry() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white p-4">
+      <div
+        className="fixed inset-x-0 z-20 border-t border-zinc-200 bg-white p-4"
+        style={{ bottom: "calc(var(--bottom-nav-h) + var(--safe-area-bottom))" }}
+      >
         <div className="mb-3 flex items-center justify-between text-sm">
-          <span className="text-zinc-600">{stats.count} travailleur(s) saisi(s)</span>
-          <span className="font-medium text-zinc-900">
-            Total prévisionnel : {stats.totalAmount.toLocaleString("fr-MG")} Ar
+          <span className="text-zinc-600">
+            <span className="alterra-num">{stats.count}</span> travailleur(s) saisi(s)
+          </span>
+          <span className="text-zinc-600">
+            Total prévisionnel{" "}
+            <span className="alterra-num font-semibold text-brand">
+              {stats.totalAmount.toLocaleString("fr-MG")} Ar
+            </span>
           </span>
         </div>
         <Button type="button" className="w-full" disabled={saving} onClick={() => void handleSave()}>

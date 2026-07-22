@@ -109,7 +109,8 @@ export default function ActivitySelect() {
   return (
     <div className="space-y-4 p-4">
       <header>
-        <h1 className="text-lg font-semibold text-zinc-900">Activité du jour</h1>
+        <p className="alterra-eyebrow">Étape 1 sur 2 · Préparation</p>
+        <h1 className="mt-1 text-lg font-semibold text-zinc-900">Activité du jour</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Choisissez l&apos;activité et la date avant la saisie en lot.
         </p>
@@ -172,16 +173,28 @@ export default function ActivitySelect() {
               key={activity.id}
               type="button"
               onClick={() => setActivityId(activity.id)}
-              className={`w-full rounded-md border p-3 text-left ${
+              aria-pressed={activityId === activity.id}
+              className={`flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors ${
                 activityId === activity.id
-                  ? "border-zinc-400 bg-zinc-100"
+                  ? "border-brand bg-brand-tint ring-1 ring-brand"
                   : "border-zinc-200 bg-white hover:bg-zinc-50"
               }`}
             >
-              <p className="text-sm font-medium text-zinc-900">{activity.label}</p>
-              <p className="text-xs text-zinc-500">
-                {activity.unitRate.toLocaleString("fr-MG")} Ar / {activity.unit}
-              </p>
+              <span
+                className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${
+                  activityId === activity.id ? "border-brand" : "border-zinc-300"
+                }`}
+                aria-hidden="true"
+              >
+                {activityId === activity.id && <span className="h-2 w-2 rounded-full bg-brand" />}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-zinc-900">{activity.label}</span>
+                <span className="block text-xs text-zinc-500">
+                  <span className="alterra-num">{activity.unitRate.toLocaleString("fr-MG")}</span> Ar
+                  / {activity.unit}
+                </span>
+              </span>
             </button>
           ))}
         </div>

@@ -2,7 +2,9 @@
 
 ## Theme
 
-Light institutionnel. Palette zinc neutre, accents sémantiques (emerald succès, red erreur, amber alerte). Pas de gradients décoratifs.
+Light institutionnel. Structure zinc neutre + **encre de marque ALTERRA** (slate-navy) portée avec sobriété, accents sémantiques (emerald succès, red erreur, amber alerte). Pas de gradients décoratifs.
+
+Identité : dérivée du **logo ALTERRA** (vert reforestation, arbre corail, points bleus = communauté). L'app se lit comme un registre de terrain — vert de marque en encre principale, données de registre en chiffres monospace tabulaires, filet corail en signature, avatars « communauté » bleus pour les travailleurs. Logo : `pwa/public/brand/alterra-logo.png`.
 
 ## Color Palette
 
@@ -18,9 +20,26 @@ Light institutionnel. Palette zinc neutre, accents sémantiques (emerald succès
 
 Semantic: emerald (OK/bio/en ligne), red (KO/erreur/hors ligne), amber (alerte/en attente).
 
+### Marque ALTERRA (dérivée du logo)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-brand` | `#0e6f48` | Vert de marque (foncé, AA) : boutons primaires, onglet actif, montants Ariary |
+| `--color-brand-hover` | `#0a5638` | Hover bouton primaire |
+| `--color-brand-vivid` | `#189060` | Vert vif du logo — décoratif (icônes, `theme_color`, aplats sans texte) |
+| `--color-brand-tint` | `#e7f3ec` | Fond sélection |
+| `--color-brand-ring` | `#7cb79b` | Focus ring de marque |
+| `--color-earth` | `#e45430` | Corail (l'arbre du logo) — filet 2px sous le bandeau. **Usage hairline uniquement.** |
+| `--color-people-bg` / `-fg` | `#e7eff9` / `#2f6199` | Bleu « communauté » (les points du logo = personnes) : avatars travailleurs |
+| `--font-mono` | `ui-monospace, …` | Données de registre : matricules, quantités, montants |
+
+Le vert de marque (`#0e6f48`) est volontairement plus foncé que le vert vif du logo pour garantir le contraste AA sur texte/boutons ; le vert vif reste réservé au décor. Corail : accent arbre/reforestation, jamais en aplat ni en fond.
+
+Utilitaires PWA : `.alterra-eyebrow` (micro-libellé de section), `.alterra-num` (chiffres monospace tabulaires), `.alterra-rule` (filet latérite du bandeau).
+
 ## Typography
 
-- **Family**: `ui-sans-serif, system-ui, sans-serif` — une seule famille
+- **Family**: `ui-sans-serif, system-ui, sans-serif` pour la prose ; `--font-mono` (`.alterra-num`) pour les données de registre (matricules, quantités, montants Ariary) en `tabular-nums`
 - **Scale** (fixed rem, product register):
   - Body: `text-sm` (14px)
   - Labels: `text-sm font-medium`
@@ -46,13 +65,15 @@ Semantic: emerald (OK/bio/en ligne), red (KO/erreur/hors ligne), amber (alerte/e
 
 ### Navigation
 - Admin: sidebar 248px, grouped sections, collapse to icons
-- PWA: horizontal scroll nav, `min-h-11` tabs
+- PWA : **mobile-first, barre d'onglets en bas** (thumb zone). 4 destinations primaires par rôle + onglet « Plus » ; icônes + libellés, `min-h-touch`, `env(safe-area-inset-bottom)`.
+  - Destinations secondaires + identité utilisateur + **Déconnexion** dans une **bottom-sheet** (« Plus »), jamais dans le bandeau.
+  - Config par rôle : [`nav-config.ts`](pwa/src/components/nav/nav-config.ts) ; composants [`BottomNav`](pwa/src/components/nav/BottomNav.tsx) / [`MoreSheet`](pwa/src/components/nav/MoreSheet.tsx) ; icônes SVG inline [`icons.tsx`](pwa/src/components/icons.tsx) (aucune dépendance).
 
 ## Layout
 
 - Admin: sidebar + header 48px + main padding 24px
-- PWA: header + nav + sync bar + main (full height flex column)
-- Safe area: `env(safe-area-inset-bottom)` on PWA body
+- PWA : header collant (logo + identité + barre sync) + main défilant + barre d'onglets fixe en bas. `--bottom-nav-h` réserve l'espace ; les barres d'action d'écran (ex. « Enregistrer le lot ») se posent au-dessus de la barre d'onglets.
+- Safe area: `env(safe-area-inset-bottom)` sur la barre d'onglets et les bottom-sheets
 
 ## Exceptions
 

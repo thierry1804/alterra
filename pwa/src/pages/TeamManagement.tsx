@@ -3,7 +3,7 @@ import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import type { TeamDetail, TeamSummary, WorkerSearchHit } from "../lib/teams";
-import Button, { ButtonLink } from "../components/ui/Button";
+import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { syncReferentials } from "../sync/ReferentialSync";
 

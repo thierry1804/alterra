@@ -1,60 +1,69 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "../../lib/cn";
-import { forceSync } from "../../sync/SyncManager";
 import { useSyncState } from "../../hooks/useSyncState";
-import Button from "../ui/Button";
+import { IconChevronRight } from "../icons";
 
-function formatLastSync(iso: string | null): string {
-  if (!iso) return "Jamais";
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+type Tone = "ok" | "sync" | "warn" | "danger";
+
+const TONE: Record<Tone, { row: string; dot: string }> = {
+  ok: { row: "border-zinc-200 bg-white text-zinc-600", dot: "bg-emerald-600" },
+  sync: { row: "border-zinc-200 bg-white text-brand", dot: "bg-emerald-600 animate-pulse" },
+  warn: { row: "border-amber-200 bg-amber-50 text-amber-900", dot: "bg-amber-500" },
+  danger: { row: "border-red-200 bg-red-50 text-red-800", dot: "bg-red-600" },
+};
+
+function num(value: number): ReactNode {
+  return <span className="alterra-num">{value}</span>;
 }
 
 export default function SyncStatusBar() {
   const state = useSyncState();
-  const pendingTotal = state.pendingCount + state.syncingCount + state.queuePendingCount;
+  const pending = state.pendingCount + state.syncingCount + state.queuePendingCount;
+
+  let tone: Tone;
+  let label: ReactNode;
+  let announce: string;
+
+  if (state.isSyncing) {
+    tone = "sync";
+    label = "Synchronisation…";
+    announce = "synchronisation en cours";
+  } else if (!state.online) {
+    tone = pending > 0 ? "danger" : "warn";
+    label = pending > 0 ? <>Hors ligne · {num(pending)} en attente</> : "Hors ligne";
+    announce = pending > 0 ? `hors ligne, ${pending} en attente` : "hors ligne";
+  } else if (!state.autoSyncEnabled) {
+    tone = "warn";
+    label = "Sync auto suspendue";
+    announce = "synchronisation automatique suspendue";
+  } else if (pending > 0) {
+    tone = "warn";
+    label = <>{num(pending)} en attente</>;
+    announce = `${pending} en attente`;
+  } else {
+    tone = "ok";
+    label = "À jour";
+    announce = "à jour";
+  }
+
+  const t = TONE[tone];
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-100 px-4 py-2 text-sm text-zinc-700">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={state.online ? "font-medium text-emerald-800" : "font-medium text-red-700"}>
-          {state.online ? "En ligne" : "Hors ligne"}
-        </span>
-        <span>
-          {pendingTotal} en attente
-          {state.mediaPendingCount > 0 ? ` · ${state.mediaPendingCount} photo(s)` : ""}
-        </span>
-        <span className="text-zinc-600">Dernière sync : {formatLastSync(state.lastSyncAt)}</span>
-        {state.isSyncing && <span className="font-medium text-zinc-900">Synchronisation…</span>}
-        {!state.autoSyncEnabled && (
-          <span className="font-medium text-amber-800">Sync auto suspendue</span>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Link
-          to="/sync"
-          className={cn(
-            "inline-flex min-h-9 items-center text-sm text-zinc-700 underline-offset-2 hover:underline",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
-          )}
-        >
-          Détail
-        </Link>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={!state.online || state.isSyncing}
-          onClick={() => void forceSync()}
-        >
-          Forcer
-        </Button>
-      </div>
-    </div>
+    <Link
+      to="/sync"
+      aria-label={`Synchronisation : ${announce}. Voir le détail.`}
+      className={cn(
+        "flex items-center justify-between gap-2 border-b px-4 py-2 text-xs transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--color-brand-ring)]",
+        t.row,
+      )}
+    >
+      <span className="inline-flex items-center gap-2 font-medium">
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", t.dot)} aria-hidden="true" />
+        {label}
+      </span>
+      <IconChevronRight className="h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
+    </Link>
   );
 }
