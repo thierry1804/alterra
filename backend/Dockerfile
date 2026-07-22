@@ -5,7 +5,8 @@ RUN apk add --no-cache openssl chromium
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY backend/package.json ./backend/
-RUN npm ci --workspace=backend --include-workspace-root
+# postinstall runs prisma generate — schema not copied yet; generate runs in build stage
+RUN npm ci --workspace=backend --include-workspace-root --ignore-scripts
 
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules

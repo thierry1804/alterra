@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_MAPTILER_KEY?: string;
+  readonly VITE_PWA_ORIGIN?: string;
 }
 
 interface ImportMeta {

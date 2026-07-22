@@ -4,6 +4,8 @@ import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import LoginAccessPanel from "../components/auth/LoginAccessPanel";
+import { ADMIN_APP_ROLES, DEMO_ACCOUNTS, TERRAIN_APP } from "../lib/access-info";
 
 export default function Login() {
   const { login } = useAuth();
@@ -39,11 +41,12 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-100">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-zinc-200 bg-white p-8 shadow-sm"
-      >
+    <div className="flex min-h-screen items-center justify-center bg-zinc-100 p-4">
+      <div className="grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
+        <form
+          onSubmit={onSubmit}
+          className="space-y-4 rounded-lg border border-zinc-200 bg-white p-8 shadow-sm"
+        >
         <div>
           <h1 className="text-lg font-semibold text-zinc-900">ALTERRA</h1>
           <p className="mt-1 text-sm text-zinc-600">Connexion administration</p>
@@ -106,7 +109,19 @@ export default function Login() {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Connexion…" : "Se connecter"}
         </Button>
-      </form>
+        </form>
+
+        <LoginAccessPanel
+          roles={ADMIN_APP_ROLES}
+          otherApp={TERRAIN_APP}
+          demoAccounts={DEMO_ACCOUNTS}
+          onSelectDemo={(demoEmail, demoPassword) => {
+            setEmail(demoEmail);
+            setPassword(demoPassword);
+            setError(null);
+          }}
+        />
+      </div>
     </div>
   );
 }
