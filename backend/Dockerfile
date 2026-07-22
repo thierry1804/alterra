@@ -1,6 +1,6 @@
 FROM node:22-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl chromium
 
 FROM base AS deps
 COPY package.json package-lock.json* ./
@@ -18,6 +18,7 @@ RUN npm run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app/backend
 COPY --from=build /app/backend/dist ./dist
 COPY --from=build /app/backend/node_modules ./node_modules

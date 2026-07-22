@@ -38,10 +38,16 @@ export async function htmlToPdfBuffer(html: string): Promise<Buffer> {
     return Buffer.from(`%PDF-MOCK\n${html.length}`, "utf-8");
   }
 
-  const browser = await puppeteer.launch({
+  const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  };
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+  if (executablePath) {
+    launchOptions.executablePath = executablePath;
+  }
+
+  const browser = await puppeteer.launch(launchOptions);
 
   try {
     const page = await browser.newPage();
