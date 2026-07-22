@@ -1,4 +1,5 @@
 import { Role } from "@prisma/client";
+import type { AppPrisma } from "../../lib/prisma.js";
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -54,18 +55,7 @@ export interface DashboardSummary {
 }
 
 export async function getDashboardSummary(
-  prisma: {
-    worker: { count: (args: unknown) => Promise<number> };
-    pointage: {
-      count: (args: unknown) => Promise<number>;
-      groupBy: (args: unknown) => Promise<Array<{ workerId: string }>>;
-    };
-    payment: {
-      aggregate: (args: unknown) => Promise<{ _sum: { amount: unknown }; _count: number }>;
-      count: (args: unknown) => Promise<number>;
-    };
-    user: { count: (args: unknown) => Promise<number> };
-  },
+  db: Pick<AppPrisma, "worker" | "pointage" | "payment" | "user">,
   siteId?: string,
 ): Promise<DashboardSummary> {
   const workerWhere = {
@@ -77,10 +67,10 @@ export async function getDashboardSummary(
   const pointageScope = siteId ? { worker: { siteId } } : {};
   const paymentScope = siteId ? { worker: { siteId } } : {};
 
-  const activeWorkers = await prisma.worker.count({ where: workerWhere });
+  const activeWorkers = await db.worker.count({ where: workerWhere });
   const weekRange = getCurrentWeekRange();
 
-  const workersPresentThisWeek = await prisma.pointage.groupBy({
+  const workersPresentThisWeek = await db.pointage.groupBy({
     by: ["workerId"],
     where: {
       status: "VALIDATED",
@@ -94,11 +84,11 @@ export async function getDashboardSummary(
       ? 0
       : Math.round((workersPresentThisWeek.length / activeWorkers) * 1000) / 10;
 
-  const pendingPointages = await prisma.pointage.count({
+  const pendingPointages = await db.pointage.count({
     where: { status: "PENDING", ...pointageScope },
   });
 
-  const paymentAgg = await prisma.payment.aggregate({
+  const paymentAgg = await db.payment.aggregate({
     where: { status: "PENDING", ...paymentScope },
     _sum: { amount: true },
     _count: true,
@@ -116,7 +106,7 @@ export async function getDashboardSummary(
     const nextDay = new Date(day);
     nextDay.setUTCDate(day.getUTCDate() + 1);
 
-    const grouped = await prisma.pointage.groupBy({
+    const grouped = await db.pointage.groupBy({
       by: ["workerId"],
       where: {
         status: "VALIDATED",
@@ -138,7 +128,7 @@ export async function getDashboardSummary(
     ref.setUTCDate(today.getUTCDate() - offset * 7);
     const { from, to } = getCurrentWeekRange(ref);
 
-    const grouped = await prisma.pointage.groupBy({
+    const grouped = await db.pointage.groupBy({
       by: ["workerId"],
       where: {
         status: "VALIDATED",
@@ -158,7 +148,7 @@ export async function getDashboardSummary(
   sevenDaysAgo.setUTCDate(today.getUTCDate() - 7);
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const failedPayments = await prisma.payment.count({
+  const failedPayments = await db.payment.count({
     where: { status: "FAILED", ...paymentScope },
   });
   if (failedPayments > 0) {
@@ -170,7 +160,7 @@ export async function getDashboardSummary(
     });
   }
 
-  const oldPending = await prisma.pointage.count({
+  const oldPending = await db.pointage.count({
     where: {
       status: "PENDING",
       date: { lt: sevenDaysAgo },
@@ -186,7 +176,7 @@ export async function getDashboardSummary(
     });
   }
 
-  const staleCds = await prisma.user.count({
+  const staleCds = await db.user.count({
     where: {
       role: Role.CHEF_SERVICE,
       active: true,

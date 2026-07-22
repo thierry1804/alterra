@@ -1,5 +1,6 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import { PaymentStatus } from "@prisma/client";
+import { loadXlsxWorkbook } from "../import/excel-workbook.js";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
@@ -62,8 +63,7 @@ function parseSuccessStatus(raw: string): boolean | null {
 }
 
 export async function parseMvolaReturnWorkbook(buffer: Buffer): Promise<MvolaImportRow[]> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadXlsxWorkbook(buffer);
 
   const sheet = workbook.worksheets[0];
   if (!sheet) {

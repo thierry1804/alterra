@@ -287,7 +287,8 @@ workersRouter.post(
   validate(importBodySchema),
   async (req, res, next) => {
     try {
-      const dryRun = (req.query as z.infer<typeof importQuerySchema>).dryRun ?? true;
+      const dryRun =
+        (req.query as unknown as z.infer<typeof importQuerySchema>).dryRun ?? true;
       const buffer = Buffer.from(req.body.contentBase64, "base64");
       const preview = await parseWorkersWorkbook(buffer);
 

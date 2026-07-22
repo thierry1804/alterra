@@ -42,13 +42,17 @@ export async function listTemplatesForSync(user: AccessTokenPayload): Promise<Te
   const now = new Date();
   const workerScope = workerScopeFilter(user);
 
+  const workers = await prisma.worker.findMany({
+    where: { deletedAt: null, ...workerScope },
+    select: { id: true },
+  });
+  const workerIds = workers.map((worker) => worker.id);
+  if (workerIds.length === 0) return [];
+
   const templates = await prisma.biometricTemplate.findMany({
     where: {
       expiresAt: { gt: now },
-      worker: {
-        deletedAt: null,
-        ...workerScope,
-      },
+      workerId: { in: workerIds },
     },
     orderBy: [{ workerId: "asc" }],
   });

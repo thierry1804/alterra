@@ -53,7 +53,9 @@ activitiesRouter.get(
   validate(listActivitiesQuery, "query"),
   async (req, res, next) => {
     try {
-      const { siteId, active, history } = req.query as z.infer<typeof listActivitiesQuery>;
+      const { siteId, active, history } = req.query as unknown as z.infer<
+        typeof listActivitiesQuery
+      >;
 
       const where: Prisma.ActivityWhereInput = {};
       if (siteId !== undefined) {

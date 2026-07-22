@@ -1,5 +1,5 @@
-import ExcelJS from "exceljs";
 import { prisma } from "../../lib/prisma.js";
+import { loadXlsxWorkbook } from "./excel-workbook.js";
 import {
   buildHeaderMap,
   missingHeaders,
@@ -82,8 +82,7 @@ export async function parseActivitiesWorkbook(
   buffer: Buffer,
   options?: { knownSiteCodes?: string[] },
 ): Promise<ActivitiesImportPreview> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
     return {

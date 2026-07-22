@@ -51,7 +51,7 @@ paymentsRouter.get(
   validate(listPaymentsQuery, "query"),
   async (req, res, next) => {
     try {
-      const query = req.query as z.infer<typeof listPaymentsQuery>;
+      const query = req.query as unknown as z.infer<typeof listPaymentsQuery>;
       const result = await listPayments(query);
       res.json(result);
     } catch (err) {

@@ -144,7 +144,10 @@ export async function decideWorkerRequest(
   }
 
   return prisma.$transaction(async (tx) => {
-    const siteId = await resolveSiteIdForExistingRequest(request);
+    const siteId = await resolveSiteIdForExistingRequest({
+      targetTeamId: request.targetTeamId ?? undefined,
+      requestedById: request.requestedById,
+    });
     const site = await tx.site.findUniqueOrThrow({ where: { id: siteId } });
     const workerCount = await tx.worker.count({ where: { siteId: site.id, deletedAt: null } });
     const matricule = `MOC-${site.shortCode}-R${String(workerCount + 1).padStart(3, "0")}`;

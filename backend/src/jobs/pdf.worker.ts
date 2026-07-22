@@ -1,5 +1,5 @@
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
+import { Redis } from "ioredis";
 import { logger } from "../lib/logger.js";
 import {
   processWeeklyPdfJob,
@@ -43,9 +43,9 @@ let worker: Worker<WeeklyPdfJobPayload, WeeklyPdfJobResult> | null = null;
 let dailyQueue: Queue<DailyPdfJobInput, DailyPdfJobResult> | null = null;
 let dailyWorker: Worker<DailyPdfJobInput, DailyPdfJobResult> | null = null;
 
-function createRedisConnection(): IORedis {
+function createRedisConnection(): Redis {
   const url = process.env.REDIS_URL ?? "redis://localhost:6379";
-  return new IORedis(url, { maxRetriesPerRequest: null });
+  return new Redis(url, { maxRetriesPerRequest: null });
 }
 
 export function getWeeklyPdfQueue(): Queue<WeeklyPdfJobPayload, WeeklyPdfJobResult> | null {

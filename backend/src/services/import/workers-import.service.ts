@@ -1,6 +1,7 @@
 import { WorkerStatus } from "@prisma/client";
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import { prisma } from "../../lib/prisma.js";
+import { loadXlsxWorkbook } from "./excel-workbook.js";
 
 export interface ImportRowError {
   row: number;
@@ -161,8 +162,7 @@ async function validateRowsAgainstDb(rows: ValidImportRow[]): Promise<ImportRowE
 }
 
 export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPreviewResult> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
     return { valid: [], errors: [{ row: 0, field: "sheet", message: "Feuille Excel introuvable" }] };

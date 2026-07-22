@@ -49,7 +49,9 @@ async function connectRedis(): Promise<RedisLike> {
     await redis.connect();
     logger.info("Redis: connected");
     return {
-      setEx: (key, ttl, value) => redis.setEx(key, ttl, value),
+      setEx: async (key, ttl, value) => {
+        await redis.setEx(key, ttl, value);
+      },
       get: (key) => redis.get(key),
       del: (key) => redis.del(key).then(() => undefined),
     };
