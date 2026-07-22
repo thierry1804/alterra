@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "dev": "concurrently -n backend,admin,pwa -c cyan,green,magenta \"npm run dev -w backend\" \"npm run dev -w admin\" \"npm run dev -w pwa\"",
-    "setup": "npm install && npm run db:setup -w backend",
+    "setup": "npm install && npm run db:generate -w backend && npm run db:setup -w backend",
     "build": "npm run build -w backend && npm run build -w admin && npm run build -w pwa",
     "lint": "npm run lint -w backend && npm run lint -w admin && npm run lint -w pwa",
     "format": "prettier --write .",
@@ -21,6 +21,9 @@
     "docs:guides": "node scripts/generate-guide-pdfs.mjs",
     "docker:dev:up": "docker compose up -d",
     "docker:dev:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

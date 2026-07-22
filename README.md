@@ -16,9 +16,17 @@ alterra/
 
 ## Prérequis
 
-- Node.js 20+ (LTS recommandé ; 22+ supporté)
+- Node.js **>= 20.19.0** (22.12+ recommandé — aligné Docker et `.nvmrc`)
 - Docker & Docker Compose
 - npm 10+
+
+Avec [nvm](https://github.com/nvm-sh/nvm) :
+
+```bash
+nvm install    # lit .nvmrc (22.12.0)
+nvm use
+node -v        # doit afficher >= 20.19.0
+```
 
 ## Démarrage local
 
