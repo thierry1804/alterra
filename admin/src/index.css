@@ -14,17 +14,81 @@
     font-family: ui-sans-serif, system-ui, sans-serif;
   }
 
+  /* Focus visible unifié — anneau de marque ALTERRA sur tous les contrôles. */
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
   select:focus-visible,
-  textarea:focus-visible {
-    @apply outline-none ring-2 ring-zinc-400 ring-offset-2;
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-brand-ring ring-offset-2 ring-offset-white;
+  }
+
+  /* Chiffres de registre : matricules, quantités, montants Ariary. */
+  th,
+  td {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
   .alterra-focus {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+
+  /* Données de registre en mono tabulaire (montants, quantités, matricules). */
+  .alterra-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* Filet corail — signature reforestation ALTERRA. Hairline uniquement. */
+  .alterra-rule {
+    position: relative;
+  }
+  .alterra-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    height: 2px;
+    width: 2.5rem;
+    background: var(--color-earth);
+    border-radius: 1px;
+  }
+}
+
+@layer utilities {
+  /* Reflet de chargement pour les skeletons. */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.55),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .shimmer::after {
+    display: none;
   }
 }

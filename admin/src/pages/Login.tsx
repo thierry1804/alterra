@@ -41,19 +41,25 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-surface-muted p-4">
       <div className="grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
         <form
           onSubmit={onSubmit}
-          className="space-y-4 rounded-lg border border-zinc-200 bg-white p-8 shadow-sm"
+          className="space-y-5 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
         >
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">ALTERRA</h1>
-          <p className="mt-1 text-sm text-zinc-600">Connexion administration</p>
+        <div className="alterra-rule pb-3">
+          <span className="flex items-center gap-2.5">
+            <img src="/brand/alterra-logo.png" alt="" className="h-8 w-8 rounded" aria-hidden />
+            <span className="text-lg font-semibold tracking-tight text-zinc-900">ALTERRA</span>
+          </span>
+          <p className="mt-2 text-sm text-muted">Connexion administration</p>
         </div>
 
         {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p
+            className="rounded-md border border-red-200 bg-danger-bg px-3 py-2 text-sm text-danger"
+            role="alert"
+          >
             {error}
           </p>
         )}
@@ -106,7 +112,7 @@ export default function Login() {
           </div>
         )}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" loading={loading}>
           {loading ? "Connexion…" : "Se connecter"}
         </Button>
         </form>

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, ClipboardList } from "lucide-react";
 import { api } from "../lib/api";
 import type { Pointage, PointageStatus } from "../lib/pointages";
 import {
@@ -15,6 +15,9 @@ import PointageDetailDrawer from "../components/pointages/PointageDetailDrawer";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Select } from "../components/ui/select";
+import { EmptyState } from "../components/ui/EmptyState";
+import { TableRowsSkeleton } from "../components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -101,36 +104,60 @@ export default function PointagesPage() {
         description="Validation et suivi des saisies terrain."
       />
 
-      <div className="flex flex-wrap gap-3">
-        <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as PointageStatus | "")}
-        >
-          <option value="">Tous statuts</option>
-          {(Object.keys(POINTAGE_STATUS_LABELS) as PointageStatus[]).map((status) => (
-            <option key={status} value={status}>
-              {POINTAGE_STATUS_LABELS[status]}
-            </option>
-          ))}
-        </select>
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className="w-40"
-          aria-label="Date début"
-        />
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className="w-40"
-          aria-label="Date fin"
-        />
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Statut</span>
+          <Select
+            className="w-48"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as PointageStatus | "")}
+            aria-label="Filtrer par statut"
+          >
+            <option value="">Tous statuts</option>
+            {(Object.keys(POINTAGE_STATUS_LABELS) as PointageStatus[]).map((status) => (
+              <option key={status} value={status}>
+                {POINTAGE_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Du</span>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-40"
+            aria-label="Date début"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Au</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-40"
+            aria-label="Date fin"
+          />
+        </label>
+        {(statusFilter || dateFrom || dateTo) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setStatusFilter("");
+              setDateFrom("");
+              setDateTo("");
+            }}
+          >
+            Réinitialiser
+          </Button>
+        )}
       </div>
 
-      <div className="rounded-lg border border-zinc-200">
+      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xs">
         <Table>
           <TableHeader>
             <TableRow>
@@ -138,21 +165,15 @@ export default function PointagesPage() {
               <TableHead>Date</TableHead>
               <TableHead>MOC</TableHead>
               <TableHead>Activité</TableHead>
-              <TableHead>Qté</TableHead>
-              <TableHead>Montant</TableHead>
+              <TableHead numeric>Qté</TableHead>
+              <TableHead numeric>Montant</TableHead>
               <TableHead>Bio</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pointagesQuery.isLoading && (
-              <TableRow>
-                <TableCell colSpan={9} className="text-zinc-500">
-                  Chargement…
-                </TableCell>
-              </TableRow>
-            )}
+            {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={9} />}
             {!pointagesQuery.isLoading &&
               pointages.map((pointage) => (
                 <TableRow key={pointage.id}>
@@ -172,11 +193,17 @@ export default function PointagesPage() {
                       />
                     </div>
                   </TableCell>
-                  <TableCell>{formatDate(pointage.date)}</TableCell>
-                  <TableCell>{workerLabel(pointage.workerId)}</TableCell>
-                  <TableCell>{activityLabel(pointage.activityId)}</TableCell>
-                  <TableCell>{pointage.quantity}</TableCell>
-                  <TableCell>{formatPointageAmount(pointage.amount)}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono tabular-nums text-zinc-600">
+                    {formatDate(pointage.date)}
+                  </TableCell>
+                  <TableCell className="font-medium text-zinc-900">
+                    {workerLabel(pointage.workerId)}
+                  </TableCell>
+                  <TableCell className="text-zinc-600">{activityLabel(pointage.activityId)}</TableCell>
+                  <TableCell numeric>{pointage.quantity}</TableCell>
+                  <TableCell numeric className="font-medium text-zinc-900">
+                    {formatPointageAmount(pointage.amount)}
+                  </TableCell>
                   <TableCell>
                     {pointage.bioCheck ? (
                       <Badge
@@ -206,12 +233,13 @@ export default function PointagesPage() {
                 </TableRow>
               ))}
             {!pointagesQuery.isLoading && pointages.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9}>
-                  <div className="py-4 text-sm text-zinc-700">
-                    <p>Aucun pointage pour ces filtres.</p>
-                    <p className="mt-1 text-zinc-600">Élargissez la période ou réinitialisez les filtres.</p>
-                  </div>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={9} className="p-0">
+                  <EmptyState
+                    icon={ClipboardList}
+                    title="Aucun pointage pour ces filtres"
+                    hint="Élargissez la période ou réinitialisez les filtres pour retrouver des saisies terrain."
+                  />
                 </TableCell>
               </TableRow>
             )}

@@ -141,7 +141,7 @@ export default function RequestsPage() {
             onClick={() => handleTabChange(item.id)}
             className={cn(
               "rounded-md px-3 py-2 text-sm transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
               tab === item.id
                 ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
                 : "text-zinc-600 hover:text-zinc-900",

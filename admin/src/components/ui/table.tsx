@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils";
 
 export const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full overflow-x-auto">
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
@@ -14,7 +14,7 @@ export const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("bg-surface-muted/60", className)} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -32,7 +32,10 @@ export const TableRow = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tr
     ref={ref}
-    className={cn("border-b border-zinc-200 transition-colors hover:bg-zinc-50", className)}
+    className={cn(
+      "border-b border-zinc-200 transition-colors hover:bg-brand-tint/40 data-[state=selected]:bg-brand-tint/60",
+      className,
+    )}
     {...props}
   />
 ));
@@ -40,12 +43,13 @@ TableRow.displayName = "TableRow";
 
 export const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & { numeric?: boolean }
+>(({ className, numeric, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      "h-10 px-3 text-left align-middle text-xs font-medium text-zinc-500",
+      "h-9 whitespace-nowrap px-3 text-left align-middle text-[11px] font-semibold uppercase tracking-wide text-subtle",
+      numeric && "text-right",
       className,
     )}
     {...props}
@@ -55,8 +59,16 @@ TableHead.displayName = "TableHead";
 
 export const TableCell = React.forwardRef<
   HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn("px-3 py-2 align-middle", className)} {...props} />
+  React.TdHTMLAttributes<HTMLTableCellElement> & { numeric?: boolean }
+>(({ className, numeric, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn(
+      "px-3 py-2.5 align-middle text-zinc-800",
+      numeric && "text-right font-mono tabular-nums",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableCell.displayName = "TableCell";

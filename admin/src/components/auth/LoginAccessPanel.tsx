@@ -32,7 +32,7 @@ export default function LoginAccessPanel({
         <p className="mt-1 text-sm text-zinc-600">{otherApp.description}</p>
         <a
           href={otherApp.href}
-          className="mt-2 inline-block text-sm font-medium text-zinc-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+          className="mt-2 inline-block text-sm font-medium text-zinc-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           {otherApp.label} →
         </a>

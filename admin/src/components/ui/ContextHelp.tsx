@@ -34,7 +34,7 @@ export default function ContextHelp({
         onClick={() => setOpen(true)}
         className={cn(
           "inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-300 text-xs font-medium text-zinc-600",
-          "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
+          "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-1",
         )}
       >
         ?
