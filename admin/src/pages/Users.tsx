@@ -5,7 +5,9 @@ import { api } from "../lib/api";
 import type { AppUser, Site } from "../lib/referentials";
 import { USER_ROLE_LABELS, formatDate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
+import { Pencil, KeyRound, UserX } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
@@ -214,29 +216,29 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => openEdit(user)}>
-                        Modifier
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
+                    <RowActions>
+                      <IconButton
+                        icon={Pencil}
+                        label="Modifier"
+                        variant="brand"
+                        onClick={() => openEdit(user)}
+                      />
+                      <IconButton
+                        icon={KeyRound}
+                        label="Réinitialiser le mot de passe"
+                        loading={resetPasswordMutation.isPending}
                         onClick={() => resetPasswordMutation.mutate(user)}
-                      >
-                        Reset MDP
-                      </Button>
+                      />
                       {user.active && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
+                        <IconButton
+                          icon={UserX}
+                          label="Désactiver"
+                          variant="destructive"
+                          loading={deactivateMutation.isPending}
                           onClick={() => deactivateMutation.mutate(user)}
-                        >
-                          Désactiver
-                        </Button>
+                        />
                       )}
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}

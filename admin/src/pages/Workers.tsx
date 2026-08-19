@@ -1,13 +1,14 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { UserRound } from "lucide-react";
+import { UserRound, Pencil, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
 import type { Site, Worker } from "../lib/referentials";
 import { WORKER_STATUS_LABELS } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import ImportDialog from "../components/workers/ImportDialog";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
@@ -273,20 +274,20 @@ export default function WorkersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => openEdit(worker)}>
-                        Modifier
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-700 hover:text-red-800"
+                    <RowActions>
+                      <IconButton
+                        icon={Pencil}
+                        label="Modifier"
+                        variant="brand"
+                        onClick={() => openEdit(worker)}
+                      />
+                      <IconButton
+                        icon={Trash2}
+                        label="Supprimer"
+                        variant="destructive"
                         onClick={() => setDeleteTarget(worker)}
-                      >
-                        Supprimer
-                      </Button>
-                    </div>
+                      />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}

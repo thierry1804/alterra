@@ -11,7 +11,9 @@ import {
 } from "../lib/audit";
 import PageHeader from "../components/shared/PageHeader";
 import AuditDetailDrawer from "../components/audit/AuditDetailDrawer";
+import { Eye } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import {
@@ -177,9 +179,12 @@ export default function AuditLogPage() {
                 <TableCell>{entry.entityType}</TableCell>
                 <TableCell className="font-mono text-xs">{entry.entityId ?? "—"}</TableCell>
                 <TableCell>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => openEntry(entry)}>
-                    Voir
-                  </Button>
+                  <IconButton
+                    icon={Eye}
+                    label="Voir le détail"
+                    variant="brand"
+                    onClick={() => openEntry(entry)}
+                  />
                 </TableCell>
               </TableRow>
             ))}

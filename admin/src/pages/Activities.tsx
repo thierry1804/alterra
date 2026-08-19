@@ -6,7 +6,9 @@ import type { Activity, Site } from "../lib/referentials";
 import { formatDate, formatRate } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
 import RateHistoryDrawer from "../components/activities/RateHistoryDrawer";
+import { Pencil, History, Power } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import {
@@ -145,29 +147,27 @@ export default function ActivitiesPage() {
                   <TableCell>{siteName(activity.siteId)}</TableCell>
                   <TableCell>{formatDate(activity.validFrom)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => openEdit(activity)}>
-                        Modifier
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
+                    <RowActions>
+                      <IconButton
+                        icon={Pencil}
+                        label="Modifier"
+                        variant="brand"
+                        onClick={() => openEdit(activity)}
+                      />
+                      <IconButton
+                        icon={History}
+                        label="Historique des tarifs"
                         onClick={() => setHistoryLabel(activity.label)}
-                      >
-                        Historique
-                      </Button>
+                      />
                       {activity.active && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
+                        <IconButton
+                          icon={Power}
+                          label="Désactiver"
+                          variant="destructive"
                           onClick={() => deactivateMutation.mutate(activity)}
-                        >
-                          Désactiver
-                        </Button>
+                        />
                       )}
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}

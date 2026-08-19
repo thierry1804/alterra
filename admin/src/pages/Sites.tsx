@@ -4,7 +4,9 @@ import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
+import { Pencil, Power } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
@@ -146,21 +148,22 @@ export default function SitesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => openEdit(site)}>
-                        Modifier
-                      </Button>
+                    <RowActions>
+                      <IconButton
+                        icon={Pencil}
+                        label="Modifier"
+                        variant="brand"
+                        onClick={() => openEdit(site)}
+                      />
                       {site.active && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
+                        <IconButton
+                          icon={Power}
+                          label="Désactiver"
+                          variant="destructive"
                           onClick={() => deactivateMutation.mutate(site)}
-                        >
-                          Désactiver
-                        </Button>
+                        />
                       )}
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Camera, ClipboardList } from "lucide-react";
+import { Camera, ClipboardList, Eye } from "lucide-react";
 import { api } from "../lib/api";
 import type { Pointage, PointageStatus } from "../lib/pointages";
 import {
@@ -14,6 +14,7 @@ import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import PointageDetailDrawer from "../components/pointages/PointageDetailDrawer";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Select } from "../components/ui/select";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -221,14 +222,14 @@ export default function PointagesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelected(pointage)}
-                    >
-                      Détail
-                    </Button>
+                    <RowActions>
+                      <IconButton
+                        icon={Eye}
+                        label="Voir le détail"
+                        variant="brand"
+                        onClick={() => setSelected(pointage)}
+                      />
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}

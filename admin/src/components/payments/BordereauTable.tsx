@@ -7,8 +7,10 @@ import {
   formatPaymentAmount,
   paymentStatusVariant,
 } from "../../lib/payments";
+import { Pencil, X } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { IconButton, RowActions } from "../ui/IconButton";
 import { Input } from "../ui/input";
 import {
   Table,
@@ -114,9 +116,14 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                 </TableCell>
                 <TableCell>
                   {row.status === "PENDING" && editingId !== row.id && (
-                    <Button type="button" size="sm" variant="outline" onClick={() => startEdit(row)}>
-                      Corriger
-                    </Button>
+                    <RowActions>
+                      <IconButton
+                        icon={Pencil}
+                        label="Corriger le montant"
+                        variant="brand"
+                        onClick={() => startEdit(row)}
+                      />
+                    </RowActions>
                   )}
                   {editingId === row.id && (
                     <div className="space-y-2">
@@ -141,9 +148,7 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                         >
                           OK
                         </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                          ✕
-                        </Button>
+                        <IconButton icon={X} label="Annuler" onClick={() => setEditingId(null)} />
                       </div>
                     </div>
                   )}

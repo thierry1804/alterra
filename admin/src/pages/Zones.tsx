@@ -10,7 +10,9 @@ import {
   type Zone,
 } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import {
@@ -324,23 +326,28 @@ export default function ZonesPage() {
                       {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "—"}
                     </TableCell>
                     <TableCell>{zone.geoPolygon ? "Polygon" : "—"}</TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button type="button" variant="outline" size="sm" onClick={() => openParcelCreate(zone.id)}>
-                        + Parcelle
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => openZoneEdit(zone)}>
-                        Modifier
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setDeleteConfirm({ type: "zone", id: zone.id, name: zone.name })
-                        }
-                      >
-                        Supprimer
-                      </Button>
+                    <TableCell className="text-right">
+                      <RowActions>
+                        <IconButton
+                          icon={Plus}
+                          label="Ajouter une parcelle"
+                          onClick={() => openParcelCreate(zone.id)}
+                        />
+                        <IconButton
+                          icon={Pencil}
+                          label="Modifier la zone"
+                          variant="brand"
+                          onClick={() => openZoneEdit(zone)}
+                        />
+                        <IconButton
+                          icon={Trash2}
+                          label="Supprimer la zone"
+                          variant="destructive"
+                          onClick={() =>
+                            setDeleteConfirm({ type: "zone", id: zone.id, name: zone.name })
+                          }
+                        />
+                      </RowActions>
                     </TableCell>
                   </TableRow>
                   {expanded &&
@@ -353,24 +360,27 @@ export default function ZonesPage() {
                             : "—"}
                         </TableCell>
                         <TableCell>{parcel.geoPolygon ? "Polygon" : "—"}</TableCell>
-                        <TableCell className="space-x-2 text-right">
-                          <Button type="button" variant="outline" size="sm" onClick={() => openParcelEdit(parcel)}>
-                            Modifier
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setDeleteConfirm({
-                                type: "parcel",
-                                id: parcel.id,
-                                name: parcel.name,
-                              })
-                            }
-                          >
-                            Supprimer
-                          </Button>
+                        <TableCell className="text-right">
+                          <RowActions>
+                            <IconButton
+                              icon={Pencil}
+                              label="Modifier la parcelle"
+                              variant="brand"
+                              onClick={() => openParcelEdit(parcel)}
+                            />
+                            <IconButton
+                              icon={Trash2}
+                              label="Supprimer la parcelle"
+                              variant="destructive"
+                              onClick={() =>
+                                setDeleteConfirm({
+                                  type: "parcel",
+                                  id: parcel.id,
+                                  name: parcel.name,
+                                })
+                              }
+                            />
+                          </RowActions>
                         </TableCell>
                       </TableRow>
                     ))}

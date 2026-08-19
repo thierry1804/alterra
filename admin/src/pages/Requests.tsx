@@ -6,7 +6,9 @@ import RequestDetailDrawer, {
   type RequestSelection,
 } from "../components/requests/RequestDetailDrawer";
 import { Badge } from "../components/ui/badge";
+import { Eye } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { IconButton } from "../components/ui/IconButton";
 import {
   Table,
   TableBody,
@@ -205,14 +207,12 @@ export default function RequestsPage() {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <IconButton
+                  icon={Eye}
+                  label="Voir le détail"
+                  variant="brand"
                   onClick={() => openSelection({ type: "activity", row })}
-                >
-                  Détail
-                </Button>
+                />
               </TableCell>
             </TableRow>
           )}
@@ -237,14 +237,12 @@ export default function RequestsPage() {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <IconButton
+                  icon={Eye}
+                  label="Voir le détail"
+                  variant="brand"
                   onClick={() => openSelection({ type: "worker", row })}
-                >
-                  Détail
-                </Button>
+                />
               </TableCell>
             </TableRow>
           )}
@@ -267,14 +265,12 @@ export default function RequestsPage() {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <IconButton
+                  icon={Eye}
+                  label="Voir le détail"
+                  variant="brand"
                   onClick={() => openSelection({ type: "clarification", row })}
-                >
-                  Détail
-                </Button>
+                />
               </TableCell>
             </TableRow>
           )}
