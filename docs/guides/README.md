@@ -11,6 +11,12 @@ Sources Markdown versionnées dans ce dossier. Les PDF sont générés pour diff
 | Chef d'équipe | `guide-cde.md` | `guide-cde.pdf` |
 | Formation pilote | `formation-pilote.md` | — (facultatif) |
 
+## Guides techniques
+
+| Sujet | Source |
+|-------|--------|
+| Démarrage Docker (dev / stack complète / app complète) | `demarrage-docker.md` |
+
 ## Régénérer les PDF
 
 ```bash

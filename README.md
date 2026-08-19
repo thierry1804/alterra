@@ -30,7 +30,9 @@ node -v        # doit afficher >= 20.19.0
 
 ## Démarrage local
 
-Deux modes sont disponibles selon vos besoins :
+> Guide détaillé (URLs, identifiants seed, dépannage) : [`docs/guides/demarrage-docker.md`](docs/guides/demarrage-docker.md).
+
+Trois modes sont disponibles selon vos besoins :
 
 | Mode               | Commande infra                              | API                         | Frontends              | Cas d'usage                                   |
 | ------------------ | ------------------------------------------- | --------------------------- | ---------------------- | --------------------------------------------- |
