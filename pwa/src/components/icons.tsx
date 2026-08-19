@@ -164,6 +164,33 @@ export function IconBio(props: IconProps) {
   );
 }
 
+export function IconAdd(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Base>
+  );
+}
+
+export function IconTrash(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
+      <path d="M10 11v6M14 11v6" />
+    </Base>
+  );
+}
+
+export function IconSend(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4.5 12 20 4l-4 16-4.5-6.5L4.5 12Z" />
+      <path d="m11.5 13.5 4.5-9.5" />
+    </Base>
+  );
+}
+
 export function IconLogout(props: IconProps) {
   return (
     <Base {...props}>

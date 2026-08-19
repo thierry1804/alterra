@@ -4,6 +4,9 @@ import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import type { TeamDetail, TeamSummary, WorkerSearchHit } from "../lib/teams";
 import Button from "../components/ui/Button";
+import IconButton from "../components/ui/IconButton";
+import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
+import { IconSync, IconAdd, IconTrash } from "../components/icons";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { syncReferentials } from "../sync/ReferentialSync";
 
@@ -92,17 +95,15 @@ function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: Me
       {results.length > 0 && (
         <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
           {results.map((worker) => (
-            <li key={worker.id} className="flex items-center justify-between gap-2 px-3 py-2">
+            <li key={worker.id} className="flex items-center justify-between gap-2 px-3 py-1.5">
               <span className="text-sm text-zinc-800">{memberLabel(worker)}</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
+              <IconButton
+                icon={IconAdd}
+                label={`Ajouter ${memberLabel(worker)}`}
+                variant="brand"
                 disabled={busyId === worker.id || disabled}
                 onClick={() => void handleAdd(worker.id)}
-              >
-                Ajouter
-              </Button>
+              />
             </li>
           ))}
         </ul>
@@ -297,12 +298,12 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
             ) : (
               <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
                 {members.map((member) => (
-                  <li key={member.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <li key={member.id} className="flex items-center justify-between gap-2 px-3 py-1.5">
                     <span className="text-sm text-zinc-800">{memberLabel(member)}</span>
-                    <Button
-                      type="button"
+                    <IconButton
+                      icon={IconTrash}
+                      label={`Retirer ${member.firstName} ${member.lastName}`}
                       variant="destructive"
-                      size="sm"
                       disabled={busy}
                       onClick={() =>
                         setConfirmAction({
@@ -311,9 +312,7 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
                           workerName: `${member.firstName} ${member.lastName}`,
                         })
                       }
-                    >
-                      Retirer
-                    </Button>
+                    />
                   </li>
                 ))}
               </ul>
@@ -431,7 +430,7 @@ export default function TeamManagement() {
   }
 
   if (loading) {
-    return <p className="p-4 text-sm text-zinc-600">Chargement des équipes…</p>;
+    return <LoadingScreen label="Chargement des équipes…" />;
   }
 
   return (
@@ -445,9 +444,7 @@ export default function TeamManagement() {
               : "Ajoutez ou retirez les travailleurs de votre équipe."}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void loadTeams()}>
-          Actualiser
-        </Button>
+        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadTeams()} />
       </header>
 
       {error && (
@@ -505,9 +502,7 @@ export default function TeamManagement() {
         </section>
       )}
 
-      {teams.length === 0 && (
-        <p className="text-sm text-zinc-500">Aucune équipe active sur ce site.</p>
-      )}
+      {teams.length === 0 && <EmptyHint>Aucune équipe active sur ce site.</EmptyHint>}
 
       <div className="space-y-3">
         {teams.map((team) => {

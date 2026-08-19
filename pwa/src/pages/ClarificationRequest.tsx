@@ -5,6 +5,10 @@ import { api } from "../lib/api";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../lib/pointages";
 import PhotoCapture from "../components/pointage/PhotoCapture";
 import Button from "../components/ui/Button";
+import IconButton from "../components/ui/IconButton";
+import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
+import { IconSync, IconSend, IconCheck } from "../components/icons";
+import { cn } from "../lib/cn";
 import {
   clarificationStatusClass,
   clarificationStatusLabel,
@@ -216,7 +220,7 @@ export default function ClarificationRequest() {
   }
 
   if (loading) {
-    return <p className="p-4 text-sm text-zinc-600">Chargement…</p>;
+    return <LoadingScreen label="Chargement des demandes…" />;
   }
 
   return (
@@ -230,9 +234,7 @@ export default function ClarificationRequest() {
               : "Demandez des précisions au chef d'équipe sur un pointage en attente."}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void loadData()}>
-          Actualiser
-        </Button>
+        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />
       </header>
 
       {error && (
@@ -291,9 +293,11 @@ export default function ClarificationRequest() {
             </label>
             <Button
               type="button"
+              className="w-full gap-2"
               disabled={creating || !selectedPointageId || question.trim().length < 10}
               onClick={() => void handleCreate()}
             >
+              <IconSend className="h-4 w-4 shrink-0" />
               Envoyer au chef d'équipe
             </Button>
           </div>
@@ -301,9 +305,9 @@ export default function ClarificationRequest() {
       )}
 
       {visibleRequests.length === 0 && (
-        <p className="text-sm text-zinc-500">
+        <EmptyHint>
           {isCde ? "Aucune demande ouverte." : "Aucune demande de précisions."}
-        </p>
+        </EmptyHint>
       )}
 
       <div className="space-y-3">
@@ -314,12 +318,18 @@ export default function ClarificationRequest() {
             <article key={request.id} className="rounded-md border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">Pointage {request.pointageId.slice(0, 8)}</p>
+                  <p className="text-sm font-medium text-zinc-900">
+                    Pointage <span className="alterra-num">{request.pointageId.slice(0, 8)}</span>
+                  </p>
                   <p className="mt-1 text-xs text-zinc-500">{formatDate(request.createdAt)}</p>
                 </div>
                 <span
-                  className={`rounded border px-2 py-0.5 text-xs ${clarificationStatusClass(request.status)}`}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                    clarificationStatusClass(request.status),
+                  )}
                 >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
                   {clarificationStatusLabel(request.status)}
                 </span>
               </div>
@@ -365,7 +375,13 @@ export default function ClarificationRequest() {
                       onClear={() => updateAnswerDraft(request.id, { blob: null, previewUrl: null })}
                     />
                   )}
-                  <Button type="button" disabled={busy} onClick={() => void handleAnswer(request)}>
+                  <Button
+                    type="button"
+                    className="w-full gap-2"
+                    disabled={busy}
+                    onClick={() => void handleAnswer(request)}
+                  >
+                    <IconSend className="h-4 w-4 shrink-0" />
                     Envoyer la réponse
                   </Button>
                 </div>
@@ -376,9 +392,11 @@ export default function ClarificationRequest() {
                   <Button
                     type="button"
                     variant="outline"
+                    className="w-full gap-2"
                     disabled={busy}
                     onClick={() => void handleClose(request.id)}
                   >
+                    <IconCheck className="h-4 w-4 shrink-0" />
                     Clôturer et remettre en validation
                   </Button>
                 </div>

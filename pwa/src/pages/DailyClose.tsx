@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { isAxiosError } from "axios";
+import { cn } from "../lib/cn";
 import Button from "../components/ui/Button";
+import IconButton from "../components/ui/IconButton";
+import { Spinner } from "../components/ui/feedback";
+import { IconSync, IconCloture } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
@@ -136,9 +140,7 @@ export default function DailyClose() {
             Vérifiez les pointages du jour, signez et générez le rapport PDF.
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void loadPreview()}>
-          Actualiser
-        </Button>
+        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadPreview()} />
       </header>
 
       <ContextHelp id="daily-close" title="Clôture journalière">
@@ -170,38 +172,39 @@ export default function DailyClose() {
         />
       </section>
 
-      {loading && <p className="text-sm text-zinc-600">Analyse de la journée…</p>}
+      {loading && (
+        <div className="flex items-center gap-2 px-1 text-sm text-zinc-600">
+          <Spinner className="h-4 w-4" />
+          Analyse de la journée…
+        </div>
+      )}
 
       {preview && !loading && (
         <section className="rounded-md border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-medium text-zinc-900">
-            Résumé · {preview.periodIso}
+            Résumé · <span className="alterra-num">{preview.periodIso}</span>
           </h2>
-          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-zinc-500">Validés</dt>
-              <dd className="font-medium text-zinc-900">{preview.validatedCount}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600">Travailleurs</dt>
-              <dd className="font-medium text-zinc-900">{preview.workerCount}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500">Montant</dt>
-              <dd className="font-medium text-zinc-900">{preview.totalAmount} Ar</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500">En attente</dt>
-              <dd className="font-medium text-zinc-900">{preview.pendingCount}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500">Précisions</dt>
-              <dd className="font-medium text-zinc-900">{preview.needsClarificationCount}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-500">Rejetés</dt>
-              <dd className="font-medium text-zinc-900">{preview.rejectedCount}</dd>
-            </div>
+
+          <div className="mt-3 rounded-md bg-brand-tint/50 px-3 py-2.5">
+            <p className="text-xs font-medium text-zinc-600">Montant à payer</p>
+            <p className="alterra-num mt-0.5 text-xl font-semibold text-brand">
+              {preview.totalAmount} Ar
+            </p>
+          </div>
+
+          <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+            {[
+              { label: "Validés", value: preview.validatedCount, tone: "text-brand" },
+              { label: "Travailleurs", value: preview.workerCount, tone: "text-zinc-900" },
+              { label: "En attente", value: preview.pendingCount, tone: preview.pendingCount > 0 ? "text-amber-600" : "text-zinc-400" },
+              { label: "Précisions", value: preview.needsClarificationCount, tone: preview.needsClarificationCount > 0 ? "text-people-fg" : "text-zinc-400" },
+              { label: "Rejetés", value: preview.rejectedCount, tone: preview.rejectedCount > 0 ? "text-red-600" : "text-zinc-400" },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-md border border-zinc-200 py-2">
+                <dd className={cn("alterra-num text-lg font-semibold", stat.tone)}>{stat.value}</dd>
+                <dt className="mt-0.5 text-[11px] text-zinc-500">{stat.label}</dt>
+              </div>
+            ))}
           </dl>
 
           {preview.requiresConfirm && (
@@ -240,9 +243,16 @@ export default function DailyClose() {
         </label>
         <Button
           type="button"
+          size="lg"
+          className="mt-4 w-full gap-2"
           disabled={submitting || !certify || signatureText.trim().length < 3}
           onClick={() => void handleCloseDay()}
         >
+          {submitting ? (
+            <Spinner className="h-4 w-4 text-white" />
+          ) : (
+            <IconCloture className="h-4 w-4 shrink-0" />
+          )}
           {submitting ? "Clôture en cours…" : "Clôturer et envoyer le rapport"}
         </Button>
       </section>
