@@ -215,7 +215,7 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
         aria-expanded={expanded}
         aria-controls={panelId}
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400"
+        className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-ring"
       >
         <div>
           <p className="text-sm font-medium text-zinc-900">{team.name}</p>

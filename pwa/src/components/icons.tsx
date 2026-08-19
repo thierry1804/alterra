@@ -146,6 +146,24 @@ export function IconChevronRight(props: IconProps) {
   );
 }
 
+export function IconCheck(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </Base>
+  );
+}
+
+export function IconBio(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+      <circle cx="12" cy="11" r="2.2" />
+      <path d="M8.5 16.2c.6-1.5 1.9-2.3 3.5-2.3s2.9.8 3.5 2.3" />
+    </Base>
+  );
+}
+
 export function IconLogout(props: IconProps) {
   return (
     <Base {...props}>

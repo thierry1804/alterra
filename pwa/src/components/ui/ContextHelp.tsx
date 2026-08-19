@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "../../lib/cn";
-import Button from "./Button";
+import { IconClose } from "../icons";
 
 interface ContextHelpProps {
   id: string;
@@ -34,7 +34,7 @@ export default function ContextHelp({
         onClick={() => setOpen(true)}
         className={cn(
           "inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-300 text-xs font-medium text-zinc-600",
-          "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
+          "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
         )}
       >
         ?
@@ -51,9 +51,15 @@ export default function ContextHelp({
     <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium text-zinc-900">{title}</p>
-        <Button type="button" variant="ghost" size="sm" onClick={handleClose}>
-          Fermer
-        </Button>
+        <button
+          type="button"
+          aria-label="Fermer l'aide"
+          title="Fermer l'aide"
+          onClick={handleClose}
+          className="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2"
+        >
+          <IconClose className="h-4 w-4" />
+        </button>
       </div>
       <div className="mt-2 space-y-2 leading-relaxed">{children}</div>
     </div>

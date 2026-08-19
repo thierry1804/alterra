@@ -5,6 +5,8 @@ import type { TeamSummary } from "../lib/teams";
 import TeamGroup, { type TeamGroupItem } from "../components/validation/TeamGroup";
 import RejectDialog from "../components/ui/RejectDialog";
 import Button from "../components/ui/Button";
+import IconButton from "../components/ui/IconButton";
+import { IconSync } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { apiErrorMessage } from "../lib/errors";
 import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
@@ -225,9 +227,7 @@ export default function Validation() {
             Pointages en attente groupés par équipe — contrôle bio requis avant validation.
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void loadData()}>
-          Actualiser
-        </Button>
+        <IconButton icon={IconSync} label="Actualiser la liste" onClick={() => void loadData()} />
       </header>
 
       <ContextHelp id="validation" title="Comment valider ?">
