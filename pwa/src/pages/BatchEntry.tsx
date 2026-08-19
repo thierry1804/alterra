@@ -3,6 +3,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import WorkerRow, { type WorkerRowValue } from "../components/pointage/WorkerRow";
 import Button, { ButtonLink } from "../components/ui/Button";
+import { LoadingScreen, EmptyHint, Spinner } from "../components/ui/feedback";
+import { IconCheck } from "../components/icons";
 import { db, type ActivityRecord, type PointagePending, type WorkerRecord } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, type DaySession } from "../lib/day-session";
@@ -180,7 +182,7 @@ export default function BatchEntry() {
   }
 
   if (!session) {
-    return <p className="p-4 text-sm text-zinc-600">Chargement session…</p>;
+    return <LoadingScreen label="Chargement de la session…" />;
   }
 
   return (
@@ -238,7 +240,11 @@ export default function BatchEntry() {
         </div>
 
         {filteredWorkers.length === 0 && (
-          <p className="text-sm text-zinc-600">Aucun travailleur trouvé pour cette équipe.</p>
+          <EmptyHint>
+            {search
+              ? "Aucun travailleur ne correspond à cette recherche."
+              : "Aucun travailleur dans cette équipe."}
+          </EmptyHint>
         )}
       </div>
 
@@ -257,7 +263,18 @@ export default function BatchEntry() {
             </span>
           </span>
         </div>
-        <Button type="button" className="w-full" disabled={saving} onClick={() => void handleSave()}>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full gap-2"
+          disabled={saving}
+          onClick={() => void handleSave()}
+        >
+          {saving ? (
+            <Spinner className="h-4 w-4 text-white" />
+          ) : (
+            <IconCheck className="h-4 w-4 shrink-0" />
+          )}
           {saving ? "Enregistrement…" : "Enregistrer le lot"}
         </Button>
       </div>

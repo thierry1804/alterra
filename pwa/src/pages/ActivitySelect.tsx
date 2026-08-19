@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
+import { LoadingScreen } from "../components/ui/feedback";
+import { IconChevronRight } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { db } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
@@ -103,7 +105,7 @@ export default function ActivitySelect() {
   }
 
   if (loading) {
-    return <p className="p-4 text-sm text-zinc-600">Chargement…</p>;
+    return <LoadingScreen />;
   }
 
   return (
@@ -204,8 +206,14 @@ export default function ActivitySelect() {
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
 
-      <Button type="button" className="w-full" onClick={() => void handleContinue()}>
+      <Button
+        type="button"
+        size="lg"
+        className="w-full gap-2"
+        onClick={() => void handleContinue()}
+      >
         Continuer vers la saisie lot
+        <IconChevronRight className="h-4 w-4 shrink-0" />
       </Button>
     </div>
   );
