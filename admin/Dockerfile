@@ -4,6 +4,7 @@ COPY package.json package-lock.json* ./
 COPY admin/package.json ./admin/
 RUN npm ci --workspace=admin --include-workspace-root
 COPY admin ./admin
+COPY design ./design
 WORKDIR /app/admin
 RUN npm run build
 

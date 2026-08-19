@@ -16,11 +16,18 @@ COPY package.json ./
 WORKDIR /app/backend
 RUN npx prisma generate
 RUN npm run build
+# Élague les devDependencies (le client Prisma est déjà généré au-dessus et
+# @prisma/client est une dépendance runtime, donc conservé).
+WORKDIR /app
+RUN npm prune --omit=dev
 
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app/backend
+# node_modules racine : deps hoistées par les workspaces npm (dotenv, express,
+# client Prisma généré…). Sans elles, `node dist/index.js` ne résout pas ses imports.
+COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/backend/dist ./dist
 COPY --from=build /app/backend/node_modules ./node_modules
 COPY --from=build /app/backend/prisma ./prisma

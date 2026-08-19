@@ -1,8 +1,12 @@
 name: alterra-dev
 
-# Deux modes documentés dans README.md :
-# - Stack complète : `docker compose up -d` (postgres, redis, minio, api)
-# - Dev hybride    : `docker compose up -d postgres redis minio` + `npm run dev` (hot-reload)
+# Trois modes documentés dans README.md :
+# - Dev hybride     : `docker compose up -d postgres redis minio` + `npm run dev` (hot-reload)
+# - Stack complète  : `docker compose up -d` (postgres, redis, minio, api)
+# - App complète     : `docker compose --profile full up -d --build` (+ admin, pwa conteneurisés)
+#
+# Les frontends admin/pwa ne démarrent qu'avec `--profile full` : ils sont buildés
+# depuis leurs Dockerfile (Vite → nginx) et servis avec un proxy /api → conteneur `api`.
 
 services:
   api:
@@ -51,6 +55,36 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  admin:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    volumes:
+      - ./admin/nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+  pwa:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: pwa/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    volumes:
+      - ./pwa/nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine

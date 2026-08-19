@@ -4,6 +4,7 @@ COPY package.json package-lock.json* ./
 COPY pwa/package.json ./pwa/
 RUN npm ci --workspace=pwa --include-workspace-root
 COPY pwa ./pwa
+COPY design ./design
 WORKDIR /app/pwa
 RUN npm run build
 

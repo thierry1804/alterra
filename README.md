@@ -32,19 +32,35 @@ node -v        # doit afficher >= 20.19.0
 
 Deux modes sont disponibles selon vos besoins :
 
-| Mode               | Commande infra                              | API                         | Frontends            | Cas d'usage                                   |
-| ------------------ | ------------------------------------------- | --------------------------- | -------------------- | --------------------------------------------- |
-| **Stack complète** | `docker compose up -d`                      | conteneur `api` (port 3001) | —                    | smoke test, CI local, sans Node pour l'API    |
-| **Dev hybride**    | `docker compose up -d postgres redis minio` | `npm run dev -w backend`    | `npm run dev` (Vite) | développement quotidien (hot-reload tsx/vite) |
+| Mode               | Commande infra                              | API                         | Frontends              | Cas d'usage                                   |
+| ------------------ | ------------------------------------------- | --------------------------- | ---------------------- | --------------------------------------------- |
+| **Dev hybride**    | `docker compose up -d postgres redis minio` | `npm run dev -w backend`    | `npm run dev` (Vite)   | développement quotidien (hot-reload tsx/vite) |
+| **Stack complète** | `docker compose up -d`                      | conteneur `api` (port 3001) | —                      | smoke test, CI local, sans Node pour l'API    |
+| **App complète**   | `docker compose --profile full up -d --build` | conteneur `api` (port 3001) | conteneurs nginx     | démo / QA de toute l'appli sans Node local    |
 
-| Composant   | Stack complète | Dev hybride               | Port                       |
-| ----------- | -------------- | ------------------------- | -------------------------- |
-| PostgreSQL  | Docker         | Docker                    | 5433                       |
-| Redis       | Docker         | Docker                    | 6380                       |
-| MinIO       | Docker         | Docker                    | 9000 (API), 9001 (console) |
-| API Express | Docker (`api`) | `npm run dev` (tsx watch) | 3001                       |
-| Admin       | —              | `npm run dev` (Vite)      | 5173                       |
-| PWA         | —              | `npm run dev` (Vite)      | 5174                       |
+| Composant   | Dev hybride               | Stack complète | App complète (`--profile full`) | Port                       |
+| ----------- | ------------------------- | -------------- | ------------------------------- | -------------------------- |
+| PostgreSQL  | Docker                    | Docker         | Docker                          | 5433                       |
+| Redis       | Docker                    | Docker         | Docker                          | 6380                       |
+| MinIO       | Docker                    | Docker         | Docker                          | 9000 (API), 9001 (console) |
+| API Express | `npm run dev` (tsx watch) | Docker (`api`) | Docker (`api`)                  | 3001                       |
+| Admin       | `npm run dev` (Vite)      | —              | Docker (`admin`, nginx)         | 5173                       |
+| PWA         | `npm run dev` (Vite)      | —              | Docker (`pwa`, nginx)           | 5174                       |
+
+### App complète en Docker (`--profile full`)
+
+Lance **toute l'application** en conteneurs (infra + API + frontends admin/pwa buildés et servis par nginx), sans aucun Node en local. Pratique pour une démo ou une QA de bout en bout.
+
+```bash
+docker compose --profile full up -d --build
+npm run db:setup -w backend    # migrations + seed (première fois, depuis un poste avec Node)
+```
+
+- Admin : http://localhost:5173
+- PWA : http://localhost:5174
+- API : http://localhost:3001/health
+
+Les frontends sont servis en statique par nginx et proxifient `/api` vers le conteneur `api` (voir `admin/nginx.dev.conf` et `pwa/nginx.dev.conf`). Comme les images sont buildées (bundle Vite figé), ce mode **n'a pas de hot-reload** — pour développer, utilisez le mode dev hybride.
 
 ### Stack complète (Docker)
 
