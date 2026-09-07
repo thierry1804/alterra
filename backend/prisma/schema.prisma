@@ -190,6 +190,7 @@ model Worker {
   childrenCount Int?
   mvolaNumber   String           @unique
   cinNumber     String?
+  address       String?
   photoKey      String? // clé MinIO photo KYC ALTERRA
   siteId        String           @db.Uuid
   site          Site             @relation(fields: [siteId], references: [id])

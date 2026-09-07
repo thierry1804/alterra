@@ -9,6 +9,7 @@ import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { workerPhotoUploadUrl } from "../services/storage/presigned-url.service.js";
 import {
+  detectWorkersImportColumns,
   importWorkersRows,
   parseWorkersWorkbook,
 } from "../services/import/workers-import.service.js";
@@ -63,6 +64,15 @@ function buildSearchFilter(q: string): Prisma.WorkerWhereInput {
 
 const importBodySchema = z.object({
   contentBase64: z.string().min(1),
+  hasHeaderRow: z.boolean().optional(),
+  referenceRowNumber: z.number().int().min(1).optional(),
+  mapping: z.record(z.string()).optional(),
+});
+
+const importColumnsBodySchema = z.object({
+  contentBase64: z.string().min(1),
+  hasHeaderRow: z.boolean().optional(),
+  referenceRowNumber: z.number().int().min(1).optional(),
 });
 
 const importQuerySchema = z.object({
@@ -280,6 +290,29 @@ workersRouter.post(
 );
 
 workersRouter.post(
+  "/workers/import/columns",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(importColumnsBodySchema),
+  async (req, res, next) => {
+    try {
+      const { contentBase64, hasHeaderRow, referenceRowNumber } = req.body as z.infer<
+        typeof importColumnsBodySchema
+      >;
+      const buffer = Buffer.from(contentBase64, "base64");
+      const result = await detectWorkersImportColumns(
+        buffer,
+        hasHeaderRow ?? true,
+        referenceRowNumber ?? 1,
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workersRouter.post(
   "/workers/import",
   requireAuth,
   requireRole(Role.ADMIN),
@@ -289,8 +322,15 @@ workersRouter.post(
     try {
       const dryRun =
         (req.query as unknown as z.infer<typeof importQuerySchema>).dryRun ?? true;
-      const buffer = Buffer.from(req.body.contentBase64, "base64");
-      const preview = await parseWorkersWorkbook(buffer);
+      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping } = req.body as z.infer<
+        typeof importBodySchema
+      >;
+      const buffer = Buffer.from(contentBase64, "base64");
+      const preview = await parseWorkersWorkbook(buffer, {
+        hasHeaderRow,
+        referenceRowNumber,
+        mapping,
+      });
 
       if (dryRun) {
         return res.json(preview);
@@ -302,16 +342,21 @@ workersRouter.post(
         });
       }
 
-      const created = await importWorkersRows(preview.valid);
+      const { created, updated } = await importWorkersRows(preview.valid);
       await writeAuditLog({
         userId: req.user!.sub,
         action: "IMPORT",
         entityType: "Worker",
-        after: { count: created.length },
+        after: { created: created.length, updated: updated.length },
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
-      res.status(201).json({ imported: created.length, data: created });
+      res.status(201).json({
+        imported: created.length + updated.length,
+        created: created.length,
+        updated: updated.length,
+        data: [...created, ...updated],
+      });
     } catch (err) {
       next(err);
     }

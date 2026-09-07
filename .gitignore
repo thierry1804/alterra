@@ -8,6 +8,9 @@ build/
 *.log
 .DS_Store
 
+# Redis local dump (should only persist inside the Docker volume)
+dump.rdb
+
 # Prisma
 backend/prisma/dev.db
 backend/prisma/dev.db-journal

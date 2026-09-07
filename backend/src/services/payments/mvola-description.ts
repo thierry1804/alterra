@@ -1,12 +1,23 @@
 const MVOLA_DESC_MAX_LEN = Number(process.env.MVOLA_DESC_MAX_LEN ?? 30);
 
-/** RG-09 — « Prénom Paiement Code_site », tronqué si nécessaire. */
-export function buildMvolaDescription(firstName: string, siteShortCode: string): string {
-  const suffix = ` Paiement ${siteShortCode}`;
+export function buildMvolaDescription(
+  firstName: string,
+  periodShort: string,
+  siteShortCode: string,
+  activityLabel?: string | null,
+  quantity?: string | number | null,
+): string {
+  const middleParts = [
+    ...(activityLabel ? [activityLabel] : []),
+    periodShort,
+    ...(quantity !== undefined && quantity !== null ? [String(quantity)] : []),
+    siteShortCode,
+  ];
+  const suffix = ` ${middleParts.join(" ")}`;
   const maxFirstNameLen = MVOLA_DESC_MAX_LEN - suffix.length;
 
   if (maxFirstNameLen < 1) {
-    return siteShortCode.slice(0, MVOLA_DESC_MAX_LEN);
+    return suffix.trim().slice(0, MVOLA_DESC_MAX_LEN);
   }
 
   const trimmedName =
@@ -15,7 +26,6 @@ export function buildMvolaDescription(firstName: string, siteShortCode: string):
   return `${trimmedName}${suffix}`;
 }
 
-/** MVola Madagascar — 10 chiffres commençant par 034. */
 export function isValidMvolaNumber(value: string): boolean {
-  return /^034\d{7}$/.test(value.trim());
+  return /^03[48]\d{7}$/.test(value.trim());
 }

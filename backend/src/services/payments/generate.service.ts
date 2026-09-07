@@ -64,6 +64,7 @@ export async function generatePayments(
       worker: {
         include: { site: true },
       },
+      activity: true,
     },
   });
 
@@ -71,6 +72,9 @@ export async function generatePayments(
     string,
     {
       amount: Prisma.Decimal;
+      quantity: Prisma.Decimal;
+      activityIds: Set<string>;
+      activityLabel: string;
       worker: (typeof pointages)[number]["worker"];
     }
   >();
@@ -79,9 +83,14 @@ export async function generatePayments(
     const current = aggregates.get(pointage.workerId);
     if (current) {
       current.amount = current.amount.add(pointage.amount);
+      current.quantity = current.quantity.add(pointage.quantity);
+      current.activityIds.add(pointage.activityId);
     } else {
       aggregates.set(pointage.workerId, {
         amount: new Prisma.Decimal(pointage.amount),
+        quantity: new Prisma.Decimal(pointage.quantity),
+        activityIds: new Set([pointage.activityId]),
+        activityLabel: pointage.activity.label,
         worker: pointage.worker,
       });
     }
@@ -97,6 +106,7 @@ export async function generatePayments(
     }
 
     const bioValid = await isBioOkForWeek(workerId, weekIso);
+    const singleActivity = aggregate.activityIds.size === 1;
     toCreate.push({
       workerId,
       periodIso: shortPeriod,
@@ -104,7 +114,10 @@ export async function generatePayments(
       amount: aggregate.amount,
       description: buildMvolaDescription(
         aggregate.worker.firstName,
+        shortPeriod,
         aggregate.worker.site.shortCode,
+        singleActivity ? aggregate.activityLabel : null,
+        singleActivity ? aggregate.quantity.toString() : null,
       ),
       bioValid,
       status: PaymentStatus.PENDING,

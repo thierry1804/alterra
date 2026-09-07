@@ -23,6 +23,7 @@ const periodParams = z.object({
 
 const exportQuerySchema = z.object({
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  includeHeader: z.enum(["true", "false"]).optional(),
 });
 
 const importStatusSchema = z.object({
@@ -108,6 +109,7 @@ paymentsRouter.get(
         ip: req.ip,
         userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
         referenceYear: query.referenceYear,
+        includeHeader: query.includeHeader === "true",
       });
 
       res.setHeader(

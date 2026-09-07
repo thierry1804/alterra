@@ -47,8 +47,31 @@ export interface AppUser {
 }
 
 export interface ImportPreview {
-  valid: Array<{ row: number; matricule: string; firstName: string; lastName: string }>;
+  valid: Array<{
+    row: number;
+    matricule: string;
+    firstName: string;
+    lastName: string;
+    existingWorkerId?: string;
+  }>;
   errors: Array<{ row: number; field: string; message: string }>;
+}
+
+export interface ImportColumnField {
+  key: string;
+  label: string;
+  required: boolean;
+}
+
+export interface ImportDetectedColumn {
+  column: string;
+  label: string;
+  samples: string[];
+}
+
+export interface ImportColumnsResult {
+  columns: ImportDetectedColumn[];
+  fields: ImportColumnField[];
 }
 
 export function formatDate(value: string | null | undefined): string {

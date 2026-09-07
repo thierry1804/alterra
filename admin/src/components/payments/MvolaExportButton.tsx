@@ -18,6 +18,7 @@ export default function MvolaExportButton({
   onExported,
 }: MvolaExportButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [includeHeader, setIncludeHeader] = useState(false);
 
   async function handleExport() {
     setLoading(true);
@@ -25,7 +26,10 @@ export default function MvolaExportButton({
       const exportPeriod = periodToExportParam(periodIso);
       const response = await api.get(`/payments/${exportPeriod}/export`, {
         responseType: "blob",
-        params: { referenceYear: periodIso.match(/^(\d{4})-W/)?.[1] },
+        params: {
+          referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
+          includeHeader,
+        },
       });
 
       const exportedCount = response.headers["x-alterra-exported-count"];
@@ -55,9 +59,19 @@ export default function MvolaExportButton({
   }
 
   return (
-    <Button type="button" variant="outline" disabled={disabled || loading} onClick={() => void handleExport()}>
-      <Download className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
-      {loading ? "Export…" : "Export MVola"}
-    </Button>
+    <div className="flex items-center gap-3">
+      <label className="flex items-center gap-2 text-sm text-zinc-700">
+        <input
+          type="checkbox"
+          checked={includeHeader}
+          onChange={(event) => setIncludeHeader(event.target.checked)}
+        />
+        Inclure l&apos;en-tête
+      </label>
+      <Button type="button" variant="outline" disabled={disabled || loading} onClick={() => void handleExport()}>
+        <Download className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
+        {loading ? "Export…" : "Export MVola"}
+      </Button>
+    </div>
   );
 }

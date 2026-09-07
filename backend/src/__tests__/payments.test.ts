@@ -5,12 +5,14 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { buildMvolaDescription } from "../services/payments/mvola-description.js";
+import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
 import { resolvePeriod } from "../lib/period-iso.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_WORKER_ID = "00000000-0000-4000-8000-000000000040";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
 const MOCK_PAYMENT_ID = "00000000-0000-4000-8000-000000000080";
+const MOCK_ACTIVITY_ID = "00000000-0000-4000-8000-000000000090";
 
 const mockWorker = {
   id: MOCK_WORKER_ID,
@@ -49,7 +51,7 @@ const mockPayment = {
   periodIso: "S29",
   cycle: PaymentCycle.WEEKLY,
   amount: new Prisma.Decimal("125000"),
-  description: "Rakoto Paiement MNK",
+  description: "Rakoto Trouaison S29 12 MNK",
   bioValid: true,
   status: PaymentStatus.PENDING,
   exportedAt: null,
@@ -135,9 +137,21 @@ describe("Payments helpers", () => {
   });
 
   it("buildMvolaDescription truncates long first names (RG-09)", () => {
-    const description = buildMvolaDescription("VeryLongFirstNameHere", "MNK");
-    expect(description.length).toBeLessThanOrEqual(30);
-    expect(description.endsWith(" Paiement MNK")).toBe(true);
+    const maxLen = Number(process.env.MVOLA_DESC_MAX_LEN ?? 30);
+    const description = buildMvolaDescription(
+      "VeryLongFirstNameThatIsDefinitelyTooLongForAnyConfiguredLimit",
+      "S29",
+      "MNK",
+      "Trouaison",
+      "12",
+    );
+    expect(description.length).toBeLessThanOrEqual(maxLen);
+    expect(description.endsWith(" Trouaison S29 12 MNK")).toBe(true);
+  });
+
+  it("buildMvolaDescription omits activity and quantity when absent", () => {
+    const description = buildMvolaDescription("Rakoto", "S29", "MNK");
+    expect(description).toBe("Rakoto S29 MNK");
   });
 });
 
@@ -156,11 +170,17 @@ describe("Payments API", () => {
       {
         workerId: MOCK_WORKER_ID,
         amount: new Prisma.Decimal("75000"),
+        quantity: new Prisma.Decimal("5"),
+        activityId: MOCK_ACTIVITY_ID,
+        activity: { label: "Trouaison" },
         worker: mockWorker,
       },
       {
         workerId: MOCK_WORKER_ID,
         amount: new Prisma.Decimal("50000"),
+        quantity: new Prisma.Decimal("7"),
+        activityId: MOCK_ACTIVITY_ID,
+        activity: { label: "Trouaison" },
         worker: mockWorker,
       },
     ] as never);
@@ -218,6 +238,36 @@ describe("Payments API", () => {
       }),
     );
     expect(basePrisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("exportMvolaPayments omits the header row by default", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.buffer);
+    const sheet = workbook.getWorksheet("Paiements")!;
+    expect(sheet.rowCount).toBe(1);
+    expect(sheet.getRow(1).getCell(1).value).toBe(mockWorker.mvolaNumber);
+  });
+
+  it("exportMvolaPayments keeps the header row when includeHeader is true", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await exportMvolaPayments("S29", {
+      userId: MOCK_ADMIN_ID,
+      includeHeader: true,
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.buffer);
+    const sheet = workbook.getWorksheet("Paiements")!;
+    expect(sheet.rowCount).toBe(2);
+    expect(sheet.getRow(1).getCell(1).value).toBe("Numéro téléphone");
+    expect(sheet.getRow(2).getCell(1).value).toBe(mockWorker.mvolaNumber);
   });
 
   it("GET /payments/:period/export rejects when no exportable lines", async () => {

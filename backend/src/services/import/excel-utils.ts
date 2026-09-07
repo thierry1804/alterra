@@ -71,6 +71,64 @@ export function parseDateField(
   return parsed;
 }
 
+export function columnLetterToIndex(letter: string): number {
+  let index = 0;
+  for (const char of letter.trim().toUpperCase()) {
+    const code = char.charCodeAt(0) - 64;
+    if (code < 1 || code > 26) return 0;
+    index = index * 26 + code;
+  }
+  return index;
+}
+
+export function indexToColumnLetter(index: number): string {
+  let letter = "";
+  let n = index;
+  while (n > 0) {
+    const remainder = (n - 1) % 26;
+    letter = String.fromCharCode(65 + remainder) + letter;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letter;
+}
+
+export interface DetectedColumn {
+  column: string;
+  label: string;
+  samples: string[];
+}
+
+export function detectColumns(
+  sheet: ExcelJS.Worksheet,
+  hasHeaderRow: boolean,
+  referenceRowNumber = 1,
+): DetectedColumn[] {
+  const dataStartRow = hasHeaderRow ? referenceRowNumber + 1 : referenceRowNumber;
+  const headerRow = sheet.getRow(referenceRowNumber);
+  const columns: DetectedColumn[] = [];
+
+  for (let col = 1; col <= sheet.columnCount; col++) {
+    const headerText = hasHeaderRow ? cellText(headerRow.getCell(col).value) : "";
+    const letter = indexToColumnLetter(col);
+    const samples: string[] = [];
+
+    for (let row = dataStartRow; row <= sheet.rowCount && samples.length < 2; row++) {
+      const value = cellText(sheet.getRow(row).getCell(col).value);
+      if (value) samples.push(value);
+    }
+
+    if (!headerText && samples.length === 0) continue;
+
+    columns.push({
+      column: letter,
+      label: headerText || `Colonne ${letter}`,
+      samples,
+    });
+  }
+
+  return columns;
+}
+
 export function parseDecimalField(
   raw: string,
   row: number,

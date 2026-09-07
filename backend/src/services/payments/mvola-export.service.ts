@@ -27,6 +27,7 @@ export async function exportMvolaPayments(
     ip?: string;
     userAgent?: string;
     referenceYear?: number;
+    includeHeader?: boolean;
   },
 ): Promise<ExportMvolaResult> {
   const { shortPeriod } = resolvePeriod(periodIso, undefined, options.referenceYear);
@@ -73,20 +74,20 @@ export async function exportMvolaPayments(
   sheet.columns = [
     { header: "Numéro téléphone", key: "phone", width: 18 },
     { header: "Description", key: "description", width: 32 },
-    { header: "Période", key: "period", width: 10 },
     { header: "Montant", key: "amount", width: 12 },
-    { header: "Bio Validée", key: "bio", width: 14 },
   ];
 
   for (const payment of exportable) {
     const row = sheet.addRow({
       phone: payment.worker.mvolaNumber,
       description: payment.description,
-      period: shortPeriod,
       amount: Math.round(Number(payment.amount)),
-      bio: "OUI",
     });
     row.getCell("phone").numFmt = "@";
+  }
+
+  if (!options.includeHeader) {
+    sheet.spliceRows(1, 1);
   }
 
   const rawBuffer = await workbook.xlsx.writeBuffer();

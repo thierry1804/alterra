@@ -318,7 +318,7 @@ export default function WorkersPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</DialogTitle>
-            <DialogDescription>Numéro MVola au format 034XXXXXXXX.</DialogDescription>
+            <DialogDescription>Numéro MVola au format 034XXXXXXXX ou 038XXXXXXXX.</DialogDescription>
           </DialogHeader>
           <form
             className="space-y-4"

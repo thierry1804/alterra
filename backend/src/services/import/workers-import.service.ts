@@ -2,11 +2,23 @@ import { WorkerStatus } from "@prisma/client";
 import type ExcelJS from "exceljs";
 import { prisma } from "../../lib/prisma.js";
 import { loadXlsxWorkbook } from "./excel-workbook.js";
+import { columnLetterToIndex, detectColumns, type DetectedColumn } from "./excel-utils.js";
+import {
+  WORKER_IMPORT_FIELDS,
+  WORKER_IMPORT_REQUIRED_FIELDS,
+  type WorkerImportColumnMapping,
+} from "./worker-import-fields.js";
 
 export interface ImportRowError {
   row: number;
   field: string;
   message: string;
+}
+
+export interface ParseWorkersOptions {
+  hasHeaderRow?: boolean;
+  referenceRowNumber?: number;
+  mapping?: WorkerImportColumnMapping;
 }
 
 export interface ValidImportRow {
@@ -18,8 +30,10 @@ export interface ValidImportRow {
   siteId: string;
   teamId?: string;
   cinNumber?: string;
+  address?: string;
   hiredAt: Date;
   status: WorkerStatus;
+  existingWorkerId?: string;
 }
 
 export interface ImportPreviewResult {
@@ -57,8 +71,7 @@ function parseStatus(raw: string): WorkerStatus | null {
 
 function parseHiredAt(raw: string, row: number, errors: ImportRowError[]): Date | null {
   if (!raw) {
-    errors.push({ row, field: "hiredAt", message: "Date d'embauche requise" });
-    return null;
+    return new Date();
   }
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) {
@@ -134,14 +147,16 @@ async function validateRowsAgainstDb(rows: ValidImportRow[]): Promise<ImportRowE
         deletedAt: null,
         OR: [{ matricule: { in: matricules } }, { mvolaNumber: { in: mvolaNumbers } }],
       },
-      select: { matricule: true, mvolaNumber: true },
+      select: { id: true, matricule: true, mvolaNumber: true },
     }),
   ]);
 
   const knownSiteIds = new Set(sites.map((s) => s.id));
   const knownTeamIds = new Set(teams.map((t) => t.id));
-  const existingMatricules = new Set(existingWorkers.map((w) => w.matricule.toLowerCase()));
-  const existingMvolas = new Set(existingWorkers.map((w) => w.mvolaNumber));
+  const workerByMvola = new Map(existingWorkers.map((w) => [w.mvolaNumber, w]));
+  const workerByMatricule = new Map(
+    existingWorkers.map((w) => [w.matricule.toLowerCase(), w]),
+  );
 
   for (const row of rows) {
     if (!knownSiteIds.has(row.siteId)) {
@@ -150,45 +165,121 @@ async function validateRowsAgainstDb(rows: ValidImportRow[]): Promise<ImportRowE
     if (row.teamId && !knownTeamIds.has(row.teamId)) {
       errors.push({ row: row.row, field: "teamId", message: "Équipe introuvable" });
     }
-    if (existingMatricules.has(row.matricule.toLowerCase())) {
+
+    const existingByMvola = workerByMvola.get(row.mvolaNumber);
+    const existingByMatricule = workerByMatricule.get(row.matricule.toLowerCase());
+
+    if (existingByMvola) {
+      if (existingByMatricule && existingByMatricule.id !== existingByMvola.id) {
+        errors.push({
+          row: row.row,
+          field: "matricule",
+          message: "Matricule déjà utilisé par un autre travailleur",
+        });
+      } else {
+        row.existingWorkerId = existingByMvola.id;
+      }
+    } else if (existingByMatricule) {
       errors.push({ row: row.row, field: "matricule", message: "Matricule déjà en base" });
-    }
-    if (existingMvolas.has(row.mvolaNumber)) {
-      errors.push({ row: row.row, field: "mvolaNumber", message: "Numéro MVola déjà en base" });
     }
   }
 
   return errors;
 }
 
-export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPreviewResult> {
+async function resolveSiteShortCodes(rows: ValidImportRow[]): Promise<ImportRowError[]> {
+  const codes = [...new Set(rows.map((r) => r.siteId))];
+  const sites = await prisma.site.findMany({
+    where: { shortCode: { in: codes } },
+    select: { id: true, shortCode: true },
+  });
+  const byCode = new Map(sites.map((s) => [s.shortCode, s.id]));
+
+  const errors: ImportRowError[] = [];
+  for (const row of rows) {
+    const resolved = byCode.get(row.siteId);
+    if (!resolved) {
+      errors.push({
+        row: row.row,
+        field: "siteShortCode",
+        message: `Site introuvable (${row.siteId})`,
+      });
+      continue;
+    }
+    row.siteId = resolved;
+  }
+  return errors;
+}
+
+export async function parseWorkersWorkbook(
+  buffer: Buffer,
+  options: ParseWorkersOptions = {},
+): Promise<ImportPreviewResult> {
   const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
     return { valid: [], errors: [{ row: 0, field: "sheet", message: "Feuille Excel introuvable" }] };
   }
 
-  const headerRow = sheet.getRow(1);
+  const { mapping } = options;
+  const usingSiteShortCode = Boolean(mapping);
+  const hasHeaderRow = options.hasHeaderRow ?? true;
+  const referenceRowNumber = options.referenceRowNumber ?? 1;
   const headerMap = new Map<string, number>();
-  headerRow.eachCell((cell, col) => {
-    const key = normalizeHeader(cellText(cell.value));
-    if (key) headerMap.set(key, col);
-  });
+  const errors: ImportRowError[] = [];
+  let dataStartRow: number;
 
-  const missingHeaders = REQUIRED_HEADERS.filter((h) => !headerMap.has(h));
-  const errors: ImportRowError[] = missingHeaders.map((field) => ({
-    row: 1,
-    field,
-    message: `Colonne obligatoire manquante: ${field}`,
-  }));
+  if (mapping) {
+    dataStartRow = hasHeaderRow ? referenceRowNumber + 1 : referenceRowNumber;
 
-  if (missingHeaders.length > 0) {
-    return { valid: [], errors };
+    const missingRequired = WORKER_IMPORT_REQUIRED_FIELDS.filter((field) => !mapping[field]);
+    errors.push(
+      ...missingRequired.map((field) => ({
+        row: 1,
+        field,
+        message: `Colonne obligatoire non mappée: ${field}`,
+      })),
+    );
+
+    for (const { key } of WORKER_IMPORT_FIELDS) {
+      const letter = mapping[key];
+      if (!letter) continue;
+      const colIndex = columnLetterToIndex(letter);
+      if (colIndex < 1) {
+        errors.push({ row: 1, field: key, message: `Lettre de colonne invalide (${letter})` });
+        continue;
+      }
+      headerMap.set(key, colIndex);
+    }
+
+    if (errors.length > 0) {
+      return { valid: [], errors };
+    }
+  } else {
+    dataStartRow = 2;
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell, col) => {
+      const key = normalizeHeader(cellText(cell.value));
+      if (key) headerMap.set(key, col);
+    });
+
+    const missingHeaders = REQUIRED_HEADERS.filter((h) => !headerMap.has(h));
+    errors.push(
+      ...missingHeaders.map((field) => ({
+        row: 1,
+        field,
+        message: `Colonne obligatoire manquante: ${field}`,
+      })),
+    );
+
+    if (missingHeaders.length > 0) {
+      return { valid: [], errors };
+    }
   }
 
   const valid: ValidImportRow[] = [];
 
-  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+  for (let rowNumber = dataStartRow; rowNumber <= sheet.rowCount; rowNumber++) {
     const row = sheet.getRow(rowNumber);
     const values = Object.fromEntries(
       [...headerMap.entries()].map(([key, col]) => [key, cellText(row.getCell(col).value)]),
@@ -205,7 +296,16 @@ export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPrevie
     if (!values.mvolaNumber || values.mvolaNumber.length < 9) {
       rowErrors.push({ row: rowNumber, field: "mvolaNumber", message: "Numéro MVola invalide (min 9)" });
     }
-    if (!values.siteId || !isUuid(values.siteId)) {
+    if (usingSiteShortCode) {
+      const code = values.siteShortCode?.trim().toUpperCase();
+      if (!code || !/^[A-Z]{2,3}$/.test(code)) {
+        rowErrors.push({
+          row: rowNumber,
+          field: "siteShortCode",
+          message: "Code site invalide (2-3 lettres, ex. MNK)",
+        });
+      }
+    } else if (!values.siteId || !isUuid(values.siteId)) {
       rowErrors.push({ row: rowNumber, field: "siteId", message: "UUID site invalide" });
     }
     if (values.teamId && !isUuid(values.teamId)) {
@@ -230,12 +330,17 @@ export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPrevie
       firstName: values.firstName,
       lastName: values.lastName,
       mvolaNumber: values.mvolaNumber,
-      siteId: values.siteId,
+      siteId: usingSiteShortCode ? values.siteShortCode.trim().toUpperCase() : values.siteId,
       teamId: values.teamId || undefined,
       cinNumber: values.cinNumber || undefined,
+      address: values.address || undefined,
       hiredAt: hiredAt!,
       status: status ?? WorkerStatus.ACTIVE,
     });
+  }
+
+  if (usingSiteShortCode && valid.length > 0) {
+    errors.push(...(await resolveSiteShortCodes(valid)));
   }
 
   errors.push(...detectFileDuplicates(valid));
@@ -243,7 +348,9 @@ export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPrevie
   const rowsWithoutFileDupes = valid.filter(
     (row) =>
       !errors.some(
-        (e) => e.row === row.row && (e.field === "matricule" || e.field === "mvolaNumber"),
+        (e) =>
+          e.row === row.row &&
+          (e.field === "matricule" || e.field === "mvolaNumber" || e.field === "siteShortCode"),
       ),
   );
 
@@ -256,25 +363,53 @@ export async function parseWorkersWorkbook(buffer: Buffer): Promise<ImportPrevie
   return { valid: finalValid, errors };
 }
 
+export interface DetectWorkersColumnsResult {
+  columns: DetectedColumn[];
+  fields: typeof WORKER_IMPORT_FIELDS;
+}
+
+export async function detectWorkersImportColumns(
+  buffer: Buffer,
+  hasHeaderRow: boolean,
+  referenceRowNumber = 1,
+): Promise<DetectWorkersColumnsResult> {
+  const workbook = await loadXlsxWorkbook(buffer);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) {
+    return { columns: [], fields: WORKER_IMPORT_FIELDS };
+  }
+  return {
+    columns: detectColumns(sheet, hasHeaderRow, referenceRowNumber),
+    fields: WORKER_IMPORT_FIELDS,
+  };
+}
+
 export async function importWorkersRows(rows: ValidImportRow[]) {
   return prisma.$transaction(async (tx) => {
     const created = [];
+    const updated = [];
     for (const row of rows) {
-      const worker = await tx.worker.create({
-        data: {
-          matricule: row.matricule,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          mvolaNumber: row.mvolaNumber,
-          siteId: row.siteId,
-          teamId: row.teamId,
-          cinNumber: row.cinNumber,
-          hiredAt: row.hiredAt,
-          status: row.status,
-        },
-      });
-      created.push(worker);
+      const data = {
+        matricule: row.matricule,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        mvolaNumber: row.mvolaNumber,
+        siteId: row.siteId,
+        teamId: row.teamId,
+        cinNumber: row.cinNumber,
+        address: row.address,
+        hiredAt: row.hiredAt,
+        status: row.status,
+      };
+
+      if (row.existingWorkerId) {
+        const worker = await tx.worker.update({ where: { id: row.existingWorkerId }, data });
+        updated.push(worker);
+      } else {
+        const worker = await tx.worker.create({ data });
+        created.push(worker);
+      }
     }
-    return created;
+    return { created, updated };
   });
 }
