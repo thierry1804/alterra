@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { isAxiosError } from "axios";
 import { Upload } from "lucide-react";
 import { api } from "../../lib/api";
-import type { ImportColumnsResult, ImportPreview } from "../../lib/referentials";
+import type { ImportColumnsResult, ImportCommitResult, ImportPreview } from "../../lib/referentials";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -82,6 +82,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     },
     onSuccess: (data) => {
       setColumnsResult(data);
+      setMapping(data.suggestedMapping ?? {});
       setStep("mapping");
     },
     onError: (err) => {
@@ -112,16 +113,21 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
 
   const importMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post<{ imported: number; created: number; updated: number }>(
-        "/workers/import?dryRun=false",
-        { contentBase64, hasHeaderRow, referenceRowNumber, mapping },
-      );
+      const res = await api.post<ImportCommitResult>("/workers/import?dryRun=false", {
+        contentBase64,
+        hasHeaderRow,
+        referenceRowNumber,
+        mapping,
+      });
       return res.data;
     },
     onSuccess: (data) => {
+      const skippedCount = data.skippedErrors ?? 0;
+      const skipped =
+        skippedCount > 0 ? `, ${skippedCount} ligne(s) en erreur ignorée(s)` : "";
       toast({
         title: "Import terminé",
-        description: `${data.created} créé(s), ${data.updated} mis à jour`,
+        description: `${data.created} créé(s), ${data.updated} mis à jour${skipped}`,
       });
       onImported();
       onOpenChange(false);
@@ -134,7 +140,6 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
   });
 
   function loadColumns(base64: string, withHeader: boolean, rowNumber: number) {
-    setMapping({});
     setPreview(null);
     columnsMutation.mutate({ base64, withHeader, rowNumber });
   }
@@ -320,6 +325,9 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
               {preview.valid.filter((r) => r.existingWorkerId).length} à mettre à jour (MVola déjà
               en base), {preview.errors.length} erreur(s).
             </p>
+            {importMutation.isPending && (
+              <p className="text-sm text-zinc-500">Import en cours…</p>
+            )}
             {preview.errors.length > 0 && (
               <div className="max-h-80 overflow-y-auto rounded-md border border-zinc-200">
                 <Table>
@@ -343,15 +351,20 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("mapping")}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={importMutation.isPending}
+                onClick={() => setStep("mapping")}
+              >
                 Retour au mapping
               </Button>
               <Button
                 type="button"
-                disabled={!contentBase64 || preview.errors.length > 0 || importMutation.isPending}
+                disabled={!contentBase64 || preview.valid.length === 0 || importMutation.isPending}
                 onClick={() => importMutation.mutate()}
               >
-                Importer
+                Importer les {preview.valid.length} ligne(s) valide(s)
               </Button>
             </div>
           </div>

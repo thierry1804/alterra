@@ -337,18 +337,23 @@ workersRouter.post(
         return res.json(preview);
       }
 
-      if (preview.errors.length > 0) {
-        throw new ApiError(422, "IMPORT_VALIDATION_FAILED", "Corrigez les erreurs avant import", {
+      if (preview.valid.length === 0) {
+        throw new ApiError(422, "IMPORT_VALIDATION_FAILED", "Aucune ligne valide à importer", {
           errors: preview.errors,
         });
       }
 
       const { created, updated } = await importWorkersRows(preview.valid);
+      const skippedErrors = preview.errors.length;
       await writeAuditLog({
         userId: req.user!.sub,
         action: "IMPORT",
         entityType: "Worker",
-        after: { created: created.length, updated: updated.length },
+        after: {
+          created: created.length,
+          updated: updated.length,
+          skippedErrors,
+        },
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
@@ -356,6 +361,7 @@ workersRouter.post(
         imported: created.length + updated.length,
         created: created.length,
         updated: updated.length,
+        skippedErrors,
         data: [...created, ...updated],
       });
     } catch (err) {

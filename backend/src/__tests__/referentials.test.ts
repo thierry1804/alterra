@@ -54,6 +54,7 @@ vi.mock("../lib/prisma.js", () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      count: vi.fn(),
     },
     user: {
       findMany: vi.fn(),
@@ -136,6 +137,7 @@ describe("referentials module", () => {
     vi.mocked(prisma.site.findMany).mockResolvedValue([{ id: MOCK_SITE_ID }] as never);
     vi.mocked(prisma.team.findMany).mockResolvedValue([]);
     vi.mocked(prisma.worker.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.worker.count).mockResolvedValue(0);
   });
 
   afterEach(async () => {
@@ -325,6 +327,91 @@ describe("referentials module", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.errors.length).toBeGreaterThan(0);
+  });
+
+  it("POST /workers/import/columns returns suggestedMapping for French headers", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("workers");
+    sheet.addRow(["Prénom", "Nom", "Numéro MVola", "Code site"]);
+    sheet.addRow(["Jean", "Rakoto", "0340000001", "MNK"]);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/workers/import/columns")
+      .set("Authorization", adminAuthHeader())
+      .send({ contentBase64: buffer.toString("base64"), hasHeaderRow: true, referenceRowNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.suggestedMapping.firstName).toBeTruthy();
+    expect(res.body.suggestedMapping.lastName).toBeTruthy();
+    expect(res.body.suggestedMapping.mvolaNumber).toBeTruthy();
+    expect(res.body.suggestedMapping.siteShortCode).toBeTruthy();
+  });
+
+  it("POST /workers/import?dryRun=false imports valid rows and reports skippedErrors", async () => {
+    vi.mocked(prisma.site.findMany).mockResolvedValue([
+      { id: MOCK_SITE_ID, shortCode: "MNK" },
+    ] as never);
+    vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: MOCK_SITE_ID } as never);
+    vi.mocked(prisma.worker.create).mockImplementation(
+      async ({ data }) =>
+        ({
+          id: "00000000-0000-4000-8000-000000000111",
+          ...data,
+        }) as never,
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("workers");
+    sheet.addRow(["Prénom", "Nom", "Numéro MVola", "Code site"]);
+    sheet.addRow(["Jean", "Rakoto", "0340000001", "MNK"]);
+    sheet.addRow(["", "Rabe", "0340000002", "MNK"]);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const mapping = {
+      firstName: "A",
+      lastName: "B",
+      mvolaNumber: "C",
+      siteShortCode: "D",
+    };
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/workers/import?dryRun=false")
+      .set("Authorization", adminAuthHeader())
+      .send({
+        contentBase64: buffer.toString("base64"),
+        hasHeaderRow: true,
+        referenceRowNumber: 1,
+        mapping,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.created).toBeGreaterThanOrEqual(1);
+    expect(res.body.skippedErrors).toBeGreaterThanOrEqual(1);
+  });
+
+  it("POST /workers/import?dryRun=false returns 422 when no valid rows", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("workers");
+    sheet.addRow(["Prénom", "Nom", "Numéro MVola", "Code site"]);
+    sheet.addRow(["", "Rabe", "12", "ZZ"]);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/workers/import?dryRun=false")
+      .set("Authorization", adminAuthHeader())
+      .send({
+        contentBase64: buffer.toString("base64"),
+        hasHeaderRow: true,
+        referenceRowNumber: 1,
+        mapping: { firstName: "A", lastName: "B", mvolaNumber: "C", siteShortCode: "D" },
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe("IMPORT_VALIDATION_FAILED");
   });
 
   it("POST /users/:id/reset-password revokes refresh tokens and blocks user briefly", async () => {

@@ -12,7 +12,9 @@ import {
   WORKER_IMPORT_FIELDS,
   WORKER_IMPORT_REQUIRED_FIELDS,
   type WorkerImportColumnMapping,
+  type WorkerImportFieldKey,
 } from "./worker-import-fields.js";
+import { suggestColumnMapping } from "./suggest-column-mapping.js";
 
 export interface ImportRowError {
   row: number;
@@ -405,6 +407,7 @@ export async function parseWorkersWorkbook(
 export interface DetectWorkersColumnsResult {
   columns: DetectedColumn[];
   fields: typeof WORKER_IMPORT_FIELDS;
+  suggestedMapping: Partial<Record<WorkerImportFieldKey, string>>;
 }
 
 export async function detectWorkersImportColumns(
@@ -415,11 +418,14 @@ export async function detectWorkersImportColumns(
   const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
-    return { columns: [], fields: WORKER_IMPORT_FIELDS };
+    return { columns: [], fields: WORKER_IMPORT_FIELDS, suggestedMapping: {} };
   }
+  const columns = detectColumns(sheet, hasHeaderRow, referenceRowNumber);
+  const suggestedMapping = hasHeaderRow ? suggestColumnMapping(columns) : {};
   return {
-    columns: detectColumns(sheet, hasHeaderRow, referenceRowNumber),
+    columns,
     fields: WORKER_IMPORT_FIELDS,
+    suggestedMapping,
   };
 }
 

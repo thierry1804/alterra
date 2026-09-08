@@ -35,4 +35,26 @@ export const WORKER_IMPORT_REQUIRED_FIELDS: WorkerImportFieldKey[] = WORKER_IMPO
   (f) => f.required,
 ).map((f) => f.key);
 
+export const WORKER_IMPORT_FIELD_ALIASES: Record<WorkerImportFieldKey, string[]> = {
+  legacyMocId: ["id moc", "id moc historique", "legacy", "legacy moc", "id historique"],
+  matricule: ["matricule"],
+  firstName: ["prénom", "prenom", "first name", "firstname", "first_name"],
+  lastName: ["nom", "nom de famille", "last name", "lastname", "last_name"],
+  mvolaNumber: [
+    "mvola",
+    "numéro mvola",
+    "numero mvola",
+    "num mvola",
+    "téléphone",
+    "telephone",
+    "phone",
+  ],
+  siteShortCode: ["code site", "site", "shortcode", "site code", "codesite"],
+  hiredAt: ["date d'embauche", "date embauche", "hired at", "hiredat", "date embauche"],
+  teamId: ["équipe", "equipe", "team", "team id", "teamid"],
+  cinNumber: ["cin", "numéro cin", "numero cin", "cin number"],
+  address: ["adresse", "address"],
+  status: ["statut", "status"],
+};
+
 export type WorkerImportColumnMapping = Partial<Record<WorkerImportFieldKey, string>>;

@@ -73,6 +73,14 @@ export interface ImportDetectedColumn {
 export interface ImportColumnsResult {
   columns: ImportDetectedColumn[];
   fields: ImportColumnField[];
+  suggestedMapping?: Record<string, string>;
+}
+
+export interface ImportCommitResult {
+  imported: number;
+  created: number;
+  updated: number;
+  skippedErrors: number;
 }
 
 export function formatDate(value: string | null | undefined): string {
