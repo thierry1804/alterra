@@ -36,7 +36,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5174,
-    allowedHosts: ["pwa.boss-etech.net"],
+    allowedHosts: ["alterra-pwa.boss-etech.net"],
     proxy: {
       "/api": { target: `http://localhost:${process.env.API_PROXY_PORT ?? 3001}`, changeOrigin: true },
     },
