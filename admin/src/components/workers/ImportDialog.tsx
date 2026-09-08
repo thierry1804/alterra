@@ -71,7 +71,8 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     }: {
       base64: string;
       withHeader: boolean;
-      rowNumber: number;
+      /** undefined = laisser le backend deviner la ligne d'en-tête */
+      rowNumber: number | undefined;
     }) => {
       const res = await api.post<ImportColumnsResult>("/workers/import/columns", {
         contentBase64: base64,
@@ -83,6 +84,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     onSuccess: (data) => {
       setColumnsResult(data);
       setMapping(data.suggestedMapping ?? {});
+      setReferenceRowNumber(data.referenceRowNumber);
       setStep("mapping");
     },
     onError: (err) => {
@@ -139,7 +141,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     },
   });
 
-  function loadColumns(base64: string, withHeader: boolean, rowNumber: number) {
+  function loadColumns(base64: string, withHeader: boolean, rowNumber: number | undefined) {
     setPreview(null);
     columnsMutation.mutate({ base64, withHeader, rowNumber });
   }
@@ -152,7 +154,9 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     const base64 = await fileToBase64(file);
     setFileName(file.name);
     setContentBase64(base64);
-    loadColumns(base64, hasHeaderRow, referenceRowNumber);
+    // Pas de rowNumber : laisse le backend deviner la ligne d'en-tête
+    // (utile quand un titre précède les vrais en-têtes).
+    loadColumns(base64, hasHeaderRow, undefined);
   }
 
   function handleHeaderToggle(checked: boolean) {

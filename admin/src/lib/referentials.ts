@@ -74,6 +74,7 @@ export interface ImportColumnsResult {
   columns: ImportDetectedColumn[];
   fields: ImportColumnField[];
   suggestedMapping?: Record<string, string>;
+  referenceRowNumber: number;
 }
 
 export interface ImportCommitResult {

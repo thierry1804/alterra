@@ -408,24 +408,50 @@ export interface DetectWorkersColumnsResult {
   columns: DetectedColumn[];
   fields: typeof WORKER_IMPORT_FIELDS;
   suggestedMapping: Partial<Record<WorkerImportFieldKey, string>>;
+  referenceRowNumber: number;
+}
+
+const HEADER_ROW_SCAN_LIMIT = 10;
+
+/**
+ * Devine la ligne d'en-tête en testant les premières lignes du fichier et en
+ * gardant celle dont les libellés matchent le plus de champs connus (ex. un
+ * titre en ligne 1 suivi des vrais en-têtes en ligne 2 doit être ignoré).
+ */
+function detectHeaderRowNumber(sheet: ExcelJS.Worksheet): number {
+  const scanLimit = Math.min(HEADER_ROW_SCAN_LIMIT, sheet.rowCount || HEADER_ROW_SCAN_LIMIT);
+  let best = 1;
+  let bestScore = -1;
+  for (let row = 1; row <= scanLimit; row++) {
+    const columns = detectColumns(sheet, true, row);
+    const score = Object.keys(suggestColumnMapping(columns)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = row;
+    }
+  }
+  return best;
 }
 
 export async function detectWorkersImportColumns(
   buffer: Buffer,
   hasHeaderRow: boolean,
-  referenceRowNumber = 1,
+  referenceRowNumber?: number,
 ): Promise<DetectWorkersColumnsResult> {
   const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
-    return { columns: [], fields: WORKER_IMPORT_FIELDS, suggestedMapping: {} };
+    return { columns: [], fields: WORKER_IMPORT_FIELDS, suggestedMapping: {}, referenceRowNumber: 1 };
   }
-  const columns = detectColumns(sheet, hasHeaderRow, referenceRowNumber);
+  const resolvedRowNumber =
+    referenceRowNumber ?? (hasHeaderRow ? detectHeaderRowNumber(sheet) : 1);
+  const columns = detectColumns(sheet, hasHeaderRow, resolvedRowNumber);
   const suggestedMapping = hasHeaderRow ? suggestColumnMapping(columns) : {};
   return {
     columns,
     fields: WORKER_IMPORT_FIELDS,
     suggestedMapping,
+    referenceRowNumber: resolvedRowNumber,
   };
 }
 

@@ -304,7 +304,7 @@ workersRouter.post(
       const result = await detectWorkersImportColumns(
         buffer,
         hasHeaderRow ?? true,
-        referenceRowNumber ?? 1,
+        referenceRowNumber,
       );
       res.json(result);
     } catch (err) {
