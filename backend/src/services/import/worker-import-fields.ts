@@ -36,7 +36,15 @@ export const WORKER_IMPORT_REQUIRED_FIELDS: WorkerImportFieldKey[] = WORKER_IMPO
 ).map((f) => f.key);
 
 export const WORKER_IMPORT_FIELD_ALIASES: Record<WorkerImportFieldKey, string[]> = {
-  legacyMocId: ["id moc", "id moc historique", "legacy", "legacy moc", "id historique"],
+  legacyMocId: [
+    "id moc",
+    "id moc historique",
+    "legacy",
+    "legacy moc",
+    "id historique",
+    "moc",
+    "mot",
+  ],
   matricule: ["matricule"],
   firstName: ["prénom", "prenom", "first name", "firstname", "first_name"],
   lastName: ["nom", "nom de famille", "last name", "lastname", "last_name"],

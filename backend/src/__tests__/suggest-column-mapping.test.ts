@@ -50,4 +50,25 @@ describe("suggestColumnMapping", () => {
     ]);
     expect(mapping).toEqual({});
   });
+
+  it("maps a real-world MOC export header, including bare MOT/MOC legacy id column", () => {
+    const mapping = suggestColumnMapping([
+      { column: "A", label: "SiteID" },
+      { column: "B", label: "MOT" },
+      { column: "C", label: "Nom" },
+      { column: "D", label: "Prénoms" },
+      { column: "E", label: "CIN" },
+      { column: "F", label: "Adresse" },
+      { column: "G", label: "N°M'vola" },
+    ]);
+    expect(mapping).toEqual({
+      siteShortCode: "A",
+      legacyMocId: "B",
+      lastName: "C",
+      firstName: "D",
+      cinNumber: "E",
+      address: "F",
+      mvolaNumber: "G",
+    });
+  });
 });
