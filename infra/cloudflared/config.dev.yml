@@ -1,0 +1,24 @@
+# Cloudflare Tunnel — environnement de dev hybride exposé sur boss-etech.net.
+# Installation sur le serveur de dev :
+#   sudo cloudflared tunnel login
+#   sudo cloudflared tunnel create alterra-dev
+#   sudo cloudflared tunnel route dns alterra-dev alterra-admin.boss-etech.net
+#   sudo cloudflared tunnel route dns alterra-dev alterra-backend.boss-etech.net
+#   sudo cloudflared tunnel route dns alterra-dev alterra-pwa.boss-etech.net
+#   sudo cp infra/cloudflared/config.dev.yml /etc/cloudflared/config.yml
+#   # adapter tunnel + credentials-file avec l'ID généré par `tunnel create`
+#   sudo cloudflared service install
+#
+# Le fichier de credentials (<tunnel-id>.json) n'est jamais versionné.
+
+tunnel: c262f85e-9d41-4dd9-80af-9544744cb591
+credentials-file: /etc/cloudflared/c262f85e-9d41-4dd9-80af-9544744cb591.json
+
+ingress:
+  - hostname: alterra-admin.boss-etech.net
+    service: http://localhost:5173
+  - hostname: alterra-backend.boss-etech.net
+    service: http://localhost:3010
+  - hostname: alterra-pwa.boss-etech.net
+    service: http://localhost:5174
+  - service: http_status:404

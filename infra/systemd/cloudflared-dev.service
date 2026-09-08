@@ -1,0 +1,23 @@
+# Service systemd pour le Cloudflare Tunnel exposant l'environnement de dev
+# (admin/pwa/backend) sur boss-etech.net. Généré à l'origine par :
+#   sudo cloudflared service install
+# (installe /etc/cloudflared/config.yml + credentials-file, puis ce unit).
+#
+# Conservé ici pour référence/reconstruction du serveur — voir
+# infra/cloudflared/config.dev.yml pour l'ingress correspondant.
+# Le fichier de credentials du tunnel (JSON) n'est jamais versionné.
+
+[Unit]
+Description=Cloudflare Tunnel client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+TimeoutStartSec=15
+Type=notify
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

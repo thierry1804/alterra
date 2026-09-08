@@ -1,0 +1,31 @@
+# Service systemd pour l'environnement de dev hybride (backend + admin + pwa),
+# afin qu'il redémarre automatiquement après un reboot du VPS de dev.
+#
+# Installation :
+#   sudo cp infra/systemd/alterra-dev.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now alterra-dev.service
+#
+# Adapter le chemin Node (nvm) et WorkingDirectory si différents sur la machine cible.
+# Prérequis : infrastructure Docker (postgres/redis/minio) déjà lancée et backend/.env configuré.
+
+[Unit]
+Description=ALTERRA dev servers (backend + admin + pwa)
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=simple
+User=debian
+Group=debian
+WorkingDirectory=/home/debian/alterra
+Environment=API_PROXY_PORT=3010
+Environment=PATH=/home/debian/.nvm/versions/node/v22.12.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/debian/.nvm/versions/node/v22.12.0/bin/npm run dev
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/debian/alterra-dev.log
+StandardError=append:/home/debian/alterra-dev.log
+
+[Install]
+WantedBy=multi-user.target
