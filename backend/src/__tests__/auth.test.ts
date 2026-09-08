@@ -30,8 +30,8 @@ const mockUser = {
 
 let refreshTokenState: { revokedAt: Date | null };
 
-vi.mock("../lib/prisma.js", () => ({
-  prisma: {
+vi.mock("../lib/prisma.js", () => {
+  const shared = {
     user: {
       findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
@@ -45,8 +45,9 @@ vi.mock("../lib/prisma.js", () => ({
     },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
-  },
-}));
+  };
+  return { prisma: shared, basePrisma: shared };
+});
 
 import { prisma } from "../lib/prisma.js";
 

@@ -21,6 +21,7 @@ vi.mock("../lib/prisma.js", () => ({
     },
     worker: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
     biometricCheck: {
@@ -69,6 +70,7 @@ describe("biometric templates and offline checks", () => {
   });
 
   it("GET /biometric/templates/sync returns scoped templates", async () => {
+    vi.mocked(prisma.worker.findMany).mockResolvedValue([{ id: MOCK_WORKER_ID }] as never);
     vi.mocked(prisma.biometricTemplate.findMany).mockResolvedValue([
       {
         workerId: MOCK_WORKER_ID,
