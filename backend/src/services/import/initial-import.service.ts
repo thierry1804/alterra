@@ -91,6 +91,7 @@ async function commitImport(
       const worker = await tx.worker.create({
         data: {
           matricule: row.matricule,
+          legacyMocId: row.legacyMocId,
           firstName: row.firstName,
           lastName: row.lastName,
           mvolaNumber: row.mvolaNumber,

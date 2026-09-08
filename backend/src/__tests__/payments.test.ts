@@ -17,6 +17,7 @@ const MOCK_ACTIVITY_ID = "00000000-0000-4000-8000-000000000090";
 const mockWorker = {
   id: MOCK_WORKER_ID,
   matricule: "MOC-001",
+  legacyMocId: 84,
   firstName: "Rakoto",
   lastName: "Jean",
   birthDate: null,
@@ -49,9 +50,10 @@ const mockPayment = {
   id: MOCK_PAYMENT_ID,
   workerId: MOCK_WORKER_ID,
   periodIso: "S29",
+  bordereau: 12,
   cycle: PaymentCycle.WEEKLY,
   amount: new Prisma.Decimal("125000"),
-  description: "Rakoto Trouaison S29 12 MNK",
+  description: "Jean Rakoto TROUAISON S29 12 MNK ACT01 84",
   bioValid: true,
   status: PaymentStatus.PENDING,
   exportedAt: null,
@@ -136,22 +138,37 @@ describe("Payments helpers", () => {
     expect(short.weekIso).toBe("2026-W29");
   });
 
-  it("buildMvolaDescription truncates long first names (RG-09)", () => {
-    const maxLen = Number(process.env.MVOLA_DESC_MAX_LEN ?? 30);
+  it("buildMvolaDescription matches the real Selfcare export grammar", () => {
     const description = buildMvolaDescription(
-      "VeryLongFirstNameThatIsDefinitelyTooLongForAnyConfiguredLimit",
-      "S29",
-      "MNK",
-      "Trouaison",
-      "12",
+      "Andoniaina Myriame",
+      "Remblayge",
+      "32",
+      2,
+      "VLB",
+      "act04",
+      40,
     );
-    expect(description.length).toBeLessThanOrEqual(maxLen);
-    expect(description.endsWith(" Trouaison S29 12 MNK")).toBe(true);
+    expect(description).toBe("Andoniaina Myriame REMBLAYGE S32 2 VLB ACT04 40");
   });
 
-  it("buildMvolaDescription omits activity and quantity when absent", () => {
-    const description = buildMvolaDescription("Rakoto", "S29", "MNK");
-    expect(description).toBe("Rakoto S29 MNK");
+  it("buildMvolaDescription omits the matricule when absent (clé de secours)", () => {
+    const description = buildMvolaDescription("Bakolinirina Marie", "Fauchage", "27", 2, "MNK", "act07");
+    expect(description).toBe("Bakolinirina Marie FAUCHAGE S27 2 MNK ACT07");
+  });
+
+  it("buildMvolaDescription truncates the nom to 18 characters", () => {
+    const maxLen = Number(process.env.MVOLA_NOM_MAX_LEN ?? 18);
+    const description = buildMvolaDescription(
+      "Randriamanjatoarivelo Jules",
+      "Parefeux",
+      "28",
+      10,
+      "MGT",
+      "act07",
+      17,
+    );
+    const [nom] = description.split(" PAREFEUX");
+    expect(nom.length).toBeLessThanOrEqual(maxLen);
   });
 });
 
@@ -172,7 +189,7 @@ describe("Payments API", () => {
         amount: new Prisma.Decimal("75000"),
         quantity: new Prisma.Decimal("5"),
         activityId: MOCK_ACTIVITY_ID,
-        activity: { label: "Trouaison" },
+        activity: { label: "Trouaison", code: "act01" },
         worker: mockWorker,
       },
       {
@@ -180,7 +197,7 @@ describe("Payments API", () => {
         amount: new Prisma.Decimal("50000"),
         quantity: new Prisma.Decimal("7"),
         activityId: MOCK_ACTIVITY_ID,
-        activity: { label: "Trouaison" },
+        activity: { label: "Trouaison", code: "act01" },
         worker: mockWorker,
       },
     ] as never);

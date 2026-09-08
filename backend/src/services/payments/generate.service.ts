@@ -33,11 +33,25 @@ async function isBioOkForWeek(workerId: string, weekIso: string): Promise<boolea
   return latestBioCheck?.result === BioResult.OK;
 }
 
+async function nextBordereauBySite(siteIds: Iterable<string>): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  for (const siteId of siteIds) {
+    const last = await prisma.payment.findFirst({
+      where: { worker: { siteId } },
+      orderBy: { bordereau: "desc" },
+      select: { bordereau: true },
+    });
+    result.set(siteId, (last?.bordereau ?? 0) + 1);
+  }
+  return result;
+}
+
 export async function generatePayments(
   input: GeneratePaymentsInput,
 ): Promise<GeneratePaymentsResult> {
   const resolved = resolvePeriod(input.periodIso, input.cycle, input.referenceYear);
   const { shortPeriod, weekIso, dateFrom, dateTo, cycle } = resolved;
+  const semaineIso = weekIso.split("-W")[1];
 
   const lockedPayment = await prisma.payment.findFirst({
     where: {
@@ -72,9 +86,7 @@ export async function generatePayments(
     string,
     {
       amount: Prisma.Decimal;
-      quantity: Prisma.Decimal;
-      activityIds: Set<string>;
-      activityLabel: string;
+      byActivity: Map<string, { label: string; code: string | null; amount: Prisma.Decimal }>;
       worker: (typeof pointages)[number]["worker"];
     }
   >();
@@ -83,18 +95,40 @@ export async function generatePayments(
     const current = aggregates.get(pointage.workerId);
     if (current) {
       current.amount = current.amount.add(pointage.amount);
-      current.quantity = current.quantity.add(pointage.quantity);
-      current.activityIds.add(pointage.activityId);
+      const activityTotal = current.byActivity.get(pointage.activityId);
+      if (activityTotal) {
+        activityTotal.amount = activityTotal.amount.add(pointage.amount);
+      } else {
+        current.byActivity.set(pointage.activityId, {
+          label: pointage.activity.label,
+          code: pointage.activity.code,
+          amount: new Prisma.Decimal(pointage.amount),
+        });
+      }
     } else {
       aggregates.set(pointage.workerId, {
         amount: new Prisma.Decimal(pointage.amount),
-        quantity: new Prisma.Decimal(pointage.quantity),
-        activityIds: new Set([pointage.activityId]),
-        activityLabel: pointage.activity.label,
+        byActivity: new Map([
+          [
+            pointage.activityId,
+            {
+              label: pointage.activity.label,
+              code: pointage.activity.code,
+              amount: new Prisma.Decimal(pointage.amount),
+            },
+          ],
+        ]),
         worker: pointage.worker,
       });
     }
   }
+
+  const siteIds = new Set(
+    Array.from(aggregates.values())
+      .filter((aggregate) => aggregate.amount.gt(0))
+      .map((aggregate) => aggregate.worker.siteId),
+  );
+  const bordereauBySite = await nextBordereauBySite(siteIds);
 
   const toCreate: Prisma.PaymentCreateManyInput[] = [];
   let skippedZeroAmount = 0;
@@ -106,18 +140,25 @@ export async function generatePayments(
     }
 
     const bioValid = await isBioOkForWeek(workerId, weekIso);
-    const singleActivity = aggregate.activityIds.size === 1;
+    const dominantActivity = Array.from(aggregate.byActivity.values()).sort((a, b) =>
+      b.amount.comparedTo(a.amount),
+    )[0];
+    const bordereau = bordereauBySite.get(aggregate.worker.siteId)!;
+
     toCreate.push({
       workerId,
       periodIso: shortPeriod,
+      bordereau,
       cycle,
       amount: aggregate.amount,
       description: buildMvolaDescription(
-        aggregate.worker.firstName,
-        shortPeriod,
+        `${aggregate.worker.lastName} ${aggregate.worker.firstName}`,
+        dominantActivity.label,
+        semaineIso,
+        bordereau,
         aggregate.worker.site.shortCode,
-        singleActivity ? aggregate.activityLabel : null,
-        singleActivity ? aggregate.quantity.toString() : null,
+        dominantActivity.code ?? "",
+        aggregate.worker.legacyMocId,
       ),
       bioValid,
       status: PaymentStatus.PENDING,

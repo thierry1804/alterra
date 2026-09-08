@@ -22,6 +22,7 @@ export interface Activity {
 export interface Worker {
   id: string;
   matricule: string;
+  legacyMocId: number | null;
   firstName: string;
   lastName: string;
   mvolaNumber: string;

@@ -129,6 +129,20 @@ export function detectColumns(
   return columns;
 }
 
+export function parseOptionalIntField(
+  raw: string,
+  row: number,
+  field: string,
+  errors: ImportRowError[],
+): number | undefined {
+  if (!raw) return undefined;
+  if (!/^\d+$/.test(raw.trim())) {
+    errors.push({ row, field, message: "Nombre entier invalide" });
+    return undefined;
+  }
+  return Number.parseInt(raw.trim(), 10);
+}
+
 export function parseDecimalField(
   raw: string,
   row: number,

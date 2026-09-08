@@ -2,7 +2,12 @@ import { WorkerStatus } from "@prisma/client";
 import type ExcelJS from "exceljs";
 import { prisma } from "../../lib/prisma.js";
 import { loadXlsxWorkbook } from "./excel-workbook.js";
-import { columnLetterToIndex, detectColumns, type DetectedColumn } from "./excel-utils.js";
+import {
+  columnLetterToIndex,
+  detectColumns,
+  parseOptionalIntField,
+  type DetectedColumn,
+} from "./excel-utils.js";
 import {
   WORKER_IMPORT_FIELDS,
   WORKER_IMPORT_REQUIRED_FIELDS,
@@ -24,6 +29,7 @@ export interface ParseWorkersOptions {
 export interface ValidImportRow {
   row: number;
   matricule: string;
+  legacyMocId?: number;
   firstName: string;
   lastName: string;
   mvolaNumber: string;
@@ -79,6 +85,25 @@ function parseHiredAt(raw: string, row: number, errors: ImportRowError[]): Date 
     return null;
   }
   return parsed;
+}
+
+async function nextFallbackMatriculeNumber(
+  siteCode: string,
+  counters: Map<string, number>,
+): Promise<number> {
+  if (!counters.has(siteCode)) {
+    const site = await prisma.site.findFirst({
+      where: { shortCode: siteCode },
+      select: { id: true },
+    });
+    const existingCount = site
+      ? await prisma.worker.count({ where: { siteId: site.id, deletedAt: null } })
+      : 0;
+    counters.set(siteCode, existingCount);
+  }
+  const next = counters.get(siteCode)! + 1;
+  counters.set(siteCode, next);
+  return next;
 }
 
 function isUuid(value: string): boolean {
@@ -278,6 +303,7 @@ export async function parseWorkersWorkbook(
   }
 
   const valid: ValidImportRow[] = [];
+  const fallbackMatriculeCounters = new Map<string, number>();
 
   for (let rowNumber = dataStartRow; rowNumber <= sheet.rowCount; rowNumber++) {
     const row = sheet.getRow(rowNumber);
@@ -290,15 +316,18 @@ export async function parseWorkersWorkbook(
 
     const rowErrors: ImportRowError[] = [];
 
-    if (!values.matricule) rowErrors.push({ row: rowNumber, field: "matricule", message: "Requis" });
+    if (!usingSiteShortCode && !values.matricule) {
+      rowErrors.push({ row: rowNumber, field: "matricule", message: "Requis" });
+    }
     if (!values.firstName) rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis" });
     if (!values.lastName) rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis" });
     if (!values.mvolaNumber || values.mvolaNumber.length < 9) {
       rowErrors.push({ row: rowNumber, field: "mvolaNumber", message: "Numéro MVola invalide (min 9)" });
     }
+    let siteCode = "";
     if (usingSiteShortCode) {
-      const code = values.siteShortCode?.trim().toUpperCase();
-      if (!code || !/^[A-Z]{2,3}$/.test(code)) {
+      siteCode = values.siteShortCode?.trim().toUpperCase();
+      if (!siteCode || !/^[A-Z]{2,3}$/.test(siteCode)) {
         rowErrors.push({
           row: rowNumber,
           field: "siteShortCode",
@@ -312,6 +341,7 @@ export async function parseWorkersWorkbook(
       rowErrors.push({ row: rowNumber, field: "teamId", message: "UUID équipe invalide" });
     }
 
+    const legacyMocId = parseOptionalIntField(values.legacyMocId, rowNumber, "legacyMocId", rowErrors);
     const hiredAt = parseHiredAt(values.hiredAt, rowNumber, rowErrors);
     const statusRaw = values.status?.trim();
     const status = statusRaw ? parseStatus(statusRaw) : WorkerStatus.ACTIVE;
@@ -324,13 +354,22 @@ export async function parseWorkersWorkbook(
       continue;
     }
 
+    let matricule = values.matricule;
+    if (!matricule && usingSiteShortCode) {
+      matricule =
+        legacyMocId !== undefined
+          ? `MOC-${siteCode}-L${legacyMocId}`
+          : `MOC-${siteCode}-R${String(await nextFallbackMatriculeNumber(siteCode, fallbackMatriculeCounters)).padStart(3, "0")}`;
+    }
+
     valid.push({
       row: rowNumber,
-      matricule: values.matricule,
+      matricule,
+      legacyMocId,
       firstName: values.firstName,
       lastName: values.lastName,
       mvolaNumber: values.mvolaNumber,
-      siteId: usingSiteShortCode ? values.siteShortCode.trim().toUpperCase() : values.siteId,
+      siteId: usingSiteShortCode ? siteCode : values.siteId,
       teamId: values.teamId || undefined,
       cinNumber: values.cinNumber || undefined,
       address: values.address || undefined,
@@ -391,6 +430,7 @@ export async function importWorkersRows(rows: ValidImportRow[]) {
     for (const row of rows) {
       const data = {
         matricule: row.matricule,
+        legacyMocId: row.legacyMocId,
         firstName: row.firstName,
         lastName: row.lastName,
         mvolaNumber: row.mvolaNumber,

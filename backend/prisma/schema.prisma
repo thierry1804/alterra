@@ -167,6 +167,7 @@ model Team {
 model Activity {
   id        String     @id @default(uuid()) @db.Uuid
   label     String
+  code      String? // ex: "act07" — libellé MVola uniquement, jamais une clé de rapprochement (incohérent entre sites)
   unit      String // trou, m², plant, kg
   unitRate  Decimal    @db.Decimal(12, 2)
   validFrom DateTime   @db.Date
@@ -183,6 +184,7 @@ model Activity {
 model Worker {
   id            String           @id @default(uuid()) @db.Uuid
   matricule     String           @unique
+  legacyMocId   Int? // ID MOT du fichier MOC historique — utilisé dans l'export MVola, pas unique (doublons connus §10.5)
   firstName     String
   lastName      String
   birthDate     DateTime?        @db.Date
@@ -210,6 +212,7 @@ model Worker {
   @@index([siteId, teamId, status])
   @@index([firstName, lastName])
   @@index([mvolaNumber])
+  @@index([legacyMocId])
 }
 
 model Pointage {
@@ -308,6 +311,7 @@ model Payment {
   workerId         String        @db.Uuid
   worker           Worker        @relation(fields: [workerId], references: [id])
   periodIso        String // Sxx ou Dxxx
+  bordereau        Int // compteur par site, alloué à la génération
   cycle            PaymentCycle
   amount           Decimal       @db.Decimal(12, 2)
   description      String // "Prénom Paiement Code_site"

@@ -1,29 +1,33 @@
-const MVOLA_DESC_MAX_LEN = Number(process.env.MVOLA_DESC_MAX_LEN ?? 30);
+const MVOLA_NOM_MAX_LEN = Number(process.env.MVOLA_NOM_MAX_LEN ?? 18);
+
+function toTitleCase(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export function buildMvolaDescription(
-  firstName: string,
-  periodShort: string,
-  siteShortCode: string,
-  activityLabel?: string | null,
-  quantity?: string | number | null,
+  nom: string,
+  activite: string,
+  semaine: number | string,
+  bordereau: number,
+  site: string,
+  codeActivite: string,
+  matricule?: number | string | null,
 ): string {
-  const middleParts = [
-    ...(activityLabel ? [activityLabel] : []),
-    periodShort,
-    ...(quantity !== undefined && quantity !== null ? [String(quantity)] : []),
-    siteShortCode,
+  const trimmedNom = toTitleCase(nom).slice(0, MVOLA_NOM_MAX_LEN);
+  const parts = [
+    trimmedNom,
+    activite.trim().toUpperCase(),
+    `S${semaine}`,
+    String(bordereau),
+    site.trim().toUpperCase(),
+    codeActivite.trim().toUpperCase(),
+    ...(matricule !== undefined && matricule !== null ? [String(matricule)] : []),
   ];
-  const suffix = ` ${middleParts.join(" ")}`;
-  const maxFirstNameLen = MVOLA_DESC_MAX_LEN - suffix.length;
-
-  if (maxFirstNameLen < 1) {
-    return suffix.trim().slice(0, MVOLA_DESC_MAX_LEN);
-  }
-
-  const trimmedName =
-    firstName.length > maxFirstNameLen ? firstName.slice(0, maxFirstNameLen) : firstName;
-
-  return `${trimmedName}${suffix}`;
+  return parts.filter((part) => part.length > 0).join(" ");
 }
 
 export function isValidMvolaNumber(value: string): boolean {

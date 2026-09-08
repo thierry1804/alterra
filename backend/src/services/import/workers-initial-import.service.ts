@@ -5,6 +5,7 @@ import {
   buildHeaderMap,
   missingHeaders,
   parseDateField,
+  parseOptionalIntField,
   rowValues,
   type ImportRowError,
 } from "./excel-utils.js";
@@ -12,6 +13,7 @@ import {
 export interface ValidInitialWorkerRow {
   row: number;
   matricule: string;
+  legacyMocId?: number;
   firstName: string;
   lastName: string;
   mvolaNumber: string;
@@ -28,7 +30,6 @@ export interface InitialWorkersImportPreview {
 }
 
 const REQUIRED_HEADERS = [
-  "matricule",
   "firstName",
   "lastName",
   "mvolaNumber",
@@ -40,6 +41,25 @@ function parseStatus(raw: string): WorkerStatus | null {
   const upper = raw.toUpperCase();
   if (upper in WorkerStatus) return upper as WorkerStatus;
   return null;
+}
+
+async function nextFallbackMatriculeNumber(
+  siteCode: string,
+  counters: Map<string, number>,
+): Promise<number> {
+  if (!counters.has(siteCode)) {
+    const site = await prisma.site.findFirst({
+      where: { shortCode: siteCode },
+      select: { id: true },
+    });
+    const existingCount = site
+      ? await prisma.worker.count({ where: { siteId: site.id, deletedAt: null } })
+      : 0;
+    counters.set(siteCode, existingCount);
+  }
+  const next = counters.get(siteCode)! + 1;
+  counters.set(siteCode, next);
+  return next;
 }
 
 function detectFileDuplicates(rows: ValidInitialWorkerRow[]): ImportRowError[] {
@@ -181,6 +201,7 @@ export async function parseInitialWorkersWorkbook(
   if (errors.length > 0) return { valid: [], errors };
 
   const valid: ValidInitialWorkerRow[] = [];
+  const fallbackMatriculeCounters = new Map<string, number>();
 
   for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
     const values = rowValues(sheet, rowNumber, headerMap);
@@ -189,7 +210,6 @@ export async function parseInitialWorkersWorkbook(
 
     const rowErrors: ImportRowError[] = [];
 
-    if (!values.matricule) rowErrors.push({ row: rowNumber, field: "matricule", message: "Requis", sheet: "workers" });
     if (!values.firstName) rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis", sheet: "workers" });
     if (!values.lastName) rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis", sheet: "workers" });
     if (!values.mvolaNumber || values.mvolaNumber.length < 9) {
@@ -201,6 +221,14 @@ export async function parseInitialWorkersWorkbook(
       rowErrors.push({ row: rowNumber, field: "siteShortCode", message: "Code site invalide", sheet: "workers" });
     }
 
+    const legacyMocIdErrors: ImportRowError[] = [];
+    const legacyMocId = parseOptionalIntField(
+      values.legacyMocId,
+      rowNumber,
+      "legacyMocId",
+      legacyMocIdErrors,
+    );
+    rowErrors.push(...legacyMocIdErrors.map((e) => ({ ...e, sheet: "workers" })));
     const hiredAt = parseDateField(values.hiredAt, rowNumber, "hiredAt", rowErrors.map((e) => ({ ...e, sheet: "workers" })));
     const statusRaw = values.status?.trim();
     const status = statusRaw ? parseStatus(statusRaw) : WorkerStatus.ACTIVE;
@@ -213,9 +241,16 @@ export async function parseInitialWorkersWorkbook(
       continue;
     }
 
+    const matricule =
+      values.matricule ||
+      (legacyMocId !== undefined
+        ? `MOC-${siteShortCode}-L${legacyMocId}`
+        : `MOC-${siteShortCode}-R${String(await nextFallbackMatriculeNumber(siteShortCode, fallbackMatriculeCounters)).padStart(3, "0")}`);
+
     valid.push({
       row: rowNumber,
-      matricule: values.matricule,
+      matricule,
+      legacyMocId,
       firstName: values.firstName,
       lastName: values.lastName,
       mvolaNumber: values.mvolaNumber,
@@ -271,6 +306,7 @@ export async function importInitialWorkersRows(rows: ValidInitialWorkerRow[], dr
       const worker = await tx.worker.create({
         data: {
           matricule: row.matricule,
+          legacyMocId: row.legacyMocId,
           firstName: row.firstName,
           lastName: row.lastName,
           mvolaNumber: row.mvolaNumber,

@@ -1,4 +1,5 @@
 export type WorkerImportFieldKey =
+  | "legacyMocId"
   | "matricule"
   | "firstName"
   | "lastName"
@@ -17,7 +18,8 @@ export interface WorkerImportField {
 }
 
 export const WORKER_IMPORT_FIELDS: WorkerImportField[] = [
-  { key: "matricule", label: "Matricule", required: true },
+  { key: "legacyMocId", label: "ID MOC historique (legacy)", required: false },
+  { key: "matricule", label: "Matricule (généré si absent)", required: false },
   { key: "firstName", label: "Prénom", required: true },
   { key: "lastName", label: "Nom", required: true },
   { key: "mvolaNumber", label: "Numéro MVola", required: true },

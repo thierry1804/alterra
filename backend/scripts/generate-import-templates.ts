@@ -72,6 +72,7 @@ async function main() {
     "workers.xlsx",
     [
       "matricule",
+      "legacyMocId",
       "firstName",
       "lastName",
       "mvolaNumber",
@@ -82,11 +83,12 @@ async function main() {
       "status",
     ],
     [
-      ["MOC-MNK-01", "Jean", "Rakoto", "0340000001", "MNK", "MNK-1", "2025-01-01", "", "ACTIVE"],
-      ["MOC-MNK-02", "Marie", "Rasoa", "0340000002", "MNK", "MNK-1", "2025-01-01", "", "ACTIVE"],
+      ["MOC-MNK-01", "", "Jean", "Rakoto", "0340000001", "MNK", "MNK-1", "2025-01-01", "", "ACTIVE"],
+      ["MOC-MNK-02", "", "Marie", "Rasoa", "0340000002", "MNK", "MNK-1", "2025-01-01", "", "ACTIVE"],
     ],
     [
       "matricule|Oui|Identifiant unique MOC",
+      "legacyMocId|Non|ID MOT du fichier MOC historique (nombre), doublons possibles",
       "firstName|Oui|Prénom",
       "lastName|Oui|Nom",
       "mvolaNumber|Oui|Numéro MVola (min 9 chiffres, format texte)",

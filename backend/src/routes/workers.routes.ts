@@ -40,6 +40,7 @@ const createWorkerSchema = z.object({
   birthDate: z.coerce.date().optional(),
   maritalStatus: z.string().optional(),
   childrenCount: z.coerce.number().int().min(0).optional(),
+  legacyMocId: z.coerce.number().int().optional(),
 });
 
 const updateWorkerSchema = createWorkerSchema.partial().extend({

@@ -6,9 +6,9 @@ import { parseInitialWorkersWorkbook } from "../services/import/workers-initial-
 
 vi.mock("../lib/prisma.js", () => ({
   prisma: {
-    site: { findMany: vi.fn() },
+    site: { findMany: vi.fn(), findFirst: vi.fn() },
     team: { findMany: vi.fn() },
-    worker: { findMany: vi.fn() },
+    worker: { findMany: vi.fn(), count: vi.fn() },
   },
 }));
 
@@ -32,6 +32,8 @@ describe("initial import parsers", () => {
       { id: "team-1", name: "MNK-1", siteId: "site-1" },
     ] as never);
     vi.mocked(prisma.worker.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: "site-1" } as never);
+    vi.mocked(prisma.worker.count).mockResolvedValue(0);
   });
 
   it("parseSitesWorkbook validates shortCode format", async () => {
@@ -89,5 +91,65 @@ describe("initial import parsers", () => {
     const result = await parseInitialWorkersWorkbook(buffer);
     expect(result.valid).toHaveLength(0);
     expect(result.errors.some((error) => error.field === "teamName")).toBe(true);
+  });
+
+  it("parseInitialWorkersWorkbook accepts legacyMocId when provided", async () => {
+    const buffer = await buildWorkbook(
+      ["matricule", "legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [["MOC-1", "84", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
+    );
+
+    const result = await parseInitialWorkersWorkbook(buffer);
+    expect(result.errors).toHaveLength(0);
+    expect(result.valid[0]?.legacyMocId).toBe(84);
+  });
+
+  it("parseInitialWorkersWorkbook leaves legacyMocId undefined when absent", async () => {
+    const buffer = await buildWorkbook(
+      ["matricule", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [["MOC-1", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
+    );
+
+    const result = await parseInitialWorkersWorkbook(buffer);
+    expect(result.errors).toHaveLength(0);
+    expect(result.valid[0]?.legacyMocId).toBeUndefined();
+  });
+
+  it("parseInitialWorkersWorkbook rejects non-numeric legacyMocId", async () => {
+    const buffer = await buildWorkbook(
+      ["matricule", "legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [["MOC-1", "abc", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
+    );
+
+    const result = await parseInitialWorkersWorkbook(buffer);
+    expect(result.valid).toHaveLength(0);
+    expect(result.errors.some((error) => error.field === "legacyMocId")).toBe(true);
+  });
+
+  it("parseInitialWorkersWorkbook generates matricule MOC-{SITE}-L{legacyMocId} when matricule is absent but legacyMocId is provided", async () => {
+    const buffer = await buildWorkbook(
+      ["legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [["84", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
+    );
+
+    const result = await parseInitialWorkersWorkbook(buffer);
+    expect(result.errors).toHaveLength(0);
+    expect(result.valid[0]?.matricule).toBe("MOC-MNK-L84");
+  });
+
+  it("parseInitialWorkersWorkbook generates sequential matricule MOC-{SITE}-R{NNN} when both matricule and legacyMocId are absent", async () => {
+    vi.mocked(prisma.worker.count).mockResolvedValue(2);
+    const buffer = await buildWorkbook(
+      ["firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [
+        ["Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"],
+        ["Marie", "Rasoa", "0340000002", "MNK", "2025-01-01"],
+      ],
+    );
+
+    const result = await parseInitialWorkersWorkbook(buffer);
+    expect(result.errors).toHaveLength(0);
+    expect(result.valid[0]?.matricule).toBe("MOC-MNK-R003");
+    expect(result.valid[1]?.matricule).toBe("MOC-MNK-R004");
   });
 });
