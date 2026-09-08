@@ -29,9 +29,18 @@ const listActivitiesQuery = z.object({
     .transform((v) => v === "true"),
 });
 
+const activityCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(20)
+  .transform((v) => v.toUpperCase())
+  .nullable();
+
 const createActivitySchema = z.object({
   label: z.string().min(1),
   unit: z.string().min(1),
+  code: activityCodeSchema.optional(),
   unitRate: z.coerce.number().positive(),
   validFrom: z.coerce.date().optional(),
   siteId: z.string().uuid().nullable().optional(),
@@ -41,11 +50,36 @@ const createActivitySchema = z.object({
 const updateActivitySchema = z.object({
   label: z.string().min(1).optional(),
   unit: z.string().min(1).optional(),
+  code: activityCodeSchema.optional(),
   unitRate: z.coerce.number().positive().optional(),
   validFrom: z.coerce.date().optional(),
   siteId: z.string().uuid().nullable().optional(),
   active: z.boolean().optional(),
 });
+
+/** RG : un code doit être unique par site parmi les activités actives (miroir de l'index partiel en DB). */
+async function assertCodeAvailable(
+  code: string | null | undefined,
+  siteId: string | null | undefined,
+  excludeId?: string,
+) {
+  if (!code) return;
+  const conflict = await prisma.activity.findFirst({
+    where: {
+      code,
+      siteId: siteId ?? null,
+      active: true,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+  });
+  if (conflict) {
+    throw new ApiError(
+      409,
+      "ACTIVITY_CODE_TAKEN",
+      `Le code "${code}" est déjà utilisé par une activité active sur ce site`,
+    );
+  }
+}
 
 activitiesRouter.get(
   "/activities",
@@ -107,6 +141,7 @@ activitiesRouter.post(
         ...req.body,
         validFrom: req.body.validFrom ?? startOfUtcDay(),
       };
+      await assertCodeAvailable(data.code, data.siteId);
       const activity = await prisma.activity.create({ data });
       await writeAuditLog({
         userId: req.user!.sub,
@@ -137,10 +172,20 @@ activitiesRouter.patch(
 
       const { unitRate, ...otherFields } = req.body as z.infer<typeof updateActivitySchema>;
 
+      const resolvedCode = otherFields.code !== undefined ? otherFields.code : current.code;
+      const resolvedSiteId = otherFields.siteId !== undefined ? otherFields.siteId : current.siteId;
+      if (
+        resolvedCode !== current.code ||
+        (otherFields.siteId !== undefined && otherFields.siteId !== current.siteId)
+      ) {
+        await assertCodeAvailable(resolvedCode, resolvedSiteId, current.id);
+      }
+
       if (unitRate !== undefined && !ratesEqual(current.unitRate, unitRate)) {
         const created = await applyActivityRateChange(current, unitRate, {
           label: otherFields.label,
           unit: otherFields.unit,
+          code: otherFields.code,
           siteId: otherFields.siteId,
           validFrom: otherFields.validFrom,
           active: otherFields.active,

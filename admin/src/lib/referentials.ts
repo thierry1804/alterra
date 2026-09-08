@@ -12,6 +12,7 @@ export interface Activity {
   id: string;
   label: string;
   unit: string;
+  code: string | null;
   unitRate: string;
   validFrom: string;
   validTo: string | null;

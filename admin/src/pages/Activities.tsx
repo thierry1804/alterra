@@ -31,11 +31,12 @@ import { toast } from "../hooks/use-toast";
 interface ActivityForm {
   label: string;
   unit: string;
+  code: string;
   unitRate: string;
   siteId: string;
 }
 
-const emptyForm: ActivityForm = { label: "", unit: "", unitRate: "", siteId: "" };
+const emptyForm: ActivityForm = { label: "", unit: "", code: "", unitRate: "", siteId: "" };
 
 export default function ActivitiesPage() {
   const queryClient = useQueryClient();
@@ -62,6 +63,7 @@ export default function ActivitiesPage() {
       const payload = {
         label: form.label.trim(),
         unit: form.unit.trim(),
+        code: form.code.trim() || null,
         unitRate: Number(form.unitRate),
         siteId: form.siteId || null,
       };
@@ -100,6 +102,7 @@ export default function ActivitiesPage() {
     setForm({
       label: activity.label,
       unit: activity.unit,
+      code: activity.code ?? "",
       unitRate: activity.unitRate,
       siteId: activity.siteId ?? "",
     });
@@ -123,6 +126,7 @@ export default function ActivitiesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Libellé</TableHead>
+              <TableHead>Code</TableHead>
               <TableHead>Unité</TableHead>
               <TableHead>Tarif</TableHead>
               <TableHead>Site</TableHead>
@@ -133,7 +137,7 @@ export default function ActivitiesPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-zinc-500">
+                <TableCell colSpan={7} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
@@ -142,6 +146,7 @@ export default function ActivitiesPage() {
               activities.map((activity) => (
                 <TableRow key={activity.id}>
                   <TableCell>{activity.label}</TableCell>
+                  <TableCell>{activity.code ?? "—"}</TableCell>
                   <TableCell>{activity.unit}</TableCell>
                   <TableCell>{formatRate(activity.unitRate)}</TableCell>
                   <TableCell>{siteName(activity.siteId)}</TableCell>
@@ -229,6 +234,15 @@ export default function ActivitiesPage() {
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="act-code">Code (ex. ACT04, unique par site)</Label>
+              <Input
+                id="act-code"
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                maxLength={20}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="act-site">Site (vide = global)</Label>

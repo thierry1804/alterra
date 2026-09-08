@@ -24,6 +24,7 @@ export function ratesEqual(
 export interface ActivityRateChangeOverrides {
   label?: string;
   unit?: string;
+  code?: string | null;
   siteId?: string | null;
   validFrom?: Date;
   active?: boolean;
@@ -53,7 +54,10 @@ export function computeRateChangeDates(
  * Lineage is matched by label + unit + siteId.
  */
 export async function applyActivityRateChange(
-  current: Pick<Activity, "id" | "label" | "unit" | "siteId" | "unitRate" | "validFrom" | "active">,
+  current: Pick<
+    Activity,
+    "id" | "label" | "unit" | "code" | "siteId" | "unitRate" | "validFrom" | "active"
+  >,
   newRate: Prisma.Decimal | number | string,
   overrides: ActivityRateChangeOverrides = {},
 ) {
@@ -69,6 +73,7 @@ export async function applyActivityRateChange(
       data: {
         label: overrides.label ?? current.label,
         unit: overrides.unit ?? current.unit,
+        code: overrides.code !== undefined ? overrides.code : current.code,
         siteId: overrides.siteId !== undefined ? overrides.siteId : current.siteId,
         unitRate: newRate,
         validFrom: openDate,

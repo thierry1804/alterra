@@ -167,7 +167,7 @@ model Team {
 model Activity {
   id        String     @id @default(uuid()) @db.Uuid
   label     String
-  code      String? // ex: "act07" — libellé MVola uniquement, jamais une clé de rapprochement (incohérent entre sites)
+  code      String? // ex: "ACT04" — unique par site parmi les activités actives (contrainte partielle, voir migration)
   unit      String // trou, m², plant, kg
   unitRate  Decimal    @db.Decimal(12, 2)
   validFrom DateTime   @db.Date
