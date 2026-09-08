@@ -18,6 +18,8 @@ import ProtectedRoute, { GuestRoute } from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import RoleGuard from "./components/layout/RoleGuard";
 import { Toaster } from "./components/ui/toaster";
+import { LoadingRow } from "./components/ui/feedback";
+import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +31,16 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  const { ready } = useAuthBootstrap();
+
+  if (!ready) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <LoadingRow label="Vérification de la session…" />
+      </div>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
