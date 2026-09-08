@@ -82,11 +82,14 @@ function fieldStatus(hasOwn: boolean, hasOther: boolean, own: unknown, other: un
 
 /** Classe de surlignage façon diff git : rouge côté "avant" retiré/modifié, vert côté "après" ajouté/modifié. */
 function diffClass(side: DiffSide, status: DiffStatus): string {
-  if (side === "before" && (status === "removed" || status === "changed")) {
-    return "bg-danger-bg text-danger rounded px-1 -mx-1";
+  if (side === "before" && status === "removed") {
+    return "bg-red-100 text-red-800 font-semibold rounded-sm border-l-2 border-red-500 px-1 -mx-1 line-through decoration-red-500";
+  }
+  if (side === "before" && status === "changed") {
+    return "bg-red-100 text-red-800 font-semibold rounded-sm border-l-2 border-red-500 px-1 -mx-1";
   }
   if (side === "after" && (status === "added" || status === "changed")) {
-    return "bg-success-bg text-success rounded px-1 -mx-1";
+    return "bg-green-100 text-green-800 font-semibold rounded-sm border-l-2 border-green-500 px-1 -mx-1";
   }
   return "";
 }
