@@ -17,14 +17,18 @@ const listZonesQuery = z.object({
   siteId: z.string().uuid().optional(),
 });
 
+const zoneCodeSchema = z.string().trim().min(1).max(20).transform((v) => v.toUpperCase()).nullable();
+
 const createZoneSchema = z.object({
   siteId: z.string().uuid(),
   name: z.string().min(1).max(120),
+  code: zoneCodeSchema.optional(),
   geoPolygon: geoPolygonSchema,
 });
 
 const updateZoneSchema = z.object({
   name: z.string().min(1).max(120).optional(),
+  code: zoneCodeSchema.optional(),
   geoPolygon: geoPolygonSchema,
 });
 
@@ -81,6 +85,7 @@ zonesRouter.post(
         data: {
           siteId: req.body.siteId,
           name: req.body.name.trim(),
+          code: req.body.code ?? undefined,
           geoPolygon: req.body.geoPolygon ?? undefined,
         },
       });
@@ -96,7 +101,9 @@ zonesRouter.post(
       res.status(201).json(zone);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        return next(new ApiError(409, "DUPLICATE", "Une zone avec ce nom existe déjà sur le site"));
+        return next(
+          new ApiError(409, "DUPLICATE", "Une zone avec ce nom ou ce code existe déjà sur le site"),
+        );
       }
       next(err);
     }
@@ -130,6 +137,11 @@ zonesRouter.patch(
       });
       res.json(zone);
     } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return next(
+          new ApiError(409, "DUPLICATE", "Une zone avec ce nom ou ce code existe déjà sur le site"),
+        );
+      }
       next(err);
     }
   },

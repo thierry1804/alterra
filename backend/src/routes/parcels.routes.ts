@@ -18,15 +18,19 @@ const listParcelsQuery = z.object({
   siteId: z.string().uuid().optional(),
 });
 
+const parcelCodeSchema = z.string().trim().min(1).max(20).transform((v) => v.toUpperCase()).nullable();
+
 const createParcelSchema = z.object({
   zoneId: z.string().uuid(),
   name: z.string().min(1).max(120),
+  code: parcelCodeSchema.optional(),
   surfaceHa: z.number().positive().optional(),
   geoPolygon: geoPolygonSchema,
 });
 
 const updateParcelSchema = z.object({
   name: z.string().min(1).max(120).optional(),
+  code: parcelCodeSchema.optional(),
   surfaceHa: z.number().positive().nullable().optional(),
   geoPolygon: geoPolygonSchema,
 });
@@ -88,6 +92,7 @@ parcelsRouter.post(
         data: {
           zoneId: req.body.zoneId,
           name: req.body.name.trim(),
+          code: req.body.code ?? undefined,
           surfaceHa: req.body.surfaceHa,
           geoPolygon: req.body.geoPolygon ?? undefined,
         },
@@ -105,7 +110,11 @@ parcelsRouter.post(
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         return next(
-          new ApiError(409, "DUPLICATE", "Une parcelle avec ce nom existe déjà dans la zone"),
+          new ApiError(
+            409,
+            "DUPLICATE",
+            "Une parcelle avec ce nom ou ce code existe déjà dans la zone",
+          ),
         );
       }
       next(err);
@@ -140,6 +149,15 @@ parcelsRouter.patch(
       });
       res.json(parcelle);
     } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return next(
+          new ApiError(
+            409,
+            "DUPLICATE",
+            "Une parcelle avec ce nom ou ce code existe déjà dans la zone",
+          ),
+        );
+      }
       next(err);
     }
   },

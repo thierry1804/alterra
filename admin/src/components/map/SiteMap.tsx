@@ -11,7 +11,7 @@ import {
 const DEFAULT_CENTER: [number, number] = [-18.91, 47.52];
 const DEFAULT_ZOOM = 6;
 
-function tileConfig() {
+export function tileConfig() {
   const mapTilerKey = import.meta.env.VITE_MAPTILER_KEY as string | undefined;
   if (mapTilerKey) {
     return {
@@ -154,7 +154,10 @@ export default function SiteMap({
               >
                 <Popup>
                   <div className="text-sm">
-                    <p className="font-medium">Zone {zone.name}</p>
+                    <p className="font-medium">
+                      Zone {zone.name}
+                      {zone.code ? ` (${zone.code})` : ""}
+                    </p>
                     <p className="text-xs text-zinc-500">{site.shortCode}</p>
                   </div>
                 </Popup>
@@ -182,7 +185,10 @@ export default function SiteMap({
                 >
                   <Popup>
                     <div className="text-sm">
-                      <p className="font-medium">{parcel.name}</p>
+                      <p className="font-medium">
+                        {parcel.name}
+                        {parcel.code ? ` (${parcel.code})` : ""}
+                      </p>
                       <p className="text-xs text-zinc-500">
                         {zone.name}
                         {parcel.surfaceHa

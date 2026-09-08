@@ -7,6 +7,7 @@ export interface Zone {
   id: string;
   siteId: string;
   name: string;
+  code: string | null;
   geoPolygon: GeoPolygon | null;
   createdAt: string;
   _count?: { parcelles: number };
@@ -16,6 +17,7 @@ export interface Parcelle {
   id: string;
   zoneId: string;
   name: string;
+  code: string | null;
   surfaceHa: string | null;
   geoPolygon: GeoPolygon | null;
   zone?: { id: string; name: string; siteId: string };
@@ -30,25 +32,33 @@ export interface SiteGeo {
   zones: Array<{
     id: string;
     name: string;
+    code: string | null;
     geoPolygon: GeoPolygon | null;
     parcelles: Array<{
       id: string;
       name: string;
+      code: string | null;
       surfaceHa: string | null;
       geoPolygon: GeoPolygon | null;
     }>;
   }>;
 }
 
-export const EXAMPLE_GEO_POLYGON = `{
-  "type": "Polygon",
-  "coordinates": [[[47.52, -18.91], [47.53, -18.91], [47.53, -18.90], [47.52, -18.90], [47.52, -18.91]]]
-}`;
-
 /** GeoJSON stores [longitude, latitude]; Leaflet expects [latitude, longitude]. */
 export function geoPolygonToLatLngs(polygon: GeoPolygon | null): [number, number][] {
   if (!polygon?.coordinates?.[0]?.length) return [];
   return polygon.coordinates[0].map(([lng, lat]) => [lat, lng]);
+}
+
+/** Centroïde approximatif (moyenne des sommets) du premier anneau, en [lat, lng]. */
+export function geoPolygonCenter(polygon: GeoPolygon | null): [number, number] | null {
+  const ring = polygon?.coordinates?.[0];
+  if (!ring?.length) return null;
+  const [sumLat, sumLng] = ring.reduce(
+    ([lat, lng], [pointLng, pointLat]) => [lat + pointLat, lng + pointLng],
+    [0, 0],
+  );
+  return [sumLat / ring.length, sumLng / ring.length];
 }
 
 export function collectGeoBounds(

@@ -61,12 +61,14 @@ sitesRouter.get(
             select: {
               id: true,
               name: true,
+              code: true,
               geoPolygon: true,
               parcelles: {
                 orderBy: { name: "asc" },
                 select: {
                   id: true,
                   name: true,
+                  code: true,
                   surfaceHa: true,
                   geoPolygon: true,
                 },

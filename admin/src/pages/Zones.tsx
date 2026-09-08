@@ -3,18 +3,14 @@ import { Fragment, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
-import {
-  EXAMPLE_GEO_POLYGON,
-  type GeoPolygon,
-  type Parcelle,
-  type Zone,
-} from "../lib/geo";
+import { geoPolygonCenter, type GeoPolygon, type Parcelle, type Zone } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import PolygonDrawMap from "../components/map/PolygonDrawMap";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +29,8 @@ import {
 import { toast } from "../hooks/use-toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
+const DEFAULT_MAP_CENTER: [number, number] = [-18.91, 47.52];
+
 type DeleteConfirm =
   | { type: "zone"; id: string; name: string }
   | { type: "parcel"; id: string; name: string };
@@ -41,27 +39,19 @@ type DialogMode = "zone-create" | "zone-edit" | "parcel-create" | "parcel-edit";
 
 interface ZoneForm {
   name: string;
-  geoPolygonText: string;
+  code: string;
+  geoPolygon: GeoPolygon | null;
 }
 
 interface ParcelForm {
   name: string;
+  code: string;
   surfaceHa: string;
-  geoPolygonText: string;
+  geoPolygon: GeoPolygon | null;
 }
 
-const emptyZoneForm: ZoneForm = { name: "", geoPolygonText: "" };
-const emptyParcelForm: ParcelForm = { name: "", surfaceHa: "", geoPolygonText: "" };
-
-function parseGeoText(text: string): GeoPolygon | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const parsed = JSON.parse(trimmed) as GeoPolygon;
-  if (parsed.type !== "Polygon" || !Array.isArray(parsed.coordinates)) {
-    throw new Error("GeoJSON Polygon invalide");
-  }
-  return parsed;
-}
+const emptyZoneForm: ZoneForm = { name: "", code: "", geoPolygon: null };
+const emptyParcelForm: ParcelForm = { name: "", code: "", surfaceHa: "", geoPolygon: null };
 
 export default function ZonesPage() {
   const queryClient = useQueryClient();
@@ -111,25 +101,37 @@ export default function ZonesPage() {
     return map;
   }, [parcelles]);
 
+  const selectedSite = sites.find((s) => s.id === effectiveSiteId);
+  const mapCenter: [number, number] =
+    selectedSite?.geoLat != null && selectedSite?.geoLng != null
+      ? [selectedSite.geoLat, selectedSite.geoLng]
+      : DEFAULT_MAP_CENTER;
+
+  const parentZone = zones.find((z) => z.id === parentZoneId);
+  const parcelMapCenter = geoPolygonCenter(parentZone?.geoPolygon ?? null) ?? mapCenter;
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (dialogMode === "zone-create" || dialogMode === "zone-edit") {
-        const geoPolygon = parseGeoText(zoneForm.geoPolygonText);
-        const payload = { name: zoneForm.name.trim(), geoPolygon };
+        const payload = {
+          name: zoneForm.name.trim(),
+          code: zoneForm.code.trim() || null,
+          geoPolygon: zoneForm.geoPolygon,
+        };
         if (dialogMode === "zone-edit" && editingZone) {
           return api.patch(`/zones/${editingZone.id}`, payload);
         }
         return api.post("/zones", { ...payload, siteId: effectiveSiteId });
       }
 
-      const geoPolygon = parseGeoText(parcelForm.geoPolygonText);
       const surfaceHa = parcelForm.surfaceHa.trim()
         ? Number(parcelForm.surfaceHa)
         : undefined;
       const payload = {
         name: parcelForm.name.trim(),
+        code: parcelForm.code.trim() || null,
         surfaceHa,
-        geoPolygon,
+        geoPolygon: parcelForm.geoPolygon,
       };
       if (dialogMode === "parcel-edit" && editingParcel) {
         return api.patch(`/parcels/${editingParcel.id}`, {
@@ -204,7 +206,8 @@ export default function ZonesPage() {
     setEditingZone(zone);
     setZoneForm({
       name: zone.name,
-      geoPolygonText: zone.geoPolygon ? JSON.stringify(zone.geoPolygon, null, 2) : "",
+      code: zone.code ?? "",
+      geoPolygon: zone.geoPolygon,
     });
     setDialogOpen(true);
   }
@@ -223,8 +226,9 @@ export default function ZonesPage() {
     setParentZoneId(parcel.zoneId);
     setParcelForm({
       name: parcel.name,
+      code: parcel.code ?? "",
       surfaceHa: parcel.surfaceHa ?? "",
-      geoPolygonText: parcel.geoPolygon ? JSON.stringify(parcel.geoPolygon, null, 2) : "",
+      geoPolygon: parcel.geoPolygon,
     });
     setDialogOpen(true);
   }
@@ -282,6 +286,7 @@ export default function ZonesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nom</TableHead>
+              <TableHead>Code</TableHead>
               <TableHead>Surface</TableHead>
               <TableHead>GeoJSON</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -290,14 +295,14 @@ export default function ZonesPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-sm text-zinc-500">
+                <TableCell colSpan={5} className="text-sm text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && zones.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-sm text-zinc-500">
+                <TableCell colSpan={5} className="text-sm text-zinc-500">
                   Aucune zone pour ce site.
                 </TableCell>
               </TableRow>
@@ -322,6 +327,7 @@ export default function ZonesPage() {
                       </button>
                       <span className="font-medium">{zone.name}</span>
                     </TableCell>
+                    <TableCell>{zone.code ?? "—"}</TableCell>
                     <TableCell>
                       {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "—"}
                     </TableCell>
@@ -354,6 +360,7 @@ export default function ZonesPage() {
                     zoneParcels.map((parcel) => (
                       <TableRow key={parcel.id}>
                         <TableCell className="pl-10 text-zinc-700">{parcel.name}</TableCell>
+                        <TableCell>{parcel.code ?? "—"}</TableCell>
                         <TableCell>
                           {parcel.surfaceHa
                             ? `${Number(parcel.surfaceHa).toLocaleString("fr-MG")} ha`
@@ -396,54 +403,67 @@ export default function ZonesPage() {
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
-              Polygone au format GeoJSON. Laisser vide si non défini.
+              Dessinez le polygone sur la carte, puis nommez et attribuez un code.
             </DialogDescription>
           </DialogHeader>
 
           {(dialogMode === "zone-create" || dialogMode === "zone-edit") && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="zone-name">Nom de la zone</Label>
-                <Input
-                  id="zone-name"
-                  value={zoneForm.name}
-                  onChange={(e) => setZoneForm((f) => ({ ...f, name: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="zone-name">Nom de la zone</Label>
+                  <Input
+                    id="zone-name"
+                    value={zoneForm.name}
+                    onChange={(e) => setZoneForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zone-code">Code (unique par site)</Label>
+                  <Input
+                    id="zone-code"
+                    value={zoneForm.code}
+                    onChange={(e) => setZoneForm((f) => ({ ...f, code: e.target.value }))}
+                    maxLength={20}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="zone-geo">GeoJSON Polygon</Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setZoneForm((f) => ({ ...f, geoPolygonText: EXAMPLE_GEO_POLYGON }))
-                    }
-                  >
-                    Exemple
-                  </Button>
-                </div>
-                <textarea
-                  id="zone-geo"
-                  rows={6}
-                  value={zoneForm.geoPolygonText}
-                  onChange={(e) => setZoneForm((f) => ({ ...f, geoPolygonText: e.target.value }))}
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-xs"
+                <Label>Polygone</Label>
+                <PolygonDrawMap
+                  key={`zone-${editingZone?.id ?? "new"}`}
+                  value={zoneForm.geoPolygon}
+                  onChange={(geoPolygon) => setZoneForm((f) => ({ ...f, geoPolygon }))}
+                  center={mapCenter}
                 />
+                <p className="text-xs text-zinc-500">
+                  Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
+                  point). Poignées pour éditer, icône poubelle pour effacer.
+                </p>
               </div>
             </div>
           )}
 
           {(dialogMode === "parcel-create" || dialogMode === "parcel-edit") && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="parcel-name">Nom de la parcelle</Label>
-                <Input
-                  id="parcel-name"
-                  value={parcelForm.name}
-                  onChange={(e) => setParcelForm((f) => ({ ...f, name: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="parcel-name">Nom de la parcelle</Label>
+                  <Input
+                    id="parcel-name"
+                    value={parcelForm.name}
+                    onChange={(e) => setParcelForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="parcel-code">Code (unique par zone)</Label>
+                  <Input
+                    id="parcel-code"
+                    value={parcelForm.code}
+                    onChange={(e) => setParcelForm((f) => ({ ...f, code: e.target.value }))}
+                    maxLength={20}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="parcel-surface">Surface (ha)</Label>
@@ -457,28 +477,17 @@ export default function ZonesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="parcel-geo">GeoJSON Polygon</Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setParcelForm((f) => ({ ...f, geoPolygonText: EXAMPLE_GEO_POLYGON }))
-                    }
-                  >
-                    Exemple
-                  </Button>
-                </div>
-                <textarea
-                  id="parcel-geo"
-                  rows={6}
-                  value={parcelForm.geoPolygonText}
-                  onChange={(e) =>
-                    setParcelForm((f) => ({ ...f, geoPolygonText: e.target.value }))
-                  }
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-xs"
+                <Label>Polygone</Label>
+                <PolygonDrawMap
+                  key={`parcel-${editingParcel?.id ?? "new"}`}
+                  value={parcelForm.geoPolygon}
+                  onChange={(geoPolygon) => setParcelForm((f) => ({ ...f, geoPolygon }))}
+                  center={parcelMapCenter}
                 />
+                <p className="text-xs text-zinc-500">
+                  Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
+                  point). Poignées pour éditer, icône poubelle pour effacer.
+                </p>
               </div>
             </div>
           )}

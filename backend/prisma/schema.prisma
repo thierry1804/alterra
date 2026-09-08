@@ -129,11 +129,13 @@ model Zone {
   siteId     String     @db.Uuid
   site       Site       @relation(fields: [siteId], references: [id])
   name       String
+  code       String? // ex: "VLB-Z1" — unique par site
   geoPolygon Json? // GeoJSON Polygon
   parcelles  Parcelle[]
   createdAt  DateTime   @default(now())
 
   @@unique([siteId, name])
+  @@unique([siteId, code])
 }
 
 /// V2
@@ -142,11 +144,13 @@ model Parcelle {
   zoneId    String     @db.Uuid
   zone      Zone       @relation(fields: [zoneId], references: [id])
   name      String
+  code      String? // unique par zone
   geoPolygon Json?
   surfaceHa Decimal?   @db.Decimal(10, 2)
   pointages Pointage[]
 
   @@unique([zoneId, name])
+  @@unique([zoneId, code])
   @@index([zoneId])
 }
 
