@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useAppSettings } from "../hooks/useAppSettings";
 import { startAutoSync, stopAutoSync } from "../sync/SyncManager";
 import SyncStatusBar from "./sync/SyncStatusBar";
 import BottomNav from "./nav/BottomNav";
@@ -9,6 +10,7 @@ import { isActivePath, navForRole } from "./nav/nav-config";
 
 export default function AppShell() {
   const { user, logout } = useAuth();
+  const { appName, iconUrl } = useAppSettings();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -38,7 +40,7 @@ export default function AppShell() {
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-20 bg-white">
         <div className="flex items-center gap-3 px-4 py-2.5">
-          <img src="/brand/alterra-logo.png" alt="ALTERRA" className="h-9 w-auto shrink-0" />
+          <img src={iconUrl} alt={appName} className="h-9 w-auto shrink-0" />
           <div className="min-w-0 border-l border-zinc-200 pl-3 leading-tight">
             <p className="text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
               Terrain

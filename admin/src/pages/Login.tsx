@@ -6,9 +6,11 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
 import { ADMIN_APP_ROLES, DEMO_ACCOUNTS, TERRAIN_APP } from "../lib/access-info";
+import { useAppSettings } from "../hooks/useAppSettings";
 
 export default function Login() {
   const { login } = useAuth();
+  const { appName, iconUrl } = useAppSettings();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,8 +61,8 @@ export default function Login() {
         >
         <div className="alterra-rule pb-3">
           <span className="flex items-center gap-2.5">
-            <img src="/brand/alterra-logo.png" alt="" className="h-8 w-8 rounded" aria-hidden />
-            <span className="text-lg font-semibold tracking-tight text-zinc-900">ALTERRA</span>
+            <img src={iconUrl} alt="" className="h-8 w-8 rounded" aria-hidden />
+            <span className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</span>
           </span>
           <p className="mt-2 text-sm text-muted">Connexion administration</p>
         </div>

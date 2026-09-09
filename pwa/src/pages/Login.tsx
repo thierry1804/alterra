@@ -5,9 +5,11 @@ import { useAuth } from "../hooks/useAuth";
 import Button from "../components/ui/Button";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
 import { ADMIN_APP, DEMO_ACCOUNTS, TERRAIN_APP_ROLES } from "../lib/access-info";
+import { useAppSettings } from "../hooks/useAppSettings";
 
 export default function Login() {
   const { login } = useAuth();
+  const { appName, iconUrl } = useAppSettings();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,11 +53,7 @@ export default function Login() {
           className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
         >
         <div>
-          <img
-            src="/brand/alterra-logo.png"
-            alt="ALTERRA"
-            className="h-14 w-auto"
-          />
+          <img src={iconUrl} alt={appName} className="h-14 w-auto" />
           <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
             Terrain · Registre de suivi
           </h1>

@@ -10,7 +10,7 @@ export default defineConfig({
       includeAssets: ["icons/icon-192.svg", "icons/icon-512.svg"],
       manifest: false,
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         runtimeCaching: [
           {
             urlPattern: /\/api\/v1\//,

@@ -11,6 +11,7 @@ export const minioClient = new Client({
 export const BUCKETS = {
   photos: process.env.MINIO_BUCKET_PHOTOS ?? "photos-pointages",
   reports: process.env.MINIO_BUCKET_REPORTS ?? "rapports-pdf",
+  assets: process.env.MINIO_BUCKET_ASSETS ?? "app-assets",
 } as const;
 
 const PRESIGN_TTL_SECONDS = 15 * 60;

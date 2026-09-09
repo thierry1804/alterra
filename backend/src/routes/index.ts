@@ -19,11 +19,13 @@ import { presenceRouter } from "./presence.routes.js";
 import { badgesRouter } from "./badges.routes.js";
 import { workflowsRouter } from "./workflows.routes.js";
 import { dailyReportsRouter } from "./daily-reports.routes.js";
+import { appSettingsRouter } from "./app-settings.routes.js";
 
 export const apiRouter = Router();
 
 apiRouter.use(healthRouter);
 apiRouter.use(authRouter);
+apiRouter.use(appSettingsRouter);
 apiRouter.use(sitesRouter);
 apiRouter.use(activitiesRouter);
 apiRouter.use(workersRouter);

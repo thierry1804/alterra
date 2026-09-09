@@ -10,6 +10,7 @@ import {
   Map,
   MapPinned,
   ScrollText,
+  Settings,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -115,6 +116,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Audit",
     path: "/audit",
     icon: ScrollText,
+    roles: ["ADMIN"],
+    section: "Système",
+  },
+  {
+    label: "Paramètres",
+    path: "/settings",
+    icon: Settings,
     roles: ["ADMIN"],
     section: "Système",
   },

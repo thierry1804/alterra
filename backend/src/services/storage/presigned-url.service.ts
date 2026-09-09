@@ -16,3 +16,10 @@ export async function workflowPhotoUploadUrl(prefix: WorkflowPhotoPrefix) {
   const uploadUrl = await presignedUploadUrl(BUCKETS.photos, photoKey);
   return { uploadUrl, photoKey, bucket: BUCKETS.photos, expiresInSeconds: 15 * 60 };
 }
+
+/** Presigned MinIO PUT URL for the app's custom icon/logo (bucket dédié, non partagé avec les photos). */
+export async function iconUploadUrl(ext: "png" | "jpg" | "svg" | "webp") {
+  const iconKey = `app-settings/icon/${randomUUID()}.${ext}`;
+  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, iconKey);
+  return { uploadUrl, iconKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+}

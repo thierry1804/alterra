@@ -3,6 +3,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { navItemsBySection } from "../../lib/navigation";
 import { useAuth } from "../../hooks/useAuth";
+import { useAppSettings } from "../../hooks/useAppSettings";
 import { Button } from "../ui/button";
 
 interface SidebarProps {
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user } = useAuth();
+  const { appName, iconUrl } = useAppSettings();
   const sections = navItemsBySection(user?.role);
   const showSections = !collapsed && sections.size > 1;
 
@@ -30,13 +32,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       >
         {!collapsed && (
           <span className="flex items-center gap-2">
-            <img
-              src="/brand/alterra-logo.png"
-              alt=""
-              className="h-6 w-6 rounded"
-              aria-hidden
-            />
-            <span className="text-sm font-semibold tracking-tight text-zinc-900">ALTERRA</span>
+            <img src={iconUrl} alt="" className="h-6 w-6 rounded" aria-hidden />
+            <span className="text-sm font-semibold tracking-tight text-zinc-900">{appName}</span>
           </span>
         )}
         <Button

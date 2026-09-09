@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
@@ -20,6 +21,8 @@ import RoleGuard from "./components/layout/RoleGuard";
 import { Toaster } from "./components/ui/toaster";
 import { LoadingRow } from "./components/ui/feedback";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
+import { useAppSettings } from "./hooks/useAppSettings";
+import AppSettingsPage from "./pages/AppSettings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +32,14 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function DocumentTitleSync() {
+  const { appName } = useAppSettings();
+  useEffect(() => {
+    document.title = `${appName} — Back-office`;
+  }, [appName]);
+  return null;
+}
 
 export default function App() {
   const { ready } = useAuthBootstrap();
@@ -43,6 +54,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DocumentTitleSync />
       <BrowserRouter>
         <Routes>
           <Route element={<GuestRoute />}>
@@ -69,6 +81,7 @@ export default function App() {
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/audit" element={<AuditLogPage />} />
+                <Route path="/settings" element={<AppSettingsPage />} />
               </Route>
             </Route>
           </Route>
