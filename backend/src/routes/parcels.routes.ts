@@ -8,10 +8,13 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const parcelsRouter = Router();
 
 const parcelIdParams = z.object({ id: z.string().uuid() });
+
+const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const listParcelsQuery = z.object({
   zoneId: z.string().uuid().optional(),
@@ -190,6 +193,41 @@ parcelsRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+parcelsRouter.post(
+  "/parcels/bulk-delete",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkIdsOnlySchema),
+  async (req, res, next) => {
+    try {
+      const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
+      const results = await runBulk(ids, async (id) => {
+        const parcelle = await prisma.parcelle.findUnique({
+          where: { id },
+          include: { _count: { select: { pointages: true } } },
+        });
+        if (!parcelle) throw new ApiError(404, "NOT_FOUND", "Parcelle introuvable");
+        if (parcelle._count.pointages > 0) {
+          throw new ApiError(409, "PARCELLE_HAS_POINTAGES", "Parcelle référencée par des pointages");
+        }
+        await prisma.parcelle.delete({ where: { id: parcelle.id } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DELETE",
+          entityType: "Parcelle",
+          entityId: parcelle.id,
+          before: parcelle,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

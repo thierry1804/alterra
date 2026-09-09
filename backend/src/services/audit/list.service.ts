@@ -1,6 +1,9 @@
 import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
 
+export const AUDIT_SORT_FIELDS = ["createdAt", "action", "entityType"] as const;
+export type AuditSortField = (typeof AUDIT_SORT_FIELDS)[number];
+
 export interface ListAuditLogParams {
   page?: number;
   limit?: number;
@@ -9,6 +12,8 @@ export interface ListAuditLogParams {
   userId?: string;
   dateFrom?: string;
   dateTo?: string;
+  orderBy?: AuditSortField;
+  dir?: "asc" | "desc";
 }
 
 export interface AuditLogRow {
@@ -70,7 +75,9 @@ export async function listAuditLogs(params: ListAuditLogParams): Promise<ListAud
   const [rows, total] = await Promise.all([
     basePrisma.auditLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: params.orderBy
+        ? { [params.orderBy]: params.dir ?? "asc" }
+        : { createdAt: "desc" },
       skip,
       take: pageSize,
     }),

@@ -5,11 +5,17 @@ import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
 import { geoPolygonCenter, type GeoPolygon, type Parcelle, type Zone } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useClientSort } from "../components/ui/data-table/useClientSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import PolygonDrawMap from "../components/map/PolygonDrawMap";
 import {
   Dialog,
@@ -109,6 +115,75 @@ export default function ZonesPage() {
 
   const parentZone = zones.find((z) => z.id === parentZoneId);
   const parcelMapCenter = geoPolygonCenter(parentZone?.geoPolygon ?? null) ?? mapCenter;
+
+  const { sorted: sortedZones, sortKey, sortDir, toggleSort } = useClientSort<Zone>(zones, "name");
+  const zoneSelection = useRowSelection(sortedZones.map((z) => z.id));
+  const parcelSelection = useRowSelection(parcelles.map((p) => p.id));
+
+  const bulkDeleteZonesMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/zones/bulk-delete",
+        { ids: [...zoneSelection.selectedIds] },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["zones"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      zoneSelection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} supprimée(s), ${failed.length} échec(s)`
+          : "Zones supprimées",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  const bulkDeleteParcelsMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/parcels/bulk-delete",
+        { ids: [...parcelSelection.selectedIds] },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["parcels"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      parcelSelection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} supprimée(s), ${failed.length} échec(s)`
+          : "Parcelles supprimées",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  function handleExport() {
+    const rows: Array<{ type: string; name: string; code: string; surface: string }> = [];
+    sortedZones.forEach((zone) => {
+      rows.push({ type: "Zone", name: zone.name, code: zone.code ?? "", surface: "" });
+      (parcelsByZone.get(zone.id) ?? []).forEach((p) => {
+        rows.push({
+          type: "Parcelle",
+          name: p.name,
+          code: p.code ?? "",
+          surface: p.surfaceHa ?? "",
+        });
+      });
+    });
+    void exportToExcel(
+      rows,
+      [
+        { header: "Type", accessor: (r) => r.type },
+        { header: "Nom", accessor: (r) => r.name },
+        { header: "Code", accessor: (r) => r.code },
+        { header: "Surface (ha)", accessor: (r) => r.surface },
+      ],
+      "zones-parcelles",
+    );
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -257,11 +332,46 @@ export default function ZonesPage() {
         title="Zones & parcelles"
         description="Hiérarchie géographique Site → Zone → Parcelle (GeoJSON)."
         action={
-          <Button type="button" onClick={openZoneCreate} disabled={!effectiveSiteId}>
-            Nouvelle zone
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4" aria-hidden />
+              Exporter
+            </Button>
+            <Button type="button" onClick={openZoneCreate} disabled={!effectiveSiteId}>
+              Nouvelle zone
+            </Button>
+          </div>
         }
       />
+
+      {zoneSelection.selectedCount > 0 && (
+        <BulkActionBar count={zoneSelection.selectedCount} onClear={zoneSelection.clear}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkDeleteZonesMutation.isPending}
+            onClick={() => bulkDeleteZonesMutation.mutate()}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            Supprimer les zones
+          </Button>
+        </BulkActionBar>
+      )}
+      {parcelSelection.selectedCount > 0 && (
+        <BulkActionBar count={parcelSelection.selectedCount} onClear={parcelSelection.clear}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkDeleteParcelsMutation.isPending}
+            onClick={() => bulkDeleteParcelsMutation.mutate()}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            Supprimer les parcelles
+          </Button>
+        </BulkActionBar>
+      )}
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
         <div className="space-y-2">
@@ -285,8 +395,21 @@ export default function ZonesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Code</TableHead>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    zoneSelection.allVisibleSelected
+                      ? true
+                      : zoneSelection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={zoneSelection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
+              <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Surface</TableHead>
               <TableHead>GeoJSON</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -295,19 +418,19 @@ export default function ZonesPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-sm text-zinc-500">
+                <TableCell colSpan={6} className="text-sm text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && zones.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-sm text-zinc-500">
+                <TableCell colSpan={6} className="text-sm text-zinc-500">
                   Aucune zone pour ce site.
                 </TableCell>
               </TableRow>
             )}
-            {zones.map((zone) => {
+            {sortedZones.map((zone) => {
               const zoneParcels = parcelsByZone.get(zone.id) ?? [];
               const expanded = expandedZones.has(zone.id);
               const totalHa = zoneParcels.reduce(
@@ -316,7 +439,14 @@ export default function ZonesPage() {
               );
               return (
                 <Fragment key={zone.id}>
-                  <TableRow className="bg-zinc-50/80">
+                  <TableRow className="bg-zinc-50/80" data-state={zoneSelection.isSelected(zone.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={zoneSelection.isSelected(zone.id)}
+                        onChange={() => zoneSelection.toggle(zone.id)}
+                        aria-label={`Sélectionner ${zone.name}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <button
                         type="button"
@@ -358,7 +488,14 @@ export default function ZonesPage() {
                   </TableRow>
                   {expanded &&
                     zoneParcels.map((parcel) => (
-                      <TableRow key={parcel.id}>
+                      <TableRow key={parcel.id} data-state={parcelSelection.isSelected(parcel.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={parcelSelection.isSelected(parcel.id)}
+                            onChange={() => parcelSelection.toggle(parcel.id)}
+                            aria-label={`Sélectionner ${parcel.name}`}
+                          />
+                        </TableCell>
                         <TableCell className="pl-10 text-zinc-700">{parcel.name}</TableCell>
                         <TableCell>{parcel.code ?? "—"}</TableCell>
                         <TableCell>

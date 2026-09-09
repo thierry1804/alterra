@@ -12,10 +12,13 @@ import {
   ratesEqual,
   startOfUtcDay,
 } from "../services/activities/activity-version.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const activitiesRouter = Router();
 
 const activityIdParams = z.object({ id: z.string().uuid() });
+
+const bulkDeactivateSchema = z.object({ ids: bulkIdsSchema });
 
 const listActivitiesQuery = z.object({
   siteId: z.string().uuid().optional(),
@@ -253,6 +256,43 @@ activitiesRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.json(activity);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+activitiesRouter.post(
+  "/activities/bulk-deactivate",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkDeactivateSchema),
+  async (req, res, next) => {
+    try {
+      const { ids } = req.body as z.infer<typeof bulkDeactivateSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await prisma.activity.findUnique({ where: { id } });
+        if (!before) throw new ApiError(404, "NOT_FOUND", "Activité introuvable");
+        if (before.validTo !== null) {
+          throw new ApiError(
+            409,
+            "NOT_CURRENT_VERSION",
+            "Version historique — seule la version courante peut être désactivée",
+          );
+        }
+        const activity = await prisma.activity.update({ where: { id }, data: { active: false } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DEACTIVATE",
+          entityType: "Activity",
+          entityId: activity.id,
+          before,
+          after: activity,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

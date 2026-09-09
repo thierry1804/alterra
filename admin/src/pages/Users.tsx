@@ -5,12 +5,19 @@ import { api } from "../lib/api";
 import type { AppUser, Site } from "../lib/referentials";
 import { USER_ROLE_LABELS, formatDate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
-import { Pencil, KeyRound, UserX } from "lucide-react";
+import { Pencil, KeyRound, UserX, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useServerSort } from "../components/ui/data-table/useServerSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
 import {
   Dialog,
   DialogContent,
@@ -59,8 +66,10 @@ export default function UsersPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
+  const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
+
   const usersQuery = useInfiniteQuery({
-    queryKey: ["users", roleFilter],
+    queryKey: ["users", roleFilter, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -69,6 +78,8 @@ export default function UsersPage() {
             role: roleFilter || undefined,
             cursor: pageParam,
             take: 50,
+            orderBy: sortKey ?? undefined,
+            dir: sortKey ? sortDir : undefined,
           },
         })
         .then((r) => r.data),
@@ -79,6 +90,58 @@ export default function UsersPage() {
     () => usersQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [usersQuery.data],
   );
+
+  const selection = useRowSelection(users.map((u) => u.id));
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/users/bulk-deactivate",
+        { ids: [...selection.selectedIds] },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} désactivé(s), ${failed.length} échec(s)`
+          : "Utilisateurs désactivés",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all = await fetchAllCursorPages<AppUser>((cursor) =>
+        api
+          .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
+            params: { role: roleFilter || undefined, cursor, take: 100 },
+          })
+          .then((r) => r.data),
+      );
+      await exportToExcel(
+        all,
+        [
+          { header: "Prénom", accessor: (u) => u.firstName },
+          { header: "Nom", accessor: (u) => u.lastName },
+          { header: "Email", accessor: (u) => u.email ?? "" },
+          { header: "Rôle", accessor: (u) => USER_ROLE_LABELS[u.role] },
+          { header: "Site", accessor: (u) => siteName(u.siteId) },
+          { header: "Dernière connexion", accessor: (u) => (u.lastLoginAt ? formatDate(u.lastLoginAt) : "") },
+          { header: "Statut", accessor: (u) => (u.active ? "Actif" : "Inactif") },
+        ],
+        "utilisateurs",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -160,9 +223,15 @@ export default function UsersPage() {
         title="Utilisateurs"
         description="Comptes Admin, CDS et CDE."
         action={
-          <Button type="button" onClick={openCreate}>
-            Nouvel utilisateur
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+              <Download className="h-4 w-4" aria-hidden />
+              {exporting ? "Export…" : "Exporter"}
+            </Button>
+            <Button type="button" onClick={openCreate}>
+              Nouvel utilisateur
+            </Button>
+          </div>
         }
       />
 
@@ -179,15 +248,41 @@ export default function UsersPage() {
         ))}
       </select>
 
+      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkDeactivateMutation.isPending}
+          onClick={() => bulkDeactivateMutation.mutate()}
+        >
+          <UserX className="h-3.5 w-3.5" aria-hidden />
+          Désactiver
+        </Button>
+      </BulkActionBar>
+
       <div className="rounded-lg border border-zinc-200">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Rôle</TableHead>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
+              <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="email" label="Email" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="role" label="Rôle" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Site</TableHead>
-              <TableHead>Dernière connexion</TableHead>
+              <SortableHead sortKey="lastLoginAt" label="Dernière connexion" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Statut</TableHead>
               <TableHead className="w-56">Actions</TableHead>
             </TableRow>
@@ -195,14 +290,21 @@ export default function UsersPage() {
           <TableBody>
             {usersQuery.isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-zinc-500">
+                <TableCell colSpan={8} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!usersQuery.isLoading &&
               users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} data-state={selection.isSelected(user.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.isSelected(user.id)}
+                      onChange={() => selection.toggle(user.id)}
+                      aria-label={`Sélectionner ${user.firstName} ${user.lastName}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     {user.firstName} {user.lastName}
                   </TableCell>

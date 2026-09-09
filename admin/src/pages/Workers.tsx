@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { UserRound, Pencil, Trash2 } from "lucide-react";
+import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-react";
 import { api } from "../lib/api";
 import type { Site, Worker } from "../lib/referentials";
 import { WORKER_STATUS_LABELS } from "../lib/referentials";
@@ -12,6 +12,13 @@ import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useServerSort } from "../components/ui/data-table/useServerSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
 import {
   Dialog,
   DialogContent,
@@ -65,8 +72,10 @@ export default function WorkersPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
+  const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
+
   const workersQuery = useInfiniteQuery({
-    queryKey: ["workers", search, siteFilter, statusFilter],
+    queryKey: ["workers", search, siteFilter, statusFilter, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -77,6 +86,8 @@ export default function WorkersPage() {
             status: statusFilter || undefined,
             cursor: pageParam,
             take: 50,
+            orderBy: sortKey ?? undefined,
+            dir: sortKey ? sortDir : undefined,
           },
         })
         .then((r) => r.data),
@@ -87,6 +98,63 @@ export default function WorkersPage() {
     () => workersQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [workersQuery.data],
   );
+
+  const selection = useRowSelection(workers.map((w) => w.id));
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: (status: Worker["status"]) =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/workers/bulk-status",
+        { ids: [...selection.selectedIds], status },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["workers"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
+          : "Statut mis à jour",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all = await fetchAllCursorPages<Worker>((cursor) =>
+        api
+          .get<{ data: Worker[]; nextCursor: string | null; hasMore: boolean }>("/workers", {
+            params: {
+              q: search || undefined,
+              siteId: siteFilter || undefined,
+              status: statusFilter || undefined,
+              cursor,
+              take: 100,
+            },
+          })
+          .then((r) => r.data),
+      );
+      await exportToExcel(
+        all,
+        [
+          { header: "Matricule", accessor: (w) => w.matricule },
+          { header: "Prénom", accessor: (w) => w.firstName },
+          { header: "Nom", accessor: (w) => w.lastName },
+          { header: "MVola", accessor: (w) => w.mvolaNumber },
+          { header: "Site", accessor: (w) => siteName(w.siteId) },
+          { header: "Statut", accessor: (w) => WORKER_STATUS_LABELS[w.status] },
+        ],
+        "travailleurs",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -181,6 +249,10 @@ export default function WorkersPage() {
         description="Main-d'œuvre communautaire — référentiel travailleurs (MOC)."
         action={
           <div className="flex gap-2">
+            <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+              <Download className="h-4 w-4" aria-hidden />
+              {exporting ? "Export…" : "Exporter"}
+            </Button>
             <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
               Import Excel
             </Button>
@@ -224,30 +296,73 @@ export default function WorkersPage() {
         </select>
       </div>
 
+      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkStatusMutation.isPending}
+          onClick={() => bulkStatusMutation.mutate("ACTIVE")}
+        >
+          <Power className="h-3.5 w-3.5" aria-hidden />
+          Activer
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkStatusMutation.isPending}
+          onClick={() => bulkStatusMutation.mutate("INACTIVE")}
+        >
+          <PowerOff className="h-3.5 w-3.5" aria-hidden />
+          Désactiver
+        </Button>
+      </BulkActionBar>
+
       <div className="rounded-lg border border-zinc-200">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
               <TableHead className="w-12" />
-              <TableHead>Matricule</TableHead>
-              <TableHead>Nom</TableHead>
+              <SortableHead sortKey="matricule" label="Matricule" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>MVola</TableHead>
-              <TableHead>Site</TableHead>
-              <TableHead>Statut</TableHead>
+              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="status" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-48">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {workersQuery.isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-zinc-500">
+                <TableCell colSpan={8} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!workersQuery.isLoading &&
               workers.map((worker) => (
-                <TableRow key={worker.id}>
+                <TableRow key={worker.id} data-state={selection.isSelected(worker.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.isSelected(worker.id)}
+                      onChange={() => selection.toggle(worker.id)}
+                      aria-label={`Sélectionner ${worker.firstName} ${worker.lastName}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <button
                       type="button"
@@ -293,7 +408,7 @@ export default function WorkersPage() {
               ))}
             {!workersQuery.isLoading && workers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-zinc-500">
+                <TableCell colSpan={8} className="text-zinc-500">
                   Aucun MOC trouvé.
                 </TableCell>
               </TableRow>

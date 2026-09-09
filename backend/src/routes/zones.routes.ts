@@ -8,10 +8,13 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const zonesRouter = Router();
 
 const zoneIdParams = z.object({ id: z.string().uuid() });
+
+const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const listZonesQuery = z.object({
   siteId: z.string().uuid().optional(),
@@ -174,6 +177,41 @@ zonesRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+zonesRouter.post(
+  "/zones/bulk-delete",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkIdsOnlySchema),
+  async (req, res, next) => {
+    try {
+      const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
+      const results = await runBulk(ids, async (id) => {
+        const zone = await prisma.zone.findUnique({
+          where: { id },
+          include: { _count: { select: { parcelles: true } } },
+        });
+        if (!zone) throw new ApiError(404, "NOT_FOUND", "Zone introuvable");
+        if (zone._count.parcelles > 0) {
+          throw new ApiError(409, "ZONE_HAS_PARCELLES", "Supprimez d'abord les parcelles de la zone");
+        }
+        await prisma.zone.delete({ where: { id: zone.id } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DELETE",
+          entityType: "Zone",
+          entityId: zone.id,
+          before: zone,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

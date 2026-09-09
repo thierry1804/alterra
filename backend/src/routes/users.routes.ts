@@ -13,10 +13,13 @@ import {
   hashPassword,
   resetUserPassword,
 } from "../services/users/user-admin.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const usersRouter = Router();
 
 const userIdParams = z.object({ id: z.string().uuid() });
+
+const USER_SORT_FIELDS = ["lastName", "email", "role", "lastLoginAt", "createdAt"] as const;
 
 const listUsersQuery = z.object({
   role: z.nativeEnum(Role).optional(),
@@ -27,7 +30,11 @@ const listUsersQuery = z.object({
     .transform((v) => (v === undefined ? undefined : v === "true")),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
+  orderBy: z.enum(USER_SORT_FIELDS).optional(),
+  dir: z.enum(["asc", "desc"]).optional(),
 });
+
+const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const createUserSchema = z.object({
   email: z.string().email().optional(),
@@ -60,7 +67,9 @@ usersRouter.use(requireAuth, requireRole(Role.ADMIN));
 
 usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) => {
   try {
-    const { role, siteId, active, cursor, take } = req.query as z.infer<typeof listUsersQuery>;
+    const { role, siteId, active, cursor, take, orderBy, dir } = req.query as z.infer<
+      typeof listUsersQuery
+    >;
 
     const where: Prisma.UserWhereInput = { deletedAt: null };
     if (role) where.role = role;
@@ -68,9 +77,12 @@ usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) =
     if (active !== undefined) where.active = active;
 
     const pageSize = take ?? 50;
+    const sortDir = dir ?? "asc";
     const users = await prisma.user.findMany({
       where,
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+      orderBy: orderBy
+        ? [{ [orderBy]: sortDir }, { id: "asc" }]
+        : [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
       take: pageSize + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
@@ -265,6 +277,24 @@ usersRouter.post("/:id/deactivate", validate(userIdParams, "params"), async (req
       active: user.active,
       message: "Utilisateur désactivé",
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.post("/bulk-deactivate", validate(bulkIdsOnlySchema), async (req, res, next) => {
+  try {
+    const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
+    const meta = {
+      ip: req.ip,
+      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+    };
+    const results = await runBulk(ids, async (id) => {
+      const existing = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+      if (!existing) throw new ApiError(404, "NOT_FOUND", "Utilisateur introuvable");
+      await deactivateUser(id, meta);
+    });
+    res.json({ results });
   } catch (err) {
     next(err);
   }

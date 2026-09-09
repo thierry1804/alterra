@@ -1,14 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { isAxiosError } from "axios";
 import { cn } from "../lib/utils";
+import { api } from "../lib/api";
 import PageHeader from "../components/shared/PageHeader";
 import RequestDetailDrawer, {
   type RequestSelection,
 } from "../components/requests/RequestDetailDrawer";
 import { Badge } from "../components/ui/badge";
-import { Eye } from "lucide-react";
+import { Eye, Check, X as XIcon, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useClientSort } from "../components/ui/data-table/useClientSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import {
   Table,
   TableBody,
@@ -17,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { toast } from "../hooks/use-toast";
 import { formatDate } from "../lib/referentials";
 import {
   CLARIFICATION_STATUS_LABELS,
@@ -41,7 +50,11 @@ const TABS: { id: RequestTab; label: string }[] = [
   { id: "clarifications", label: "Précisions" },
 ];
 
+/** Onglets avec une décision d'admin en lot possible (approuver/rejeter). Précisions = workflow réponse/clôture, pas une décision. */
+const BULK_DECISION_TABS = new Set<RequestTab>(["activities", "workers"]);
+
 export default function RequestsPage() {
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<RequestTab>("activities");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | ClarificationStatus | "">(
     "PENDING",
@@ -88,10 +101,69 @@ export default function RequestsPage() {
     [clarificationQuery.data],
   );
 
+  const activitySort = useClientSort<ActivityRequestRow>(activityRows, "createdAt");
+  const workerSort = useClientSort<WorkerRequestRow>(workerRows, "createdAt");
+  const clarificationSort = useClientSort<ClarificationRequestRow>(clarificationRows, "createdAt");
+
+  const activitySelection = useRowSelection(activitySort.sorted.map((r) => r.id));
+  const workerSelection = useRowSelection(workerSort.sorted.map((r) => r.id));
+
   const loading =
     (tab === "activities" && activityQuery.isLoading) ||
     (tab === "workers" && workerQuery.isLoading) ||
     (tab === "clarifications" && clarificationQuery.isLoading);
+
+  const bulkDecisionMutation = useMutation({
+    mutationFn: ({
+      endpoint,
+      ids,
+      decision,
+    }: {
+      endpoint: string;
+      ids: string[];
+      decision: "APPROVED" | "REJECTED";
+    }) =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(endpoint, {
+        ids,
+        decision,
+        decisionReason: decision === "REJECTED" ? "Rejet en lot" : undefined,
+      }),
+    onSuccess: (res, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: [variables.endpoint.includes("activity") ? "activity-requests" : "worker-requests"],
+      });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      activitySelection.clear();
+      workerSelection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
+          : "Décisions appliquées",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  function bulkDecide(decision: "APPROVED" | "REJECTED") {
+    if (tab === "activities") {
+      bulkDecisionMutation.mutate({
+        endpoint: "/activity-requests/bulk-decision",
+        ids: [...activitySelection.selectedIds],
+        decision,
+      });
+    } else if (tab === "workers") {
+      bulkDecisionMutation.mutate({
+        endpoint: "/worker-requests/bulk-decision",
+        ids: [...workerSelection.selectedIds],
+        decision,
+      });
+    }
+  }
 
   function openSelection(next: RequestSelection) {
     setSelection(next);
@@ -123,15 +195,63 @@ export default function RequestsPage() {
     if (tab === "clarifications") void clarificationQuery.refetch();
   }
 
+  function handleExport() {
+    if (tab === "activities") {
+      void exportToExcel<ActivityRequestRow>(
+        activitySort.sorted,
+        [
+          { header: "Date", accessor: (r) => formatDate(r.createdAt) },
+          { header: "Libellé", accessor: (r) => r.proposedLabel },
+          { header: "Tarif", accessor: (r) => Number(r.proposedRate) },
+          { header: "Unité", accessor: (r) => r.proposedUnit },
+          { header: "Statut", accessor: (r) => REQUEST_STATUS_LABELS[r.status] },
+        ],
+        "demandes-activites",
+      );
+    } else if (tab === "workers") {
+      void exportToExcel<WorkerRequestRow>(
+        workerSort.sorted,
+        [
+          { header: "Date", accessor: (r) => formatDate(r.createdAt) },
+          { header: "Prénom", accessor: (r) => r.firstName },
+          { header: "Nom", accessor: (r) => r.lastName },
+          { header: "MVola", accessor: (r) => r.mvolaNumber },
+          { header: "Statut", accessor: (r) => REQUEST_STATUS_LABELS[r.status] },
+        ],
+        "demandes-travailleurs",
+      );
+    } else {
+      void exportToExcel<ClarificationRequestRow>(
+        clarificationSort.sorted,
+        [
+          { header: "Date", accessor: (r) => formatDate(r.createdAt) },
+          { header: "Pointage", accessor: (r) => r.pointageId },
+          { header: "Question", accessor: (r) => r.question },
+          { header: "Statut", accessor: (r) => CLARIFICATION_STATUS_LABELS[r.status] },
+        ],
+        "demandes-precisions",
+      );
+    }
+  }
+
+  const activeSelection =
+    tab === "activities" ? activitySelection : tab === "workers" ? workerSelection : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Demandes terrain"
         description="File unifiée des demandes CDS — triées par ancienneté."
         action={
-          <Button type="button" variant="outline" onClick={() => refreshCurrentTab()}>
-            Actualiser
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4" aria-hidden />
+              Exporter
+            </Button>
+            <Button type="button" variant="outline" onClick={() => refreshCurrentTab()}>
+              Actualiser
+            </Button>
+          </div>
         }
       />
 
@@ -187,15 +307,48 @@ export default function RequestsPage() {
         )}
       </div>
 
+      {activeSelection && (
+        <BulkActionBar count={activeSelection.selectedCount} onClear={activeSelection.clear}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkDecisionMutation.isPending}
+            onClick={() => bulkDecide("APPROVED")}
+          >
+            <Check className="h-3.5 w-3.5" aria-hidden />
+            Approuver
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkDecisionMutation.isPending}
+            onClick={() => bulkDecide("REJECTED")}
+          >
+            <XIcon className="h-3.5 w-3.5" aria-hidden />
+            Rejeter
+          </Button>
+        </BulkActionBar>
+      )}
+
       {loading && <p className="text-sm text-zinc-600">Chargement…</p>}
 
       {tab === "activities" && !loading && (
         <RequestsTable
           emptyLabel="Aucune demande d'activité."
-          rows={activityRows}
-          columns={["Date", "Libellé", "Tarif", "Statut", ""]}
-          renderRow={(row: ActivityRequestRow) => (
-            <TableRow key={row.id}>
+          rows={activitySort.sorted}
+          selection={activitySelection}
+          sort={activitySort}
+          columns={[
+            { key: "createdAt", label: "Date" },
+            { key: "proposedLabel", label: "Libellé" },
+            { key: "proposedRate", label: "Tarif" },
+            { key: "status", label: "Statut" },
+            null,
+          ]}
+          renderCells={(row: ActivityRequestRow) => (
+            <>
               <TableCell className="text-sm">{formatDate(row.createdAt)}</TableCell>
               <TableCell className="text-sm font-medium">{row.proposedLabel}</TableCell>
               <TableCell className="text-sm">
@@ -214,7 +367,7 @@ export default function RequestsPage() {
                   onClick={() => openSelection({ type: "activity", row })}
                 />
               </TableCell>
-            </TableRow>
+            </>
           )}
         />
       )}
@@ -222,10 +375,18 @@ export default function RequestsPage() {
       {tab === "workers" && !loading && (
         <RequestsTable
           emptyLabel="Aucune demande MOC."
-          rows={workerRows}
-          columns={["Date", "Identité", "MVola", "Statut", ""]}
-          renderRow={(row: WorkerRequestRow) => (
-            <TableRow key={row.id}>
+          rows={workerSort.sorted}
+          selection={workerSelection}
+          sort={workerSort}
+          columns={[
+            { key: "createdAt", label: "Date" },
+            { key: "lastName", label: "Identité" },
+            { key: "mvolaNumber", label: "MVola" },
+            { key: "status", label: "Statut" },
+            null,
+          ]}
+          renderCells={(row: WorkerRequestRow) => (
+            <>
               <TableCell className="text-sm">{formatDate(row.createdAt)}</TableCell>
               <TableCell className="text-sm font-medium">
                 {row.firstName} {row.lastName}
@@ -244,7 +405,7 @@ export default function RequestsPage() {
                   onClick={() => openSelection({ type: "worker", row })}
                 />
               </TableCell>
-            </TableRow>
+            </>
           )}
         />
       )}
@@ -252,10 +413,19 @@ export default function RequestsPage() {
       {tab === "clarifications" && !loading && (
         <RequestsTable
           emptyLabel="Aucune demande de précisions."
-          rows={clarificationRows}
-          columns={["Date", "Pointage", "Question", "Statut", ""]}
-          renderRow={(row: ClarificationRequestRow) => (
-            <TableRow key={row.id}>
+          rows={clarificationSort.sorted}
+          selection={null}
+          sort={clarificationSort}
+          columns={[
+            { key: "createdAt", label: "Date" },
+            null,
+            null,
+            { key: "status", label: "Statut" },
+            null,
+          ]}
+          columnLabelsOverride={["Date", "Pointage", "Question", "Statut", ""]}
+          renderCells={(row: ClarificationRequestRow) => (
+            <>
               <TableCell className="text-sm">{formatDate(row.createdAt)}</TableCell>
               <TableCell className="font-mono text-xs">{row.pointageId.slice(0, 8)}</TableCell>
               <TableCell className="max-w-xs truncate text-sm">{row.question}</TableCell>
@@ -272,7 +442,7 @@ export default function RequestsPage() {
                   onClick={() => openSelection({ type: "clarification", row })}
                 />
               </TableCell>
-            </TableRow>
+            </>
           )}
         />
       )}
@@ -287,16 +457,27 @@ export default function RequestsPage() {
   );
 }
 
-function RequestsTable<T>({
+interface RequestsTableColumn {
+  key: string;
+  label: string;
+}
+
+function RequestsTable<T extends { id: string }>({
   rows,
   columns,
+  columnLabelsOverride,
   emptyLabel,
-  renderRow,
+  renderCells,
+  selection,
+  sort,
 }: {
   rows: T[];
-  columns: string[];
+  columns: (RequestsTableColumn | null)[];
+  columnLabelsOverride?: string[];
   emptyLabel: string;
-  renderRow: (row: T) => React.ReactNode;
+  renderCells: (row: T) => React.ReactNode;
+  selection: ReturnType<typeof useRowSelection> | null;
+  sort: { sortKey: string | null; sortDir: "asc" | "desc"; toggleSort: (key: string) => void };
 }) {
   if (rows.length === 0) {
     return <p className="text-sm text-zinc-500">{emptyLabel}</p>;
@@ -307,12 +488,53 @@ function RequestsTable<T>({
       <Table>
         <TableHeader>
           <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
-            ))}
+            {selection && (
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
+            )}
+            {columns.map((column, index) =>
+              column ? (
+                <SortableHead
+                  key={column.key}
+                  sortKey={column.key}
+                  label={column.label}
+                  currentKey={sort.sortKey}
+                  currentDir={sort.sortDir}
+                  onSort={sort.toggleSort}
+                />
+              ) : (
+                <TableHead key={`col-${index}`}>{columnLabelsOverride?.[index] ?? ""}</TableHead>
+              ),
+            )}
           </TableRow>
         </TableHeader>
-        <TableBody>{rows.map((row) => renderRow(row))}</TableBody>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id} data-state={selection?.isSelected(row.id) ? "selected" : undefined}>
+              {selection && (
+                <TableCell>
+                  <Checkbox
+                    checked={selection.isSelected(row.id)}
+                    onChange={() => selection.toggle(row.id)}
+                    aria-label="Sélectionner la ligne"
+                  />
+                </TableCell>
+              )}
+              {renderCells(row)}
+            </TableRow>
+          ))}
+        </TableBody>
       </Table>
     </div>
   );

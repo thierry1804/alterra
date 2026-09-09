@@ -11,6 +11,8 @@ import {
   validatePointage,
 } from "../services/pointages/validation.service.js";
 import { correctPointage } from "../services/pointages/correction.service.js";
+import { POINTAGE_SORT_FIELDS } from "../services/pointages/list.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const pointagesRouter = Router();
 
@@ -38,11 +40,16 @@ const listPointagesQuery = z.object({
   activityId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
+  orderBy: z.enum(POINTAGE_SORT_FIELDS).optional(),
+  dir: z.enum(["asc", "desc"]).optional(),
 });
 
 const pointageIdParams = z.object({ id: z.string().uuid() });
 
 const rejectSchema = z.object({ rejectionReason: z.string().min(3) });
+
+const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
+const bulkRejectSchema = z.object({ ids: bulkIdsSchema, rejectionReason: z.string().min(3) });
 
 const correctionSchema = z.object({
   quantity: z.number().positive().optional(),
@@ -128,6 +135,42 @@ pointagesRouter.patch(
         userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
       });
       res.json(pointage);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+pointagesRouter.post(
+  "/pointages/bulk-validate",
+  requireAuth,
+  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  validate(bulkIdsOnlySchema),
+  async (req, res, next) => {
+    try {
+      const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
+      const results = await runBulk(ids, async (id) => {
+        await validatePointage(id, req.user!.sub);
+      });
+      res.json({ results });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+pointagesRouter.post(
+  "/pointages/bulk-reject",
+  requireAuth,
+  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  validate(bulkRejectSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, rejectionReason } = req.body as z.infer<typeof bulkRejectSchema>;
+      const results = await runBulk(ids, async (id) => {
+        await rejectPointage(id, req.user!.sub, rejectionReason);
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

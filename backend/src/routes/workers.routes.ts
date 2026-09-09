@@ -13,10 +13,13 @@ import {
   importWorkersRows,
   parseWorkersWorkbook,
 } from "../services/import/workers-import.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const workersRouter = Router();
 
 const workerIdParams = z.object({ id: z.string().uuid() });
+
+const WORKER_SORT_FIELDS = ["lastName", "matricule", "hiredAt", "siteId", "status"] as const;
 
 const listWorkersQuery = z.object({
   siteId: z.string().uuid().optional(),
@@ -25,6 +28,13 @@ const listWorkersQuery = z.object({
   q: z.string().min(1).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
+  orderBy: z.enum(WORKER_SORT_FIELDS).optional(),
+  dir: z.enum(["asc", "desc"]).optional(),
+});
+
+const bulkStatusSchema = z.object({
+  ids: bulkIdsSchema,
+  status: z.nativeEnum(WorkerStatus),
 });
 
 const createWorkerSchema = z.object({
@@ -96,7 +106,7 @@ workersRouter.get(
   validate(listWorkersQuery, "query"),
   async (req, res, next) => {
     try {
-      const { siteId, teamId, status, q, cursor, take } = req.query as z.infer<
+      const { siteId, teamId, status, q, cursor, take, orderBy, dir } = req.query as z.infer<
         typeof listWorkersQuery
       >;
 
@@ -107,9 +117,12 @@ workersRouter.get(
       if (q) Object.assign(where, buildSearchFilter(q));
 
       const pageSize = take ?? 50;
+      const sortDir = dir ?? "asc";
       const workers = await prisma.worker.findMany({
         where,
-        orderBy: [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+        orderBy: orderBy
+          ? [{ [orderBy]: sortDir }, { id: "asc" }]
+          : [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
         take: pageSize + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
@@ -227,6 +240,36 @@ workersRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.json(worker);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workersRouter.post(
+  "/workers/bulk-status",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkStatusSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, status } = req.body as z.infer<typeof bulkStatusSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await prisma.worker.findFirst({ where: { id, deletedAt: null } });
+        if (!before) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+        const worker = await prisma.worker.update({ where: { id }, data: { status } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "UPDATE",
+          entityType: "Worker",
+          entityId: worker.id,
+          before,
+          after: worker,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

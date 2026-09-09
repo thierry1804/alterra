@@ -2,6 +2,9 @@ import { PointageStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
 
+export const POINTAGE_SORT_FIELDS = ["date", "quantity", "amount", "status", "createdAt"] as const;
+export type PointageSortField = (typeof POINTAGE_SORT_FIELDS)[number];
+
 export interface ListPointagesFilters {
   cursor?: string;
   status?: PointageStatus;
@@ -9,6 +12,8 @@ export interface ListPointagesFilters {
   activityId?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  orderBy?: PointageSortField;
+  dir?: "asc" | "desc";
 }
 
 export interface PointageBioCheckSummary {
@@ -87,7 +92,9 @@ export async function listPointages(filters: ListPointagesFilters) {
     where,
     take: take + 1,
     ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
-    orderBy: { createdAt: "desc" },
+    orderBy: filters.orderBy
+      ? [{ [filters.orderBy]: filters.dir ?? "asc" }, { id: "asc" }]
+      : { createdAt: "desc" },
   });
 
   const hasMore = pointages.length > take;

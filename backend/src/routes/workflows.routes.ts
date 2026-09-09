@@ -29,6 +29,7 @@ import {
   listClarificationRequests,
 } from "../services/workflows/clarification-request.service.js";
 import { workflowPhotoUploadUrl } from "../services/storage/presigned-url.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const workflowsRouter = Router();
 
@@ -64,6 +65,12 @@ const createWorkerSchema = z.object({
 });
 
 const decisionSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  decisionReason: z.string().min(3).optional(),
+});
+
+const bulkDecisionSchema = z.object({
+  ids: bulkIdsSchema,
   decision: z.enum(["APPROVED", "REJECTED"]),
   decisionReason: z.string().min(3).optional(),
 });
@@ -162,6 +169,35 @@ workflowsRouter.patch(
         userAgent: req.headers["user-agent"],
       });
       res.json(row);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.post(
+  "/activity-requests/bulk-decision",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkDecisionSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, decision, decisionReason } = req.body as z.infer<typeof bulkDecisionSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await getActivityRequest(req.user!, id);
+        const row = await decideActivityRequest(req.user!, id, { decision, decisionReason });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DECIDE",
+          entityType: "ActivityRequest",
+          entityId: row.id,
+          before,
+          after: row,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }
@@ -308,6 +344,35 @@ workflowsRouter.patch(
         userAgent: req.headers["user-agent"],
       });
       res.json(row);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.post(
+  "/worker-requests/bulk-decision",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkDecisionSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, decision, decisionReason } = req.body as z.infer<typeof bulkDecisionSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await getWorkerRequest(req.user!, id);
+        const row = await decideWorkerRequest(req.user!, id, { decision, decisionReason });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DECIDE",
+          entityType: "WorkerRequest",
+          entityId: row.id,
+          before,
+          after: row,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

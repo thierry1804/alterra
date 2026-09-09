@@ -6,11 +6,17 @@ import type { Activity, Site } from "../lib/referentials";
 import { formatDate, formatRate } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
 import RateHistoryDrawer from "../components/activities/RateHistoryDrawer";
-import { Pencil, History, Power } from "lucide-react";
+import { Pencil, History, Power, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useClientSort } from "../components/ui/data-table/useClientSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +63,45 @@ export default function ActivitiesPage() {
 
   const siteName = (siteId: string | null) =>
     siteId ? sites.find((s) => s.id === siteId)?.shortCode ?? siteId : "Global";
+
+  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Activity>(activities, "label");
+  const selection = useRowSelection(sorted.map((a) => a.id));
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/activities/bulk-deactivate",
+        { ids: [...selection.selectedIds] },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["activities"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} désactivée(s), ${failed.length} échec(s)`
+          : "Activités désactivées",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  function handleExport() {
+    void exportToExcel(
+      sorted,
+      [
+        { header: "Libellé", accessor: (a) => a.label },
+        { header: "Code", accessor: (a) => a.code ?? "" },
+        { header: "Unité", accessor: (a) => a.unit },
+        { header: "Tarif (Ar)", accessor: (a) => Number(a.unitRate) },
+        { header: "Site", accessor: (a) => siteName(a.siteId) },
+        { header: "Depuis", accessor: (a) => formatDate(a.validFrom) },
+        { header: "Statut", accessor: (a) => (a.active ? "Actif" : "Inactif") },
+      ],
+      "activites",
+    );
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -115,36 +160,75 @@ export default function ActivitiesPage() {
         title="Activités"
         description="Tâches et tarifs unitaires."
         action={
-          <Button type="button" onClick={openCreate}>
-            Nouvelle activité
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4" aria-hidden />
+              Exporter
+            </Button>
+            <Button type="button" onClick={openCreate}>
+              Nouvelle activité
+            </Button>
+          </div>
         }
       />
+
+      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkDeactivateMutation.isPending}
+          onClick={() => bulkDeactivateMutation.mutate()}
+        >
+          <Power className="h-3.5 w-3.5" aria-hidden />
+          Désactiver
+        </Button>
+      </BulkActionBar>
 
       <div className="rounded-lg border border-zinc-200">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Libellé</TableHead>
-              <TableHead>Code</TableHead>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
+              <SortableHead sortKey="label" label="Libellé" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Unité</TableHead>
-              <TableHead>Tarif</TableHead>
+              <TableHead numeric>Tarif</TableHead>
               <TableHead>Site</TableHead>
-              <TableHead>Depuis</TableHead>
+              <SortableHead sortKey="validFrom" label="Depuis" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-52">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-zinc-500">
+                <TableCell colSpan={8} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading &&
-              activities.map((activity) => (
-                <TableRow key={activity.id}>
+              sorted.map((activity) => (
+                <TableRow key={activity.id} data-state={selection.isSelected(activity.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.isSelected(activity.id)}
+                      onChange={() => selection.toggle(activity.id)}
+                      aria-label={`Sélectionner ${activity.label}`}
+                    />
+                  </TableCell>
                   <TableCell>{activity.label}</TableCell>
                   <TableCell>{activity.code ?? "—"}</TableCell>
                   <TableCell>{activity.unit}</TableCell>

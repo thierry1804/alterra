@@ -7,10 +7,13 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const sitesRouter = Router();
 
 const siteIdParams = z.object({ id: z.string().uuid() });
+
+const bulkStatusSchema = z.object({ ids: bulkIdsSchema, active: z.boolean() });
 
 const createSiteSchema = z.object({
   name: z.string().min(2),
@@ -185,6 +188,36 @@ sitesRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.json(site);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+sitesRouter.post(
+  "/sites/bulk-status",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkStatusSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, active } = req.body as z.infer<typeof bulkStatusSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await prisma.site.findUnique({ where: { id } });
+        if (!before) throw new ApiError(404, "NOT_FOUND", "Site introuvable");
+        const site = await prisma.site.update({ where: { id }, data: { active } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: active ? "ACTIVATE" : "DEACTIVATE",
+          entityType: "Site",
+          entityId: site.id,
+          before,
+          after: site,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
     } catch (err) {
       next(err);
     }

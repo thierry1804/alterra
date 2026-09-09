@@ -11,11 +11,15 @@ import {
 } from "../lib/audit";
 import PageHeader from "../components/shared/PageHeader";
 import AuditDetailDrawer from "../components/audit/AuditDetailDrawer";
-import { Eye } from "lucide-react";
+import { Eye, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { useServerSort } from "../components/ui/data-table/useServerSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { fetchAllOffsetPages } from "../components/ui/data-table/fetchAllPages";
 import {
   Table,
   TableBody,
@@ -34,8 +38,10 @@ export default function AuditLogPage() {
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const { sortKey, sortDir, toggleSort } = useServerSort(null);
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["audit-log", page, action, entityType, dateFrom, dateTo],
+    queryKey: ["audit-log", page, action, entityType, dateFrom, dateTo, sortKey, sortDir],
     queryFn: () =>
       api
         .get<AuditLogResponse>("/audit-log", {
@@ -46,6 +52,8 @@ export default function AuditLogPage() {
             entityType: entityType || undefined,
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
+            orderBy: sortKey ?? undefined,
+            dir: sortKey ? sortDir : undefined,
           },
         })
         .then((r) => r.data),
@@ -53,6 +61,41 @@ export default function AuditLogPage() {
   });
 
   const rows = data?.data ?? [];
+
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all = await fetchAllOffsetPages<AuditLogEntry>((p) =>
+        api
+          .get<AuditLogResponse>("/audit-log", {
+            params: {
+              page: p,
+              limit: 100,
+              action: action || undefined,
+              entityType: entityType || undefined,
+              dateFrom: dateFrom || undefined,
+              dateTo: dateTo || undefined,
+            },
+          })
+          .then((r) => ({ data: r.data.data, hasMore: r.data.hasMore })),
+      );
+      await exportToExcel(
+        all,
+        [
+          { header: "Date", accessor: (e) => formatAuditDate(e.createdAt) },
+          { header: "Utilisateur", accessor: (e) => auditActorLabel(e) },
+          { header: "Action", accessor: (e) => e.action },
+          { header: "Entité", accessor: (e) => e.entityType },
+          { header: "ID", accessor: (e) => e.entityId ?? "" },
+        ],
+        "audit",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function openEntry(entry: AuditLogEntry) {
     setSelected(entry);
@@ -72,6 +115,12 @@ export default function AuditLogPage() {
       <PageHeader
         title="Journal d'audit"
         description="Actions sensibles tracées — consultation en lecture seule."
+        action={
+          <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+            <Download className="h-4 w-4" aria-hidden />
+            {exporting ? "Export…" : "Exporter"}
+          </Button>
+        }
       />
 
       <div className="grid gap-4 rounded-md border border-zinc-200 bg-white p-4 md:grid-cols-5">
@@ -148,10 +197,10 @@ export default function AuditLogPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
+              <SortableHead sortKey="createdAt" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Utilisateur</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Entité</TableHead>
+              <SortableHead sortKey="action" label="Action" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="entityType" label="Entité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>ID</TableHead>
               <TableHead className="w-24">Détail</TableHead>
             </TableRow>

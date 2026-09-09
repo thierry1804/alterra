@@ -4,12 +4,18 @@ import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
-import { Pencil, Power } from "lucide-react";
+import { Pencil, Power, PowerOff, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useClientSort } from "../components/ui/data-table/useClientSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import {
   Dialog,
   DialogContent,
@@ -49,11 +55,46 @@ export default function SitesPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
-  const pageCount = Math.max(1, Math.ceil(sites.length / PAGE_SIZE));
+  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Site>(sites, "name");
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pagedSites = useMemo(
-    () => sites.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
-    [sites, page],
+    () => sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [sorted, page],
   );
+
+  const selection = useRowSelection(pagedSites.map((s) => s.id));
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: (active: boolean) =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/sites/bulk-status",
+        { ids: [...selection.selectedIds], active },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["sites"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      toast({
+        title: failed.length ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)` : "Statut mis à jour",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  function handleExport() {
+    void exportToExcel(
+      sorted,
+      [
+        { header: "Nom", accessor: (s) => s.name },
+        { header: "Code", accessor: (s) => s.shortCode },
+        { header: "Localisation", accessor: (s) => s.location ?? "" },
+        { header: "Statut", accessor: (s) => (s.active ? "Actif" : "Inactif") },
+      ],
+      "sites",
+    );
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -111,34 +152,83 @@ export default function SitesPage() {
         title="Sites"
         description="Référentiel des sites ALTERRA."
         action={
-          <Button type="button" onClick={openCreate}>
-            Nouveau site
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4" aria-hidden />
+              Exporter
+            </Button>
+            <Button type="button" onClick={openCreate}>
+              Nouveau site
+            </Button>
+          </div>
         }
       />
+
+      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkStatusMutation.isPending}
+          onClick={() => bulkStatusMutation.mutate(true)}
+        >
+          <Power className="h-3.5 w-3.5" aria-hidden />
+          Activer
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkStatusMutation.isPending}
+          onClick={() => bulkStatusMutation.mutate(false)}
+        >
+          <PowerOff className="h-3.5 w-3.5" aria-hidden />
+          Désactiver
+        </Button>
+      </BulkActionBar>
 
       <div className="rounded-lg border border-zinc-200">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Code</TableHead>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
+              <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="shortCode" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Localisation</TableHead>
-              <TableHead>Statut</TableHead>
+              <SortableHead sortKey="active" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-40">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-zinc-500">
+                <TableCell colSpan={6} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading &&
               pagedSites.map((site) => (
-                <TableRow key={site.id}>
+                <TableRow key={site.id} data-state={selection.isSelected(site.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.isSelected(site.id)}
+                      onChange={() => selection.toggle(site.id)}
+                      aria-label={`Sélectionner ${site.name}`}
+                    />
+                  </TableCell>
                   <TableCell>{site.name}</TableCell>
                   <TableCell>{site.shortCode}</TableCell>
                   <TableCell>{site.location ?? "—"}</TableCell>

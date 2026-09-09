@@ -1,6 +1,6 @@
-import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Camera, ClipboardList, Eye } from "lucide-react";
+import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
 import type { Pointage, PointageStatus } from "../lib/pointages";
 import {
@@ -19,6 +19,14 @@ import { Input } from "../components/ui/input";
 import { Select } from "../components/ui/select";
 import { EmptyState } from "../components/ui/EmptyState";
 import { TableRowsSkeleton } from "../components/ui/skeleton";
+import { Checkbox } from "../components/ui/checkbox";
+import { useRowSelection } from "../components/ui/data-table/useRowSelection";
+import { useServerSort } from "../components/ui/data-table/useServerSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
+import { toast } from "../hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -40,8 +48,11 @@ export default function PointagesPage() {
     queryFn: () => api.get<{ data: Activity[] }>("/activities").then((r) => r.data.data),
   });
 
+  const { sortKey, sortDir, toggleSort } = useServerSort(null);
+  const [bulkRejectReason, setBulkRejectReason] = useState("");
+
   const pointagesQuery = useInfiniteQuery({
-    queryKey: ["pointages", statusFilter, dateFrom, dateTo],
+    queryKey: ["pointages", statusFilter, dateFrom, dateTo, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -51,6 +62,8 @@ export default function PointagesPage() {
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
             cursor: pageParam,
+            orderBy: sortKey ?? undefined,
+            dir: sortKey ? sortDir : undefined,
           },
         })
         .then((r) => r.data),
@@ -61,6 +74,76 @@ export default function PointagesPage() {
     () => pointagesQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [pointagesQuery.data],
   );
+
+  const selection = useRowSelection(pointages.map((p) => p.id));
+
+  function invalidateAfterBulk(res: { data: { results: Array<{ id: string; status: string; error?: string }> } }) {
+    void queryClient.invalidateQueries({ queryKey: ["pointages"] });
+    const failed = res.data.results.filter((r) => r.status === "error");
+    selection.clear();
+    toast({
+      title: failed.length
+        ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
+        : "Pointages mis à jour",
+      description: failed[0]?.error,
+      variant: failed.length ? "destructive" : undefined,
+    });
+  }
+
+  const bulkValidateMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/pointages/bulk-validate",
+        { ids: [...selection.selectedIds] },
+      ),
+    onSuccess: invalidateAfterBulk,
+  });
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/pointages/bulk-reject",
+        { ids: [...selection.selectedIds], rejectionReason: bulkRejectReason.trim() },
+      ),
+    onSuccess: (res) => {
+      setBulkRejectReason("");
+      invalidateAfterBulk(res);
+    },
+  });
+
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all = await fetchAllCursorPages<Pointage>((cursor) =>
+        api
+          .get<{ data: Pointage[]; nextCursor: string | null; hasMore: boolean }>("/pointages", {
+            params: {
+              status: statusFilter || undefined,
+              dateFrom: dateFrom || undefined,
+              dateTo: dateTo || undefined,
+              cursor,
+            },
+          })
+          .then((r) => r.data),
+      );
+      await exportToExcel(
+        all,
+        [
+          { header: "Date", accessor: (p) => formatDate(p.date) },
+          { header: "MOC", accessor: (p) => workerLabel(p.workerId) },
+          { header: "Activité", accessor: (p) => activityLabel(p.activityId) },
+          { header: "Quantité", accessor: (p) => Number(p.quantity) },
+          { header: "Montant (Ar)", accessor: (p) => Number(p.amount) },
+          { header: "Statut", accessor: (p) => POINTAGE_STATUS_LABELS[p.status] },
+        ],
+        "pointages",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const workerIds = useMemo(() => [...new Set(pointages.map((p) => p.workerId))], [pointages]);
 
@@ -103,6 +186,12 @@ export default function PointagesPage() {
       <PageHeader
         title="Pointages"
         description="Validation et suivi des saisies terrain."
+        action={
+          <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+            <Download className="h-4 w-4" aria-hidden />
+            {exporting ? "Export…" : "Exporter"}
+          </Button>
+        }
       />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -158,26 +247,75 @@ export default function PointagesPage() {
         )}
       </div>
 
+      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkValidateMutation.isPending}
+          onClick={() => bulkValidateMutation.mutate()}
+        >
+          <Check className="h-3.5 w-3.5" aria-hidden />
+          Valider
+        </Button>
+        <Input
+          placeholder="Motif de rejet"
+          value={bulkRejectReason}
+          onChange={(e) => setBulkRejectReason(e.target.value)}
+          className="h-8 w-48 text-xs"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={bulkRejectMutation.isPending || bulkRejectReason.trim().length < 3}
+          onClick={() => bulkRejectMutation.mutate()}
+        >
+          <XIcon className="h-3.5 w-3.5" aria-hidden />
+          Rejeter
+        </Button>
+      </BulkActionBar>
+
       <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xs">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9">
+                <Checkbox
+                  checked={
+                    selection.allVisibleSelected
+                      ? true
+                      : selection.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onChange={selection.toggleAllVisible}
+                  aria-label="Tout sélectionner"
+                />
+              </TableHead>
               <TableHead className="w-12" />
-              <TableHead>Date</TableHead>
+              <SortableHead sortKey="date" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>MOC</TableHead>
               <TableHead>Activité</TableHead>
-              <TableHead numeric>Qté</TableHead>
-              <TableHead numeric>Montant</TableHead>
+              <SortableHead sortKey="quantity" label="Qté" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="amount" label="Montant" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Bio</TableHead>
-              <TableHead>Statut</TableHead>
+              <SortableHead sortKey="status" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={9} />}
+            {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={10} />}
             {!pointagesQuery.isLoading &&
               pointages.map((pointage) => (
-                <TableRow key={pointage.id}>
+                <TableRow key={pointage.id} data-state={selection.isSelected(pointage.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.isSelected(pointage.id)}
+                      onChange={() => selection.toggle(pointage.id)}
+                      aria-label="Sélectionner ce pointage"
+                    />
+                  </TableCell>
                   <TableCell>
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded border ${
@@ -235,7 +373,7 @@ export default function PointagesPage() {
               ))}
             {!pointagesQuery.isLoading && pointages.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={9} className="p-0">
+                <TableCell colSpan={10} className="p-0">
                   <EmptyState
                     icon={ClipboardList}
                     title="Aucun pointage pour ces filtres"

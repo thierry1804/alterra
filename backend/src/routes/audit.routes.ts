@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
-import { listAuditLogs } from "../services/audit/list.service.js";
+import { AUDIT_SORT_FIELDS, listAuditLogs } from "../services/audit/list.service.js";
 
 export const auditRouter = Router();
 
@@ -16,6 +16,8 @@ const auditQuerySchema = z.object({
   userId: z.string().uuid().optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  orderBy: z.enum(AUDIT_SORT_FIELDS).optional(),
+  dir: z.enum(["asc", "desc"]).optional(),
 });
 
 auditRouter.get(
