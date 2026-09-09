@@ -41,7 +41,17 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-muted p-4">
+    <div
+      className="flex min-h-screen items-center justify-center p-4"
+      style={{
+        background:
+          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.30), transparent 42%)," +
+          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.24), transparent 40%)," +
+          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.26), transparent 45%)," +
+          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.28), transparent 42%)," +
+          "#fafafa",
+      }}
+    >
       <div className="grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
         <form
           onSubmit={onSubmit}
