@@ -3,7 +3,12 @@ import { useMemo, useState } from "react";
 export type SortDir = "asc" | "desc";
 
 /** Tri en mémoire — pour les tables chargées intégralement (pas de pagination serveur). */
-export function useClientSort<T>(rows: T[], defaultKey: string | null = null) {
+export function useClientSort<T>(
+  rows: T[],
+  defaultKey: string | null = null,
+  /** Pour une colonne dont l'affichage est une valeur résolue (ex. nom de site depuis un id) plutôt qu'un champ brut. */
+  accessors: Record<string, (row: T) => unknown> = {},
+) {
   const [key, setKey] = useState<string | null>(defaultKey);
   const [dir, setDir] = useState<SortDir>("asc");
 
@@ -19,9 +24,10 @@ export function useClientSort<T>(rows: T[], defaultKey: string | null = null) {
   const sorted = useMemo(() => {
     if (!key) return rows;
     const factor = dir === "asc" ? 1 : -1;
+    const accessor = accessors[key] ?? ((row: T) => (row as Record<string, unknown>)[key]);
     return [...rows].sort((a, b) => {
-      const av = (a as Record<string, unknown>)[key];
-      const bv = (b as Record<string, unknown>)[key];
+      const av = accessor(a);
+      const bv = accessor(b);
       if (av == null && bv == null) return 0;
       if (av == null) return -1 * factor;
       if (bv == null) return 1 * factor;

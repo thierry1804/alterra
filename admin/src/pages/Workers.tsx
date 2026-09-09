@@ -339,7 +339,7 @@ export default function WorkersPage() {
               <TableHead className="w-12" />
               <SortableHead sortKey="matricule" label="Matricule" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>MVola</TableHead>
+              <SortableHead sortKey="mvolaNumber" label="MVola" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="status" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-48">Actions</TableHead>

@@ -418,12 +418,11 @@ export default function RequestsPage() {
           sort={clarificationSort}
           columns={[
             { key: "createdAt", label: "Date" },
-            null,
-            null,
+            { key: "pointageId", label: "Pointage" },
+            { key: "question", label: "Question" },
             { key: "status", label: "Statut" },
             null,
           ]}
-          columnLabelsOverride={["Date", "Pointage", "Question", "Statut", ""]}
           renderCells={(row: ClarificationRequestRow) => (
             <>
               <TableCell className="text-sm">{formatDate(row.createdAt)}</TableCell>

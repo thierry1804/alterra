@@ -198,10 +198,10 @@ export default function AuditLogPage() {
           <TableHeader>
             <TableRow>
               <SortableHead sortKey="createdAt" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Utilisateur</TableHead>
+              <SortableHead sortKey="userId" label="Utilisateur" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="action" label="Action" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="entityType" label="Entité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>ID</TableHead>
+              <SortableHead sortKey="entityId" label="ID" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-24">Détail</TableHead>
             </TableRow>
           </TableHeader>

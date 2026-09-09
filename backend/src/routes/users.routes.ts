@@ -19,7 +19,15 @@ export const usersRouter = Router();
 
 const userIdParams = z.object({ id: z.string().uuid() });
 
-const USER_SORT_FIELDS = ["lastName", "email", "role", "lastLoginAt", "createdAt"] as const;
+const USER_SORT_FIELDS = [
+  "lastName",
+  "email",
+  "role",
+  "siteId",
+  "active",
+  "lastLoginAt",
+  "createdAt",
+] as const;
 
 const listUsersQuery = z.object({
   role: z.nativeEnum(Role).optional(),

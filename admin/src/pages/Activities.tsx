@@ -64,7 +64,10 @@ export default function ActivitiesPage() {
   const siteName = (siteId: string | null) =>
     siteId ? sites.find((s) => s.id === siteId)?.shortCode ?? siteId : "Global";
 
-  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Activity>(activities, "label");
+  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Activity>(activities, "label", {
+    unitRate: (a) => Number(a.unitRate),
+    siteId: (a) => siteName(a.siteId),
+  });
   const selection = useRowSelection(sorted.map((a) => a.id));
 
   const bulkDeactivateMutation = useMutation({
@@ -204,9 +207,9 @@ export default function ActivitiesPage() {
               </TableHead>
               <SortableHead sortKey="label" label="Libellé" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Unité</TableHead>
-              <TableHead numeric>Tarif</TableHead>
-              <TableHead>Site</TableHead>
+              <SortableHead sortKey="unit" label="Unité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="unitRate" label="Tarif" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="validFrom" label="Depuis" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-52">Actions</TableHead>
             </TableRow>

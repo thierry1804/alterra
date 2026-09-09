@@ -206,7 +206,7 @@ export default function SitesPage() {
               </TableHead>
               <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="shortCode" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Localisation</TableHead>
+              <SortableHead sortKey="location" label="Localisation" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="active" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-40">Actions</TableHead>
             </TableRow>

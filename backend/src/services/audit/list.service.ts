@@ -1,7 +1,7 @@
 import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
 
-export const AUDIT_SORT_FIELDS = ["createdAt", "action", "entityType"] as const;
+export const AUDIT_SORT_FIELDS = ["createdAt", "action", "entityType", "userId", "entityId"] as const;
 export type AuditSortField = (typeof AUDIT_SORT_FIELDS)[number];
 
 export interface ListAuditLogParams {

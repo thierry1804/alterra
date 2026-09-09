@@ -116,7 +116,11 @@ export default function ZonesPage() {
   const parentZone = zones.find((z) => z.id === parentZoneId);
   const parcelMapCenter = geoPolygonCenter(parentZone?.geoPolygon ?? null) ?? mapCenter;
 
-  const { sorted: sortedZones, sortKey, sortDir, toggleSort } = useClientSort<Zone>(zones, "name");
+  const { sorted: sortedZones, sortKey, sortDir, toggleSort } = useClientSort<Zone>(zones, "name", {
+    surface: (z) =>
+      (parcelsByZone.get(z.id) ?? []).reduce((sum, p) => sum + Number(p.surfaceHa ?? 0), 0),
+    geoPolygon: (z) => (z.geoPolygon ? 1 : 0),
+  });
   const zoneSelection = useRowSelection(sortedZones.map((z) => z.id));
   const parcelSelection = useRowSelection(parcelles.map((p) => p.id));
 
@@ -410,8 +414,8 @@ export default function ZonesPage() {
               </TableHead>
               <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Surface</TableHead>
-              <TableHead>GeoJSON</TableHead>
+              <SortableHead sortKey="surface" label="Surface" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="geoPolygon" label="GeoJSON" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

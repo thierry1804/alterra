@@ -281,9 +281,9 @@ export default function UsersPage() {
               <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="email" label="Email" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="role" label="Rôle" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Site</TableHead>
+              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="lastLoginAt" label="Dernière connexion" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>Statut</TableHead>
+              <SortableHead sortKey="active" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead className="w-56">Actions</TableHead>
             </TableRow>
           </TableHeader>

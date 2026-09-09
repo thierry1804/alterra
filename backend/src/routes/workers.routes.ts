@@ -19,7 +19,14 @@ export const workersRouter = Router();
 
 const workerIdParams = z.object({ id: z.string().uuid() });
 
-const WORKER_SORT_FIELDS = ["lastName", "matricule", "hiredAt", "siteId", "status"] as const;
+const WORKER_SORT_FIELDS = [
+  "lastName",
+  "matricule",
+  "mvolaNumber",
+  "hiredAt",
+  "siteId",
+  "status",
+] as const;
 
 const listWorkersQuery = z.object({
   siteId: z.string().uuid().optional(),

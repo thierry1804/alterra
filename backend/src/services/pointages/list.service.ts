@@ -2,7 +2,15 @@ import { PointageStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
 
-export const POINTAGE_SORT_FIELDS = ["date", "quantity", "amount", "status", "createdAt"] as const;
+export const POINTAGE_SORT_FIELDS = [
+  "date",
+  "quantity",
+  "amount",
+  "status",
+  "createdAt",
+  "workerName",
+  "activityLabel",
+] as const;
 export type PointageSortField = (typeof POINTAGE_SORT_FIELDS)[number];
 
 export interface ListPointagesFilters {
@@ -84,6 +92,16 @@ async function fetchLatestBioChecksByWorkerWeek(
   return map;
 }
 
+function buildOrderBy(
+  orderBy: PointageSortField | undefined,
+  dir: "asc" | "desc",
+): Prisma.PointageOrderByWithRelationInput[] | Prisma.PointageOrderByWithRelationInput {
+  if (!orderBy) return { createdAt: "desc" };
+  if (orderBy === "workerName") return [{ worker: { lastName: dir } }, { id: "asc" }];
+  if (orderBy === "activityLabel") return [{ activity: { label: dir } }, { id: "asc" }];
+  return [{ [orderBy]: dir }, { id: "asc" }];
+}
+
 export async function listPointages(filters: ListPointagesFilters) {
   const take = 50;
   const where = buildWhere(filters);
@@ -92,9 +110,7 @@ export async function listPointages(filters: ListPointagesFilters) {
     where,
     take: take + 1,
     ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
-    orderBy: filters.orderBy
-      ? [{ [filters.orderBy]: filters.dir ?? "asc" }, { id: "asc" }]
-      : { createdAt: "desc" },
+    orderBy: buildOrderBy(filters.orderBy, filters.dir ?? "asc"),
   });
 
   const hasMore = pointages.length > take;

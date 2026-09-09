@@ -295,8 +295,8 @@ export default function PointagesPage() {
               </TableHead>
               <TableHead className="w-12" />
               <SortableHead sortKey="date" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead>MOC</TableHead>
-              <TableHead>Activité</TableHead>
+              <SortableHead sortKey="workerName" label="MOC" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead sortKey="activityLabel" label="Activité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="quantity" label="Qté" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortableHead sortKey="amount" label="Montant" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <TableHead>Bio</TableHead>
