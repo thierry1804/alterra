@@ -6,6 +6,12 @@ export interface ExportColumn<T> {
   width?: number;
 }
 
+function timestampSuffix(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
 /** Génère un classeur .xlsx côté navigateur à partir de lignes déjà en mémoire, et déclenche le téléchargement. */
 export async function exportToExcel<T>(
   rows: T[],
@@ -32,7 +38,8 @@ export async function exportToExcel<T>(
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+  const base = filename.endsWith(".xlsx") ? filename.slice(0, -5) : filename;
+  link.download = `${base}${timestampSuffix()}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
