@@ -20,6 +20,10 @@ export function createApp(): Express {
   const app = express();
 
   app.disable("x-powered-by");
+  // Un seul reverse proxy en amont (nginx en prod, Vite en dev) : fait confiance au
+  // premier hop de X-Forwarded-For pour req.ip — sans ça, l'IP journalisée dans
+  // l'audit est celle du proxy (::1 en dev), jamais celle de l'utilisateur.
+  app.set("trust proxy", 1);
   app.use(helmet());
   app.use(cors({ origin: ORIGINS, credentials: true }));
   app.use(express.json({ limit: "2mb" }));
