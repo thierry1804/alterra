@@ -20,9 +20,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-zinc-200 bg-surface transition-[width] duration-150",
+        "flex h-full shrink-0 flex-col border-r border-zinc-200 transition-[width] duration-150",
         collapsed ? "w-14" : "w-[248px]",
       )}
+      style={{
+        background:
+          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.48), transparent 55%)," +
+          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.40), transparent 52%)," +
+          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.42), transparent 58%)," +
+          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.46), transparent 55%)," +
+          "#fafafa",
+      }}
     >
       <div
         className={cn(
