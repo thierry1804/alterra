@@ -48,7 +48,7 @@ export const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 whitespace-nowrap px-3 text-left align-middle text-[11px] font-semibold uppercase tracking-wide text-subtle",
+      "h-7 whitespace-nowrap px-2 text-left align-middle text-[11px] font-semibold uppercase tracking-wide text-subtle",
       numeric && "text-right",
       className,
     )}
@@ -64,7 +64,7 @@ export const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-3 py-2.5 align-middle text-zinc-800",
+      "px-2 py-1 align-middle text-zinc-800",
       numeric && "text-right font-mono tabular-nums",
       className,
     )}
