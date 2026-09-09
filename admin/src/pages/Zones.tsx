@@ -165,10 +165,14 @@ export default function ZonesPage() {
   });
 
   function handleExport() {
+    const hasSelection = zoneSelection.selectedCount > 0 || parcelSelection.selectedCount > 0;
     const rows: Array<{ type: string; name: string; code: string; surface: string }> = [];
     sortedZones.forEach((zone) => {
-      rows.push({ type: "Zone", name: zone.name, code: zone.code ?? "", surface: "" });
+      if (!hasSelection || zoneSelection.isSelected(zone.id)) {
+        rows.push({ type: "Zone", name: zone.name, code: zone.code ?? "", surface: "" });
+      }
       (parcelsByZone.get(zone.id) ?? []).forEach((p) => {
+        if (hasSelection && !parcelSelection.isSelected(p.id)) return;
         rows.push({
           type: "Parcelle",
           name: p.name,

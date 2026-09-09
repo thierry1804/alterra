@@ -116,20 +116,26 @@ export default function PointagesPage() {
   async function handleExport() {
     setExporting(true);
     try {
-      const all = await fetchAllCursorPages<Pointage>((cursor) =>
-        api
-          .get<{ data: Pointage[]; nextCursor: string | null; hasMore: boolean }>("/pointages", {
-            params: {
-              status: statusFilter || undefined,
-              dateFrom: dateFrom || undefined,
-              dateTo: dateTo || undefined,
-              cursor,
-            },
-          })
-          .then((r) => r.data),
-      );
+      const rows =
+        selection.selectedCount > 0
+          ? pointages.filter((p) => selection.isSelected(p.id))
+          : await fetchAllCursorPages<Pointage>((cursor) =>
+              api
+                .get<{ data: Pointage[]; nextCursor: string | null; hasMore: boolean }>(
+                  "/pointages",
+                  {
+                    params: {
+                      status: statusFilter || undefined,
+                      dateFrom: dateFrom || undefined,
+                      dateTo: dateTo || undefined,
+                      cursor,
+                    },
+                  },
+                )
+                .then((r) => r.data),
+            );
       await exportToExcel(
-        all,
+        rows,
         [
           { header: "Date", accessor: (p) => formatDate(p.date) },
           { header: "MOC", accessor: (p) => workerLabel(p.workerId) },

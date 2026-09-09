@@ -107,6 +107,7 @@ export default function RequestsPage() {
 
   const activitySelection = useRowSelection(activitySort.sorted.map((r) => r.id));
   const workerSelection = useRowSelection(workerSort.sorted.map((r) => r.id));
+  const clarificationSelection = useRowSelection(clarificationSort.sorted.map((r) => r.id));
 
   const loading =
     (tab === "activities" && activityQuery.isLoading) ||
@@ -197,8 +198,12 @@ export default function RequestsPage() {
 
   function handleExport() {
     if (tab === "activities") {
+      const rows =
+        activitySelection.selectedCount > 0
+          ? activitySort.sorted.filter((r) => activitySelection.isSelected(r.id))
+          : activitySort.sorted;
       void exportToExcel<ActivityRequestRow>(
-        activitySort.sorted,
+        rows,
         [
           { header: "Date", accessor: (r) => formatDate(r.createdAt) },
           { header: "Libellé", accessor: (r) => r.proposedLabel },
@@ -209,8 +214,12 @@ export default function RequestsPage() {
         "demandes-activites",
       );
     } else if (tab === "workers") {
+      const rows =
+        workerSelection.selectedCount > 0
+          ? workerSort.sorted.filter((r) => workerSelection.isSelected(r.id))
+          : workerSort.sorted;
       void exportToExcel<WorkerRequestRow>(
-        workerSort.sorted,
+        rows,
         [
           { header: "Date", accessor: (r) => formatDate(r.createdAt) },
           { header: "Prénom", accessor: (r) => r.firstName },
@@ -221,8 +230,12 @@ export default function RequestsPage() {
         "demandes-travailleurs",
       );
     } else {
+      const rows =
+        clarificationSelection.selectedCount > 0
+          ? clarificationSort.sorted.filter((r) => clarificationSelection.isSelected(r.id))
+          : clarificationSort.sorted;
       void exportToExcel<ClarificationRequestRow>(
-        clarificationSort.sorted,
+        rows,
         [
           { header: "Date", accessor: (r) => formatDate(r.createdAt) },
           { header: "Pointage", accessor: (r) => r.pointageId },
@@ -414,7 +427,7 @@ export default function RequestsPage() {
         <RequestsTable
           emptyLabel="Aucune demande de précisions."
           rows={clarificationSort.sorted}
-          selection={null}
+          selection={clarificationSelection}
           sort={clarificationSort}
           columns={[
             { key: "createdAt", label: "Date" },

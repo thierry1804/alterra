@@ -118,15 +118,18 @@ export default function UsersPage() {
   async function handleExport() {
     setExporting(true);
     try {
-      const all = await fetchAllCursorPages<AppUser>((cursor) =>
-        api
-          .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
-            params: { role: roleFilter || undefined, cursor, take: 100 },
-          })
-          .then((r) => r.data),
-      );
+      const rows =
+        selection.selectedCount > 0
+          ? users.filter((u) => selection.isSelected(u.id))
+          : await fetchAllCursorPages<AppUser>((cursor) =>
+              api
+                .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
+                  params: { role: roleFilter || undefined, cursor, take: 100 },
+                })
+                .then((r) => r.data),
+            );
       await exportToExcel(
-        all,
+        rows,
         [
           { header: "Prénom", accessor: (u) => u.firstName },
           { header: "Nom", accessor: (u) => u.lastName },

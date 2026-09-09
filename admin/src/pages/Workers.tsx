@@ -126,21 +126,24 @@ export default function WorkersPage() {
   async function handleExport() {
     setExporting(true);
     try {
-      const all = await fetchAllCursorPages<Worker>((cursor) =>
-        api
-          .get<{ data: Worker[]; nextCursor: string | null; hasMore: boolean }>("/workers", {
-            params: {
-              q: search || undefined,
-              siteId: siteFilter || undefined,
-              status: statusFilter || undefined,
-              cursor,
-              take: 100,
-            },
-          })
-          .then((r) => r.data),
-      );
+      const rows =
+        selection.selectedCount > 0
+          ? workers.filter((w) => selection.isSelected(w.id))
+          : await fetchAllCursorPages<Worker>((cursor) =>
+              api
+                .get<{ data: Worker[]; nextCursor: string | null; hasMore: boolean }>("/workers", {
+                  params: {
+                    q: search || undefined,
+                    siteId: siteFilter || undefined,
+                    status: statusFilter || undefined,
+                    cursor,
+                    take: 100,
+                  },
+                })
+                .then((r) => r.data),
+            );
       await exportToExcel(
-        all,
+        rows,
         [
           { header: "Matricule", accessor: (w) => w.matricule },
           { header: "Prénom", accessor: (w) => w.firstName },

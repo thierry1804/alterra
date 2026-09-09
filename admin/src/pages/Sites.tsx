@@ -84,8 +84,10 @@ export default function SitesPage() {
   });
 
   function handleExport() {
+    const rows =
+      selection.selectedCount > 0 ? sorted.filter((s) => selection.isSelected(s.id)) : sorted;
     void exportToExcel(
-      sorted,
+      rows,
       [
         { header: "Nom", accessor: (s) => s.name },
         { header: "Code", accessor: (s) => s.shortCode },

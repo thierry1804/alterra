@@ -91,8 +91,10 @@ export default function ActivitiesPage() {
   });
 
   function handleExport() {
+    const rows =
+      selection.selectedCount > 0 ? sorted.filter((a) => selection.isSelected(a.id)) : sorted;
     void exportToExcel(
-      sorted,
+      rows,
       [
         { header: "Libellé", accessor: (a) => a.label },
         { header: "Code", accessor: (a) => a.code ?? "" },
