@@ -25,10 +25,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
       style={{
         background:
-          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.48), transparent 55%)," +
-          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.40), transparent 52%)," +
-          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.42), transparent 58%)," +
-          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.46), transparent 55%)," +
+          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.16), transparent 50%)," +
+          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.12), transparent 48%)," +
+          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.14), transparent 52%)," +
+          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.14), transparent 50%)," +
           "#fafafa",
       }}
     >
