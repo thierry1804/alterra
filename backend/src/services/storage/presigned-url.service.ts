@@ -23,3 +23,10 @@ export async function iconUploadUrl(ext: "png" | "jpg" | "svg" | "webp") {
   const uploadUrl = await presignedUploadUrl(BUCKETS.assets, iconKey);
   return { uploadUrl, iconKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
 }
+
+/** Presigned MinIO PUT URL for a database backup upload (restauration) — objet éphémère, supprimé après usage. */
+export async function backupUploadUrl() {
+  const backupKey = `backups/${randomUUID()}.sql.gz`;
+  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, backupKey);
+  return { uploadUrl, backupKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+}

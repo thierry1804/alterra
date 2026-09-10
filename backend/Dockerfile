@@ -1,6 +1,6 @@
 FROM node:22-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache openssl chromium
+RUN apk add --no-cache openssl chromium postgresql16-client
 
 FROM base AS deps
 COPY package.json package-lock.json* ./

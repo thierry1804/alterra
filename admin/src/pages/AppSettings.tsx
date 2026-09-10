@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { isAxiosError } from "axios";
+import { Download, TriangleAlert } from "lucide-react";
 import { api } from "../lib/api";
 import { APP_ICON_URL } from "../hooks/useAppSettings";
 import PageHeader from "../components/shared/PageHeader";
@@ -22,11 +23,20 @@ const ICON_MIME_TO_EXT: Record<string, "png" | "jpg" | "svg" | "webp"> = {
   "image/webp": "webp",
 };
 
+const RESTORE_CONFIRM_PHRASE = "RESTAURER";
+
 export default function AppSettingsPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
   const [appName, setAppName] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [pendingBackupKey, setPendingBackupKey] = useState<string | null>(null);
+  const [pendingBackupName, setPendingBackupName] = useState<string | null>(null);
+  const [uploadingBackup, setUploadingBackup] = useState(false);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  const [restoring, setRestoring] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["app-settings"],
@@ -86,6 +96,76 @@ export default function AppSettingsPage() {
     }
   }
 
+  async function handleDownloadBackup() {
+    setDownloadingBackup(true);
+    try {
+      const res = await api.get("/system/backup", { responseType: "blob" });
+      const disposition = res.headers["content-disposition"] as string | undefined;
+      const match = disposition?.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? "alterra-backup.sql.gz";
+      const url = URL.createObjectURL(res.data as Blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: "Sauvegarde téléchargée" });
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec de la sauvegarde", description: String(message), variant: "destructive" });
+    } finally {
+      setDownloadingBackup(false);
+    }
+  }
+
+  async function handleBackupFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setUploadingBackup(true);
+    setRestoreConfirmText("");
+    try {
+      const { data: presign } = await api.post<{ uploadUrl: string; backupKey: string }>(
+        "/system/backup-upload-url",
+      );
+      await fetch(presign.uploadUrl, { method: "PUT", body: file });
+      setPendingBackupKey(presign.backupKey);
+      setPendingBackupName(file.name);
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec de l'upload", description: String(message), variant: "destructive" });
+    } finally {
+      setUploadingBackup(false);
+    }
+  }
+
+  function cancelPendingRestore() {
+    setPendingBackupKey(null);
+    setPendingBackupName(null);
+    setRestoreConfirmText("");
+  }
+
+  async function handleRestore() {
+    if (!pendingBackupKey) return;
+    setRestoring(true);
+    try {
+      await api.post("/system/restore", { backupKey: pendingBackupKey });
+      toast({
+        title: "Base restaurée",
+        description: "Rechargez la page — les données affichées peuvent avoir changé.",
+      });
+      cancelPendingRestore();
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec de la restauration", description: String(message), variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -140,6 +220,94 @@ export default function AppSettingsPage() {
               <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900">Base de données</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Instantané complet de la base — indépendant des sauvegardes automatiques nocturnes.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Sauvegarde</Label>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={downloadingBackup}
+              onClick={() => void handleDownloadBackup()}
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              {downloadingBackup ? "Génération…" : "Télécharger une sauvegarde"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t border-zinc-200 pt-5">
+          <Label>Restauration</Label>
+          {!pendingBackupKey ? (
+            <div>
+              <input
+                ref={backupFileInputRef}
+                type="file"
+                accept=".gz"
+                className="hidden"
+                onChange={(e) => void handleBackupFileChange(e)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploadingBackup}
+                onClick={() => backupFileInputRef.current?.click()}
+              >
+                {uploadingBackup ? "Envoi…" : "Choisir un fichier .sql.gz"}
+              </Button>
+              <p className="mt-1 text-xs text-zinc-500">
+                Remplace intégralement les données actuelles — à utiliser avec précaution.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 rounded-md border border-danger/40 bg-danger-bg p-4">
+              <div className="flex items-start gap-2">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden />
+                <div className="space-y-1 text-sm text-danger">
+                  <p className="font-semibold">Zone dangereuse</p>
+                  <p>
+                    Restaurer <span className="font-mono text-xs">{pendingBackupName}</span> va{" "}
+                    <strong>remplacer toutes les données actuelles</strong> (sites, travailleurs,
+                    pointages, paiements…). Cette action est irréversible.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="restore-confirm" className="text-danger">
+                  Tapez {RESTORE_CONFIRM_PHRASE} pour confirmer
+                </Label>
+                <Input
+                  id="restore-confirm"
+                  value={restoreConfirmText}
+                  onChange={(e) => setRestoreConfirmText(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" disabled={restoring} onClick={cancelPendingRestore}>
+                  Annuler
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={restoring || restoreConfirmText !== RESTORE_CONFIRM_PHRASE}
+                  onClick={() => void handleRestore()}
+                >
+                  {restoring ? "Restauration…" : "Restaurer maintenant"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
