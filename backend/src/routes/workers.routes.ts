@@ -44,6 +44,10 @@ const bulkStatusSchema = z.object({
   status: z.nativeEnum(WorkerStatus),
 });
 
+const bulkDeleteSchema = z.object({
+  ids: bulkIdsSchema,
+});
+
 const createWorkerSchema = z.object({
   matricule: z.string().min(1),
   firstName: z.string().min(1),
@@ -284,6 +288,39 @@ workersRouter.post(
 );
 
 workersRouter.post(
+  "/workers/bulk-delete",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkDeleteSchema),
+  async (req, res, next) => {
+    try {
+      const { ids } = req.body as z.infer<typeof bulkDeleteSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await prisma.worker.findFirst({ where: { id, deletedAt: null } });
+        if (!before) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+        const worker = await prisma.worker.update({
+          where: { id },
+          data: { deletedAt: new Date() },
+        });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "DELETE",
+          entityType: "Worker",
+          entityId: worker.id,
+          before,
+          after: worker,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workersRouter.post(
   "/workers/:id/photo",
   requireAuth,
   requireRole(Role.ADMIN),
@@ -371,8 +408,7 @@ workersRouter.post(
   validate(importBodySchema),
   async (req, res, next) => {
     try {
-      const dryRun =
-        (req.query as unknown as z.infer<typeof importQuerySchema>).dryRun ?? true;
+      const dryRun = (req.query as unknown as z.infer<typeof importQuerySchema>).dryRun ?? true;
       const { contentBase64, hasHeaderRow, referenceRowNumber, mapping } = req.body as z.infer<
         typeof importBodySchema
       >;

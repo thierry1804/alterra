@@ -64,6 +64,7 @@ export default function WorkersPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Worker | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
   const [form, setForm] = useState<WorkerForm>(emptyForm);
 
@@ -91,7 +92,7 @@ export default function WorkersPage() {
           },
         })
         .then((r) => r.data),
-    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
 
   const workers = useMemo(
@@ -115,6 +116,27 @@ export default function WorkersPage() {
         title: failed.length
           ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
           : "Statut mis à jour",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/workers/bulk-delete",
+        { ids: [...selection.selectedIds] },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["workers"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      setBulkDeleteConfirmOpen(false);
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} supprimé(s), ${failed.length} échec(s)`
+          : "Travailleurs supprimés",
         description: failed[0]?.error,
         variant: failed.length ? "destructive" : undefined,
       });
@@ -209,7 +231,11 @@ export default function WorkersPage() {
       });
       if (!file) return null;
 
-      await fetch(data.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      await fetch(data.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
       await api.post(`/workers/${worker.id}/photo`, { photoKey: data.photoKey });
       return data.photoKey;
     },
@@ -252,7 +278,12 @@ export default function WorkersPage() {
         description="Main-d'œuvre communautaire — référentiel travailleurs (MOC)."
         action={
           <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exporting}
+              onClick={() => void handleExport()}
+            >
               <Download className="h-4 w-4" aria-hidden />
               {exporting ? "Export…" : "Exporter"}
             </Button>
@@ -320,6 +351,16 @@ export default function WorkersPage() {
           <PowerOff className="h-3.5 w-3.5" aria-hidden />
           Désactiver
         </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          disabled={bulkDeleteMutation.isPending}
+          onClick={() => setBulkDeleteConfirmOpen(true)}
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          Supprimer ({selection.selectedCount})
+        </Button>
       </BulkActionBar>
 
       <div className="rounded-lg border border-zinc-200">
@@ -340,11 +381,41 @@ export default function WorkersPage() {
                 />
               </TableHead>
               <TableHead className="w-12" />
-              <SortableHead sortKey="matricule" label="Matricule" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="mvolaNumber" label="MVola" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="status" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="matricule"
+                label="Matricule"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="lastName"
+                label="Nom"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="mvolaNumber"
+                label="MVola"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="siteId"
+                label="Site"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="status"
+                label="Statut"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-48">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -358,7 +429,10 @@ export default function WorkersPage() {
             )}
             {!workersQuery.isLoading &&
               workers.map((worker) => (
-                <TableRow key={worker.id} data-state={selection.isSelected(worker.id) ? "selected" : undefined}>
+                <TableRow
+                  key={worker.id}
+                  data-state={selection.isSelected(worker.id) ? "selected" : undefined}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selection.isSelected(worker.id)}
@@ -436,7 +510,9 @@ export default function WorkersPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</DialogTitle>
-            <DialogDescription>Numéro MVola au format 034XXXXXXXX ou 038XXXXXXXX.</DialogDescription>
+            <DialogDescription>
+              Numéro MVola au format 034XXXXXXXX ou 038XXXXXXXX.
+            </DialogDescription>
           </DialogHeader>
           <form
             className="space-y-4"
@@ -563,6 +639,30 @@ export default function WorkersPage() {
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
             >
               {deleteMutation.isPending ? "Suppression…" : "Supprimer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer {selection.selectedCount} travailleur(s) ?</DialogTitle>
+            <DialogDescription>
+              Les travailleurs sélectionnés seront retirés du référentiel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setBulkDeleteConfirmOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate()}
+            >
+              {bulkDeleteMutation.isPending ? "Suppression…" : "Supprimer"}
             </Button>
           </div>
         </DialogContent>
