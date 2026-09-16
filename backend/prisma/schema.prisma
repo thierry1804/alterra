@@ -37,6 +37,13 @@ enum PaymentStatus {
   FAILED
 }
 
+enum PaymentReconciliationStatus {
+  CONFIRME
+  ECART_MONTANT
+  ORPHELIN
+  NON_CONFIRME
+}
+
 enum PaymentCycle {
   WEEKLY
   DAILY
@@ -326,8 +333,14 @@ model Payment {
   failureReason    String?
   correctionReason String? // si modifié manuellement
   originalAmount   Decimal?      @db.Decimal(12, 2)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+
+  mvolaReference       String?
+  mvolaExecutedAt      DateTime?
+  transferFee          Decimal?                     @db.Decimal(12, 2)
+  reconciliationStatus PaymentReconciliationStatus?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([workerId, periodIso])
   @@index([status, periodIso])
