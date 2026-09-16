@@ -50,9 +50,6 @@ const TABS: { id: RequestTab; label: string }[] = [
   { id: "clarifications", label: "Précisions" },
 ];
 
-/** Onglets avec une décision d'admin en lot possible (approuver/rejeter). Précisions = workflow réponse/clôture, pas une décision. */
-const BULK_DECISION_TABS = new Set<RequestTab>(["activities", "workers"]);
-
 export default function RequestsPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<RequestTab>("activities");

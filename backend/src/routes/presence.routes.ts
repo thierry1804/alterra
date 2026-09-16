@@ -1,4 +1,4 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { PresenceSource, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
