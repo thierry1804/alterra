@@ -6,7 +6,8 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { generatePayments } from "../services/payments/generate.service.js";
 import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
-import { importMvolaStatus } from "../services/payments/mvola-import.service.js";
+import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
+import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
 import { correctPaymentAmount, listPayments } from "../services/payments/list.service.js";
 
 export const paymentsRouter = Router();
@@ -26,10 +27,17 @@ const exportQuerySchema = z.object({
   includeHeader: z.enum(["true", "false"]).optional(),
 });
 
-const importStatusSchema = z.object({
-  periodIso: z.string().min(2).max(16),
+const importStatusColumnsSchema = z.object({
   contentBase64: z.string().min(1),
-  referenceYear: z.number().int().min(2000).max(2100).optional(),
+  hasHeaderRow: z.boolean().optional(),
+  referenceRowNumber: z.number().int().min(1).optional(),
+});
+
+const importStatusSchema = z.object({
+  contentBase64: z.string().min(1),
+  hasHeaderRow: z.boolean().optional(),
+  referenceRowNumber: z.number().int().min(1).optional(),
+  mapping: z.record(z.string()).optional(),
 });
 
 const listPaymentsQuery = z.object({
@@ -107,7 +115,8 @@ paymentsRouter.get(
       const result = await exportMvolaPayments(period, {
         userId: req.user!.sub,
         ip: req.ip,
-        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
         referenceYear: query.referenceYear,
         includeHeader: query.includeHeader === "true",
       });
@@ -127,15 +136,40 @@ paymentsRouter.get(
 );
 
 paymentsRouter.post(
+  "/payments/import-status/columns",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(importStatusColumnsSchema),
+  async (req, res, next) => {
+    try {
+      const { contentBase64, hasHeaderRow, referenceRowNumber } = req.body as z.infer<
+        typeof importStatusColumnsSchema
+      >;
+      const buffer = Buffer.from(contentBase64, "base64");
+      const result = detectMvolaReleveColumns(buffer, hasHeaderRow ?? true, referenceRowNumber);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
   "/payments/import-status",
   requireAuth,
   requireRole(Role.ADMIN),
   validate(importStatusSchema),
   async (req, res, next) => {
     try {
-      const body = req.body as z.infer<typeof importStatusSchema>;
-      const buffer = Buffer.from(body.contentBase64, "base64");
-      const result = await importMvolaStatus(buffer, body.periodIso, body.referenceYear);
+      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping } = req.body as z.infer<
+        typeof importStatusSchema
+      >;
+      const buffer = Buffer.from(contentBase64, "base64");
+      const result = await reconcileMvolaReleve(buffer, {
+        hasHeaderRow,
+        referenceRowNumber,
+        mapping,
+      });
       res.json(result);
     } catch (err) {
       next(err);

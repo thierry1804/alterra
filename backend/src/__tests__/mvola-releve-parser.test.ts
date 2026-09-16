@@ -1,6 +1,7 @@
 import xlsx from "node-xlsx";
 import { describe, expect, it } from "vitest";
 import {
+  detectMvolaReleveColumns,
   normalizeMvolaAmount,
   normalizeMvolaPhone,
   parseMvolaReleveWorkbook,
@@ -83,6 +84,66 @@ describe("parseMvolaReleveWorkbook", () => {
     ]);
 
     expect(() => parseMvolaReleveWorkbook(buffer)).toThrow();
+  });
+});
+
+describe("detectMvolaReleveColumns", () => {
+  it("détecte la ligne d'en-tête réelle (ligne 7) et suggère les 7 champs", () => {
+    const buffer = buildReleveFixture([
+      [
+        "2026-07-15 10:00:00",
+        "3117400001",
+        "'0382019280",
+        "'0341234567",
+        "Transfert d'argent",
+        "ramaharavo jean b fauchage s26 93 abm act07 84",
+        "- 698800.00",
+      ],
+    ]);
+
+    const result = detectMvolaReleveColumns(buffer);
+
+    expect(result.referenceRowNumber).toBe(7);
+    expect(result.suggestedMapping).toMatchObject({
+      dateHeure: "A",
+      reference: "B",
+      initiateur: "C",
+      destinataire: "D",
+      type: "E",
+      description: "F",
+      montant: "G",
+    });
+  });
+
+  it("accepte un mapping explicite fourni par l'utilisateur", () => {
+    const buffer = buildReleveFixture([
+      [
+        "2026-07-15 10:00:00",
+        "3117400001",
+        "'0382019280",
+        "'0341234567",
+        "Transfert d'argent",
+        "ramaharavo jean b fauchage s26 93 abm act07 84",
+        "- 698800.00",
+      ],
+    ]);
+
+    const rows = parseMvolaReleveWorkbook(buffer, {
+      hasHeaderRow: true,
+      referenceRowNumber: 7,
+      mapping: {
+        dateHeure: "A",
+        reference: "B",
+        initiateur: "C",
+        destinataire: "D",
+        type: "E",
+        description: "F",
+        montant: "G",
+      },
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].reference).toBe("3117400001");
   });
 });
 

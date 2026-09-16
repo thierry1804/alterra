@@ -23,11 +23,7 @@ function levenshtein(a: string, b: string): number {
   for (let i = 1; i < rows; i++) {
     for (let j = 1; j < cols; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i]![j] = Math.min(
-        dp[i - 1]![j]! + 1,
-        dp[i]![j - 1]! + 1,
-        dp[i - 1]![j - 1]! + cost,
-      );
+      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost);
     }
   }
   return dp[a.length]![b.length]!;
@@ -46,13 +42,16 @@ function similarity(a: string, b: string): number {
   return 1 - distance / Math.max(a.length, b.length);
 }
 
-function bestScoreForField(fieldKey: WorkerImportFieldKey, columnLabelNorm: string): number {
-  const field = WORKER_IMPORT_FIELDS.find((f) => f.key === fieldKey)!;
-  const candidates = [
-    field.key,
-    field.label,
-    ...(WORKER_IMPORT_FIELD_ALIASES[fieldKey] ?? []),
-  ].map(normalizeImportLabel);
+function bestScoreForField(
+  fieldKey: string,
+  fields: Array<{ key: string; label: string }>,
+  aliases: Record<string, string[]>,
+  columnLabelNorm: string,
+): number {
+  const field = fields.find((f) => f.key === fieldKey)!;
+  const candidates = [field.key, field.label, ...(aliases[fieldKey] ?? [])].map(
+    normalizeImportLabel,
+  );
 
   let best = 0;
   for (const candidate of candidates) {
@@ -63,17 +62,20 @@ function bestScoreForField(fieldKey: WorkerImportFieldKey, columnLabelNorm: stri
   return best;
 }
 
-export function suggestColumnMapping(
+/** Associe chaque colonne détectée au champ dont le libellé/alias se rapproche le plus (fuzzy match). */
+export function suggestColumnMappingGeneric<K extends string>(
   columns: Array<{ column: string; label: string }>,
-): Partial<Record<WorkerImportFieldKey, string>> {
-  type Candidate = { fieldKey: WorkerImportFieldKey; column: string; score: number };
+  fields: Array<{ key: K; label: string }>,
+  aliases: Record<K, string[]>,
+): Partial<Record<K, string>> {
+  type Candidate = { fieldKey: K; column: string; score: number };
   const candidates: Candidate[] = [];
 
   for (const col of columns) {
     const labelNorm = normalizeImportLabel(col.label);
     if (!labelNorm) continue;
-    for (const field of WORKER_IMPORT_FIELDS) {
-      const score = bestScoreForField(field.key, labelNorm);
+    for (const field of fields) {
+      const score = bestScoreForField(field.key, fields, aliases, labelNorm);
       if (score >= FUZZY_THRESHOLD) {
         candidates.push({ fieldKey: field.key, column: col.column, score });
       }
@@ -82,9 +84,9 @@ export function suggestColumnMapping(
 
   candidates.sort((a, b) => b.score - a.score || a.fieldKey.localeCompare(b.fieldKey));
 
-  const mapping: Partial<Record<WorkerImportFieldKey, string>> = {};
+  const mapping: Partial<Record<K, string>> = {};
   const usedColumns = new Set<string>();
-  const usedFields = new Set<WorkerImportFieldKey>();
+  const usedFields = new Set<K>();
 
   for (const c of candidates) {
     if (usedFields.has(c.fieldKey) || usedColumns.has(c.column)) continue;
@@ -94,4 +96,10 @@ export function suggestColumnMapping(
   }
 
   return mapping;
+}
+
+export function suggestColumnMapping(
+  columns: Array<{ column: string; label: string }>,
+): Partial<Record<WorkerImportFieldKey, string>> {
+  return suggestColumnMappingGeneric(columns, WORKER_IMPORT_FIELDS, WORKER_IMPORT_FIELD_ALIASES);
 }

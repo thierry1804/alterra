@@ -37,6 +37,17 @@ describe("classifyMvolaRow", () => {
     ).toBe("SALARY");
   });
 
+  it("classe un virement salaire conforme sans code activité (Activity.code absent en base)", () => {
+    expect(
+      classifyMvolaRow(
+        row({
+          description: "ramaharavo jean b trouaison s38 3 mnk 84",
+          montant: "- 750.00",
+        }),
+      ),
+    ).toBe("SALARY");
+  });
+
   it("classe une dépense interne au libellé non conforme", () => {
     expect(
       classifyMvolaRow(

@@ -41,12 +41,31 @@ export interface GeneratePaymentsResult {
 }
 
 export interface ImportMvolaResult {
-  periodIso: string;
-  paid: number;
-  failed: number;
-  skippedAlreadyFinal: number;
-  unmatched: Array<{ line: number; phone: string; amount: number }>;
-  duplicates: Array<{ line: number; phone: string; amount: number; paymentIds: string[] }>;
+  confirme: number;
+  ecartMontant: number;
+  orphelin: number;
+  nonConfirme: number;
+  dejaTraite: number;
+  fraisRattaches: number;
+  internal: number;
+  ignored: number;
+  confirmes: Array<{ paymentId: string; worker: string; reference: string; montant: string }>;
+  ecarts: Array<{
+    paymentId: string;
+    worker: string;
+    reference: string;
+    montantReleve: number;
+    montantAttendu: string;
+  }>;
+  orphelins: Array<{ reference: string; description: string | null; montant: number }>;
+  nonConfirmes: Array<{
+    paymentId: string;
+    worker: string;
+    periodIso: string;
+    bordereau: number;
+    montant: string;
+  }>;
+  dejaTraites: Array<{ paymentId: string; reference: string }>;
 }
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

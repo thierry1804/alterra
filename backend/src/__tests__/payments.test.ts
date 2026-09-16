@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import xlsx from "node-xlsx";
 import { PaymentCycle, PaymentStatus, Prisma, Role } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
@@ -114,17 +115,26 @@ function adminAuthHeader() {
   })}`;
 }
 
-async function buildReturnWorkbook(
-  rows: Array<{ phone: string; amount: number; status: string; reason?: string }>,
-): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Retour");
-  sheet.addRow(["Numéro téléphone", "Montant", "Statut transaction", "Motif échec"]);
-  for (const row of rows) {
-    sheet.addRow([row.phone, row.amount, row.status, row.reason ?? ""]);
-  }
-  const raw = await workbook.xlsx.writeBuffer();
-  return Buffer.from(raw);
+function buildMvolaReleve(dataRows: unknown[][]): Buffer {
+  const sheetData: unknown[][] = [
+    ["RELEVE DE TRANSACTIONS MVOLA"],
+    ["COMPTE : 0382019280 - LOHASAHA MADAGASCO ALTERRA"],
+    ["PERIODE : 01/07/2026 - 31/07/2026"],
+    ["SOLDE INITIAL : 429452908"],
+    ["SOLDE FINAL : 592181001"],
+    [],
+    [
+      "DATE - HEURE",
+      "REFERENCE",
+      "INITIATEUR",
+      "DESTINATAIRE",
+      "TYPE - TRANSACTION",
+      "DESCRIPTION",
+      "MONTANT",
+    ],
+    ...dataRows,
+  ];
+  return xlsx.build([{ name: "Sheet1", data: sheetData, options: {} }]);
 }
 
 describe("Payments helpers", () => {
@@ -152,7 +162,14 @@ describe("Payments helpers", () => {
   });
 
   it("buildMvolaDescription omits the matricule when absent (clé de secours)", () => {
-    const description = buildMvolaDescription("Bakolinirina Marie", "Fauchage", "27", 2, "MNK", "act07");
+    const description = buildMvolaDescription(
+      "Bakolinirina Marie",
+      "Fauchage",
+      "27",
+      2,
+      "MNK",
+      "act07",
+    );
     expect(description).toBe("Bakolinirina Marie FAUCHAGE S27 2 MNK ACT07");
   });
 
@@ -301,35 +318,39 @@ describe("Payments API", () => {
     expect(res.body.code).toBe("NO_EXPORTABLE_PAYMENTS");
   });
 
-  it("POST /payments/import-status matches phone+amount and updates PAID/FAILED", async () => {
-    const exportedPayment = {
-      ...mockPayment,
-      status: PaymentStatus.EXPORTED,
-    };
+  it("POST /payments/import-status confirme une ligne via la clé site|semaine|bordereau|matricule", async () => {
+    const exportedPayment = { ...mockPayment, status: PaymentStatus.EXPORTED };
 
-    vi.mocked(prisma.payment.findMany).mockResolvedValue([exportedPayment] as never);
+    vi.mocked(prisma.payment.findMany).mockImplementation(({ where }: { where: unknown }) => {
+      const w = where as { status?: string; mvolaReference?: unknown };
+      if (w.status === PaymentStatus.EXPORTED) return Promise.resolve([exportedPayment] as never);
+      return Promise.resolve([] as never);
+    });
     vi.mocked(prisma.payment.update).mockResolvedValue({
       ...exportedPayment,
       status: PaymentStatus.PAID,
     } as never);
 
-    const buffer = await buildReturnWorkbook([
-      { phone: "0341234567", amount: 125000, status: "SUCCESS" },
-      { phone: "0349999999", amount: 1000, status: "FAILED", reason: "Solde insuffisant" },
+    const buffer = buildMvolaReleve([
+      [
+        "2026-07-15 10:00:00",
+        "3117400001",
+        "'0382019280",
+        "'0341234567",
+        "Transfert d'argent",
+        "jean rakoto trouaison s29 12 mnk act01 84",
+        "- 125000.00",
+      ],
     ]);
 
     const app = createApp();
     const res = await request(app)
       .post("/api/v1/payments/import-status")
       .set("Authorization", adminAuthHeader())
-      .send({
-        periodIso: "S29",
-        contentBase64: buffer.toString("base64"),
-      });
+      .send({ contentBase64: buffer.toString("base64") });
 
     expect(res.status).toBe(200);
-    expect(res.body.paid).toBe(1);
-    expect(res.body.unmatched).toHaveLength(1);
+    expect(res.body.confirme).toBe(1);
     expect(prisma.payment.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: PaymentStatus.PAID }),
@@ -337,26 +358,36 @@ describe("Payments API", () => {
     );
   });
 
-  it("POST /payments/import-status is idempotent on re-import", async () => {
-    vi.mocked(prisma.payment.findMany).mockResolvedValue([
-      { ...mockPayment, status: PaymentStatus.PAID },
-    ] as never);
+  it("POST /payments/import-status ne retraite pas une référence déjà rapprochée", async () => {
+    vi.mocked(prisma.payment.findMany).mockImplementation(({ where }: { where: unknown }) => {
+      const w = where as { status?: string; mvolaReference?: unknown };
+      if (w.status === PaymentStatus.EXPORTED) return Promise.resolve([] as never);
+      if (w.mvolaReference) {
+        return Promise.resolve([{ id: mockPayment.id, mvolaReference: "3117400001" }] as never);
+      }
+      return Promise.resolve([] as never);
+    });
 
-    const buffer = await buildReturnWorkbook([
-      { phone: "0341234567", amount: 125000, status: "SUCCESS" },
+    const buffer = buildMvolaReleve([
+      [
+        "2026-07-15 10:00:00",
+        "3117400001",
+        "'0382019280",
+        "'0341234567",
+        "Transfert d'argent",
+        "jean rakoto trouaison s29 12 mnk act01 84",
+        "- 125000.00",
+      ],
     ]);
 
     const app = createApp();
     const res = await request(app)
       .post("/api/v1/payments/import-status")
       .set("Authorization", adminAuthHeader())
-      .send({
-        periodIso: "S29",
-        contentBase64: buffer.toString("base64"),
-      });
+      .send({ contentBase64: buffer.toString("base64") });
 
     expect(res.status).toBe(200);
-    expect(res.body.skippedAlreadyFinal).toBe(1);
+    expect(res.body.dejaTraite).toBe(1);
     expect(prisma.payment.update).not.toHaveBeenCalled();
   });
 });

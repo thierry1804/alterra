@@ -3,11 +3,7 @@ import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
-import {
-  currentIsoWeekInput,
-  periodToExportParam,
-  type PaymentRow,
-} from "../lib/payments";
+import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../lib/payments";
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
 import BordereauTable from "../components/payments/BordereauTable";
@@ -40,10 +36,17 @@ export default function PaymentsPage() {
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
 
   const stats = useMemo(() => {
-    const exportable = rows.filter((r) => r.status === "PENDING" && r.bioValid && Number(r.amount) > 0);
+    const exportable = rows.filter(
+      (r) => r.status === "PENDING" && r.bioValid && Number(r.amount) > 0,
+    );
     const blocked = rows.filter((r) => r.status === "PENDING" && !r.bioValid);
     const totalAmount = rows.reduce((sum, r) => sum + Number(r.amount), 0);
-    return { exportable: exportable.length, blocked: blocked.length, totalAmount, total: rows.length };
+    return {
+      exportable: exportable.length,
+      blocked: blocked.length,
+      totalAmount,
+      total: rows.length,
+    };
   }, [rows]);
 
   const generateMutation = useMutation({
@@ -69,7 +72,11 @@ export default function PaymentsPage() {
           variant: "destructive",
         });
       } else {
-        toast({ title: "Génération échouée", description: String(message), variant: "destructive" });
+        toast({
+          title: "Génération échouée",
+          description: String(message),
+          variant: "destructive",
+        });
       }
     },
   });
@@ -156,7 +163,6 @@ export default function PaymentsPage() {
       <MvolaImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        periodIso={listPeriod}
         onImported={() => void refetch()}
       />
     </div>
