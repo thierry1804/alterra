@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma, RequestStatus, Role } from "@prisma/client";
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
@@ -129,6 +130,7 @@ export async function decideActivityRequest(
         unitRate: request.proposedRate,
         validFrom: startOfUtcDay(),
         siteId: request.siteId,
+        groupKey: randomUUID(),
         active: true,
       },
     });

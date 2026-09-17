@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Prisma, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -390,7 +391,10 @@ activitiesRouter.delete(
 
 const listSubActivitiesQuery = cursorPaginationQuery.extend({
   categoryId: z.string().uuid().optional(),
-  siteId: z.string().uuid().optional(),
+  // "GLOBAL" n'a de sens qu'avec groupKey : cible explicitement la ligne globale (siteId NULL)
+  // de ce groupe, un axios `params` ne pouvant pas transmettre une valeur null.
+  siteId: z.union([z.string().uuid(), z.literal("GLOBAL")]).optional(),
+  groupKey: z.string().uuid().optional(),
   active: z
     .enum(["true", "false"])
     .optional()
@@ -409,8 +413,25 @@ const createSubActivitySchema = z.object({
   unitRate: z.coerce.number().positive(),
   validFrom: z.coerce.date().optional(),
   siteId: z.string().uuid().nullable().optional(),
+  /** Fourni pour rattacher une surcharge par site à une tâche existante ; sinon une nouvelle tâche est créée. */
+  groupKey: z.string().uuid().optional(),
   active: z.boolean().optional(),
 });
+
+async function assertGroupSiteAvailable(groupKey: string, siteId: string | null) {
+  const conflict = await prisma.activitySubActivity.findFirst({
+    where: { groupKey, siteId, validTo: null },
+  });
+  if (conflict) {
+    throw new ApiError(
+      409,
+      "GROUP_SITE_TAKEN",
+      siteId
+        ? "Une surcharge existe déjà pour ce site sur cette tâche"
+        : "Une version globale existe déjà pour cette tâche",
+    );
+  }
+}
 
 const updateSubActivitySchema = z.object({
   categoryId: z.string().uuid().optional(),
@@ -429,22 +450,84 @@ activitiesRouter.get(
   validate(listSubActivitiesQuery, "query"),
   async (req, res, next) => {
     try {
-      const { categoryId, siteId, active, history, cursor, take } = req.query as unknown as z.infer<
-        typeof listSubActivitiesQuery
-      >;
+      const { categoryId, siteId, groupKey, active, history, cursor, take } =
+        req.query as unknown as z.infer<typeof listSubActivitiesQuery>;
 
       const where: Prisma.ActivitySubActivityWhereInput = {};
       if (categoryId) where.categoryId = categoryId;
-      if (siteId !== undefined) {
-        where.OR = [{ siteId: null }, { siteId }];
-      } else if (req.user!.role !== Role.ADMIN) {
-        const userSiteId = req.user!.siteId;
-        where.OR = [{ siteId: null }, ...(userSiteId ? [{ siteId: userSiteId }] : [])];
-      }
+      if (groupKey) where.groupKey = groupKey;
       if (active !== undefined) where.active = active;
       if (!history) where.validTo = null;
 
       const pageSize = take ?? 50;
+
+      // Un groupe explicite (modal "gérer les sites") ou l'historique veulent TOUTES les
+      // lignes correspondantes, sans dédoublonnage par site.
+      if (groupKey) {
+        if (siteId === "GLOBAL") where.siteId = null;
+        else if (siteId !== undefined) where.siteId = siteId;
+        const subActivities = await prisma.activitySubActivity.findMany({
+          where,
+          include: { category: true, unit: true },
+          orderBy: [{ siteId: "asc" }, { validFrom: "desc" }, { id: "asc" }],
+          take: pageSize + 1,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+        const hasMore = subActivities.length > pageSize;
+        const data = hasMore ? subActivities.slice(0, pageSize) : subActivities;
+        res.json({ data, nextCursor: hasMore ? data[data.length - 1]?.id : null, hasMore });
+        return;
+      }
+
+      // Portée par site (sécurité) : un non-admin sans siteId explicite ne voit que son site +
+      // le global — mais SANS dédoublonner, car cette liste sert aussi à retrouver par id des
+      // sous-activités déjà référencées par des pointages existants (avant qu'une surcharge de
+      // site n'existe) ; les masquer ferait disparaître silencieusement des pointages en attente.
+      // Le dédoublonnage par groupKey (une surcharge de site masque la ligne globale de la même
+      // tâche) ne s'applique qu'à une demande EXPLICITE "quel tarif s'applique pour tel site"
+      // (picker de saisie, ex. ReferentialSync côté PWA qui passe toujours son propre siteId).
+      const resolvedSiteId =
+        siteId !== undefined
+          ? siteId
+          : req.user!.role !== Role.ADMIN
+            ? req.user!.siteId
+            : undefined;
+      const needsSiteScope = siteId !== undefined || req.user!.role !== Role.ADMIN;
+      const needsDedup = siteId !== undefined;
+
+      if (needsSiteScope) {
+        where.OR = [{ siteId: null }, ...(resolvedSiteId ? [{ siteId: resolvedSiteId }] : [])];
+      }
+
+      if (needsDedup) {
+        const all = await prisma.activitySubActivity.findMany({
+          where,
+          include: { category: true, unit: true },
+          orderBy: [{ label: "asc" }, { validFrom: "desc" }, { id: "asc" }],
+        });
+
+        const byGroup = new Map<string, (typeof all)[number]>();
+        for (const row of all) {
+          const existing = byGroup.get(row.groupKey);
+          if (!existing || (existing.siteId === null && row.siteId !== null)) {
+            byGroup.set(row.groupKey, row);
+          }
+        }
+        const deduped = [...byGroup.values()].sort((a, b) => {
+          const byLabel = a.label.localeCompare(b.label);
+          if (byLabel !== 0) return byLabel;
+          return b.validFrom.getTime() - a.validFrom.getTime();
+        });
+
+        const cursorIndex = cursor ? deduped.findIndex((r) => r.id === cursor) : -1;
+        const startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+        const page = deduped.slice(startIndex, startIndex + pageSize + 1);
+        const hasMore = page.length > pageSize;
+        const data = hasMore ? page.slice(0, pageSize) : page;
+        res.json({ data, nextCursor: hasMore ? data[data.length - 1]?.id : null, hasMore });
+        return;
+      }
+
       const subActivities = await prisma.activitySubActivity.findMany({
         where,
         include: { category: true, unit: true },
@@ -496,7 +579,21 @@ activitiesRouter.post(
       const unit = await prisma.unit.findUnique({ where: { id: body.unitId } });
       if (!unit) throw new ApiError(404, "NOT_FOUND", "Unité introuvable");
 
-      const data = { ...body, validFrom: body.validFrom ?? startOfUtcDay() };
+      let groupKey = body.groupKey;
+      if (groupKey) {
+        const groupExists = await prisma.activitySubActivity.findFirst({ where: { groupKey } });
+        if (!groupExists) throw new ApiError(404, "NOT_FOUND", "Tâche introuvable");
+        await assertGroupSiteAvailable(groupKey, body.siteId ?? null);
+      } else {
+        groupKey = randomUUID();
+      }
+
+      const { groupKey: _ignored, ...bodyWithoutGroupKey } = body;
+      const data = {
+        ...bodyWithoutGroupKey,
+        groupKey,
+        validFrom: body.validFrom ?? startOfUtcDay(),
+      };
       const subActivity = await prisma.activitySubActivity.create({
         data,
         include: { category: true, unit: true },

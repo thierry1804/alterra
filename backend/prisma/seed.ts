@@ -156,6 +156,7 @@ async function main() {
         unitRate: subActivity.unitRate,
         validFrom: new Date("2026-01-01"),
         siteId: null,
+        groupKey: subActivity.id,
       },
     });
   }

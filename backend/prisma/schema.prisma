@@ -214,6 +214,11 @@ model ActivitySubActivity {
   validFrom  DateTime         @db.Date
   validTo    DateTime?        @db.Date
   siteId     String?          @db.Uuid // null = tarif global, non-null = override par site
+  // Identifiant partagé par la ligne globale et ses surcharges par site d'une même tâche —
+  // regroupées dans un seul modal côté admin. Stable à travers les versions RG-04 (une par
+  // lignée). Au plus une ligne courante (validTo IS NULL) par (groupKey, siteId) — contrainte
+  // partielle posée en migration brute (Postgres ne l'exprime pas via @@unique standard).
+  groupKey   String           @db.Uuid
   active     Boolean          @default(true)
   pointages  Pointage[]
   createdAt  DateTime         @default(now())
@@ -222,6 +227,7 @@ model ActivitySubActivity {
   @@index([unitId])
   @@index([siteId, active])
   @@index([validFrom, validTo])
+  @@index([groupKey])
 }
 
 model Worker {

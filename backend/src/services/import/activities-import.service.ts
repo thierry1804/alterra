@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { loadXlsxWorkbook } from "./excel-workbook.js";
 import {
@@ -266,6 +267,7 @@ export async function importActivitiesRows(rows: ValidActivityRow[], dryRun: boo
         unitRate: row.unitRate,
         validFrom: row.validFrom,
         siteId: row.siteShortCode ? (siteByCode.get(row.siteShortCode) ?? null) : null,
+        groupKey: randomUUID(),
       },
     });
     created.push({ id: activity.id, label: activity.label, action: "created" as const });

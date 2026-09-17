@@ -34,6 +34,8 @@ export interface ActivitySubActivity {
   validFrom: string;
   validTo: string | null;
   siteId: string | null;
+  /** Regroupe la ligne globale (siteId null) et ses surcharges par site d'une même tâche. */
+  groupKey: string;
   active: boolean;
 }
 

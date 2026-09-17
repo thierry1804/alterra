@@ -1,12 +1,24 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { Pencil, History, Power, Plus, FolderPlus, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  Pencil,
+  History,
+  Power,
+  Plus,
+  FolderPlus,
+  ChevronRight,
+  ChevronDown,
+  MapPinned,
+} from "lucide-react";
 import { api } from "../lib/api";
 import type { ActivityCategory, ActivitySubActivity, Site, Unit } from "../lib/referentials";
 import { formatDate, formatRate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import RateHistoryDrawer from "../components/activities/RateHistoryDrawer";
+import SubActivitySitesModal, {
+  type SubActivityGroupSummary,
+} from "../components/activities/SubActivitySitesModal";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -69,7 +81,13 @@ export default function ActivitiesPage() {
   const [subForm, setSubForm] = useState<SubActivityForm>(emptySubActivityForm);
   const [shortLabelEdited, setShortLabelEdited] = useState(false);
 
-  const [history, setHistory] = useState<{ categoryId: string; label: string } | null>(null);
+  const [history, setHistory] = useState<{
+    groupKey: string;
+    siteId: string | null;
+    label: string;
+  } | null>(null);
+  const [sitesModalGroup, setSitesModalGroup] = useState<SubActivityGroupSummary | null>(null);
+  const [sitesModalOpen, setSitesModalOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   function toggleExpanded(categoryId: string) {
@@ -225,6 +243,30 @@ export default function ActivitiesPage() {
     setSubDialogOpen(true);
   }
 
+  function openSitesModal(representative: ActivitySubActivity) {
+    setSitesModalGroup({
+      groupKey: representative.groupKey,
+      categoryId: representative.categoryId,
+      label: representative.label,
+      shortLabel: representative.shortLabel,
+      unitId: representative.unitId,
+    });
+    setSitesModalOpen(true);
+  }
+
+  function groupSubActivities(subActivities: ActivitySubActivity[]) {
+    const byGroup = new Map<string, ActivitySubActivity[]>();
+    subActivities.forEach((sub) => {
+      const current = byGroup.get(sub.groupKey) ?? [];
+      current.push(sub);
+      byGroup.set(sub.groupKey, current);
+    });
+    return [...byGroup.values()].map((rows) => ({
+      representative: rows.find((r) => r.siteId === null) ?? rows[0],
+      siteOverrideCount: rows.filter((r) => r.siteId !== null).length,
+    }));
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -349,39 +391,60 @@ export default function ActivitiesPage() {
                                   </TableCell>
                                 </TableRow>
                               )}
-                              {category.subActivities.map((sub) => (
-                                <TableRow key={sub.id}>
-                                  <TableCell className="pl-10">{sub.label}</TableCell>
-                                  <TableCell>{sub.shortLabel}</TableCell>
-                                  <TableCell>{sub.unit?.label}</TableCell>
-                                  <TableCell>{formatRate(sub.unitRate)}</TableCell>
-                                  <TableCell>{siteName(sub.siteId)}</TableCell>
-                                  <TableCell>{formatDate(sub.validFrom)}</TableCell>
-                                  <TableCell>
-                                    <RowActions>
-                                      <IconButton
-                                        icon={Pencil}
-                                        label="Modifier"
-                                        variant="brand"
-                                        onClick={() => openEditSub(sub)}
-                                      />
-                                      <IconButton
-                                        icon={History}
-                                        label="Historique des tarifs"
-                                        onClick={() =>
-                                          setHistory({ categoryId: category.id, label: sub.label })
-                                        }
-                                      />
-                                      <IconButton
-                                        icon={Power}
-                                        label="Désactiver"
-                                        variant="destructive"
-                                        onClick={() => deactivateSubMutation.mutate(sub)}
-                                      />
-                                    </RowActions>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                              {groupSubActivities(category.subActivities).map(
+                                ({ representative: sub, siteOverrideCount }) => (
+                                  <TableRow key={sub.groupKey}>
+                                    <TableCell className="pl-10">{sub.label}</TableCell>
+                                    <TableCell>{sub.shortLabel}</TableCell>
+                                    <TableCell>{sub.unit?.label}</TableCell>
+                                    <TableCell>{formatRate(sub.unitRate)}</TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        {siteName(sub.siteId)}
+                                        {siteOverrideCount > 0 && (
+                                          <Badge variant="default">
+                                            +{siteOverrideCount} site
+                                            {siteOverrideCount > 1 ? "s" : ""}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>{formatDate(sub.validFrom)}</TableCell>
+                                    <TableCell>
+                                      <RowActions>
+                                        <IconButton
+                                          icon={Pencil}
+                                          label="Modifier"
+                                          variant="brand"
+                                          onClick={() => openEditSub(sub)}
+                                        />
+                                        <IconButton
+                                          icon={MapPinned}
+                                          label="Gérer les tarifs par site"
+                                          onClick={() => openSitesModal(sub)}
+                                        />
+                                        <IconButton
+                                          icon={History}
+                                          label="Historique des tarifs"
+                                          onClick={() =>
+                                            setHistory({
+                                              groupKey: sub.groupKey,
+                                              siteId: sub.siteId,
+                                              label: sub.label,
+                                            })
+                                          }
+                                        />
+                                        <IconButton
+                                          icon={Power}
+                                          label="Désactiver"
+                                          variant="destructive"
+                                          onClick={() => deactivateSubMutation.mutate(sub)}
+                                        />
+                                      </RowActions>
+                                    </TableCell>
+                                  </TableRow>
+                                ),
+                              )}
                             </TableBody>
                           </Table>
                         </TableCell>
@@ -402,11 +465,23 @@ export default function ActivitiesPage() {
       />
 
       <RateHistoryDrawer
-        categoryId={history?.categoryId ?? null}
+        groupKey={history?.groupKey ?? null}
+        siteId={history?.siteId ?? null}
         label={history?.label ?? null}
         open={!!history}
         onOpenChange={(open) => {
           if (!open) setHistory(null);
+        }}
+      />
+
+      <SubActivitySitesModal
+        open={sitesModalOpen}
+        onOpenChange={setSitesModalOpen}
+        group={sitesModalGroup}
+        sites={sites}
+        onHistory={(siteId) => {
+          if (!sitesModalGroup) return;
+          setHistory({ groupKey: sitesModalGroup.groupKey, siteId, label: sitesModalGroup.label });
         }}
       />
 

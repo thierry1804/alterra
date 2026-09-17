@@ -21,6 +21,8 @@ const MOCK_BLOCKED_USER_ID = "00000000-0000-4000-8000-000000000099";
 
 const MOCK_CATEGORY_ID = "00000000-0000-4000-8000-000000000025";
 const MOCK_UNIT_ID = "00000000-0000-4000-8000-000000000026";
+const MOCK_CHEF_SERVICE_ID = "00000000-0000-4000-8000-000000000040";
+const MOCK_GROUP_KEY = "00000000-0000-4000-8000-000000000060";
 
 const mockActivity = {
   id: MOCK_ACTIVITY_ID,
@@ -32,6 +34,7 @@ const mockActivity = {
   validFrom: new Date("2026-01-01"),
   validTo: null,
   siteId: MOCK_SITE_ID,
+  groupKey: MOCK_GROUP_KEY,
   active: true,
   createdAt: new Date(),
 };
@@ -98,6 +101,15 @@ function adminAuthHeader() {
     sub: MOCK_ADMIN_ID,
     role: Role.ADMIN,
     siteId: MOCK_SITE_ID,
+    teamId: null,
+  })}`;
+}
+
+function chefServiceAuthHeader(siteId: string) {
+  return `Bearer ${signAccessToken({
+    sub: MOCK_CHEF_SERVICE_ID,
+    role: Role.CHEF_SERVICE,
+    siteId,
     teamId: null,
   })}`;
 }
@@ -222,6 +234,55 @@ describe("referentials module", () => {
       }),
     );
     expect(result.unitRate.toString()).toBe("175");
+  });
+
+  it("GET /sub-activities without an explicit siteId does NOT dedupe by groupKey — a chef de service must still see the global row so pointages already referencing it stay resolvable", async () => {
+    const globalRow = { ...mockActivity, id: "00000000-0000-4000-8000-000000000050", siteId: null };
+    const siteOverrideRow = {
+      ...mockActivity,
+      id: "00000000-0000-4000-8000-000000000051",
+      siteId: MOCK_SITE_ID,
+      unitRate: new Prisma.Decimal("175.00"),
+    };
+    vi.mocked(prisma.activitySubActivity.findMany).mockResolvedValue([
+      globalRow,
+      siteOverrideRow,
+    ] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/sub-activities")
+      .query({ active: "true" })
+      .set("Authorization", chefServiceAuthHeader(MOCK_SITE_ID));
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((row: { id: string }) => row.id);
+    expect(ids).toContain(globalRow.id);
+    expect(ids).toContain(siteOverrideRow.id);
+  });
+
+  it("GET /sub-activities?siteId=X dedupes by groupKey, preferring the site override over the global row", async () => {
+    const globalRow = { ...mockActivity, id: "00000000-0000-4000-8000-000000000050", siteId: null };
+    const siteOverrideRow = {
+      ...mockActivity,
+      id: "00000000-0000-4000-8000-000000000051",
+      siteId: MOCK_SITE_ID,
+      unitRate: new Prisma.Decimal("175.00"),
+    };
+    vi.mocked(prisma.activitySubActivity.findMany).mockResolvedValue([
+      globalRow,
+      siteOverrideRow,
+    ] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/sub-activities")
+      .query({ active: "true", siteId: MOCK_SITE_ID })
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(siteOverrideRow.id);
   });
 
   it("RG-04: same-day validFrom closes at validFrom and opens next day", () => {

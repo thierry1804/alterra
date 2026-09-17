@@ -62,6 +62,7 @@ export async function applySubActivityRateChange(
     | "shortLabel"
     | "unitId"
     | "siteId"
+    | "groupKey"
     | "unitRate"
     | "validFrom"
     | "active"
@@ -84,6 +85,7 @@ export async function applySubActivityRateChange(
         shortLabel: overrides.shortLabel ?? current.shortLabel,
         unitId: overrides.unitId ?? current.unitId,
         siteId: overrides.siteId !== undefined ? overrides.siteId : current.siteId,
+        groupKey: current.groupKey,
         unitRate: newRate,
         validFrom: openDate,
         validTo: null,

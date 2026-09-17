@@ -8,32 +8,33 @@ import { Badge } from "../ui/badge";
 import { fetchAllCursorPages } from "../ui/data-table/fetchAllPages";
 
 interface RateHistoryDrawerProps {
-  categoryId: string | null;
+  groupKey: string | null;
+  /** null = lignée globale, sinon lignée de ce site — les deux ont leur propre historique RG-04. */
+  siteId: string | null;
   label: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function RateHistoryDrawer({
-  categoryId,
+  groupKey,
+  siteId,
   label,
   open,
   onOpenChange,
 }: RateHistoryDrawerProps) {
   const { data: history = [], isLoading } = useQuery({
-    queryKey: ["sub-activities", "history", categoryId, label],
-    enabled: open && !!categoryId && !!label,
+    queryKey: ["sub-activities", "history", groupKey, siteId],
+    enabled: open && !!groupKey,
     queryFn: () =>
       fetchAllCursorPages<ActivitySubActivity>((cursor) =>
         api
           .get<{ data: ActivitySubActivity[]; nextCursor: string | null; hasMore: boolean }>(
             "/sub-activities",
-            { params: { categoryId, history: true, cursor, take: 100 } },
+            { params: { groupKey, siteId: siteId ?? "GLOBAL", history: true, cursor, take: 100 } },
           )
           .then((r) => r.data),
-      )
-        .then((rows) => rows.filter((a) => a.label === label))
-        .then((rows) => rows.sort((a, b) => b.validFrom.localeCompare(a.validFrom))),
+      ).then((rows) => rows.sort((a, b) => b.validFrom.localeCompare(a.validFrom))),
   });
 
   return (
@@ -41,7 +42,9 @@ export default function RateHistoryDrawer({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Historique tarifs — {label}</DialogTitle>
-          <DialogDescription>Versions tarifaires RG-04 pour cette sous-activité.</DialogDescription>
+          <DialogDescription>
+            Versions tarifaires RG-04 pour cette lignée ({siteId ? "site" : "globale"}).
+          </DialogDescription>
         </DialogHeader>
         <Table>
           <TableHeader>

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { parseActivitiesWorkbook, type ValidActivityRow } from "./activities-import.service.js";
 import type { ImportRowError } from "./excel-utils.js";
@@ -84,6 +85,7 @@ async function commitImport(
           unitRate: row.unitRate,
           validFrom: row.validFrom,
           siteId: row.siteShortCode ? (siteByCode.get(row.siteShortCode) ?? null) : null,
+          groupKey: randomUUID(),
         },
       });
       activityResults.push(activity);
