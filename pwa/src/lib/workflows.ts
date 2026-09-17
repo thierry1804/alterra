@@ -129,7 +129,9 @@ export async function uploadWorkflowPhoto(
   return data.photoKey;
 }
 
-export async function fetchAllActivityRequests(status?: RequestStatus): Promise<ActivityRequestRow[]> {
+export async function fetchAllActivityRequests(
+  status?: RequestStatus,
+): Promise<ActivityRequestRow[]> {
   const rows: ActivityRequestRow[] = [];
   let cursor: string | undefined;
 

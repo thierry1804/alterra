@@ -67,6 +67,7 @@ export default function ActivitiesPage() {
   const [subDialogOpen, setSubDialogOpen] = useState(false);
   const [editingSub, setEditingSub] = useState<ActivitySubActivity | null>(null);
   const [subForm, setSubForm] = useState<SubActivityForm>(emptySubActivityForm);
+  const [shortLabelEdited, setShortLabelEdited] = useState(false);
 
   const [history, setHistory] = useState<{ categoryId: string; label: string } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -206,6 +207,7 @@ export default function ActivitiesPage() {
   function openCreateSub(categoryId: string) {
     setEditingSub(null);
     setSubForm({ ...emptySubActivityForm, categoryId });
+    setShortLabelEdited(false);
     setSubDialogOpen(true);
   }
 
@@ -219,6 +221,7 @@ export default function ActivitiesPage() {
       unitRate: subActivity.unitRate,
       siteId: subActivity.siteId ?? "",
     });
+    setShortLabelEdited(true);
     setSubDialogOpen(true);
   }
 
@@ -477,7 +480,14 @@ export default function ActivitiesPage() {
               <Input
                 id="sub-label"
                 value={subForm.label}
-                onChange={(e) => setSubForm((f) => ({ ...f, label: e.target.value }))}
+                onChange={(e) => {
+                  const label = e.target.value;
+                  setSubForm((f) => ({
+                    ...f,
+                    label,
+                    shortLabel: shortLabelEdited ? f.shortLabel : label.toLowerCase(),
+                  }));
+                }}
                 required
               />
             </div>
@@ -486,7 +496,10 @@ export default function ActivitiesPage() {
               <Input
                 id="sub-short"
                 value={subForm.shortLabel}
-                onChange={(e) => setSubForm((f) => ({ ...f, shortLabel: e.target.value }))}
+                onChange={(e) => {
+                  setShortLabelEdited(true);
+                  setSubForm((f) => ({ ...f, shortLabel: e.target.value }));
+                }}
                 required
               />
             </div>
