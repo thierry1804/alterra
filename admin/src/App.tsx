@@ -7,6 +7,7 @@ import Forbidden from "./pages/Forbidden";
 import SitesPage from "./pages/Sites";
 import ZonesPage from "./pages/Zones";
 import ActivitiesPage from "./pages/Activities";
+import UnitsPage from "./pages/Units";
 import WorkersPage from "./pages/Workers";
 import UsersPage from "./pages/Users";
 import PointagesPage from "./pages/Pointages";
@@ -74,6 +75,7 @@ export default function App() {
                 <Route path="/sites" element={<SitesPage />} />
                 <Route path="/zones" element={<ZonesPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
+                <Route path="/units" element={<UnitsPage />} />
                 <Route path="/workers" element={<WorkersPage />} />
                 <Route path="/requests" element={<RequestsPage />} />
                 <Route path="/map" element={<MapPage />} />

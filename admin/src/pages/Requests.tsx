@@ -205,7 +205,7 @@ export default function RequestsPage() {
           { header: "Date", accessor: (r) => formatDate(r.createdAt) },
           { header: "Libellé", accessor: (r) => r.proposedLabel },
           { header: "Tarif", accessor: (r) => Number(r.proposedRate) },
-          { header: "Unité", accessor: (r) => r.proposedUnit },
+          { header: "Unité", accessor: (r) => r.unit?.label ?? "" },
           { header: "Statut", accessor: (r) => REQUEST_STATUS_LABELS[r.status] },
         ],
         "demandes-activites",
@@ -362,7 +362,7 @@ export default function RequestsPage() {
               <TableCell className="text-sm">{formatDate(row.createdAt)}</TableCell>
               <TableCell className="text-sm font-medium">{row.proposedLabel}</TableCell>
               <TableCell className="text-sm">
-                {Number(row.proposedRate).toLocaleString("fr-MG")} Ar / {row.proposedUnit}
+                {Number(row.proposedRate).toLocaleString("fr-MG")} Ar / {row.unit?.label}
               </TableCell>
               <TableCell>
                 <Badge variant={requestStatusVariant(row.status)}>

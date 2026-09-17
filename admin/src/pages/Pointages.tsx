@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
@@ -8,7 +14,7 @@ import {
   formatPointageAmount,
   pointageStatusVariant,
 } from "../lib/pointages";
-import type { Activity, Worker } from "../lib/referentials";
+import type { ActivitySubActivity, Worker } from "../lib/referentials";
 import { formatDate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import PointageDetailDrawer from "../components/pointages/PointageDetailDrawer";
@@ -43,9 +49,17 @@ export default function PointagesPage() {
   const [dateTo, setDateTo] = useState("");
   const [selected, setSelected] = useState<Pointage | null>(null);
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => api.get<{ data: Activity[] }>("/activities").then((r) => r.data.data),
+  const { data: subActivities = [] } = useQuery({
+    queryKey: ["sub-activities", "all"],
+    queryFn: () =>
+      fetchAllCursorPages<ActivitySubActivity>((cursor) =>
+        api
+          .get<{ data: ActivitySubActivity[]; nextCursor: string | null; hasMore: boolean }>(
+            "/sub-activities",
+            { params: { cursor, take: 100 } },
+          )
+          .then((r) => r.data),
+      ),
   });
 
   const { sortKey, sortDir, toggleSort } = useServerSort(null);
@@ -67,7 +81,7 @@ export default function PointagesPage() {
           },
         })
         .then((r) => r.data),
-    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
 
   const pointages = useMemo(
@@ -77,7 +91,9 @@ export default function PointagesPage() {
 
   const selection = useRowSelection(pointages.map((p) => p.id));
 
-  function invalidateAfterBulk(res: { data: { results: Array<{ id: string; status: string; error?: string }> } }) {
+  function invalidateAfterBulk(res: {
+    data: { results: Array<{ id: string; status: string; error?: string }> };
+  }) {
     void queryClient.invalidateQueries({ queryKey: ["pointages"] });
     const failed = res.data.results.filter((r) => r.status === "error");
     selection.clear();
@@ -139,7 +155,7 @@ export default function PointagesPage() {
         [
           { header: "Date", accessor: (p) => formatDate(p.date) },
           { header: "MOC", accessor: (p) => workerLabel(p.workerId) },
-          { header: "Activité", accessor: (p) => activityLabel(p.activityId) },
+          { header: "Activité", accessor: (p) => activityLabel(p.subActivityId) },
           { header: "Quantité", accessor: (p) => Number(p.quantity) },
           { header: "Montant (Ar)", accessor: (p) => Number(p.amount) },
           { header: "Statut", accessor: (p) => POINTAGE_STATUS_LABELS[p.status] },
@@ -169,22 +185,24 @@ export default function PointagesPage() {
     return map;
   }, [workerQueries, workerIds]);
 
-  const activitiesMap = useMemo(() => {
-    const map = new Map<string, Activity>();
-    activities.forEach((activity) => map.set(activity.id, activity));
+  const subActivitiesMap = useMemo(() => {
+    const map = new Map<string, ActivitySubActivity>();
+    subActivities.forEach((subActivity) => map.set(subActivity.id, subActivity));
     return map;
-  }, [activities]);
+  }, [subActivities]);
 
-  const selectedWorker = selected ? workersMap.get(selected.workerId) ?? null : null;
-  const selectedActivity = selected ? activitiesMap.get(selected.activityId) ?? null : null;
+  const selectedWorker = selected ? (workersMap.get(selected.workerId) ?? null) : null;
+  const selectedSubActivity = selected
+    ? (subActivitiesMap.get(selected.subActivityId) ?? null)
+    : null;
 
   function workerLabel(workerId: string): string {
     const worker = workersMap.get(workerId);
     return worker ? `${worker.firstName} ${worker.lastName}` : workerId.slice(0, 8);
   }
 
-  function activityLabel(activityId: string): string {
-    return activitiesMap.get(activityId)?.label ?? activityId.slice(0, 8);
+  function activityLabel(subActivityId: string): string {
+    return subActivitiesMap.get(subActivityId)?.label ?? subActivityId.slice(0, 8);
   }
 
   return (
@@ -193,7 +211,12 @@ export default function PointagesPage() {
         title="Pointages"
         description="Validation et suivi des saisies terrain."
         action={
-          <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={exporting}
+            onClick={() => void handleExport()}
+          >
             <Download className="h-4 w-4" aria-hidden />
             {exporting ? "Export…" : "Exporter"}
           </Button>
@@ -300,13 +323,51 @@ export default function PointagesPage() {
                 />
               </TableHead>
               <TableHead className="w-12" />
-              <SortableHead sortKey="date" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="workerName" label="MOC" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="activityLabel" label="Activité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="quantity" label="Qté" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="amount" label="Montant" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="date"
+                label="Date"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="workerName"
+                label="MOC"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="activityLabel"
+                label="Activité"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="quantity"
+                label="Qté"
+                numeric
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="amount"
+                label="Montant"
+                numeric
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead>Bio</TableHead>
-              <SortableHead sortKey="status" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="status"
+                label="Statut"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -314,7 +375,10 @@ export default function PointagesPage() {
             {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={10} />}
             {!pointagesQuery.isLoading &&
               pointages.map((pointage) => (
-                <TableRow key={pointage.id} data-state={selection.isSelected(pointage.id) ? "selected" : undefined}>
+                <TableRow
+                  key={pointage.id}
+                  data-state={selection.isSelected(pointage.id) ? "selected" : undefined}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selection.isSelected(pointage.id)}
@@ -344,16 +408,16 @@ export default function PointagesPage() {
                   <TableCell className="font-medium text-zinc-900">
                     {workerLabel(pointage.workerId)}
                   </TableCell>
-                  <TableCell className="text-zinc-600">{activityLabel(pointage.activityId)}</TableCell>
+                  <TableCell className="text-zinc-600">
+                    {activityLabel(pointage.subActivityId)}
+                  </TableCell>
                   <TableCell numeric>{pointage.quantity}</TableCell>
                   <TableCell numeric className="font-medium text-zinc-900">
                     {formatPointageAmount(pointage.amount)}
                   </TableCell>
                   <TableCell>
                     {pointage.bioCheck ? (
-                      <Badge
-                        variant={pointage.bioCheck.result === "OK" ? "success" : "warning"}
-                      >
+                      <Badge variant={pointage.bioCheck.result === "OK" ? "success" : "warning"}>
                         {pointage.bioCheck.result}
                       </Badge>
                     ) : (
@@ -401,8 +465,8 @@ export default function PointagesPage() {
       <PointageDetailDrawer
         pointage={selected}
         worker={selectedWorker}
-        activity={selectedActivity}
-        activities={activities}
+        subActivity={selectedSubActivity}
+        subActivities={subActivities}
         open={!!selected}
         onOpenChange={(open) => {
           if (!open) setSelected(null);

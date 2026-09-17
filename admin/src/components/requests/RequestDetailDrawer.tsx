@@ -153,10 +153,18 @@ export default function RequestDetailDrawer({
         <div className="space-y-4">
           {selection.type === "activity" && (
             <>
+              <DetailField
+                label="Catégorie"
+                value={
+                  selection.row.category
+                    ? `${selection.row.category.code} — ${selection.row.category.label}`
+                    : ""
+                }
+              />
               <DetailField label="Libellé proposé" value={selection.row.proposedLabel} />
               <DetailField
                 label="Unité / tarif"
-                value={`${selection.row.proposedUnit} · ${Number(selection.row.proposedRate).toLocaleString("fr-MG")} Ar`}
+                value={`${selection.row.unit?.label ?? ""} · ${Number(selection.row.proposedRate).toLocaleString("fr-MG")} Ar`}
               />
               <DetailField label="Justification" value={selection.row.justification} />
               <StatusBadge

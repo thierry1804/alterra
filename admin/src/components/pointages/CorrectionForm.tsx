@@ -3,7 +3,7 @@ import { useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../../lib/api";
 import type { Pointage } from "../../lib/pointages";
-import type { Activity } from "../../lib/referentials";
+import type { ActivitySubActivity } from "../../lib/referentials";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -11,19 +11,19 @@ import { toast } from "../../hooks/use-toast";
 
 interface CorrectionFormProps {
   pointage: Pointage;
-  activities: Activity[];
+  subActivities: ActivitySubActivity[];
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export default function CorrectionForm({
   pointage,
-  activities,
+  subActivities,
   onSuccess,
   onCancel,
 }: CorrectionFormProps) {
   const [quantity, setQuantity] = useState(pointage.quantity);
-  const [activityId, setActivityId] = useState(pointage.activityId);
+  const [subActivityId, setSubActivityId] = useState(pointage.subActivityId);
   const [date, setDate] = useState(pointage.date.slice(0, 10));
   const [correctionReason, setCorrectionReason] = useState("");
 
@@ -31,7 +31,7 @@ export default function CorrectionForm({
     mutationFn: () =>
       api.patch(`/pointages/${pointage.id}`, {
         quantity: Number(quantity),
-        activityId,
+        subActivityId,
         date,
         correctionReason: correctionReason.trim(),
       }),
@@ -83,12 +83,12 @@ export default function CorrectionForm({
         <select
           id="corr-activity"
           className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
-          value={activityId}
-          onChange={(e) => setActivityId(e.target.value)}
+          value={subActivityId}
+          onChange={(e) => setSubActivityId(e.target.value)}
         >
-          {activities.map((activity) => (
-            <option key={activity.id} value={activity.id}>
-              {activity.label} ({activity.unit})
+          {subActivities.map((subActivity) => (
+            <option key={subActivity.id} value={subActivity.id}>
+              {subActivity.label} ({subActivity.unit?.label})
             </option>
           ))}
         </select>

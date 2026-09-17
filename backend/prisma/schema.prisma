@@ -90,22 +90,22 @@ enum PresenceSource {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String?   @unique
-  phone        String?   @unique
-  passwordHash String
-  role         Role
-  firstName    String
-  lastName     String
-  active       Boolean   @default(true)
-  mfaSecret    String? // TOTP secret chiffré AES-256-GCM
-  siteId       String?   @db.Uuid
-  site         Site?     @relation(fields: [siteId], references: [id])
-  teamId       String?   @db.Uuid
-  team         Team?     @relation(fields: [teamId], references: [id])
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String?         @unique
+  phone          String?         @unique
+  passwordHash   String
+  role           Role
+  firstName      String
+  lastName       String
+  active         Boolean         @default(true)
+  mfaSecret      String? // TOTP secret chiffré AES-256-GCM
+  siteId         String?         @db.Uuid
+  site           Site?           @relation(fields: [siteId], references: [id])
+  teamId         String?         @db.Uuid
+  team           Team?           @relation(fields: [teamId], references: [id])
   lastLoginAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   deletedAt      DateTime?
   refreshTokens  RefreshToken[]
   passwordResets PasswordReset[]
@@ -147,14 +147,14 @@ model Zone {
 
 /// V2
 model Parcelle {
-  id        String     @id @default(uuid()) @db.Uuid
-  zoneId    String     @db.Uuid
-  zone      Zone       @relation(fields: [zoneId], references: [id])
-  name      String
-  code      String? // unique par zone
+  id         String     @id @default(uuid()) @db.Uuid
+  zoneId     String     @db.Uuid
+  zone       Zone       @relation(fields: [zoneId], references: [id])
+  name       String
+  code       String? // unique par zone
   geoPolygon Json?
-  surfaceHa Decimal?   @db.Decimal(10, 2)
-  pointages Pointage[]
+  surfaceHa  Decimal?   @db.Decimal(10, 2)
+  pointages  Pointage[]
 
   @@unique([zoneId, name])
   @@unique([zoneId, code])
@@ -175,19 +175,51 @@ model Team {
   @@unique([siteId, name])
 }
 
-model Activity {
-  id        String     @id @default(uuid()) @db.Uuid
-  label     String
-  code      String? // ex: "ACT04" — unique par site parmi les activités actives (contrainte partielle, voir migration)
-  unit      String // trou, m², plant, kg
-  unitRate  Decimal    @db.Decimal(12, 2)
-  validFrom DateTime   @db.Date
-  validTo   DateTime?  @db.Date
-  siteId    String?    @db.Uuid // null = global
-  active    Boolean    @default(true)
-  pointages Pointage[]
-  createdAt DateTime   @default(now())
+/// Catégorie officielle (ACT01 à ACT07 — cf. CATEGORIES DES ACTIVITES MOC PAR SITE.xlsx), globale (pas de siteId : identique sur tous les sites).
+model ActivityCategory {
+  id               String                @id @default(uuid()) @db.Uuid
+  code             String                @unique // ACT01, ACT02...
+  label            String // "Préparation du sol"
+  active           Boolean               @default(true)
+  subActivities    ActivitySubActivity[]
+  activityRequests ActivityRequest[]
+  createdAt        DateTime              @default(now())
 
+  @@index([active])
+}
+
+/// Référentiel des unités de facturation (Pièce, Trou, Ha, Km, Jour, Pied...).
+model Unit {
+  id               String                @id @default(uuid()) @db.Uuid
+  code             String                @unique // PIECE, TROU, HA...
+  label            String // "Pièce", "Trou", "Ha"
+  active           Boolean               @default(true)
+  subActivities    ActivitySubActivity[]
+  activityRequests ActivityRequest[]
+  createdAt        DateTime              @default(now())
+
+  @@index([active])
+}
+
+/// Unité réellement facturée (ce que pointe un Pointage) — une catégorie a plusieurs sous-activités, chacune avec son propre tarif.
+model ActivitySubActivity {
+  id         String           @id @default(uuid()) @db.Uuid
+  categoryId String           @db.Uuid
+  category   ActivityCategory @relation(fields: [categoryId], references: [id])
+  label      String // "Trouaison 40cm x 40cm" — affichage complet
+  shortLabel String // "trouaison" — libellé court pour la grammaire MVola (SALARY_RX)
+  unitId     String           @db.Uuid
+  unit       Unit             @relation(fields: [unitId], references: [id])
+  unitRate   Decimal          @db.Decimal(12, 2)
+  validFrom  DateTime         @db.Date
+  validTo    DateTime?        @db.Date
+  siteId     String?          @db.Uuid // null = tarif global, non-null = override par site
+  active     Boolean          @default(true)
+  pointages  Pointage[]
+  createdAt  DateTime         @default(now())
+
+  @@index([categoryId, active])
+  @@index([unitId])
   @@index([siteId, active])
   @@index([validFrom, validTo])
 }
@@ -227,37 +259,37 @@ model Worker {
 }
 
 model Pointage {
-  id                String         @id @default(uuid()) @db.Uuid
-  clientUuid        String         @unique @db.Uuid // anti-doublon idempotence
-  workerId          String         @db.Uuid
-  worker            Worker         @relation(fields: [workerId], references: [id])
-  activityId        String         @db.Uuid
-  activity          Activity       @relation(fields: [activityId], references: [id])
-  quantity          Decimal        @db.Decimal(10, 2)
-  unitRateSnapshot  Decimal        @db.Decimal(12, 2) // tarif figé à la saisie
-  amount            Decimal        @db.Decimal(12, 2) // = quantity * unitRateSnapshot
-  date              DateTime       @db.Date
-  parcelleId        String?        @db.Uuid // V2
-  parcelle          Parcelle?      @relation(fields: [parcelleId], references: [id])
+  id                String                 @id @default(uuid()) @db.Uuid
+  clientUuid        String                 @unique @db.Uuid // anti-doublon idempotence
+  workerId          String                 @db.Uuid
+  worker            Worker                 @relation(fields: [workerId], references: [id])
+  subActivityId     String                 @db.Uuid
+  subActivity       ActivitySubActivity    @relation(fields: [subActivityId], references: [id])
+  quantity          Decimal                @db.Decimal(10, 2)
+  unitRateSnapshot  Decimal                @db.Decimal(12, 2) // tarif figé à la saisie
+  amount            Decimal                @db.Decimal(12, 2) // = quantity * unitRateSnapshot
+  date              DateTime               @db.Date
+  parcelleId        String?                @db.Uuid // V2
+  parcelle          Parcelle?              @relation(fields: [parcelleId], references: [id])
   geoLat            Float?
   geoLng            Float?
   photoKey          String?
   notes             String?
-  status            PointageStatus @default(PENDING)
-  enteredById       String         @db.Uuid
-  validatedById     String?        @db.Uuid
+  status            PointageStatus         @default(PENDING)
+  enteredById       String                 @db.Uuid
+  validatedById     String?                @db.Uuid
   validatedAt       DateTime?
   rejectionReason   String?
-  bioCheckId        String?        @db.Uuid
+  bioCheckId        String?                @db.Uuid
   createdByClientAt DateTime // horodatage côté PWA
-  syncedAt          DateTime       @default(now())
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  syncedAt          DateTime               @default(now())
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  clarifications    ClarificationRequest[]
 
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])
-  clarifications ClarificationRequest[]
 }
 
 /// V2
@@ -348,19 +380,22 @@ model Payment {
 
 /// V2
 model ActivityRequest {
-  id                String        @id @default(uuid()) @db.Uuid
-  proposedLabel     String
-  proposedUnit      String
-  proposedRate      Decimal       @db.Decimal(12, 2)
-  justification     String        @db.Text
-  requestedById     String        @db.Uuid
-  siteId            String?       @db.Uuid
-  status            RequestStatus @default(PENDING)
-  decisionById      String?       @db.Uuid
-  decisionAt        DateTime?
-  decisionReason    String?
-  createdActivityId String?       @db.Uuid
-  createdAt         DateTime      @default(now())
+  id                   String           @id @default(uuid()) @db.Uuid
+  categoryId           String           @db.Uuid
+  category             ActivityCategory @relation(fields: [categoryId], references: [id])
+  proposedLabel        String
+  unitId               String           @db.Uuid
+  unit                 Unit             @relation(fields: [unitId], references: [id])
+  proposedRate         Decimal          @db.Decimal(12, 2)
+  justification        String           @db.Text
+  requestedById        String           @db.Uuid
+  siteId               String?          @db.Uuid
+  status               RequestStatus    @default(PENDING)
+  decisionById         String?          @db.Uuid
+  decisionAt           DateTime?
+  decisionReason       String?
+  createdSubActivityId String?          @db.Uuid
+  createdAt            DateTime         @default(now())
 
   @@index([status, createdAt])
 }

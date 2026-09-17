@@ -104,7 +104,7 @@ export async function buildWeeklyReportViewModel(
     },
     include: {
       worker: true,
-      activity: true,
+      subActivity: { include: { unit: true } },
     },
     orderBy: [{ date: "asc" }, { worker: { lastName: "asc" } }],
   });
@@ -142,7 +142,7 @@ export async function buildWeeklyReportViewModel(
     totalAmount += Number(pointage.amount.toString());
 
     const dayKey = formatDateFr(pointage.date);
-    const activityLabel = pointage.activity.label;
+    const activityLabel = pointage.subActivity.label;
     if (!dayMap.has(dayKey)) dayMap.set(dayKey, new Map());
     const activityMap = dayMap.get(dayKey)!;
     if (!activityMap.has(activityLabel)) activityMap.set(activityLabel, []);
@@ -150,7 +150,7 @@ export async function buildWeeklyReportViewModel(
     activityMap.get(activityLabel)!.push({
       workerName: `${pointage.worker.lastName} ${pointage.worker.firstName}`,
       quantity: pointage.quantity.toString(),
-      unit: pointage.activity.unit,
+      unit: pointage.subActivity.unit.label,
       amount: formatAmount(pointage.amount),
       bioStatus: bioStatusLabel(latestBioByWorker.get(pointage.workerId)),
     });

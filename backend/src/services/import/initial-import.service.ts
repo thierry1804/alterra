@@ -1,9 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { prisma } from "../../lib/prisma.js";
-import {
-  parseActivitiesWorkbook,
-  type ValidActivityRow,
-} from "./activities-import.service.js";
+import { parseActivitiesWorkbook, type ValidActivityRow } from "./activities-import.service.js";
 import type { ImportRowError } from "./excel-utils.js";
 import {
   archiveImportReport,
@@ -64,16 +61,29 @@ async function commitImport(
     }
 
     const siteByCode = new Map(siteResults.map((site) => [site.shortCode, site.id]));
+    const categories = await tx.activityCategory.findMany({
+      where: { code: { in: [...new Set(activities.map((row) => row.categoryCode))] } },
+      select: { id: true, code: true },
+    });
+    const categoryByCode = new Map(categories.map((category) => [category.code, category.id]));
+
+    const units = await tx.unit.findMany({
+      where: { code: { in: [...new Set(activities.map((row) => row.unitCode))] } },
+      select: { id: true, code: true },
+    });
+    const unitByCode = new Map(units.map((unit) => [unit.code, unit.id]));
 
     const activityResults = [];
     for (const row of activities) {
-      const activity = await tx.activity.create({
+      const activity = await tx.activitySubActivity.create({
         data: {
+          categoryId: categoryByCode.get(row.categoryCode)!,
           label: row.label,
-          unit: row.unit,
+          shortLabel: row.shortLabel,
+          unitId: unitByCode.get(row.unitCode)!,
           unitRate: row.unitRate,
           validFrom: row.validFrom,
-          siteId: row.siteShortCode ? siteByCode.get(row.siteShortCode) ?? null : null,
+          siteId: row.siteShortCode ? (siteByCode.get(row.siteShortCode) ?? null) : null,
         },
       });
       activityResults.push(activity);
@@ -83,7 +93,9 @@ async function commitImport(
       where: { siteId: { in: [...siteByCode.values()] } },
       select: { id: true, name: true, siteId: true },
     });
-    const teamBySiteAndName = new Map(teams.map((team) => [`${team.siteId}::${team.name}`, team.id]));
+    const teamBySiteAndName = new Map(
+      teams.map((team) => [`${team.siteId}::${team.name}`, team.id]),
+    );
 
     const workerResults = [];
     for (const row of workers) {
@@ -138,24 +150,14 @@ export async function runInitialImport(input: InitialImportInput): Promise<Initi
   ];
 
   const sections: ImportSectionResult[] = [
-    sectionResult(
-      input.sitesFile,
-      sitesPreview.valid.length,
-      0,
-      sitesPreview.errors.length,
-    ),
+    sectionResult(input.sitesFile, sitesPreview.valid.length, 0, sitesPreview.errors.length),
     sectionResult(
       input.activitiesFile,
       activitiesPreview.valid.length,
       0,
       activitiesPreview.errors.length,
     ),
-    sectionResult(
-      input.workersFile,
-      workersPreview.valid.length,
-      0,
-      workersPreview.errors.length,
-    ),
+    sectionResult(input.workersFile, workersPreview.valid.length, 0, workersPreview.errors.length),
   ];
 
   let imported = { sites: 0, activities: 0, workers: 0 };

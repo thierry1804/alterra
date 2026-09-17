@@ -9,7 +9,7 @@ export interface Pointage {
   id: string;
   clientUuid: string;
   workerId: string;
-  activityId: string;
+  subActivityId: string;
   quantity: string;
   unitRateSnapshot: string;
   amount: string;

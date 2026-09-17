@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { fetchAllCursorPages } from "../lib/pagination";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import {
@@ -9,6 +10,20 @@ import {
   workflowErrorMessage,
   type ActivityRequestRow,
 } from "../lib/workflows";
+
+interface ActivityCategoryOption {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+}
+
+interface UnitOption {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+}
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleString("fr-MG", {
@@ -28,8 +43,12 @@ export default function ActivityRequest() {
   const [cancelRequestId, setCancelRequestId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [categories, setCategories] = useState<ActivityCategoryOption[]>([]);
+  const [units, setUnits] = useState<UnitOption[]>([]);
+
+  const [categoryId, setCategoryId] = useState("");
   const [proposedLabel, setProposedLabel] = useState("");
-  const [proposedUnit, setProposedUnit] = useState("");
+  const [unitId, setUnitId] = useState("");
   const [proposedRate, setProposedRate] = useState("");
   const [justification, setJustification] = useState("");
 
@@ -49,9 +68,27 @@ export default function ActivityRequest() {
     void loadRequests();
   }, [loadRequests]);
 
+  useEffect(() => {
+    async function loadOptions() {
+      try {
+        const [categoriesRows, unitsRows] = await Promise.all([
+          fetchAllCursorPages<ActivityCategoryOption>("/activity-categories"),
+          fetchAllCursorPages<UnitOption>("/units"),
+        ]);
+        setCategories(categoriesRows.filter((c) => c.active));
+        setUnits(unitsRows.filter((u) => u.active));
+      } catch (err) {
+        setError(workflowErrorMessage(err, "Chargement des référentiels échoué."));
+      }
+    }
+    void loadOptions();
+  }, []);
+
   async function handleSubmit() {
     const rate = Number(proposedRate);
-    if (!proposedLabel.trim() || !proposedUnit.trim() || !Number.isFinite(rate) || rate <= 0) return;
+    if (!categoryId || !proposedLabel.trim() || !unitId || !Number.isFinite(rate) || rate <= 0) {
+      return;
+    }
     if (justification.trim().length < 10) return;
 
     setSubmitting(true);
@@ -59,13 +96,15 @@ export default function ActivityRequest() {
     setMessage(null);
     try {
       await api.post("/activity-requests", {
+        categoryId,
         proposedLabel: proposedLabel.trim(),
-        proposedUnit: proposedUnit.trim(),
+        unitId,
         proposedRate: rate,
         justification: justification.trim(),
       });
+      setCategoryId("");
       setProposedLabel("");
-      setProposedUnit("");
+      setUnitId("");
       setProposedRate("");
       setJustification("");
       setMessage("Demande envoyée à l'administrateur.");
@@ -126,7 +165,25 @@ export default function ActivityRequest() {
       <section className="rounded-md border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-medium text-zinc-900">Nouvelle proposition</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+          <div>
+            <label className="block text-xs font-medium text-zinc-600" htmlFor="act-category">
+              Catégorie
+            </label>
+            <select
+              id="act-category"
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Sélectionner…</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.code} — {category.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-zinc-600" htmlFor="act-label">
               Libellé
             </label>
@@ -142,13 +199,19 @@ export default function ActivityRequest() {
             <label className="block text-xs font-medium text-zinc-600" htmlFor="act-unit">
               Unité
             </label>
-            <input
+            <select
               id="act-unit"
-              value={proposedUnit}
-              onChange={(event) => setProposedUnit(event.target.value)}
-              placeholder="plant, m², jour…"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
+              value={unitId}
+              onChange={(event) => setUnitId(event.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Sélectionner…</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-600" htmlFor="act-rate">
@@ -182,8 +245,9 @@ export default function ActivityRequest() {
           className="mt-3"
           disabled={
             submitting ||
+            !categoryId ||
             !proposedLabel.trim() ||
-            !proposedUnit.trim() ||
+            !unitId ||
             !proposedRate ||
             Number(proposedRate) <= 0 ||
             justification.trim().length < 10
@@ -205,7 +269,7 @@ export default function ActivityRequest() {
               <div>
                 <p className="text-sm font-medium text-zinc-900">{request.proposedLabel}</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  {request.proposedUnit} · {Number(request.proposedRate).toLocaleString("fr-MG")} Ar
+                  {request.unit?.label} · {Number(request.proposedRate).toLocaleString("fr-MG")} Ar
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">{formatDate(request.createdAt)}</p>
               </div>

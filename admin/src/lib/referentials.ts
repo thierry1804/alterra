@@ -8,11 +8,28 @@ export interface Site {
   active: boolean;
 }
 
-export interface Activity {
+export interface ActivityCategory {
   id: string;
+  code: string;
   label: string;
-  unit: string;
-  code: string | null;
+  active: boolean;
+}
+
+export interface Unit {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+}
+
+export interface ActivitySubActivity {
+  id: string;
+  categoryId: string;
+  category?: ActivityCategory;
+  label: string;
+  shortLabel: string;
+  unitId: string;
+  unit?: Unit;
   unitRate: string;
   validFrom: string;
   validTo: string | null;

@@ -6,10 +6,7 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { syncPointageBatch } from "../services/pointages/sync.service.js";
 import { listPointages } from "../services/pointages/list.service.js";
-import {
-  rejectPointage,
-  validatePointage,
-} from "../services/pointages/validation.service.js";
+import { rejectPointage, validatePointage } from "../services/pointages/validation.service.js";
 import { correctPointage } from "../services/pointages/correction.service.js";
 import { POINTAGE_SORT_FIELDS } from "../services/pointages/list.service.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
@@ -19,7 +16,7 @@ export const pointagesRouter = Router();
 const syncItemSchema = z.object({
   clientUuid: z.string().uuid(),
   workerId: z.string().uuid(),
-  activityId: z.string().uuid(),
+  subActivityId: z.string().uuid(),
   quantity: z.number().positive(),
   date: z.coerce.date(),
   parcelleId: z.string().uuid().optional(),
@@ -37,7 +34,7 @@ const listPointagesQuery = z.object({
   cursor: z.string().uuid().optional(),
   status: z.nativeEnum(PointageStatus).optional(),
   workerId: z.string().uuid().optional(),
-  activityId: z.string().uuid().optional(),
+  subActivityId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   orderBy: z.enum(POINTAGE_SORT_FIELDS).optional(),
@@ -53,7 +50,7 @@ const bulkRejectSchema = z.object({ ids: bulkIdsSchema, rejectionReason: z.strin
 
 const correctionSchema = z.object({
   quantity: z.number().positive().optional(),
-  activityId: z.string().uuid().optional(),
+  subActivityId: z.string().uuid().optional(),
   date: z.coerce.date().optional(),
   correctionReason: z.string().min(10),
 });
@@ -132,7 +129,8 @@ pointagesRouter.patch(
       const body = req.body as z.infer<typeof correctionSchema>;
       const pointage = await correctPointage(req.params.id, body, {
         ip: req.ip,
-        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
       });
       res.json(pointage);
     } catch (err) {

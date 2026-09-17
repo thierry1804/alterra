@@ -23,7 +23,7 @@ export default function ActivitySelect() {
   const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
 
   const [date, setDate] = useState(todayIsoDate());
-  const [activityId, setActivityId] = useState("");
+  const [subActivityId, setSubActivityId] = useState("");
   const [defaultQuantity, setDefaultQuantity] = useState("1");
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export default function ActivitySelect() {
       const existing = await getDaySession();
       if (existing) {
         setDate(existing.date);
-        setActivityId(existing.activityId);
+        setSubActivityId(existing.subActivityId);
         setDefaultQuantity(String(existing.defaultQuantity));
       }
       setLoading(false);
@@ -87,7 +87,7 @@ export default function ActivitySelect() {
   async function handleContinue() {
     setError(null);
     const quantity = Number(defaultQuantity);
-    if (!activityId) {
+    if (!subActivityId) {
       setError("Sélectionnez une activité.");
       return;
     }
@@ -97,7 +97,7 @@ export default function ActivitySelect() {
     }
 
     await saveDaySession({
-      activityId,
+      subActivityId,
       date,
       defaultQuantity: quantity,
     });
@@ -119,8 +119,12 @@ export default function ActivitySelect() {
       </header>
 
       <ContextHelp id="activity-select" title="Activité du jour">
-        <p>Choisissez l&apos;activité et la quantité par défaut avant d&apos;ouvrir la saisie en lot.</p>
-        <GlossaryTerm term="MOC">Main-d&apos;œuvre communautaire — travailleur du programme.</GlossaryTerm>
+        <p>
+          Choisissez l&apos;activité et la quantité par défaut avant d&apos;ouvrir la saisie en lot.
+        </p>
+        <GlossaryTerm term="MOC">
+          Main-d&apos;œuvre communautaire — travailleur du programme.
+        </GlossaryTerm>
       </ContextHelp>
 
       {syncMessage && (
@@ -174,27 +178,29 @@ export default function ActivitySelect() {
             <button
               key={activity.id}
               type="button"
-              onClick={() => setActivityId(activity.id)}
-              aria-pressed={activityId === activity.id}
+              onClick={() => setSubActivityId(activity.id)}
+              aria-pressed={subActivityId === activity.id}
               className={`flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors ${
-                activityId === activity.id
+                subActivityId === activity.id
                   ? "border-brand bg-brand-tint ring-1 ring-brand"
                   : "border-zinc-200 bg-white hover:bg-zinc-50"
               }`}
             >
               <span
                 className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${
-                  activityId === activity.id ? "border-brand" : "border-zinc-300"
+                  subActivityId === activity.id ? "border-brand" : "border-zinc-300"
                 }`}
                 aria-hidden="true"
               >
-                {activityId === activity.id && <span className="h-2 w-2 rounded-full bg-brand" />}
+                {subActivityId === activity.id && (
+                  <span className="h-2 w-2 rounded-full bg-brand" />
+                )}
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-zinc-900">{activity.label}</span>
                 <span className="block text-xs text-zinc-500">
-                  <span className="alterra-num">{activity.unitRate.toLocaleString("fr-MG")}</span> Ar
-                  / {activity.unit}
+                  <span className="alterra-num">{activity.unitRate.toLocaleString("fr-MG")}</span>{" "}
+                  Ar / {activity.unit}
                 </span>
               </span>
             </button>
@@ -203,7 +209,9 @@ export default function ActivitySelect() {
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
       )}
 
       <Button

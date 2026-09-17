@@ -186,8 +186,8 @@ export async function buildDailyReportViewModel(
         status: PointageStatus.VALIDATED,
         worker: { siteId: input.siteId },
       },
-      include: { worker: true, activity: true },
-      orderBy: [{ activity: { label: "asc" } }, { worker: { lastName: "asc" } }],
+      include: { worker: true, subActivity: { include: { unit: true } } },
+      orderBy: [{ subActivity: { label: "asc" } }, { worker: { lastName: "asc" } }],
     }),
     prisma.pointage.count({
       where: { date, status: PointageStatus.PENDING, worker: { siteId: input.siteId } },
@@ -212,12 +212,12 @@ export async function buildDailyReportViewModel(
     workerIds.add(pointage.workerId);
     totalAmount += Number(pointage.amount.toString());
 
-    const label = pointage.activity.label;
+    const label = pointage.subActivity.label;
     if (!activityMap.has(label)) activityMap.set(label, []);
     activityMap.get(label)!.push({
       workerName: `${pointage.worker.lastName} ${pointage.worker.firstName}`,
       quantity: pointage.quantity.toString(),
-      unit: pointage.activity.unit,
+      unit: pointage.subActivity.unit.label,
       amount: formatAmount(pointage.amount),
       bioStatus: bioStatusLabel(latestBioByWorker.get(pointage.workerId)),
     });

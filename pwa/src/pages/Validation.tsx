@@ -34,6 +34,26 @@ async function fetchAllPendingPointages(): Promise<Pointage[]> {
   return rows;
 }
 
+async function fetchAllActiveSubActivities(): Promise<ActivitySummary[]> {
+  const rows: ActivitySummary[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const response = await api.get<{
+      data: ActivitySummary[];
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>("/sub-activities", {
+      params: { active: "true", take: 100, cursor },
+    });
+
+    rows.push(...response.data.data);
+    cursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
+  } while (cursor);
+
+  return rows;
+}
+
 export default function Validation() {
   const [pointages, setPointages] = useState<Pointage[]>([]);
   const [workersMap, setWorkersMap] = useState<Map<string, WorkerSummary>>(new Map());
@@ -55,16 +75,14 @@ export default function Validation() {
     setError(null);
     try {
       void syncBiometricTemplatesFromServer().catch(() => undefined);
-      const [pending, teamsResponse, activitiesResponse] = await Promise.all([
+      const [pending, teamsResponse, activities] = await Promise.all([
         fetchAllPendingPointages(),
         api.get<{ data: TeamSummary[] }>("/teams", { params: { active: "true" } }),
-        api.get<{ data: ActivitySummary[] }>("/activities", { params: { active: "true" } }),
+        fetchAllActiveSubActivities(),
       ]);
       setPointages(pending);
       setTeamsMap(new Map(teamsResponse.data.data.map((team) => [team.id, team])));
-      setActivitiesMap(
-        new Map(activitiesResponse.data.data.map((activity) => [activity.id, activity])),
-      );
+      setActivitiesMap(new Map(activities.map((activity) => [activity.id, activity])));
 
       const workerIds = [...new Set(pending.map((pointage) => pointage.workerId))];
       const workerEntries = await Promise.all(
@@ -105,7 +123,7 @@ export default function Validation() {
 
     pointages.forEach((pointage) => {
       const worker = workersMap.get(pointage.workerId);
-      const activity = activitiesMap.get(pointage.activityId);
+      const activity = activitiesMap.get(pointage.subActivityId);
       if (!worker || !activity) return;
 
       const teamKey = worker.teamId ?? "none";
@@ -121,8 +139,7 @@ export default function Validation() {
         const teamLabel =
           teamKey === "none"
             ? "Sans équipe"
-            : team?.name ??
-              (chef ? `Équipe ${chef.lastName}` : `Équipe ${teamKey.slice(0, 8)}`);
+            : (team?.name ?? (chef ? `Équipe ${chef.lastName}` : `Équipe ${teamKey.slice(0, 8)}`));
 
         return {
           teamKey,
@@ -254,7 +271,13 @@ export default function Validation() {
       {groupedTeams.length === 0 && (
         <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
           <p>Aucun pointage en attente de validation.</p>
-          <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void loadData()}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => void loadData()}
+          >
             Actualiser
           </Button>
         </div>

@@ -37,7 +37,7 @@ vi.mock("../lib/prisma.js", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
-    activity: {
+    activitySubActivity: {
       create: vi.fn(),
     },
     worker: {
@@ -123,8 +123,9 @@ describe("workflows routes", () => {
       .post("/api/v1/activity-requests")
       .set("Authorization", `Bearer ${cdsToken()}`)
       .send({
+        categoryId: "00000000-0000-4000-8000-000000000025",
         proposedLabel: "Plantation bambou",
-        proposedUnit: "plant",
+        unitId: "00000000-0000-4000-8000-000000000026",
         proposedRate: 120,
         justification: "Nouvelle activité saisonnière sur le versant nord",
       });
@@ -137,8 +138,9 @@ describe("workflows routes", () => {
     vi.mocked(prisma.activityRequest.findUnique).mockResolvedValue({
       id: MOCK_ACTIVITY_REQ_ID,
       status: RequestStatus.PENDING,
+      categoryId: "00000000-0000-4000-8000-000000000025",
       proposedLabel: "Plantation bambou",
-      proposedUnit: "plant",
+      unitId: "00000000-0000-4000-8000-000000000026",
       proposedRate: new Prisma.Decimal("120"),
       siteId: MOCK_SITE_ID,
     } as never);
@@ -146,13 +148,13 @@ describe("workflows routes", () => {
       id: MOCK_ACTIVITY_REQ_ID,
       status: RequestStatus.PENDING,
     } as never);
-    vi.mocked(prisma.activity.create).mockResolvedValue({
+    vi.mocked(prisma.activitySubActivity.create).mockResolvedValue({
       id: "00000000-0000-4000-8000-000000000090",
     } as never);
     vi.mocked(prisma.activityRequest.update).mockResolvedValue({
       id: MOCK_ACTIVITY_REQ_ID,
       status: RequestStatus.APPROVED,
-      createdActivityId: "00000000-0000-4000-8000-000000000090",
+      createdSubActivityId: "00000000-0000-4000-8000-000000000090",
     } as never);
 
     const app = createApp();
@@ -163,7 +165,7 @@ describe("workflows routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("APPROVED");
-    expect(prisma.activity.create).toHaveBeenCalled();
+    expect(prisma.activitySubActivity.create).toHaveBeenCalled();
   });
 
   it("POST /clarification-requests sets pointage NEEDS_CLARIFICATION", async () => {

@@ -9,7 +9,7 @@ import {
   formatPointageAmount,
   pointageStatusVariant,
 } from "../../lib/pointages";
-import type { Activity, Worker } from "../../lib/referentials";
+import type { ActivitySubActivity, Worker } from "../../lib/referentials";
 import { formatDate } from "../../lib/referentials";
 import { useAuth } from "../../hooks/useAuth";
 import CorrectionForm from "./CorrectionForm";
@@ -17,20 +17,14 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { toast } from "../../hooks/use-toast";
 
 interface PointageDetailDrawerProps {
   pointage: Pointage | null;
   worker: Worker | null;
-  activity: Activity | null;
-  activities: Activity[];
+  subActivity: ActivitySubActivity | null;
+  subActivities: ActivitySubActivity[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdated: () => void;
@@ -39,8 +33,8 @@ interface PointageDetailDrawerProps {
 export default function PointageDetailDrawer({
   pointage,
   worker,
-  activity,
-  activities,
+  subActivity,
+  subActivities,
   open,
   onOpenChange,
   onUpdated,
@@ -80,7 +74,8 @@ export default function PointageDetailDrawer({
 
   const canValidate = user?.role === "ADMIN" || user?.role === "CHEF_SERVICE";
   const canCorrect = user?.role === "ADMIN";
-  const canActOnPending = pointage.status === "PENDING" || pointage.status === "NEEDS_CLARIFICATION";
+  const canActOnPending =
+    pointage.status === "PENDING" || pointage.status === "NEEDS_CLARIFICATION";
 
   return (
     <Dialog
@@ -106,18 +101,22 @@ export default function PointageDetailDrawer({
           <div className="flex items-center gap-3">
             <div
               className={`flex h-12 w-12 items-center justify-center rounded-md border ${
-                pointage.photoKey ? "border-emerald-200 bg-emerald-50" : "border-zinc-200 bg-zinc-50"
+                pointage.photoKey
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-zinc-200 bg-zinc-50"
               }`}
             >
-              <Camera className={`h-5 w-5 ${pointage.photoKey ? "text-emerald-700" : "text-zinc-400"}`} />
+              <Camera
+                className={`h-5 w-5 ${pointage.photoKey ? "text-emerald-700" : "text-zinc-400"}`}
+              />
             </div>
             <div>
               <Badge variant={pointageStatusVariant(pointage.status)}>
                 {POINTAGE_STATUS_LABELS[pointage.status]}
               </Badge>
               <p className="mt-1 text-sm text-zinc-600">
-                {activity?.label ?? pointage.activityId} · {pointage.quantity}{" "}
-                {activity?.unit ?? ""}
+                {subActivity?.label ?? pointage.subActivityId} · {pointage.quantity}{" "}
+                {subActivity?.unit?.label ?? ""}
               </p>
             </div>
           </div>
@@ -191,7 +190,10 @@ export default function PointageDetailDrawer({
                   variant="outline"
                   onClick={() =>
                     rejectReason.trim().length >= 3
-                      ? rejectMutation.mutate({ id: pointage.id, rejectionReason: rejectReason.trim() })
+                      ? rejectMutation.mutate({
+                          id: pointage.id,
+                          rejectionReason: rejectReason.trim(),
+                        })
                       : toast({
                           title: "Motif requis",
                           description: "Minimum 3 caractères",
@@ -224,7 +226,7 @@ export default function PointageDetailDrawer({
           {canCorrect && showCorrection && (
             <CorrectionForm
               pointage={pointage}
-              activities={activities}
+              subActivities={subActivities}
               onSuccess={() => {
                 setShowCorrection(false);
                 onUpdated();

@@ -11,9 +11,11 @@ export interface WorkerRecord {
   siteId?: string;
 }
 
+/** Sous-activité (unité réellement facturée) — la catégorie officielle (ACT01..ACT07) est portée par categoryCode. */
 export interface ActivityRecord {
   id: string;
   label: string;
+  categoryCode: string;
   unit: string;
   unitRate: number;
   siteId: string | null;
@@ -23,7 +25,7 @@ export interface ActivityRecord {
 export interface PointagePending {
   clientUuid: string;
   workerId: string;
-  activityId: string;
+  subActivityId: string;
   quantity: number;
   date: string;
   parcelleId?: string;

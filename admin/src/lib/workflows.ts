@@ -12,15 +12,18 @@ export interface Paginated<T> {
 
 export interface ActivityRequestRow {
   id: string;
+  categoryId: string;
+  category?: { code: string; label: string };
   proposedLabel: string;
-  proposedUnit: string;
+  unitId: string;
+  unit?: { code: string; label: string };
   proposedRate: string;
   justification: string;
   requestedById: string;
   siteId: string | null;
   status: RequestStatus;
   decisionReason: string | null;
-  createdActivityId: string | null;
+  createdSubActivityId: string | null;
   createdAt: string;
   decisionAt: string | null;
 }
@@ -68,7 +71,9 @@ export const CLARIFICATION_STATUS_LABELS: Record<ClarificationStatus, string> = 
   CLOSED: "Clôturée",
 };
 
-export function requestStatusVariant(status: RequestStatus): "default" | "success" | "warning" | "danger" {
+export function requestStatusVariant(
+  status: RequestStatus,
+): "default" | "success" | "warning" | "danger" {
   switch (status) {
     case "PENDING":
       return "warning";

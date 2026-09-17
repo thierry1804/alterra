@@ -6,7 +6,7 @@ import { getRequestContext } from "../../middleware/prisma-rls.js";
 
 export interface CorrectPointageInput {
   quantity?: number;
-  activityId?: string;
+  subActivityId?: string;
   date?: Date;
   correctionReason: string;
 }
@@ -41,13 +41,13 @@ export async function correctPointage(
   let unitRate = Number(before.unitRateSnapshot);
   let quantity = Number(before.quantity);
 
-  if (input.activityId !== undefined) {
-    const activity = await prisma.activity.findUniqueOrThrow({
-      where: { id: input.activityId },
+  if (input.subActivityId !== undefined) {
+    const subActivity = await prisma.activitySubActivity.findUniqueOrThrow({
+      where: { id: input.subActivityId },
     });
-    updateData.activityId = input.activityId;
-    updateData.unitRateSnapshot = activity.unitRate;
-    unitRate = Number(activity.unitRate);
+    updateData.subActivityId = input.subActivityId;
+    updateData.unitRateSnapshot = subActivity.unitRate;
+    unitRate = Number(subActivity.unitRate);
   }
 
   if (input.quantity !== undefined) {
@@ -55,7 +55,7 @@ export async function correctPointage(
     quantity = input.quantity;
   }
 
-  if (input.quantity !== undefined || input.activityId !== undefined) {
+  if (input.quantity !== undefined || input.subActivityId !== undefined) {
     updateData.amount = quantity * unitRate;
   }
 

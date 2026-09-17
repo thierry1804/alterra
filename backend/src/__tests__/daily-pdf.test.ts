@@ -24,7 +24,9 @@ vi.mock("../services/storage/minio.js", () => ({
   BUCKETS: { reports: "rapports-pdf", photos: "photos-pointages" },
   presignedDownloadUrl: vi
     .fn()
-    .mockImplementation((_bucket: string, key: string) => Promise.resolve(`https://minio.test/${key}`)),
+    .mockImplementation((_bucket: string, key: string) =>
+      Promise.resolve(`https://minio.test/${key}`),
+    ),
 }));
 
 vi.mock("../services/audit/audit.service.js", () => ({
@@ -90,9 +92,7 @@ describe("daily PDF generation", () => {
     vi.clearAllMocks();
     resetRedisForTests();
     resetDailyPdfJobsForTests();
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { email: "admin@alterra.test" },
-    ] as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ email: "admin@alterra.test" }] as never);
   });
 
   it("renders daily report HTML template", () => {
@@ -118,7 +118,7 @@ describe("daily PDF generation", () => {
         amount: { toString: () => "12500" },
         quantity: { toString: () => "50" },
         worker: { firstName: "Jean", lastName: "Rakoto" },
-        activity: { label: "Plantation", unit: "plant" },
+        subActivity: { label: "Plantation", unit: "plant" },
       },
     ] as never);
     vi.mocked(prisma.pointage.count).mockResolvedValue(0);

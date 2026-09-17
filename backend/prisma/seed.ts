@@ -5,7 +5,8 @@ import {
   encodeTemplateData,
 } from "../src/services/biometric/template.service.js";
 import {
-  ACTIVITIES,
+  ACTIVITY_CATEGORIES,
+  UNITS,
   ADMIN_ID,
   ADMIN_PASSWORD,
   cdsId,
@@ -13,6 +14,7 @@ import {
   EXPECTED_SEED_COUNTS,
   pad,
   SITES,
+  SUB_ACTIVITIES,
   teamId,
   USER_PASSWORD,
   workerId,
@@ -117,20 +119,43 @@ async function main() {
     }
   }
 
-  for (let i = 0; i < ACTIVITIES.length; i++) {
-    const activity = ACTIVITIES[i]!;
-    const site = i < SITES.length ? SITES[i]! : null;
-
-    await prisma.activity.upsert({
-      where: { id: activity.id },
+  for (const category of ACTIVITY_CATEGORIES) {
+    await prisma.activityCategory.upsert({
+      where: { id: category.id },
       update: {},
       create: {
-        id: activity.id,
-        label: activity.label,
-        unit: activity.unit,
-        unitRate: activity.unitRate,
+        id: category.id,
+        code: category.code,
+        label: category.label,
+      },
+    });
+  }
+
+  for (const unit of UNITS) {
+    await prisma.unit.upsert({
+      where: { id: unit.id },
+      update: {},
+      create: {
+        id: unit.id,
+        code: unit.code,
+        label: unit.label,
+      },
+    });
+  }
+
+  for (const subActivity of SUB_ACTIVITIES) {
+    await prisma.activitySubActivity.upsert({
+      where: { id: subActivity.id },
+      update: {},
+      create: {
+        id: subActivity.id,
+        categoryId: subActivity.categoryId,
+        label: subActivity.label,
+        shortLabel: subActivity.shortLabel,
+        unitId: subActivity.unitId,
+        unitRate: subActivity.unitRate,
         validFrom: new Date("2026-01-01"),
-        siteId: site ? (siteIdByShortCode.get(site.shortCode) ?? null) : null,
+        siteId: null,
       },
     });
   }
@@ -179,12 +204,13 @@ async function main() {
   }
 
   console.log(
-    "Seed OK — %d sites, %d users (1 admin, %d CDS, %d CDE), %d activités, %d MOC",
+    "Seed OK — %d sites, %d users (1 admin, %d CDS, %d CDE), %d catégories / %d sous-activités, %d MOC",
     EXPECTED_SEED_COUNTS.sites,
     1 + EXPECTED_SEED_COUNTS.cds + EXPECTED_SEED_COUNTS.cde,
     EXPECTED_SEED_COUNTS.cds,
     EXPECTED_SEED_COUNTS.cde,
-    EXPECTED_SEED_COUNTS.activities,
+    EXPECTED_SEED_COUNTS.activityCategories,
+    EXPECTED_SEED_COUNTS.subActivities,
     EXPECTED_SEED_COUNTS.workers,
   );
   console.log("Admin: admin@alterra.mg / %s", ADMIN_PASSWORD);

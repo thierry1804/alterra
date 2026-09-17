@@ -1,38 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import type { Activity } from "../../lib/referentials";
+import type { ActivitySubActivity } from "../../lib/referentials";
 import { formatDate, formatRate } from "../../lib/referentials";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
+import { fetchAllCursorPages } from "../ui/data-table/fetchAllPages";
 
 interface RateHistoryDrawerProps {
+  categoryId: string | null;
   label: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function RateHistoryDrawer({ label, open, onOpenChange }: RateHistoryDrawerProps) {
+export default function RateHistoryDrawer({
+  categoryId,
+  label,
+  open,
+  onOpenChange,
+}: RateHistoryDrawerProps) {
   const { data: history = [], isLoading } = useQuery({
-    queryKey: ["activities", "history", label],
-    enabled: open && !!label,
+    queryKey: ["sub-activities", "history", categoryId, label],
+    enabled: open && !!categoryId && !!label,
     queryFn: () =>
-      api
-        .get<{ data: Activity[] }>("/activities", { params: { history: true } })
-        .then((r) => r.data.data.filter((a) => a.label === label))
+      fetchAllCursorPages<ActivitySubActivity>((cursor) =>
+        api
+          .get<{ data: ActivitySubActivity[]; nextCursor: string | null; hasMore: boolean }>(
+            "/sub-activities",
+            { params: { categoryId, history: true, cursor, take: 100 } },
+          )
+          .then((r) => r.data),
+      )
+        .then((rows) => rows.filter((a) => a.label === label))
         .then((rows) => rows.sort((a, b) => b.validFrom.localeCompare(a.validFrom))),
   });
 
@@ -41,7 +41,7 @@ export default function RateHistoryDrawer({ label, open, onOpenChange }: RateHis
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Historique tarifs — {label}</DialogTitle>
-          <DialogDescription>Versions tarifaires RG-04 pour cette activité.</DialogDescription>
+          <DialogDescription>Versions tarifaires RG-04 pour cette sous-activité.</DialogDescription>
         </DialogHeader>
         <Table>
           <TableHeader>
@@ -64,7 +64,7 @@ export default function RateHistoryDrawer({ label, open, onOpenChange }: RateHis
               history.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{formatRate(row.unitRate)}</TableCell>
-                  <TableCell>{row.unit}</TableCell>
+                  <TableCell>{row.unit?.label}</TableCell>
                   <TableCell>
                     {formatDate(row.validFrom)}
                     {row.validTo ? ` → ${formatDate(row.validTo)}` : " → en cours"}

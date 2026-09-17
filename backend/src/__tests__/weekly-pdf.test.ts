@@ -29,7 +29,9 @@ vi.mock("../services/storage/minio.js", () => ({
   BUCKETS: { reports: "rapports-pdf", photos: "photos-pointages" },
   presignedDownloadUrl: vi
     .fn()
-    .mockImplementation((_bucket: string, key: string) => Promise.resolve(`https://minio.test/${key}`)),
+    .mockImplementation((_bucket: string, key: string) =>
+      Promise.resolve(`https://minio.test/${key}`),
+    ),
 }));
 
 vi.mock("../services/notifications/email.service.js", () => ({
@@ -112,9 +114,7 @@ describe("weekly PDF generation", () => {
       lastName: "Rabe",
     } as never);
 
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { email: "admin@alterra.mg" },
-    ] as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ email: "admin@alterra.mg" }] as never);
 
     vi.mocked(prisma.pointage.findMany).mockResolvedValue([
       {
@@ -123,7 +123,7 @@ describe("weekly PDF generation", () => {
         amount: { toString: () => "12500" },
         date: new Date("2026-07-15"),
         worker: { firstName: "Jean", lastName: "Rakoto", siteId: MOCK_SITE_ID },
-        activity: { label: "Plantation", unit: "plant" },
+        subActivity: { label: "Plantation", unit: "plant" },
       },
     ] as never);
 

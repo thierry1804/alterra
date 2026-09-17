@@ -11,8 +11,10 @@ import {
 
 export interface ValidActivityRow {
   row: number;
+  categoryCode: string;
   label: string;
-  unit: string;
+  shortLabel: string;
+  unitCode: string;
   unitRate: string;
   validFrom: Date;
   siteShortCode?: string;
@@ -23,7 +25,55 @@ export interface ActivitiesImportPreview {
   errors: ImportRowError[];
 }
 
-const REQUIRED_HEADERS = ["label", "unit", "unitRate", "validFrom"] as const;
+const REQUIRED_HEADERS = ["categoryCode", "label", "unitCode", "unitRate", "validFrom"] as const;
+
+async function validateCategoryCodes(rows: ValidActivityRow[]): Promise<ImportRowError[]> {
+  const codes = [...new Set(rows.map((row) => row.categoryCode))];
+  if (codes.length === 0) return [];
+
+  const categories = await prisma.activityCategory.findMany({
+    where: { code: { in: codes } },
+    select: { code: true },
+  });
+  const known = new Set(categories.map((c) => c.code));
+
+  const errors: ImportRowError[] = [];
+  for (const row of rows) {
+    if (!known.has(row.categoryCode)) {
+      errors.push({
+        row: row.row,
+        field: "categoryCode",
+        message: `Catégorie introuvable (${row.categoryCode})`,
+        sheet: "activities",
+      });
+    }
+  }
+  return errors;
+}
+
+async function validateUnitCodes(rows: ValidActivityRow[]): Promise<ImportRowError[]> {
+  const codes = [...new Set(rows.map((row) => row.unitCode))];
+  if (codes.length === 0) return [];
+
+  const units = await prisma.unit.findMany({
+    where: { code: { in: codes } },
+    select: { code: true },
+  });
+  const known = new Set(units.map((u) => u.code));
+
+  const errors: ImportRowError[] = [];
+  for (const row of rows) {
+    if (!known.has(row.unitCode)) {
+      errors.push({
+        row: row.row,
+        field: "unitCode",
+        message: `Unité introuvable (${row.unitCode})`,
+        sheet: "activities",
+      });
+    }
+  }
+  return errors;
+}
 
 function detectDuplicateActivities(rows: ValidActivityRow[]): ImportRowError[] {
   const errors: ImportRowError[] = [];
@@ -87,7 +137,9 @@ export async function parseActivitiesWorkbook(
   if (!sheet) {
     return {
       valid: [],
-      errors: [{ row: 0, field: "sheet", message: "Feuille Excel introuvable", sheet: "activities" }],
+      errors: [
+        { row: 0, field: "sheet", message: "Feuille Excel introuvable", sheet: "activities" },
+      ],
     };
   }
 
@@ -107,8 +159,10 @@ export async function parseActivitiesWorkbook(
 
     const rowErrors: ImportRowError[] = [];
 
-    if (!values.label) rowErrors.push({ row: rowNumber, field: "label", message: "Requis", sheet: "activities" });
-    if (!values.unit) rowErrors.push({ row: rowNumber, field: "unit", message: "Requis", sheet: "activities" });
+    if (!values.label)
+      rowErrors.push({ row: rowNumber, field: "label", message: "Requis", sheet: "activities" });
+    if (!values.unitCode)
+      rowErrors.push({ row: rowNumber, field: "unitCode", message: "Requis", sheet: "activities" });
 
     const unitRate = parseDecimalField(values.unitRate, rowNumber, "unitRate", rowErrors);
     const validFrom = parseDateField(values.validFrom, rowNumber, "validFrom", rowErrors);
@@ -126,6 +180,15 @@ export async function parseActivitiesWorkbook(
       });
     }
 
+    if (!values.categoryCode) {
+      rowErrors.push({
+        row: rowNumber,
+        field: "categoryCode",
+        message: "Requis",
+        sheet: "activities",
+      });
+    }
+
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
       continue;
@@ -133,8 +196,10 @@ export async function parseActivitiesWorkbook(
 
     valid.push({
       row: rowNumber,
+      categoryCode: values.categoryCode.toUpperCase(),
       label: values.label,
-      unit: values.unit,
+      shortLabel: values.shortLabel || values.label.toLowerCase(),
+      unitCode: values.unitCode.toUpperCase(),
       unitRate: unitRate!,
       validFrom: validFrom!,
       siteShortCode,
@@ -147,6 +212,8 @@ export async function parseActivitiesWorkbook(
     (row) => !errors.some((error) => error.row === row.row && error.field === "label"),
   );
   errors.push(...(await validateSiteShortCodes(rowsWithoutDupes, options?.knownSiteCodes ?? [])));
+  errors.push(...(await validateCategoryCodes(rowsWithoutDupes)));
+  errors.push(...(await validateUnitCodes(rowsWithoutDupes)));
 
   const invalidRows = new Set(errors.map((error) => error.row));
   return { valid: valid.filter((row) => !invalidRows.has(row.row)), errors };
@@ -170,15 +237,35 @@ export async function importActivitiesRows(rows: ValidActivityRow[], dryRun: boo
     ).map((site) => [site.shortCode, site.id]),
   );
 
+  const categoryByCode = new Map(
+    (
+      await prisma.activityCategory.findMany({
+        where: { code: { in: [...new Set(rows.map((row) => row.categoryCode))] } },
+        select: { id: true, code: true },
+      })
+    ).map((category) => [category.code, category.id]),
+  );
+
+  const unitByCode = new Map(
+    (
+      await prisma.unit.findMany({
+        where: { code: { in: [...new Set(rows.map((row) => row.unitCode))] } },
+        select: { id: true, code: true },
+      })
+    ).map((unit) => [unit.code, unit.id]),
+  );
+
   const created = [];
   for (const row of rows) {
-    const activity = await prisma.activity.create({
+    const activity = await prisma.activitySubActivity.create({
       data: {
+        categoryId: categoryByCode.get(row.categoryCode)!,
         label: row.label,
-        unit: row.unit,
+        shortLabel: row.shortLabel,
+        unitId: unitByCode.get(row.unitCode)!,
         unitRate: row.unitRate,
         validFrom: row.validFrom,
-        siteId: row.siteShortCode ? siteByCode.get(row.siteShortCode) ?? null : null,
+        siteId: row.siteShortCode ? (siteByCode.get(row.siteShortCode) ?? null) : null,
       },
     });
     created.push({ id: activity.id, label: activity.label, action: "created" as const });

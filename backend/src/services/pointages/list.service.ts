@@ -17,7 +17,7 @@ export interface ListPointagesFilters {
   cursor?: string;
   status?: PointageStatus;
   workerId?: string;
-  activityId?: string;
+  subActivityId?: string;
   dateFrom?: Date;
   dateTo?: Date;
   orderBy?: PointageSortField;
@@ -33,7 +33,7 @@ export interface PointageListItem {
   id: string;
   clientUuid: string;
   workerId: string;
-  activityId: string;
+  subActivityId: string;
   quantity: Prisma.Decimal;
   unitRateSnapshot: Prisma.Decimal;
   amount: Prisma.Decimal;
@@ -60,7 +60,7 @@ function buildWhere(filters: ListPointagesFilters): Prisma.PointageWhereInput {
   const where: Prisma.PointageWhereInput = {};
   if (filters.status) where.status = filters.status;
   if (filters.workerId) where.workerId = filters.workerId;
-  if (filters.activityId) where.activityId = filters.activityId;
+  if (filters.subActivityId) where.subActivityId = filters.subActivityId;
   if (filters.dateFrom || filters.dateTo) {
     where.date = {};
     if (filters.dateFrom) where.date.gte = filters.dateFrom;
@@ -98,7 +98,7 @@ function buildOrderBy(
 ): Prisma.PointageOrderByWithRelationInput[] | Prisma.PointageOrderByWithRelationInput {
   if (!orderBy) return { createdAt: "desc" };
   if (orderBy === "workerName") return [{ worker: { lastName: dir } }, { id: "asc" }];
-  if (orderBy === "activityLabel") return [{ activity: { label: dir } }, { id: "asc" }];
+  if (orderBy === "activityLabel") return [{ subActivity: { label: dir } }, { id: "asc" }];
   return [{ [orderBy]: dir }, { id: "asc" }];
 }
 
@@ -133,7 +133,7 @@ export async function listPointages(filters: ListPointagesFilters) {
 
   return {
     data,
-    nextCursor: hasMore ? data[data.length - 1]?.id ?? null : null,
+    nextCursor: hasMore ? (data[data.length - 1]?.id ?? null) : null,
     hasMore,
   };
 }

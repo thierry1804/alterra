@@ -37,6 +37,25 @@ async function fetchPendingPointages(): Promise<Pointage[]> {
   return rows;
 }
 
+async function fetchAllActiveSubActivities(): Promise<ActivitySummary[]> {
+  const rows: ActivitySummary[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const response = await api.get<{
+      data: ActivitySummary[];
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>("/sub-activities", {
+      params: { active: "true", take: 100, cursor },
+    });
+    rows.push(...response.data.data);
+    cursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
+  } while (cursor);
+
+  return rows;
+}
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleString("fr-MG", {
     day: "2-digit",
@@ -61,12 +80,16 @@ export default function ClarificationRequest() {
   const [message, setMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [selectedPointageId, setSelectedPointageId] = useState(searchParams.get("pointageId") ?? "");
+  const [selectedPointageId, setSelectedPointageId] = useState(
+    searchParams.get("pointageId") ?? "",
+  );
   const [question, setQuestion] = useState("");
   const [requestedPhoto, setRequestedPhoto] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const [answerDrafts, setAnswerDrafts] = useState<Record<string, { text: string; previewUrl: string | null; blob: Blob | null }>>({});
+  const [answerDrafts, setAnswerDrafts] = useState<
+    Record<string, { text: string; previewUrl: string | null; blob: Blob | null }>
+  >({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -81,16 +104,14 @@ export default function ClarificationRequest() {
 
         const workerIds = [...new Set(pending.map((pointage) => pointage.workerId))];
         const workers = await Promise.all(
-          workerIds.map((id) => api.get<WorkerSummary>(`/workers/${id}`).then((response) => response.data)),
+          workerIds.map((id) =>
+            api.get<WorkerSummary>(`/workers/${id}`).then((response) => response.data),
+          ),
         );
         setWorkersMap(new Map(workers.map((worker) => [worker.id, worker])));
 
-        const activitiesResponse = await api.get<{ data: ActivitySummary[] }>("/activities", {
-          params: { active: "true" },
-        });
-        setActivitiesMap(
-          new Map(activitiesResponse.data.data.map((activity) => [activity.id, activity])),
-        );
+        const activities = await fetchAllActiveSubActivities();
+        setActivitiesMap(new Map(activities.map((activity) => [activity.id, activity])));
       }
     } catch (err) {
       setError(workflowErrorMessage(err, "Chargement des demandes échoué."));
@@ -116,10 +137,11 @@ export default function ClarificationRequest() {
   const pointageOptions = useMemo(() => {
     return pendingPointages.map((pointage) => {
       const worker = workersMap.get(pointage.workerId);
-      const activity = activitiesMap.get(pointage.activityId);
-      const label = worker && activity
-        ? `${worker.lastName} ${worker.firstName} · ${activity.label} · ${pointage.date}`
-        : `${pointage.id.slice(0, 8)} · ${pointage.date}`;
+      const activity = activitiesMap.get(pointage.subActivityId);
+      const label =
+        worker && activity
+          ? `${worker.lastName} ${worker.firstName} · ${activity.label} · ${pointage.date}`
+          : `${pointage.id.slice(0, 8)} · ${pointage.date}`;
       return { id: pointage.id, label };
     });
   }, [pendingPointages, workersMap, activitiesMap]);
@@ -305,9 +327,7 @@ export default function ClarificationRequest() {
       )}
 
       {visibleRequests.length === 0 && (
-        <EmptyHint>
-          {isCde ? "Aucune demande ouverte." : "Aucune demande de précisions."}
-        </EmptyHint>
+        <EmptyHint>{isCde ? "Aucune demande ouverte." : "Aucune demande de précisions."}</EmptyHint>
       )}
 
       <div className="space-y-3">
@@ -344,7 +364,9 @@ export default function ClarificationRequest() {
                   <p className="text-xs font-medium text-zinc-600">Réponse</p>
                   <p className="mt-1 text-sm text-zinc-800">{request.answerText}</p>
                   {request.answerPhotoKey && (
-                    <p className="mt-1 text-xs text-zinc-500">Photo jointe ({request.answerPhotoKey.slice(-12)})</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Photo jointe ({request.answerPhotoKey.slice(-12)})
+                    </p>
                   )}
                 </div>
               )}
@@ -352,13 +374,18 @@ export default function ClarificationRequest() {
               {isCde && request.status === "OPEN" && (
                 <div className="mt-3 space-y-3 border-t border-zinc-200 pt-3">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600" htmlFor={`answer-${request.id}`}>
+                    <label
+                      className="block text-xs font-medium text-zinc-600"
+                      htmlFor={`answer-${request.id}`}
+                    >
                       Votre réponse
                     </label>
                     <textarea
                       id={`answer-${request.id}`}
                       value={draft?.text ?? ""}
-                      onChange={(event) => updateAnswerDraft(request.id, { text: event.target.value })}
+                      onChange={(event) =>
+                        updateAnswerDraft(request.id, { text: event.target.value })
+                      }
                       rows={3}
                       className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
                     />
@@ -372,7 +399,9 @@ export default function ClarificationRequest() {
                         const previewUrl = URL.createObjectURL(blob);
                         updateAnswerDraft(request.id, { blob, previewUrl });
                       }}
-                      onClear={() => updateAnswerDraft(request.id, { blob: null, previewUrl: null })}
+                      onClear={() =>
+                        updateAnswerDraft(request.id, { blob: null, previewUrl: null })
+                      }
                     />
                   )}
                   <Button

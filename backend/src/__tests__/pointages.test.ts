@@ -30,7 +30,7 @@ const mockPointage = {
   id: MOCK_POINTAGE_ID,
   clientUuid: MOCK_CLIENT_UUID,
   workerId: MOCK_WORKER_ID,
-  activityId: MOCK_ACTIVITY_ID,
+  subActivityId: MOCK_ACTIVITY_ID,
   quantity: new Prisma.Decimal("10"),
   unitRateSnapshot: new Prisma.Decimal("150.00"),
   amount: new Prisma.Decimal("1500.00"),
@@ -54,7 +54,7 @@ const mockPointage = {
 
 vi.mock("../lib/prisma.js", () => ({
   prisma: {
-    activity: {
+    activitySubActivity: {
       findUniqueOrThrow: vi.fn(),
     },
     pointage: {
@@ -113,7 +113,9 @@ function cdeAuthHeader() {
 describe("Pointages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(prisma.activity.findUniqueOrThrow).mockResolvedValue(mockActivity as never);
+    vi.mocked(prisma.activitySubActivity.findUniqueOrThrow).mockResolvedValue(
+      mockActivity as never,
+    );
     vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
@@ -126,7 +128,7 @@ describe("Pointages", () => {
         {
           clientUuid: MOCK_CLIENT_UUID,
           workerId: MOCK_WORKER_ID,
-          activityId: MOCK_ACTIVITY_ID,
+          subActivityId: MOCK_ACTIVITY_ID,
           quantity: 10,
           date: "2026-07-15",
           createdByClientAt: "2026-07-15T08:00:00Z",

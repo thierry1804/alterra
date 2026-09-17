@@ -8,7 +8,7 @@ export interface PointageBioCheck {
 export interface Pointage {
   id: string;
   workerId: string;
-  activityId: string;
+  subActivityId: string;
   quantity: string;
   amount: string;
   date: string;

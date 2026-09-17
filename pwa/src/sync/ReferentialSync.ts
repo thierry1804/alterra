@@ -13,10 +13,13 @@ interface ApiWorker {
   status: string;
 }
 
-interface ApiActivity {
+interface ApiSubActivity {
   id: string;
+  categoryId: string;
+  category?: { code: string; label: string };
   label: string;
-  unit: string;
+  shortLabel: string;
+  unit?: { code: string; label: string };
   unitRate: string | number;
   siteId: string | null;
   active: boolean;
@@ -73,17 +76,30 @@ export async function syncReferentials(options: {
     cursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
   } while (cursor);
 
-  const activityParams: Record<string, string> = { active: "true" };
+  const activityParams: Record<string, string | number> = { active: "true", take: 100 };
   if (options.siteId) activityParams.siteId = options.siteId;
 
-  const activitiesResponse = await api.get<{ data: ApiActivity[] }>("/activities", {
-    params: activityParams,
-  });
+  const apiActivities: ApiSubActivity[] = [];
+  let activityCursor: string | undefined;
 
-  const activities: ActivityRecord[] = activitiesResponse.data.data.map((activity) => ({
+  do {
+    const response = await api.get<{
+      data: ApiSubActivity[];
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>("/sub-activities", {
+      params: activityCursor ? { ...activityParams, cursor: activityCursor } : activityParams,
+    });
+
+    apiActivities.push(...response.data.data);
+    activityCursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
+  } while (activityCursor);
+
+  const activities: ActivityRecord[] = apiActivities.map((activity) => ({
     id: activity.id,
     label: activity.label,
-    unit: activity.unit,
+    categoryCode: activity.category?.code ?? "",
+    unit: activity.unit?.label ?? "",
     unitRate: Number(activity.unitRate),
     siteId: activity.siteId,
     active: activity.active,

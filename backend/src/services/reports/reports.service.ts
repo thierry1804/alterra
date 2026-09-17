@@ -85,7 +85,7 @@ async function generatePointagesReport(
     },
     include: {
       worker: { include: { site: true } },
-      activity: true,
+      subActivity: true,
     },
     orderBy: [{ date: "asc" }, { worker: { lastName: "asc" } }],
   });
@@ -95,7 +95,7 @@ async function generatePointagesReport(
     site: pointage.worker.site.shortCode,
     matricule: pointage.worker.matricule,
     worker: `${pointage.worker.firstName} ${pointage.worker.lastName}`,
-    activity: pointage.activity.label,
+    activity: pointage.subActivity.label,
     quantity: Number(pointage.quantity),
     amount: Number(pointage.amount),
     status: pointage.status,
@@ -191,9 +191,7 @@ async function generatePresenceBySiteReport(
     });
 
     const presenceRate =
-      activeWorkers === 0
-        ? 0
-        : Math.round((presentWorkers.length / activeWorkers) * 1000) / 10;
+      activeWorkers === 0 ? 0 : Math.round((presentWorkers.length / activeWorkers) * 1000) / 10;
 
     rows.push({
       site: site.shortCode,

@@ -1,22 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Fragment, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
+import { Pencil, History, Power, Plus, FolderPlus, ChevronRight, ChevronDown } from "lucide-react";
 import { api } from "../lib/api";
-import type { Activity, Site } from "../lib/referentials";
+import type { ActivityCategory, ActivitySubActivity, Site, Unit } from "../lib/referentials";
 import { formatDate, formatRate } from "../lib/referentials";
-import PageHeader from "../components/shared/PageHeader";
+import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import RateHistoryDrawer from "../components/activities/RateHistoryDrawer";
-import { Pencil, History, Power, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Checkbox } from "../components/ui/checkbox";
-import { useRowSelection } from "../components/ui/data-table/useRowSelection";
-import { useClientSort } from "../components/ui/data-table/useClientSort";
-import { SortableHead } from "../components/ui/data-table/SortableHead";
-import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
-import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -33,99 +28,118 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
+import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
 
-interface ActivityForm {
-  label: string;
-  unit: string;
+type CategoryWithSubActivities = ActivityCategory & { subActivities: ActivitySubActivity[] };
+
+interface CategoryForm {
   code: string;
+  label: string;
+}
+
+const emptyCategoryForm: CategoryForm = { code: "", label: "" };
+
+interface SubActivityForm {
+  categoryId: string;
+  label: string;
+  shortLabel: string;
+  unitId: string;
   unitRate: string;
   siteId: string;
 }
 
-const emptyForm: ActivityForm = { label: "", unit: "", code: "", unitRate: "", siteId: "" };
+const emptySubActivityForm: SubActivityForm = {
+  categoryId: "",
+  label: "",
+  shortLabel: "",
+  unitId: "",
+  unitRate: "",
+  siteId: "",
+};
 
 export default function ActivitiesPage() {
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [historyLabel, setHistoryLabel] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Activity | null>(null);
-  const [form, setForm] = useState<ActivityForm>(emptyForm);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
+  const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm);
 
-  const { data: activities = [], isLoading } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => api.get<{ data: Activity[] }>("/activities").then((r) => r.data.data),
+  const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [editingSub, setEditingSub] = useState<ActivitySubActivity | null>(null);
+  const [subForm, setSubForm] = useState<SubActivityForm>(emptySubActivityForm);
+
+  const [history, setHistory] = useState<{ categoryId: string; label: string } | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(categoryId: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }
+
+  const [search, setSearch] = useState("");
+
+  const categoriesQuery = useInfiniteQuery({
+    queryKey: ["activity-categories", search],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      api
+        .get<{
+          data: CategoryWithSubActivities[];
+          nextCursor: string | null;
+          hasMore: boolean;
+        }>("/activity-categories", {
+          params: {
+            includeSubActivities: "true",
+            cursor: pageParam,
+            take: 50,
+            q: search || undefined,
+          },
+        })
+        .then((r) => r.data),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
+
+  const categories = useMemo(
+    () => categoriesQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [categoriesQuery.data],
+  );
+  const isLoading = categoriesQuery.isLoading;
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
-  const siteName = (siteId: string | null) =>
-    siteId ? sites.find((s) => s.id === siteId)?.shortCode ?? siteId : "Global";
-
-  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Activity>(activities, "label", {
-    unitRate: (a) => Number(a.unitRate),
-    siteId: (a) => siteName(a.siteId),
-  });
-  const selection = useRowSelection(sorted.map((a) => a.id));
-
-  const bulkDeactivateMutation = useMutation({
-    mutationFn: () =>
-      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
-        "/activities/bulk-deactivate",
-        { ids: [...selection.selectedIds] },
+  const { data: units = [] } = useQuery({
+    queryKey: ["units", "all"],
+    queryFn: () =>
+      fetchAllCursorPages<Unit>((cursor) =>
+        api
+          .get<{ data: Unit[]; nextCursor: string | null; hasMore: boolean }>("/units", {
+            params: { cursor, take: 100 },
+          })
+          .then((r) => r.data),
       ),
-    onSuccess: (res) => {
-      void queryClient.invalidateQueries({ queryKey: ["activities"] });
-      const failed = res.data.results.filter((r) => r.status === "error");
-      selection.clear();
-      toast({
-        title: failed.length
-          ? `${res.data.results.length - failed.length} désactivée(s), ${failed.length} échec(s)`
-          : "Activités désactivées",
-        description: failed[0]?.error,
-        variant: failed.length ? "destructive" : undefined,
-      });
-    },
   });
 
-  function handleExport() {
-    const rows =
-      selection.selectedCount > 0 ? sorted.filter((a) => selection.isSelected(a.id)) : sorted;
-    void exportToExcel(
-      rows,
-      [
-        { header: "Libellé", accessor: (a) => a.label },
-        { header: "Code", accessor: (a) => a.code ?? "" },
-        { header: "Unité", accessor: (a) => a.unit },
-        { header: "Tarif (Ar)", accessor: (a) => Number(a.unitRate) },
-        { header: "Site", accessor: (a) => siteName(a.siteId) },
-        { header: "Depuis", accessor: (a) => formatDate(a.validFrom) },
-        { header: "Statut", accessor: (a) => (a.active ? "Actif" : "Inactif") },
-      ],
-      "activites",
-    );
-  }
+  const siteName = (siteId: string | null) =>
+    siteId ? (sites.find((s) => s.id === siteId)?.shortCode ?? siteId) : "Global";
 
-  const saveMutation = useMutation({
+  const saveCategoryMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        label: form.label.trim(),
-        unit: form.unit.trim(),
-        code: form.code.trim() || null,
-        unitRate: Number(form.unitRate),
-        siteId: form.siteId || null,
-      };
-      if (editing) {
-        return api.patch<Activity>(`/activities/${editing.id}`, payload);
+      const payload = { code: categoryForm.code.trim(), label: categoryForm.label.trim() };
+      if (editingCategory) {
+        return api.patch<ActivityCategory>(`/activity-categories/${editingCategory.id}`, payload);
       }
-      return api.post<Activity>("/activities", payload);
+      return api.post<ActivityCategory>("/activity-categories", payload);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["activities"] });
-      setDialogOpen(false);
-      toast({ title: editing ? "Activité mise à jour" : "Activité créée" });
+      void queryClient.invalidateQueries({ queryKey: ["activity-categories"] });
+      setCategoryDialogOpen(false);
+      toast({ title: editingCategory ? "Catégorie mise à jour" : "Catégorie créée" });
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
@@ -133,154 +147,319 @@ export default function ActivitiesPage() {
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: (activity: Activity) => api.delete<Activity>(`/activities/${activity.id}`),
+  const deactivateCategoryMutation = useMutation({
+    mutationFn: (category: ActivityCategory) => api.delete(`/activity-categories/${category.id}`),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["activities"] });
-      toast({ title: "Activité désactivée" });
+      void queryClient.invalidateQueries({ queryKey: ["activity-categories"] });
+      toast({ title: "Catégorie désactivée" });
     },
   });
 
-  function openCreate() {
-    setEditing(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
+  const saveSubActivityMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        categoryId: subForm.categoryId,
+        label: subForm.label.trim(),
+        shortLabel: subForm.shortLabel.trim(),
+        unitId: subForm.unitId,
+        unitRate: Number(subForm.unitRate),
+        siteId: subForm.siteId || null,
+      };
+      if (editingSub) {
+        return api.patch<ActivitySubActivity>(`/sub-activities/${editingSub.id}`, payload);
+      }
+      return api.post<ActivitySubActivity>("/sub-activities", payload);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["activity-categories"] });
+      setSubDialogOpen(false);
+      toast({ title: editingSub ? "Sous-activité mise à jour" : "Sous-activité créée" });
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  const deactivateSubMutation = useMutation({
+    mutationFn: (subActivity: ActivitySubActivity) =>
+      api.delete(`/sub-activities/${subActivity.id}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["activity-categories"] });
+      toast({ title: "Sous-activité désactivée" });
+    },
+  });
+
+  function openCreateCategory() {
+    setEditingCategory(null);
+    setCategoryForm(emptyCategoryForm);
+    setCategoryDialogOpen(true);
   }
 
-  function openEdit(activity: Activity) {
-    setEditing(activity);
-    setForm({
-      label: activity.label,
-      unit: activity.unit,
-      code: activity.code ?? "",
-      unitRate: activity.unitRate,
-      siteId: activity.siteId ?? "",
+  function openEditCategory(category: ActivityCategory) {
+    setEditingCategory(category);
+    setCategoryForm({ code: category.code, label: category.label });
+    setCategoryDialogOpen(true);
+  }
+
+  function openCreateSub(categoryId: string) {
+    setEditingSub(null);
+    setSubForm({ ...emptySubActivityForm, categoryId });
+    setSubDialogOpen(true);
+  }
+
+  function openEditSub(subActivity: ActivitySubActivity) {
+    setEditingSub(subActivity);
+    setSubForm({
+      categoryId: subActivity.categoryId,
+      label: subActivity.label,
+      shortLabel: subActivity.shortLabel,
+      unitId: subActivity.unitId,
+      unitRate: subActivity.unitRate,
+      siteId: subActivity.siteId ?? "",
     });
-    setDialogOpen(true);
+    setSubDialogOpen(true);
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Activités"
-        description="Tâches et tarifs unitaires."
+        description="Catégories officielles et sous-activités — tâches et tarifs unitaires."
         action={
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={handleExport}>
-              <Download className="h-4 w-4" aria-hidden />
-              Exporter
-            </Button>
-            <Button type="button" onClick={openCreate}>
-              Nouvelle activité
-            </Button>
-          </div>
+          <Button type="button" onClick={openCreateCategory}>
+            <FolderPlus className="h-4 w-4" aria-hidden />
+            Nouvelle catégorie
+          </Button>
         }
       />
 
-      <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={bulkDeactivateMutation.isPending}
-          onClick={() => bulkDeactivateMutation.mutate()}
-        >
-          <Power className="h-3.5 w-3.5" aria-hidden />
-          Désactiver
-        </Button>
-      </BulkActionBar>
+      <Input
+        placeholder="Rechercher (code, libellé, sous-activité…)"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-xs"
+      />
 
-      <div className="rounded-lg border border-zinc-200">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-9">
-                <Checkbox
-                  checked={
-                    selection.allVisibleSelected
-                      ? true
-                      : selection.someVisibleSelected
-                        ? "indeterminate"
-                        : false
-                  }
-                  onChange={selection.toggleAllVisible}
-                  aria-label="Tout sélectionner"
-                />
-              </TableHead>
-              <SortableHead sortKey="label" label="Libellé" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="unit" label="Unité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="unitRate" label="Tarif" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="validFrom" label="Depuis" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <TableHead className="w-52">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
+      {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
+
+      {!isLoading && (
+        <div className="rounded-lg border border-zinc-200">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-zinc-500">
-                  Chargement…
-                </TableCell>
+                <TableHead className="w-9" />
+                <TableHead>Code</TableHead>
+                <TableHead>Libellé</TableHead>
+                <TableHead>Sous-activités</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-40">Actions</TableHead>
               </TableRow>
-            )}
-            {!isLoading &&
-              sorted.map((activity) => (
-                <TableRow key={activity.id} data-state={selection.isSelected(activity.id) ? "selected" : undefined}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selection.isSelected(activity.id)}
-                      onChange={() => selection.toggle(activity.id)}
-                      aria-label={`Sélectionner ${activity.label}`}
-                    />
-                  </TableCell>
-                  <TableCell>{activity.label}</TableCell>
-                  <TableCell>{activity.code ?? "—"}</TableCell>
-                  <TableCell>{activity.unit}</TableCell>
-                  <TableCell>{formatRate(activity.unitRate)}</TableCell>
-                  <TableCell>{siteName(activity.siteId)}</TableCell>
-                  <TableCell>{formatDate(activity.validFrom)}</TableCell>
-                  <TableCell>
-                    <RowActions>
-                      <IconButton
-                        icon={Pencil}
-                        label="Modifier"
-                        variant="brand"
-                        onClick={() => openEdit(activity)}
-                      />
-                      <IconButton
-                        icon={History}
-                        label="Historique des tarifs"
-                        onClick={() => setHistoryLabel(activity.label)}
-                      />
-                      {activity.active && (
-                        <IconButton
-                          icon={Power}
-                          label="Désactiver"
-                          variant="destructive"
-                          onClick={() => deactivateMutation.mutate(activity)}
-                        />
-                      )}
-                    </RowActions>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-zinc-500">
+                    Aucune catégorie.
                   </TableCell>
                 </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+              {categories.map((category) => {
+                const isOpen = search.trim().length > 0 || expanded.has(category.id);
+                return (
+                  <Fragment key={category.id}>
+                    <TableRow>
+                      <TableCell>
+                        <button
+                          type="button"
+                          className="flex h-6 w-6 items-center justify-center rounded hover:bg-zinc-100"
+                          onClick={() => toggleExpanded(category.id)}
+                          aria-label={isOpen ? "Réduire" : "Développer"}
+                          aria-expanded={isOpen}
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="h-4 w-4 text-zinc-500" aria-hidden />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-zinc-500" aria-hidden />
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={category.active ? "success" : "default"}>
+                          {category.code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium text-zinc-900">{category.label}</TableCell>
+                      <TableCell className="text-zinc-600">
+                        {category.subActivities.length}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={category.active ? "success" : "default"}>
+                          {category.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <RowActions>
+                          <IconButton
+                            icon={Plus}
+                            label="Nouvelle sous-activité"
+                            onClick={() => openCreateSub(category.id)}
+                          />
+                          <IconButton
+                            icon={Pencil}
+                            label="Modifier la catégorie"
+                            variant="brand"
+                            onClick={() => openEditCategory(category)}
+                          />
+                          {category.active && (
+                            <IconButton
+                              icon={Power}
+                              label="Désactiver la catégorie"
+                              variant="destructive"
+                              onClick={() => deactivateCategoryMutation.mutate(category)}
+                            />
+                          )}
+                        </RowActions>
+                      </TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="bg-zinc-50 p-0">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="pl-10">Libellé</TableHead>
+                                <TableHead>Libellé court (MVola)</TableHead>
+                                <TableHead>Unité</TableHead>
+                                <TableHead>Tarif</TableHead>
+                                <TableHead>Site</TableHead>
+                                <TableHead>Depuis</TableHead>
+                                <TableHead className="w-40">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {category.subActivities.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="pl-10 text-zinc-500">
+                                    Aucune sous-activité active.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                              {category.subActivities.map((sub) => (
+                                <TableRow key={sub.id}>
+                                  <TableCell className="pl-10">{sub.label}</TableCell>
+                                  <TableCell>{sub.shortLabel}</TableCell>
+                                  <TableCell>{sub.unit?.label}</TableCell>
+                                  <TableCell>{formatRate(sub.unitRate)}</TableCell>
+                                  <TableCell>{siteName(sub.siteId)}</TableCell>
+                                  <TableCell>{formatDate(sub.validFrom)}</TableCell>
+                                  <TableCell>
+                                    <RowActions>
+                                      <IconButton
+                                        icon={Pencil}
+                                        label="Modifier"
+                                        variant="brand"
+                                        onClick={() => openEditSub(sub)}
+                                      />
+                                      <IconButton
+                                        icon={History}
+                                        label="Historique des tarifs"
+                                        onClick={() =>
+                                          setHistory({ categoryId: category.id, label: sub.label })
+                                        }
+                                      />
+                                      <IconButton
+                                        icon={Power}
+                                        label="Désactiver"
+                                        variant="destructive"
+                                        onClick={() => deactivateSubMutation.mutate(sub)}
+                                      />
+                                    </RowActions>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <LoadMoreButton
+        hasMore={!!categoriesQuery.hasNextPage}
+        loading={categoriesQuery.isFetchingNextPage}
+        onClick={() => void categoriesQuery.fetchNextPage()}
+      />
 
       <RateHistoryDrawer
-        label={historyLabel}
-        open={!!historyLabel}
+        categoryId={history?.categoryId ?? null}
+        label={history?.label ?? null}
+        open={!!history}
         onOpenChange={(open) => {
-          if (!open) setHistoryLabel(null);
+          if (!open) setHistory(null);
         }}
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Modifier l'activité" : "Nouvelle activité"}</DialogTitle>
+            <DialogTitle>
+              {editingCategory ? "Modifier la catégorie" : "Nouvelle catégorie"}
+            </DialogTitle>
+            <DialogDescription>
+              Code officiel (ex. ACT04) et libellé — cf. CATEGORIES DES ACTIVITES MOC PAR SITE.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveCategoryMutation.mutate();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="cat-code">Code</Label>
+              <Input
+                id="cat-code"
+                value={categoryForm.code}
+                onChange={(e) => setCategoryForm((f) => ({ ...f, code: e.target.value }))}
+                maxLength={20}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cat-label">Libellé</Label>
+              <Input
+                id="cat-label"
+                value={categoryForm.label}
+                onChange={(e) => setCategoryForm((f) => ({ ...f, label: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={saveCategoryMutation.isPending}>
+                Enregistrer
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingSub ? "Modifier la sous-activité" : "Nouvelle sous-activité"}
+            </DialogTitle>
             <DialogDescription>
               Un changement de tarif crée une nouvelle version (RG-04).
             </DialogDescription>
@@ -289,57 +468,65 @@ export default function ActivitiesPage() {
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              saveMutation.mutate();
+              saveSubActivityMutation.mutate();
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="act-label">Libellé</Label>
+              <Label htmlFor="sub-label">Libellé</Label>
               <Input
-                id="act-label"
-                value={form.label}
-                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                id="sub-label"
+                value={subForm.label}
+                onChange={(e) => setSubForm((f) => ({ ...f, label: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sub-short">Libellé court (grammaire MVola, 1-2 mots)</Label>
+              <Input
+                id="sub-short"
+                value={subForm.shortLabel}
+                onChange={(e) => setSubForm((f) => ({ ...f, shortLabel: e.target.value }))}
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="act-unit">Unité</Label>
-                <Input
-                  id="act-unit"
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                <Label htmlFor="sub-unit">Unité</Label>
+                <select
+                  id="sub-unit"
+                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  value={subForm.unitId}
+                  onChange={(e) => setSubForm((f) => ({ ...f, unitId: e.target.value }))}
                   required
-                />
+                >
+                  <option value="">— Choisir —</option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="act-rate">Tarif (Ar)</Label>
+                <Label htmlFor="sub-rate">Tarif (Ar)</Label>
                 <Input
-                  id="act-rate"
+                  id="sub-rate"
                   type="number"
                   min="1"
                   step="1"
-                  value={form.unitRate}
-                  onChange={(e) => setForm((f) => ({ ...f, unitRate: e.target.value }))}
+                  value={subForm.unitRate}
+                  onChange={(e) => setSubForm((f) => ({ ...f, unitRate: e.target.value }))}
                   required
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="act-code">Code (ex. ACT04, unique par site)</Label>
-              <Input
-                id="act-code"
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-                maxLength={20}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="act-site">Site (vide = global)</Label>
+              <Label htmlFor="sub-site">Site (vide = global)</Label>
               <select
-                id="act-site"
+                id="sub-site"
                 className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
-                value={form.siteId}
-                onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
+                value={subForm.siteId}
+                onChange={(e) => setSubForm((f) => ({ ...f, siteId: e.target.value }))}
               >
                 <option value="">Global</option>
                 {sites.map((site) => (
@@ -350,10 +537,10 @@ export default function ActivitiesPage() {
               </select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setSubDialogOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <Button type="submit" disabled={saveSubActivityMutation.isPending}>
                 Enregistrer
               </Button>
             </div>

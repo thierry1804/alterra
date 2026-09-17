@@ -37,7 +37,8 @@ export const AUDIT_ENTITY_TYPES = [
   "Pointage",
   "Payment",
   "Site",
-  "Activity",
+  "ActivityCategory",
+  "ActivitySubActivity",
   "User",
 ] as const;
 

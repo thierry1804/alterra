@@ -1,4 +1,4 @@
-import type { Activity } from "@prisma/client";
+import type { ActivitySubActivity } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 
@@ -21,10 +21,10 @@ export function ratesEqual(
   return new Prisma.Decimal(a).equals(new Prisma.Decimal(b));
 }
 
-export interface ActivityRateChangeOverrides {
+export interface SubActivityRateChangeOverrides {
   label?: string;
-  unit?: string;
-  code?: string | null;
+  shortLabel?: string;
+  unitId?: string;
   siteId?: string | null;
   validFrom?: Date;
   active?: boolean;
@@ -50,36 +50,46 @@ export function computeRateChangeDates(
 }
 
 /**
- * RG-04: close the current activity version and open a new one with the updated rate.
- * Lineage is matched by label + unit + siteId.
+ * RG-04: close the current sub-activity version and open a new one with the updated rate.
+ * Lineage is matched by categoryId + label + unit + siteId — la catégorie ne change jamais ici.
  */
-export async function applyActivityRateChange(
+export async function applySubActivityRateChange(
   current: Pick<
-    Activity,
-    "id" | "label" | "unit" | "code" | "siteId" | "unitRate" | "validFrom" | "active"
+    ActivitySubActivity,
+    | "id"
+    | "categoryId"
+    | "label"
+    | "shortLabel"
+    | "unitId"
+    | "siteId"
+    | "unitRate"
+    | "validFrom"
+    | "active"
   >,
   newRate: Prisma.Decimal | number | string,
-  overrides: ActivityRateChangeOverrides = {},
+  overrides: SubActivityRateChangeOverrides = {},
 ) {
   const { closeDate, openDate } = computeRateChangeDates(current.validFrom, overrides.validFrom);
 
   return prisma.$transaction(async (tx) => {
-    await tx.activity.update({
+    await tx.activitySubActivity.update({
       where: { id: current.id },
       data: { validTo: closeDate, active: false },
     });
 
-    return tx.activity.create({
+    return tx.activitySubActivity.create({
       data: {
+        categoryId: current.categoryId,
         label: overrides.label ?? current.label,
-        unit: overrides.unit ?? current.unit,
-        code: overrides.code !== undefined ? overrides.code : current.code,
+        shortLabel: overrides.shortLabel ?? current.shortLabel,
+        unitId: overrides.unitId ?? current.unitId,
         siteId: overrides.siteId !== undefined ? overrides.siteId : current.siteId,
         unitRate: newRate,
         validFrom: openDate,
         validTo: null,
         active: overrides.active ?? current.active ?? true,
       },
+      include: { category: true, unit: true },
     });
   });
 }

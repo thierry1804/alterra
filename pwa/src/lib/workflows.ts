@@ -12,13 +12,16 @@ export interface Paginated<T> {
 
 export interface ActivityRequestRow {
   id: string;
+  categoryId: string;
+  category?: { code: string; label: string };
   proposedLabel: string;
-  proposedUnit: string;
+  unitId: string;
+  unit?: { code: string; label: string };
   proposedRate: string;
   justification: string;
   status: RequestStatus;
   decisionReason: string | null;
-  createdActivityId: string | null;
+  createdSubActivityId: string | null;
   createdAt: string;
 }
 

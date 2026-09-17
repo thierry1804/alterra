@@ -78,7 +78,7 @@ export async function generatePayments(
       worker: {
         include: { site: true },
       },
-      activity: true,
+      subActivity: { include: { category: true } },
     },
   });
 
@@ -86,7 +86,7 @@ export async function generatePayments(
     string,
     {
       amount: Prisma.Decimal;
-      byActivity: Map<string, { label: string; code: string | null; amount: Prisma.Decimal }>;
+      byActivity: Map<string, { shortLabel: string; code: string; amount: Prisma.Decimal }>;
       worker: (typeof pointages)[number]["worker"];
     }
   >();
@@ -95,13 +95,13 @@ export async function generatePayments(
     const current = aggregates.get(pointage.workerId);
     if (current) {
       current.amount = current.amount.add(pointage.amount);
-      const activityTotal = current.byActivity.get(pointage.activityId);
+      const activityTotal = current.byActivity.get(pointage.subActivityId);
       if (activityTotal) {
         activityTotal.amount = activityTotal.amount.add(pointage.amount);
       } else {
-        current.byActivity.set(pointage.activityId, {
-          label: pointage.activity.label,
-          code: pointage.activity.code,
+        current.byActivity.set(pointage.subActivityId, {
+          shortLabel: pointage.subActivity.shortLabel,
+          code: pointage.subActivity.category.code,
           amount: new Prisma.Decimal(pointage.amount),
         });
       }
@@ -110,10 +110,10 @@ export async function generatePayments(
         amount: new Prisma.Decimal(pointage.amount),
         byActivity: new Map([
           [
-            pointage.activityId,
+            pointage.subActivityId,
             {
-              label: pointage.activity.label,
-              code: pointage.activity.code,
+              shortLabel: pointage.subActivity.shortLabel,
+              code: pointage.subActivity.category.code,
               amount: new Prisma.Decimal(pointage.amount),
             },
           ],
@@ -153,11 +153,11 @@ export async function generatePayments(
       amount: aggregate.amount,
       description: buildMvolaDescription(
         `${aggregate.worker.lastName} ${aggregate.worker.firstName}`,
-        dominantActivity.label,
+        dominantActivity.shortLabel,
         semaineIso,
         bordereau,
         aggregate.worker.site.shortCode,
-        dominantActivity.code ?? "",
+        dominantActivity.code,
         aggregate.worker.legacyMocId,
       ),
       bioValid,

@@ -48,8 +48,9 @@ const listClarificationQuery = z.object({
 });
 
 const createActivitySchema = z.object({
+  categoryId: z.string().uuid(),
   proposedLabel: z.string().min(1).max(120),
-  proposedUnit: z.string().min(1).max(40),
+  unitId: z.string().uuid(),
   proposedRate: z.coerce.number().positive(),
   justification: z.string().min(10),
 });
@@ -264,7 +265,10 @@ workflowsRouter.get(
   validate(listRequestQuery, "query"),
   async (req, res, next) => {
     try {
-      const result = await listWorkerRequests(req.user!, req.query as z.infer<typeof listRequestQuery>);
+      const result = await listWorkerRequests(
+        req.user!,
+        req.query as z.infer<typeof listRequestQuery>,
+      );
       res.json(result);
     } catch (err) {
       next(err);

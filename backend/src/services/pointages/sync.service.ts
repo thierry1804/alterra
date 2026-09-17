@@ -4,7 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 export interface SyncPointageItem {
   clientUuid: string;
   workerId: string;
-  activityId: string;
+  subActivityId: string;
   quantity: number;
   date: Date;
   parcelleId?: string;
@@ -31,18 +31,18 @@ export async function syncPointageBatch(
 
   for (const item of batch) {
     try {
-      const activity = await prisma.activity.findUniqueOrThrow({
-        where: { id: item.activityId },
+      const subActivity = await prisma.activitySubActivity.findUniqueOrThrow({
+        where: { id: item.subActivityId },
       });
-      const amount = item.quantity * Number(activity.unitRate);
+      const amount = item.quantity * Number(subActivity.unitRate);
 
       const created = await prisma.pointage.create({
         data: {
           clientUuid: item.clientUuid,
           workerId: item.workerId,
-          activityId: item.activityId,
+          subActivityId: item.subActivityId,
           quantity: item.quantity,
-          unitRateSnapshot: activity.unitRate,
+          unitRateSnapshot: subActivity.unitRate,
           amount,
           date: item.date,
           parcelleId: item.parcelleId,

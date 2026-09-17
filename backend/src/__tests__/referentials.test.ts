@@ -6,7 +6,7 @@ import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { blockUser, resetRedisForTests, getRedis } from "../lib/redis.js";
 import {
-  applyActivityRateChange,
+  applySubActivityRateChange,
   computeRateChangeDates,
   ratesEqual,
   startOfUtcDay,
@@ -19,10 +19,15 @@ const MOCK_ACTIVITY_ID = "00000000-0000-4000-8000-000000000020";
 const MOCK_USER_TARGET_ID = "00000000-0000-4000-8000-000000000030";
 const MOCK_BLOCKED_USER_ID = "00000000-0000-4000-8000-000000000099";
 
+const MOCK_CATEGORY_ID = "00000000-0000-4000-8000-000000000025";
+const MOCK_UNIT_ID = "00000000-0000-4000-8000-000000000026";
+
 const mockActivity = {
   id: MOCK_ACTIVITY_ID,
+  categoryId: MOCK_CATEGORY_ID,
   label: "Plantation",
-  unit: "plant",
+  shortLabel: "plantation",
+  unitId: MOCK_UNIT_ID,
   unitRate: new Prisma.Decimal("150.00"),
   validFrom: new Date("2026-01-01"),
   validTo: null,
@@ -43,7 +48,7 @@ vi.mock("../lib/prisma.js", () => ({
     team: {
       findMany: vi.fn(),
     },
-    activity: {
+    activitySubActivity: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -180,7 +185,7 @@ describe("referentials module", () => {
     expect(res.body.code).toBe("USER_BLOCKED");
   });
 
-  it("RG-04: applyActivityRateChange closes previous row and creates new version", async () => {
+  it("RG-04: applySubActivityRateChange closes previous row and creates new version", async () => {
     const newActivity = {
       ...mockActivity,
       id: "00000000-0000-4000-8000-000000000021",
@@ -188,26 +193,28 @@ describe("referentials module", () => {
       validFrom: startOfUtcDay(),
     };
 
-    vi.mocked(prisma.activity.update).mockResolvedValue({
+    vi.mocked(prisma.activitySubActivity.update).mockResolvedValue({
       ...mockActivity,
       validTo: new Date("2026-07-20"),
       active: false,
     });
-    vi.mocked(prisma.activity.create).mockResolvedValue(newActivity);
+    vi.mocked(prisma.activitySubActivity.create).mockResolvedValue(newActivity);
 
-    const result = await applyActivityRateChange(mockActivity, 175);
+    const result = await applySubActivityRateChange(mockActivity, 175);
 
-    expect(prisma.activity.update).toHaveBeenCalledWith(
+    expect(prisma.activitySubActivity.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: MOCK_ACTIVITY_ID },
         data: expect.objectContaining({ active: false, validTo: expect.any(Date) }),
       }),
     );
-    expect(prisma.activity.create).toHaveBeenCalledWith(
+    expect(prisma.activitySubActivity.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          categoryId: MOCK_CATEGORY_ID,
           label: "Plantation",
-          unit: "plant",
+          shortLabel: "plantation",
+          unitId: MOCK_UNIT_ID,
           siteId: MOCK_SITE_ID,
           unitRate: 175,
           active: true,
@@ -276,9 +283,9 @@ describe("referentials module", () => {
     const preview = await parseWorkersWorkbook(buffer);
 
     expect(preview.valid).toHaveLength(0);
-    expect(preview.errors.some((e) => e.field === "matricule" && e.message.includes("dupliqué"))).toBe(
-      true,
-    );
+    expect(
+      preview.errors.some((e) => e.field === "matricule" && e.message.includes("dupliqué")),
+    ).toBe(true);
   });
 
   it("import dry-run detects matricule already in database", async () => {
@@ -340,7 +347,11 @@ describe("referentials module", () => {
     const res = await request(app)
       .post("/api/v1/workers/import/columns")
       .set("Authorization", adminAuthHeader())
-      .send({ contentBase64: buffer.toString("base64"), hasHeaderRow: true, referenceRowNumber: 1 });
+      .send({
+        contentBase64: buffer.toString("base64"),
+        hasHeaderRow: true,
+        referenceRowNumber: 1,
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.suggestedMapping.firstName).toBeTruthy();

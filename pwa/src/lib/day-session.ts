@@ -4,7 +4,7 @@ export const SETTING_DAY_SESSION = "daySession";
 export const SETTING_REFERENTIALS_SYNCED_AT = "referentialsSyncedAt";
 
 export interface DaySession {
-  activityId: string;
+  subActivityId: string;
   date: string;
   defaultQuantity: number;
 }

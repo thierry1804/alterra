@@ -9,6 +9,8 @@ vi.mock("../lib/prisma.js", () => ({
     site: { findMany: vi.fn(), findFirst: vi.fn() },
     team: { findMany: vi.fn() },
     worker: { findMany: vi.fn(), count: vi.fn() },
+    activityCategory: { findMany: vi.fn() },
+    unit: { findMany: vi.fn() },
   },
 }));
 
@@ -34,6 +36,8 @@ describe("initial import parsers", () => {
     vi.mocked(prisma.worker.findMany).mockResolvedValue([]);
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: "site-1" } as never);
     vi.mocked(prisma.worker.count).mockResolvedValue(0);
+    vi.mocked(prisma.activityCategory.findMany).mockResolvedValue([{ code: "ACT02" }] as never);
+    vi.mocked(prisma.unit.findMany).mockResolvedValue([{ code: "M2" }] as never);
   });
 
   it("parseSitesWorkbook validates shortCode format", async () => {
@@ -62,8 +66,8 @@ describe("initial import parsers", () => {
 
   it("parseActivitiesWorkbook accepts global activity without site", async () => {
     const buffer = await buildWorkbook(
-      ["label", "unit", "unitRate", "validFrom", "siteShortCode"],
-      [["Désherbage", "m2", "150", "2026-01-01", ""]],
+      ["categoryCode", "label", "unitCode", "unitRate", "validFrom", "siteShortCode"],
+      [["ACT02", "Désherbage", "M2", "150", "2026-01-01", ""]],
     );
 
     const result = await parseActivitiesWorkbook(buffer);
@@ -95,7 +99,15 @@ describe("initial import parsers", () => {
 
   it("parseInitialWorkersWorkbook accepts legacyMocId when provided", async () => {
     const buffer = await buildWorkbook(
-      ["matricule", "legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [
+        "matricule",
+        "legacyMocId",
+        "firstName",
+        "lastName",
+        "mvolaNumber",
+        "siteShortCode",
+        "hiredAt",
+      ],
       [["MOC-1", "84", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
     );
 
@@ -117,7 +129,15 @@ describe("initial import parsers", () => {
 
   it("parseInitialWorkersWorkbook rejects non-numeric legacyMocId", async () => {
     const buffer = await buildWorkbook(
-      ["matricule", "legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
+      [
+        "matricule",
+        "legacyMocId",
+        "firstName",
+        "lastName",
+        "mvolaNumber",
+        "siteShortCode",
+        "hiredAt",
+      ],
       [["MOC-1", "abc", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
     );
 

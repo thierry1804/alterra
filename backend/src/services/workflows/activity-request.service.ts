@@ -3,10 +3,7 @@ import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { startOfUtcDay } from "../activities/activity-version.service.js";
-import {
-  assertActivityCancelAllowed,
-  assertActivityDecisionAllowed,
-} from "./workflow-state.js";
+import { assertActivityCancelAllowed, assertActivityDecisionAllowed } from "./workflow-state.js";
 
 export interface ListActivityRequestsInput {
   status?: RequestStatus;
@@ -15,8 +12,9 @@ export interface ListActivityRequestsInput {
 }
 
 export interface CreateActivityRequestInput {
+  categoryId: string;
   proposedLabel: string;
-  proposedUnit: string;
+  unitId: string;
   proposedRate: number;
   justification: string;
 }
@@ -50,6 +48,7 @@ export async function listActivityRequests(
 
   const rows = await prisma.activityRequest.findMany({
     where,
+    include: { category: true, unit: true },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: pageSize + 1,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
@@ -63,6 +62,7 @@ export async function listActivityRequests(
 export async function getActivityRequest(user: AccessTokenPayload, id: string) {
   const request = await prisma.activityRequest.findFirst({
     where: { id, ...listScopeWhere(user) },
+    include: { category: true, unit: true },
   });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande activité introuvable");
   return request;
@@ -78,8 +78,9 @@ export async function createActivityRequest(
 
   return prisma.activityRequest.create({
     data: {
+      categoryId: input.categoryId,
       proposedLabel: input.proposedLabel.trim(),
-      proposedUnit: input.proposedUnit.trim(),
+      unitId: input.unitId,
       proposedRate: input.proposedRate,
       justification: input.justification.trim(),
       requestedById: user.sub,
@@ -119,10 +120,12 @@ export async function decideActivityRequest(
   }
 
   return prisma.$transaction(async (tx) => {
-    const activity = await tx.activity.create({
+    const subActivity = await tx.activitySubActivity.create({
       data: {
+        categoryId: request.categoryId,
         label: request.proposedLabel,
-        unit: request.proposedUnit,
+        shortLabel: request.proposedLabel.toLowerCase(),
+        unitId: request.unitId,
         unitRate: request.proposedRate,
         validFrom: startOfUtcDay(),
         siteId: request.siteId,
@@ -137,7 +140,7 @@ export async function decideActivityRequest(
         decisionById: user.sub,
         decisionAt: new Date(),
         decisionReason: input.decisionReason?.trim(),
-        createdActivityId: activity.id,
+        createdSubActivityId: subActivity.id,
       },
     });
   });

@@ -30,20 +30,21 @@ export default function BatchEntry() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const workers = useLiveQuery(async () => {
-    let collection = db.workers.toCollection();
-    if (user?.teamId) {
-      collection = db.workers.where("teamId").equals(user.teamId);
-    } else if (user?.siteId) {
-      collection = db.workers.filter((worker) => worker.siteId === user.siteId);
-    }
-    return collection.sortBy("lastName");
-  }, [user?.teamId, user?.siteId]) ?? [];
+  const workers =
+    useLiveQuery(async () => {
+      let collection = db.workers.toCollection();
+      if (user?.teamId) {
+        collection = db.workers.where("teamId").equals(user.teamId);
+      } else if (user?.siteId) {
+        collection = db.workers.filter((worker) => worker.siteId === user.siteId);
+      }
+      return collection.sortBy("lastName");
+    }, [user?.teamId, user?.siteId]) ?? [];
 
   const activity = useLiveQuery(async () => {
-    if (!session?.activityId) return undefined;
-    return db.activities.get(session.activityId);
-  }, [session?.activityId]) as ActivityRecord | undefined;
+    if (!session?.subActivityId) return undefined;
+    return db.activities.get(session.subActivityId);
+  }, [session?.subActivityId]) as ActivityRecord | undefined;
 
   useEffect(() => {
     void getDaySession().then((value) => {
@@ -141,7 +142,7 @@ export default function BatchEntry() {
           const pointage: PointagePending = {
             clientUuid,
             workerId: worker.id,
-            activityId: session.activityId,
+            subActivityId: session.subActivityId,
             quantity: Number(value.quantity),
             date: session.date,
             createdByClientAt: nowIso,
@@ -217,10 +218,14 @@ export default function BatchEntry() {
         </header>
 
         {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
         )}
         {message && (
-          <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">{message}</p>
+          <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+            {message}
+          </p>
         )}
 
         <div className="space-y-3">
