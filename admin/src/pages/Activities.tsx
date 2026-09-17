@@ -12,6 +12,7 @@ import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Combobox } from "../components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -492,20 +493,14 @@ export default function ActivitiesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="sub-unit">Unité</Label>
-                <select
+                <Combobox
                   id="sub-unit"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  placeholder="Rechercher une unité…"
+                  options={units.map((unit) => ({ value: unit.id, label: unit.label }))}
                   value={subForm.unitId}
-                  onChange={(e) => setSubForm((f) => ({ ...f, unitId: e.target.value }))}
+                  onChange={(unitId) => setSubForm((f) => ({ ...f, unitId }))}
                   required
-                >
-                  <option value="">— Choisir —</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sub-rate">Tarif (Ar)</Label>
@@ -522,19 +517,19 @@ export default function ActivitiesPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="sub-site">Site (vide = global)</Label>
-              <select
+              <Combobox
                 id="sub-site"
-                className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                placeholder="Rechercher un site…"
+                options={[
+                  { value: "", label: "Global" },
+                  ...sites.map((site) => ({
+                    value: site.id,
+                    label: `${site.name} (${site.shortCode})`,
+                  })),
+                ]}
                 value={subForm.siteId}
-                onChange={(e) => setSubForm((f) => ({ ...f, siteId: e.target.value }))}
-              >
-                <option value="">Global</option>
-                {sites.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {site.name} ({site.shortCode})
-                  </option>
-                ))}
-              </select>
+                onChange={(siteId) => setSubForm((f) => ({ ...f, siteId }))}
+              />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setSubDialogOpen(false)}>
