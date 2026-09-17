@@ -24,6 +24,8 @@ export const AUDIT_ACTIONS = [
   "CREATE",
   "UPDATE",
   "DELETE",
+  "DEACTIVATE",
+  "RATE_CHANGE",
   "LOGIN",
   "EXPORT",
   "IMPORT",
@@ -39,6 +41,7 @@ export const AUDIT_ENTITY_TYPES = [
   "Site",
   "ActivityCategory",
   "ActivitySubActivity",
+  "Unit",
   "User",
 ] as const;
 
