@@ -30,16 +30,16 @@ export default function BatchEntry() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const workers =
-    useLiveQuery(async () => {
-      let collection = db.workers.toCollection();
-      if (user?.teamId) {
-        collection = db.workers.where("teamId").equals(user.teamId);
-      } else if (user?.siteId) {
-        collection = db.workers.filter((worker) => worker.siteId === user.siteId);
-      }
-      return collection.sortBy("lastName");
-    }, [user?.teamId, user?.siteId]) ?? [];
+  const workersResult = useLiveQuery(async () => {
+    let collection = db.workers.toCollection();
+    if (user?.teamId) {
+      collection = db.workers.where("teamId").equals(user.teamId);
+    } else if (user?.siteId) {
+      collection = db.workers.filter((worker) => worker.siteId === user.siteId);
+    }
+    return collection.sortBy("lastName");
+  }, [user?.teamId, user?.siteId]);
+  const workers = useMemo(() => workersResult ?? [], [workersResult]);
 
   const activity = useLiveQuery(async () => {
     if (!session?.subActivityId) return undefined;

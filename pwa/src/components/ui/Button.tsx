@@ -21,7 +21,7 @@ const sizeClasses: Record<ButtonSize, string> = {
 const baseClasses =
   "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
-export function buttonClassName(
+function buttonClassName(
   variant: ButtonVariant = "default",
   size: ButtonSize = "default",
   className?: string,
@@ -41,9 +41,7 @@ export default function Button({
   type = "button",
   ...props
 }: ButtonProps) {
-  return (
-    <button type={type} className={buttonClassName(variant, size, className)} {...props} />
-  );
+  return <button type={type} className={buttonClassName(variant, size, className)} {...props} />;
 }
 
 interface ButtonLinkProps extends LinkProps {

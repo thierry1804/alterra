@@ -21,13 +21,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { toast } from "../../hooks/use-toast";
 
 export type RequestSelection =
@@ -131,8 +125,7 @@ export default function RequestDetailDrawer({
 
   if (!selection) return null;
 
-  const isDecidable =
-    selection.type !== "clarification" && selection.row.status === "PENDING";
+  const isDecidable = selection.type !== "clarification" && selection.row.status === "PENDING";
   const busy =
     approveMutation.isPending || rejectMutation.isPending || complementMutation.isPending;
 
@@ -145,9 +138,7 @@ export default function RequestDetailDrawer({
             {selection.type === "worker" && "Demande MOC"}
             {selection.type === "clarification" && "Demande de précisions"}
           </DialogTitle>
-          <DialogDescription>
-            Créée le {formatDate(selection.row.createdAt)}
-          </DialogDescription>
+          <DialogDescription>Créée le {formatDate(selection.row.createdAt)}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -199,9 +190,7 @@ export default function RequestDetailDrawer({
             <>
               <DetailField label="Pointage" value={selection.row.pointageId} />
               <DetailField label="Question" value={selection.row.question} />
-              {selection.row.requestedPhoto && (
-                <DetailField label="Photo demandée" value="Oui" />
-              )}
+              {selection.row.requestedPhoto && <DetailField label="Photo demandée" value="Oui" />}
               {selection.row.answerText && (
                 <DetailField label="Réponse CDE" value={selection.row.answerText} />
               )}
@@ -242,9 +231,7 @@ export default function RequestDetailDrawer({
                   type="button"
                   variant="outline"
                   disabled={busy}
-                  onClick={() =>
-                    setActionMode(actionMode === "complement" ? "none" : "complement")
-                  }
+                  onClick={() => setActionMode(actionMode === "complement" ? "none" : "complement")}
                 >
                   Complément
                 </Button>

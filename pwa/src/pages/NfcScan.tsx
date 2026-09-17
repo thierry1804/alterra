@@ -57,16 +57,20 @@ export default function NfcScan() {
       return db.workers.where("teamId").equals(user.teamId).sortBy("lastName");
     }, [user?.teamId]) ?? [];
 
-  const todayLogs =
-    useLiveQuery(() => db.presenceLog.where("date").equals(new Date().toISOString().slice(0, 10)).toArray(), []) ??
-    [];
-
-  const sortedLogs = useMemo(
-    () => [...todayLogs].sort((a, b) => b.arrivalTime.localeCompare(a.arrivalTime)),
-    [todayLogs],
+  const todayLogsResult = useLiveQuery(
+    () => db.presenceLog.where("date").equals(new Date().toISOString().slice(0, 10)).toArray(),
+    [],
   );
 
-  const pendingSyncCount = useMemo(() => sortedLogs.filter((log) => !log.synced).length, [sortedLogs]);
+  const sortedLogs = useMemo(
+    () => [...(todayLogsResult ?? [])].sort((a, b) => b.arrivalTime.localeCompare(a.arrivalTime)),
+    [todayLogsResult],
+  );
+
+  const pendingSyncCount = useMemo(
+    () => sortedLogs.filter((log) => !log.synced).length,
+    [sortedLogs],
+  );
 
   const resetScanVisual = useCallback(() => {
     window.setTimeout(() => {
@@ -235,10 +239,10 @@ export default function NfcScan() {
         <p className="mt-2 text-xs text-zinc-600">
           {busy
             ? "Traitement…"
-            : statusMessage ??
+            : (statusMessage ??
               (nfcAvailable
                 ? "Le scan reprend automatiquement après chaque badge."
-                : "Utilisez le mode manuel ci-dessous.")}
+                : "Utilisez le mode manuel ci-dessous."))}
         </p>
       </div>
 
@@ -250,14 +254,20 @@ export default function NfcScan() {
       )}
 
       <section className="rounded-md border border-zinc-200 bg-white p-4">
-        <Button type="button" variant="ghost" size="sm" onClick={() => setManualOpen((open) => !open)}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setManualOpen((open) => !open)}
+        >
           {manualOpen ? "Masquer le mode manuel" : "Mode manuel — dégradé"}
         </Button>
 
         {manualOpen && (
           <form onSubmit={(event) => void handleManualSubmit(event)} className="mt-3 space-y-3">
             <p className="text-xs text-zinc-600">
-              Si le NFC est indisponible ou le badge non programmé, enregistrez la présence manuellement.
+              Si le NFC est indisponible ou le badge non programmé, enregistrez la présence
+              manuellement.
             </p>
             <select
               value={manualWorkerId}
@@ -286,7 +296,10 @@ export default function NfcScan() {
         ) : (
           <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
             {sortedLogs.slice(0, 20).map((log) => (
-              <li key={log.clientUuid} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <li
+                key={log.clientUuid}
+                className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+              >
                 <span className={log.status === "unknown" ? "text-red-700" : "text-zinc-800"}>
                   {log.workerLabel}
                   {log.status === "unknown" ? " · badge inconnu" : ""}

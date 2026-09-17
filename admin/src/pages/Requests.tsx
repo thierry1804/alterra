@@ -88,10 +88,7 @@ export default function RequestsPage() {
       ),
   });
 
-  const activityRows = useMemo(
-    () => sortByOldest(activityQuery.data ?? []),
-    [activityQuery.data],
-  );
+  const activityRows = useMemo(() => sortByOldest(activityQuery.data ?? []), [activityQuery.data]);
   const workerRows = useMemo(() => sortByOldest(workerQuery.data ?? []), [workerQuery.data]);
   const clarificationRows = useMemo(
     () => sortByOldest(clarificationQuery.data ?? []),
@@ -128,7 +125,9 @@ export default function RequestsPage() {
       }),
     onSuccess: (res, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: [variables.endpoint.includes("activity") ? "activity-requests" : "worker-requests"],
+        queryKey: [
+          variables.endpoint.includes("activity") ? "activity-requests" : "worker-requests",
+        ],
       });
       const failed = res.data.results.filter((r) => r.status === "error");
       activitySelection.clear();
@@ -176,7 +175,11 @@ export default function RequestsPage() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT"
+      ) {
         return;
       }
       if (event.key === "1") handleTabChange("activities");
@@ -290,9 +293,7 @@ export default function RequestsPage() {
           <select
             className="alterra-focus h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as ClarificationStatus | "")
-            }
+            onChange={(event) => setStatusFilter(event.target.value as ClarificationStatus | "")}
           >
             <option value="">Tous statuts</option>
             {(Object.keys(CLARIFICATION_STATUS_LABELS) as ClarificationStatus[]).map((status) => (
@@ -530,7 +531,10 @@ function RequestsTable<T extends { id: string }>({
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.id} data-state={selection?.isSelected(row.id) ? "selected" : undefined}>
+            <TableRow
+              key={row.id}
+              data-state={selection?.isSelected(row.id) ? "selected" : undefined}
+            >
               {selection && (
                 <TableCell>
                   <Checkbox

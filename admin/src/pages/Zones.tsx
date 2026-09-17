@@ -38,8 +38,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 const DEFAULT_MAP_CENTER: [number, number] = [-18.91, 47.52];
 
 type DeleteConfirm =
-  | { type: "zone"; id: string; name: string }
-  | { type: "parcel"; id: string; name: string };
+  { type: "zone"; id: string; name: string } | { type: "parcel"; id: string; name: string };
 
 type DialogMode = "zone-create" | "zone-edit" | "parcel-create" | "parcel-edit";
 
@@ -116,11 +115,20 @@ export default function ZonesPage() {
   const parentZone = zones.find((z) => z.id === parentZoneId);
   const parcelMapCenter = geoPolygonCenter(parentZone?.geoPolygon ?? null) ?? mapCenter;
 
-  const { sorted: sortedZones, sortKey, sortDir, toggleSort } = useClientSort<Zone>(zones, "name", {
-    surface: (z) =>
-      (parcelsByZone.get(z.id) ?? []).reduce((sum, p) => sum + Number(p.surfaceHa ?? 0), 0),
-    geoPolygon: (z) => (z.geoPolygon ? 1 : 0),
-  });
+  const zoneSortAccessors = useMemo(
+    () => ({
+      surface: (z: Zone) =>
+        (parcelsByZone.get(z.id) ?? []).reduce((sum, p) => sum + Number(p.surfaceHa ?? 0), 0),
+      geoPolygon: (z: Zone) => (z.geoPolygon ? 1 : 0),
+    }),
+    [parcelsByZone],
+  );
+  const {
+    sorted: sortedZones,
+    sortKey,
+    sortDir,
+    toggleSort,
+  } = useClientSort<Zone>(zones, "name", zoneSortAccessors);
   const zoneSelection = useRowSelection(sortedZones.map((z) => z.id));
   const parcelSelection = useRowSelection(parcelles.map((p) => p.id));
 
@@ -207,9 +215,7 @@ export default function ZonesPage() {
         return api.post("/zones", { ...payload, siteId: effectiveSiteId });
       }
 
-      const surfaceHa = parcelForm.surfaceHa.trim()
-        ? Number(parcelForm.surfaceHa)
-        : undefined;
+      const surfaceHa = parcelForm.surfaceHa.trim() ? Number(parcelForm.surfaceHa) : undefined;
       const payload = {
         name: parcelForm.name.trim(),
         code: parcelForm.code.trim() || null,
@@ -248,7 +254,11 @@ export default function ZonesPage() {
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Suppression impossible", description: String(message), variant: "destructive" });
+      toast({
+        title: "Suppression impossible",
+        description: String(message),
+        variant: "destructive",
+      });
     },
   });
 
@@ -260,7 +270,11 @@ export default function ZonesPage() {
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Suppression impossible", description: String(message), variant: "destructive" });
+      toast({
+        title: "Suppression impossible",
+        description: String(message),
+        variant: "destructive",
+      });
     },
   });
 
@@ -416,10 +430,35 @@ export default function ZonesPage() {
                   aria-label="Tout sélectionner"
                 />
               </TableHead>
-              <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="code" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="surface" label="Surface" numeric currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="geoPolygon" label="GeoJSON" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="name"
+                label="Nom"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="code"
+                label="Code"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="surface"
+                label="Surface"
+                numeric
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="geoPolygon"
+                label="GeoJSON"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -441,13 +480,13 @@ export default function ZonesPage() {
             {sortedZones.map((zone) => {
               const zoneParcels = parcelsByZone.get(zone.id) ?? [];
               const expanded = expandedZones.has(zone.id);
-              const totalHa = zoneParcels.reduce(
-                (sum, p) => sum + Number(p.surfaceHa ?? 0),
-                0,
-              );
+              const totalHa = zoneParcels.reduce((sum, p) => sum + Number(p.surfaceHa ?? 0), 0);
               return (
                 <Fragment key={zone.id}>
-                  <TableRow className="bg-zinc-50/80" data-state={zoneSelection.isSelected(zone.id) ? "selected" : undefined}>
+                  <TableRow
+                    className="bg-zinc-50/80"
+                    data-state={zoneSelection.isSelected(zone.id) ? "selected" : undefined}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={zoneSelection.isSelected(zone.id)}
@@ -496,7 +535,10 @@ export default function ZonesPage() {
                   </TableRow>
                   {expanded &&
                     zoneParcels.map((parcel) => (
-                      <TableRow key={parcel.id} data-state={parcelSelection.isSelected(parcel.id) ? "selected" : undefined}>
+                      <TableRow
+                        key={parcel.id}
+                        data-state={parcelSelection.isSelected(parcel.id) ? "selected" : undefined}
+                      >
                         <TableCell>
                           <Checkbox
                             checked={parcelSelection.isSelected(parcel.id)}
@@ -654,11 +696,7 @@ export default function ZonesPage() {
 
       <ConfirmDialog
         open={deleteConfirm !== null}
-        title={
-          deleteConfirm?.type === "zone"
-            ? "Supprimer la zone ?"
-            : "Supprimer la parcelle ?"
-        }
+        title={deleteConfirm?.type === "zone" ? "Supprimer la zone ?" : "Supprimer la parcelle ?"}
         description={
           deleteConfirm
             ? `« ${deleteConfirm.name} » sera définitivement supprimée. Cette action est irréversible.`

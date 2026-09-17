@@ -64,9 +64,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
-              <Route
-                element={<RoleGuard allowedRoles={["ADMIN", "CHEF_SERVICE"]} />}
-              >
+              <Route element={<RoleGuard allowedRoles={["ADMIN", "CHEF_SERVICE"]} />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/pointages" element={<PointagesPage />} />
               </Route>

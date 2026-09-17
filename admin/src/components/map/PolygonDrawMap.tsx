@@ -5,7 +5,7 @@ import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { GeoPolygon } from "../../lib/geo";
-import { tileConfig } from "./SiteMap";
+import { tileConfig } from "../../lib/map-tiles";
 
 function layerToGeoPolygon(layer: L.Polygon): GeoPolygon {
   const geojson = layer.toGeoJSON();
@@ -14,7 +14,9 @@ function layerToGeoPolygon(layer: L.Polygon): GeoPolygon {
 }
 
 function geoPolygonToLatLngRings(polygon: GeoPolygon): L.LatLngExpression[][] {
-  return polygon.coordinates.map((ring) => ring.map(([lng, lat]) => [lat, lng] as [number, number]));
+  return polygon.coordinates.map((ring) =>
+    ring.map(([lng, lat]) => [lat, lng] as [number, number]),
+  );
 }
 
 interface GeomanLayerProps {
@@ -111,7 +113,12 @@ export interface PolygonDrawMapProps {
 }
 
 /** Carte avec outils de dessin/édition de polygone (leaflet-geoman) synchronisée sur `value`. */
-export default function PolygonDrawMap({ value, onChange, center, zoom = 14 }: PolygonDrawMapProps) {
+export default function PolygonDrawMap({
+  value,
+  onChange,
+  center,
+  zoom = 14,
+}: PolygonDrawMapProps) {
   const tiles = tileConfig();
   return (
     <div className="h-72 w-full overflow-hidden rounded-md border border-zinc-300">

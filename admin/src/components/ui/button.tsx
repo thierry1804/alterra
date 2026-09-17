@@ -11,7 +11,8 @@ const buttonVariants = cva(
       variant: {
         // Primaire = vert de marque ALTERRA (contraste AA garanti).
         default: "bg-brand text-white shadow-xs hover:bg-brand-hover",
-        outline: "border border-zinc-300 bg-white text-zinc-900 shadow-xs hover:bg-zinc-50 hover:border-zinc-400",
+        outline:
+          "border border-zinc-300 bg-white text-zinc-900 shadow-xs hover:bg-zinc-50 hover:border-zinc-400",
         ghost: "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900",
         destructive: "bg-danger text-white shadow-xs hover:brightness-110",
         subtle: "bg-brand-tint text-brand hover:bg-brand-tint/70",
@@ -31,14 +32,16 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, loading = false, disabled, children, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
     // asChild ne peut recevoir qu'un unique enfant : on ne surcharge pas son contenu.
     if (asChild) {
@@ -63,5 +66,3 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   },
 );
 Button.displayName = "Button";
-
-export { buttonVariants };

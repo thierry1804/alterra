@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./hooks/useAuth";
+import { AuthProvider } from "./hooks/AuthProvider";
 import { GuestRoute, ProtectedRoute } from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
 import InactivityGuard from "./components/InactivityGuard";
@@ -45,7 +45,9 @@ export default function App() {
                 <Route path="/worker-requests" element={<WorkerRequest />} />
               </Route>
 
-              <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"]} />}>
+              <Route
+                element={<RoleRoute allowedRoles={["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"]} />}
+              >
                 <Route path="/teams" element={<TeamManagement />} />
                 <Route path="/clarifications" element={<ClarificationRequest />} />
               </Route>

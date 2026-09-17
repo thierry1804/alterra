@@ -141,7 +141,9 @@ export function navItemsForRole(role: AuthUser["role"] | undefined): NavItem[] {
   return NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
 
-export function navItemsBySection(role: AuthUser["role"] | undefined): globalThis.Map<string, NavItem[]> {
+export function navItemsBySection(
+  role: AuthUser["role"] | undefined,
+): globalThis.Map<string, NavItem[]> {
   const items = navItemsForRole(role);
   const grouped = new globalThis.Map<string, NavItem[]>();
 

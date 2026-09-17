@@ -2,30 +2,11 @@ import { useEffect } from "react";
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  collectGeoBounds,
-  geoPolygonToLatLngs,
-  type SiteGeo,
-} from "../../lib/geo";
+import { collectGeoBounds, geoPolygonToLatLngs, type SiteGeo } from "../../lib/geo";
+import { tileConfig } from "../../lib/map-tiles";
 
 const DEFAULT_CENTER: [number, number] = [-18.91, 47.52];
 const DEFAULT_ZOOM = 6;
-
-export function tileConfig() {
-  const mapTilerKey = import.meta.env.VITE_MAPTILER_KEY as string | undefined;
-  if (mapTilerKey) {
-    return {
-      url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`,
-      attribution:
-        '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    };
-  }
-  return {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  };
-}
 
 interface MapBoundsUpdaterProps {
   sites: SiteGeo[];
@@ -82,9 +63,7 @@ export default function SiteMap({
   onSiteSelect,
 }: SiteMapProps) {
   const tiles = tileConfig();
-  const visibleSites = selectedSiteId
-    ? sites.filter((site) => site.id === selectedSiteId)
-    : sites;
+  const visibleSites = selectedSiteId ? sites.filter((site) => site.id === selectedSiteId) : sites;
 
   return (
     <MapContainer
