@@ -219,6 +219,16 @@ describe("auth endpoints", () => {
     expect(cookieHeader).toMatch(/refreshToken=;/);
   });
 
+  it("POST /auth/logout revokes the refresh token even without an access token (locked PWA screen)", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/auth/logout")
+      .set("Cookie", `refreshToken=${RAW_REFRESH}`);
+
+    expect(res.status).toBe(204);
+    expect(prisma.refreshToken.update).toHaveBeenCalledOnce();
+  });
+
   it("POST /auth/mfa/setup returns otpauthUrl and qrCodeDataUrl", async () => {
     const app = createApp();
     const res = await request(app)

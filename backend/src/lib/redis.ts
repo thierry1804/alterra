@@ -113,6 +113,32 @@ export async function isUserBlocked(userId: string): Promise<boolean> {
   return (await redis.get(`${USER_BLOCKED_PREFIX}${userId}`)) !== null;
 }
 
+const TOKENS_VALID_AFTER_PREFIX = "user:tokens-valid-after:";
+/** Un peu plus que la durée de vie d'un jeton d'accès (15 min par défaut) : au-delà, les anciens jetons sont expirés. */
+const TOKENS_VALID_AFTER_TTL_SECONDS = 60 * 60;
+
+/**
+ * Invalide les jetons d'accès émis AVANT maintenant (réinitialisation du mot de passe), sans bloquer le compte :
+ * une nouvelle connexion produit un jeton plus récent, accepté immédiatement.
+ */
+export async function invalidateTokensIssuedBefore(userId: string, nowMs = Date.now()): Promise<void> {
+  const redis = await getRedis();
+  await redis.setEx(
+    `${TOKENS_VALID_AFTER_PREFIX}${userId}`,
+    TOKENS_VALID_AFTER_TTL_SECONDS,
+    String(Math.floor(nowMs / 1000)),
+  );
+}
+
+export async function areTokensRevoked(userId: string, issuedAtSeconds: number | undefined): Promise<boolean> {
+  const redis = await getRedis();
+  const validAfter = await redis.get(`${TOKENS_VALID_AFTER_PREFIX}${userId}`);
+  if (validAfter === null) return false;
+  // Jeton sans date d'émission : on ne peut pas le rattacher à la nouvelle session, on le refuse.
+  if (issuedAtSeconds === undefined) return true;
+  return issuedAtSeconds < Number(validAfter);
+}
+
 /** Reset client between tests. */
 export async function resetRedisForTests(): Promise<void> {
   client = null;

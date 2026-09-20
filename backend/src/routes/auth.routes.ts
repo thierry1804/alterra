@@ -98,7 +98,9 @@ authRouter.post("/auth/refresh", async (req, res, next) => {
   }
 });
 
-authRouter.post("/auth/logout", requireAuth, async (req, res, next) => {
+// Pas de requireAuth : la déconnexion doit fonctionner avec un jeton d'accès expiré ou absent (écran verrouillé
+// de la PWA). Seul le cookie de rafraîchissement, qui identifie la session, est révoqué.
+authRouter.post("/auth/logout", async (req, res, next) => {
   try {
     await revokeRefreshToken(req.cookies?.[REFRESH_COOKIE], res);
     res.status(204).send();

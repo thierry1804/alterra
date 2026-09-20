@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAccessToken, type AccessTokenPayload } from "../lib/jwt.js";
-import { isUserBlocked } from "../lib/redis.js";
+import { areTokensRevoked, isUserBlocked } from "../lib/redis.js";
 import { updateRequestContext } from "./prisma-rls.js";
 
 declare global {
@@ -23,6 +23,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     if (await isUserBlocked(req.user.sub)) {
       return res.status(401).json({ code: "USER_BLOCKED", message: "Compte utilisateur désactivé" });
+    }
+    if (await areTokensRevoked(req.user.sub, req.user.iat)) {
+      return res.status(401).json({ code: "TOKEN_REVOKED", message: "Session expirée, reconnectez-vous" });
     }
 
     updateRequestContext({

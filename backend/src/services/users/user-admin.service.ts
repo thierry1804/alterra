@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
 import { basePrisma } from "../../lib/prisma-base.js";
-import { blockUser } from "../../lib/redis.js";
+import { blockUser, invalidateTokensIssuedBefore } from "../../lib/redis.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { getRequestContext } from "../../middleware/prisma-rls.js";
 
@@ -24,16 +24,15 @@ export async function revokeUserRefreshTokens(userId: string): Promise<number> {
   return result.count;
 }
 
-/** Brief block (access-token TTL) to invalidate in-flight sessions after password reset. */
-const PASSWORD_RESET_BLOCK_TTL_SECONDS = 15 * 60;
-
 export async function resetUserPassword(userId: string, passwordHash: string) {
   await prisma.user.update({
     where: { id: userId },
     data: { passwordHash },
   });
   await revokeUserRefreshTokens(userId);
-  await blockUser(userId, PASSWORD_RESET_BLOCK_TTL_SECONDS);
+  // Coupe les sessions en cours (jetons émis avant maintenant) sans bloquer le compte :
+  // le nouveau mot de passe permet de se reconnecter immédiatement.
+  await invalidateTokensIssuedBefore(userId);
 }
 
 export async function deactivateUser(userId: string, auditMeta?: { ip?: string; userAgent?: string }) {

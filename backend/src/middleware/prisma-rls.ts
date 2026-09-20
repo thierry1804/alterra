@@ -102,6 +102,22 @@ function mergeWhere(
   return { AND: [existing, scope] };
 }
 
+/**
+ * Opérations Prisma qui exigent une clé unique au premier niveau du `where`
+ * (findUnique, findUniqueOrThrow, update, delete, upsert) : un `{ AND: [...] }` seul est refusé
+ * (« needs at least one of id, email, phone... »). On garde donc la clé unique telle quelle et on
+ * ajoute la portée dans `AND` (extendedWhereUnique, Prisma >= 5), sans jamais écraser un champ existant.
+ */
+export function mergeUniqueWhere(
+  existing: Record<string, unknown> | undefined,
+  scope: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!existing || Object.keys(existing).length === 0) return scope;
+  const previous = existing.AND;
+  const and = previous === undefined ? [] : Array.isArray(previous) ? previous : [previous];
+  return { ...existing, AND: [...and, scope] };
+}
+
 function isImpossibleScope(scope: Record<string, unknown>): boolean {
   return scope.id === IMPOSSIBLE_SCOPE_ID;
 }
@@ -300,7 +316,9 @@ type QueryArgs = {
 };
 type QueryHandler = (args: QueryArgs) => Promise<unknown>;
 
-function scopedReadHandler(model: ScopedModel) {
+const UNIQUE_READ_OPERATIONS: ReadonlySet<string> = new Set(["findUnique", "findUniqueOrThrow"]);
+
+function scopedReadHandler(model: ScopedModel, operation: string) {
   return async ({ args, query }: { args: QueryArgs; query: QueryHandler }) => {
     const ctx = getRequestContext();
     // Unauthenticated routes (login, refresh) must read users without RLS scope.
@@ -309,7 +327,8 @@ function scopedReadHandler(model: ScopedModel) {
     }
     const scope = getModelScopeFilter(model);
     if (scope) {
-      args = { ...args, where: mergeWhere(args.where, scope) };
+      const merge = UNIQUE_READ_OPERATIONS.has(operation) ? mergeUniqueWhere : mergeWhere;
+      args = { ...args, where: merge(args.where, scope) };
     }
     return query(args);
   };
@@ -326,7 +345,7 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
 
     if (operation === "update" || operation === "delete") {
       if (scope) {
-        args = { ...args, where: mergeWhere(args.where, scope) };
+        args = { ...args, where: mergeUniqueWhere(args.where, scope) };
       }
       if (args.data) {
         await validateRelatedIdsInScope(basePrisma, model, args.data, { requireWorkerId: false });
@@ -346,7 +365,7 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
 
     if (operation === "upsert") {
       if (scope) {
-        args = { ...args, where: mergeWhere(args.where, scope) };
+        args = { ...args, where: mergeUniqueWhere(args.where, scope) };
       }
       await validateRelatedIdsInScope(basePrisma, model, args.create ?? {}, { requireWorkerId: true });
       if (args.update) {
@@ -367,7 +386,7 @@ export function createRlsExtension(basePrisma: PrismaClient) {
     const key = modelKey(model);
     query[key] = {};
     for (const op of READ_OPERATIONS) {
-      query[key][op] = scopedReadHandler(model);
+      query[key][op] = scopedReadHandler(model, op);
     }
     for (const op of MUTATION_OPERATIONS) {
       query[key][op] = scopedWriteHandler(basePrisma, model, op);

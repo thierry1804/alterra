@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
-import { blockUser, resetRedisForTests, getRedis } from "../lib/redis.js";
+import { areTokensRevoked, blockUser, resetRedisForTests, getRedis } from "../lib/redis.js";
 import {
   applySubActivityRateChange,
   computeRateChangeDates,
@@ -486,7 +486,7 @@ describe("referentials module", () => {
     expect(res.body.code).toBe("IMPORT_VALIDATION_FAILED");
   });
 
-  it("POST /users/:id/reset-password revokes refresh tokens and blocks user briefly", async () => {
+  it("POST /users/:id/reset-password revokes refresh tokens and old access tokens without blocking the account", async () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue({
       id: MOCK_USER_TARGET_ID,
       active: true,
@@ -509,7 +509,13 @@ describe("referentials module", () => {
     );
 
     const redis = await getRedis();
-    expect(await redis.get(`user:blocked:${MOCK_USER_TARGET_ID}`)).toBe("1");
+    // Le compte n'est pas bloqué : le nouveau mot de passe fonctionne tout de suite.
+    expect(await redis.get(`user:blocked:${MOCK_USER_TARGET_ID}`)).toBeNull();
+    // Les jetons d'accès émis avant la réinitialisation sont refusés, ceux émis après sont acceptés.
+    const nowSec = Math.floor(Date.now() / 1000);
+    expect(await areTokensRevoked(MOCK_USER_TARGET_ID, nowSec - 60)).toBe(true);
+    expect(await areTokensRevoked(MOCK_USER_TARGET_ID, nowSec + 1)).toBe(false);
+    await redis.del(`user:tokens-valid-after:${MOCK_USER_TARGET_ID}`);
   });
 
   it("POST /users/:id/deactivate revokes refresh tokens and blocks user in Redis", async () => {

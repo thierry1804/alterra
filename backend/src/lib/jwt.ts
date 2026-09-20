@@ -6,6 +6,8 @@ export interface AccessTokenPayload {
   role: Role;
   siteId: string | null;
   teamId: string | null;
+  /** Date d'émission (secondes), ajoutée par jsonwebtoken. */
+  iat?: number;
 }
 
 const ACCESS_SECRET = process.env.JWT_SECRET!;

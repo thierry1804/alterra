@@ -147,12 +147,14 @@ usersRouter.get("/:id", validate(userIdParams, "params"), async (req, res, next)
 
 usersRouter.post("/", validate(createUserSchema), async (req, res, next) => {
   try {
-    const tempPassword = req.body.password ?? generateTempPassword();
+    // `password` n'est pas une colonne : seul son hachage est stocké.
+    const { password, ...fields } = req.body;
+    const tempPassword = password ?? generateTempPassword();
     const passwordHash = await hashPassword(tempPassword);
 
     const user = await prisma.user.create({
       data: {
-        ...req.body,
+        ...fields,
         passwordHash,
       },
       select: {
