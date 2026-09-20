@@ -85,9 +85,16 @@ function keysForPayment(payment: CandidatePayment): string[] {
 
 export async function reconcileMvolaReleve(
   buffer: Buffer,
-  options: ParseMvolaReleveOptions = {},
+  options: ParseMvolaReleveOptions & {
+    /** Aperçu : calcule le rapprochement sans rien écrire en base. */
+    dryRun?: boolean;
+  } = {},
 ): Promise<MvolaReconciliationResult> {
-  const rows = parseMvolaReleveWorkbook(buffer, options);
+  const { dryRun = false, ...parseOptions } = options;
+  const writePayment = async (args: Prisma.PaymentUpdateArgs): Promise<void> => {
+    if (!dryRun) await prisma.payment.update(args);
+  };
+  const rows = parseMvolaReleveWorkbook(buffer, parseOptions);
 
   const candidates = await prisma.payment.findMany({
     where: { status: PaymentStatus.EXPORTED },
@@ -178,7 +185,7 @@ export async function reconcileMvolaReleve(
     const montantAttendu = new Prisma.Decimal(montantReleve);
 
     if (montantAttendu.equals(payment.amount)) {
-      await prisma.payment.update({
+      await writePayment({
         where: { id: payment.id },
         data: {
           status: PaymentStatus.PAID,
@@ -197,7 +204,7 @@ export async function reconcileMvolaReleve(
         montant: payment.amount.toString(),
       });
     } else {
-      await prisma.payment.update({
+      await writePayment({
         where: { id: payment.id },
         data: {
           reconciliationStatus: PaymentReconciliationStatus.ECART_MONTANT,
@@ -223,7 +230,7 @@ export async function reconcileMvolaReleve(
     const paymentId = reference ? referenceIndex.get(reference) : undefined;
     if (!paymentId) continue;
 
-    await prisma.payment.update({
+    await writePayment({
       where: { id: paymentId },
       data: { transferFee: Math.abs(normalizeMvolaAmount(row.montant)) },
     });
@@ -234,7 +241,7 @@ export async function reconcileMvolaReleve(
     if (touched.has(payment.id)) continue;
     if (!weeksInFile.has(periodWeekNumber(payment.periodIso))) continue;
 
-    await prisma.payment.update({
+    await writePayment({
       where: { id: payment.id },
       data: { reconciliationStatus: PaymentReconciliationStatus.NON_CONFIRME },
     });

@@ -360,6 +360,7 @@ model Payment {
   workerId         String        @db.Uuid
   worker           Worker        @relation(fields: [workerId], references: [id])
   periodIso        String // Sxx ou Dxxx
+  referenceYear    Int? // année de la période : Sxx et Dxxx se répètent chaque année
   bordereau        Int // compteur par site, alloué à la génération
   cycle            PaymentCycle
   amount           Decimal       @db.Decimal(12, 2)
@@ -382,6 +383,7 @@ model Payment {
 
   @@index([workerId, periodIso])
   @@index([status, periodIso])
+  @@index([referenceYear, periodIso])
 }
 
 /// V2

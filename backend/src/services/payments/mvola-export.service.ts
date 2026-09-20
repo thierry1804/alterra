@@ -7,6 +7,12 @@ import { writeAuditLog } from "../audit/audit.service.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { isValidMvolaNumber } from "./mvola-description.js";
 
+/**
+ * Format du fichier MVola (docs/cadrage/mvola-format.md §3.2) : `spec5` = 5 colonnes de la spécification
+ * (défaut) ; `compact3` = 3 colonnes (téléphone, description, montant) si MVola refuse les colonnes internes.
+ */
+const MVOLA_EXPORT_FORMAT = process.env.MVOLA_EXPORT_FORMAT === "compact3" ? "compact3" : "spec5";
+
 export interface ExportMvolaResult {
   filename: string;
   buffer: Buffer;
@@ -71,17 +77,29 @@ export async function exportMvolaPayments(
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Paiements");
 
-  sheet.columns = [
-    { header: "Numéro téléphone", key: "phone", width: 18 },
-    { header: "Description", key: "description", width: 32 },
-    { header: "Montant", key: "amount", width: 12 },
-  ];
+  const compact = MVOLA_EXPORT_FORMAT === "compact3";
+  sheet.columns = compact
+    ? [
+        { header: "Numéro téléphone", key: "phone", width: 18 },
+        { header: "Description", key: "description", width: 32 },
+        { header: "Montant", key: "amount", width: 12 },
+      ]
+    : [
+        { header: "Numéro téléphone", key: "phone", width: 18 },
+        { header: "Description", key: "description", width: 32 },
+        { header: "Période", key: "period", width: 10 },
+        { header: "Montant", key: "amount", width: 12 },
+        { header: "Bio Validée", key: "bio", width: 12 },
+      ];
 
   for (const payment of exportable) {
     const row = sheet.addRow({
       phone: payment.worker.mvolaNumber,
       description: payment.description,
+      period: shortPeriod,
       amount: Math.round(Number(payment.amount)),
+      // Seules les lignes bio OK sont exportables (RG-03) : la colonne vaut toujours OUI.
+      bio: "OUI",
     });
     row.getCell("phone").numFmt = "@";
   }

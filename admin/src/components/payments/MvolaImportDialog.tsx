@@ -43,6 +43,8 @@ export default function MvolaImportDialog({
   const [columnsResult, setColumnsResult] = useState<ImportColumnsResult | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [result, setResult] = useState<ImportMvolaResult | null>(null);
+  /** false : aperçu (rien n'est écrit) ; true : rapprochement enregistré. */
+  const [applied, setApplied] = useState(false);
 
   const reset = useCallback(() => {
     setStep("upload");
@@ -51,6 +53,7 @@ export default function MvolaImportDialog({
     setColumnsResult(null);
     setMapping({});
     setResult(null);
+    setApplied(false);
     setHasHeaderRow(true);
     setReferenceRowNumber(7);
   }, []);
@@ -89,23 +92,27 @@ export default function MvolaImportDialog({
   });
 
   const importMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (dryRun: boolean) => {
       const res = await api.post<ImportMvolaResult>("/payments/import-status", {
         contentBase64,
         hasHeaderRow,
         referenceRowNumber,
         mapping,
+        dryRun,
       });
       return res.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, dryRun) => {
       setResult(data);
+      setApplied(!dryRun);
       setStep("result");
-      toast({
-        title: "Rapprochement terminé",
-        description: `${data.confirme} confirmé(s), ${data.ecartMontant} écart(s), ${data.orphelin} orphelin(s)`,
-      });
-      onImported();
+      if (!dryRun) {
+        toast({
+          title: "Rapprochement enregistré",
+          description: `${data.confirme} confirmé(s), ${data.ecartMontant} écart(s), ${data.orphelin} orphelin(s)`,
+        });
+        onImported();
+      }
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
@@ -162,7 +169,10 @@ export default function MvolaImportDialog({
             {step === "upload" &&
               "Choisissez le relevé MVola (.xls ou .xlsx), puis associez ses colonnes."}
             {step === "mapping" && "Associez chaque champ requis à une colonne du relevé."}
-            {step === "result" && "Résultat du rapprochement — toutes les périodes du fichier."}
+            {step === "result" &&
+              (applied
+                ? "Rapprochement enregistré — toutes les périodes du fichier."
+                : "Aperçu : rien n'est encore enregistré. Vérifiez puis confirmez.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -282,9 +292,9 @@ export default function MvolaImportDialog({
               <Button
                 type="button"
                 disabled={missingRequired.length > 0 || importMutation.isPending}
-                onClick={() => importMutation.mutate()}
+                onClick={() => importMutation.mutate(true)}
               >
-                {importMutation.isPending ? "Rapprochement…" : "Lancer le rapprochement"}
+                {importMutation.isPending ? "Analyse…" : "Prévisualiser le rapprochement"}
               </Button>
             </div>
             {missingRequired.length > 0 && (
@@ -442,12 +452,29 @@ export default function MvolaImportDialog({
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("mapping")}>
-                Retour au mapping
-              </Button>
-              <Button type="button" onClick={() => onOpenChange(false)}>
-                Fermer
-              </Button>
+              {!applied && (
+                <Button type="button" variant="outline" onClick={() => setStep("mapping")}>
+                  Retour au mapping
+                </Button>
+              )}
+              {applied ? (
+                <Button type="button" onClick={() => onOpenChange(false)}>
+                  Fermer
+                </Button>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    loading={importMutation.isPending}
+                    onClick={() => importMutation.mutate(false)}
+                  >
+                    Confirmer et enregistrer
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

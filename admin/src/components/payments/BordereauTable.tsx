@@ -4,10 +4,11 @@ import { isAxiosError } from "axios";
 import type { PaymentRow } from "../../lib/payments";
 import {
   PAYMENT_STATUS_LABELS,
+  RECONCILIATION_LABELS,
   formatPaymentAmount,
   paymentStatusVariant,
 } from "../../lib/payments";
-import { Pencil, X } from "lucide-react";
+import { Ban, Pencil, X } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton, RowActions } from "../ui/IconButton";
@@ -33,6 +34,23 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
   const [editingId, setEditingId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [failingId, setFailingId] = useState<string | null>(null);
+  const [failReason, setFailReason] = useState("");
+
+  const failMutation = useMutation({
+    mutationFn: ({ id, failureReason }: { id: string; failureReason: string }) =>
+      api.patch(`/payments/${id}/fail`, { failureReason }),
+    onSuccess: () => {
+      toast({ title: "Paiement marqué en échec" });
+      setFailingId(null);
+      setFailReason("");
+      onCorrected();
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({ title: "Action impossible", description: String(message), variant: "destructive" });
+    },
+  });
 
   const correctMutation = useMutation({
     mutationFn: ({ id, amount, correctionReason }: { id: string; amount: number; correctionReason: string }) =>
@@ -66,13 +84,14 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
             <TableHead>Montant</TableHead>
             <TableHead>Bio</TableHead>
             <TableHead>Statut</TableHead>
+            <TableHead>Rapprochement MVola</TableHead>
             <TableHead className="w-28" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading && (
             <TableRow>
-              <TableCell colSpan={7} className="text-zinc-500">
+              <TableCell colSpan={8} className="text-zinc-500">
                 Chargement…
               </TableCell>
             </TableRow>
@@ -114,7 +133,55 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                     <p className="mt-1 text-xs text-red-600">{row.failureReason}</p>
                   )}
                 </TableCell>
+                <TableCell className="text-xs">
+                  {row.reconciliationStatus ? (
+                    <>
+                      <Badge variant={row.reconciliationStatus === "CONFIRME" ? "success" : "warning"}>
+                        {RECONCILIATION_LABELS[row.reconciliationStatus]}
+                      </Badge>
+                      {row.mvolaReference && (
+                        <p className="mt-1 font-mono text-zinc-500">Réf. {row.mvolaReference}</p>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </TableCell>
                 <TableCell>
+                  {row.status === "EXPORTED" && failingId !== row.id && (
+                    <RowActions>
+                      <IconButton
+                        icon={Ban}
+                        label="Marquer en échec"
+                        variant="destructive"
+                        onClick={() => {
+                          setFailingId(row.id);
+                          setFailReason("");
+                        }}
+                      />
+                    </RowActions>
+                  )}
+                  {failingId === row.id && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Motif de l'échec (min. 10 car.)"
+                        value={failReason}
+                        onChange={(e) => setFailReason(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={failReason.trim().length < 10 || failMutation.isPending}
+                          onClick={() => failMutation.mutate({ id: row.id, failureReason: failReason.trim() })}
+                        >
+                          Confirmer
+                        </Button>
+                        <IconButton icon={X} label="Annuler" onClick={() => setFailingId(null)} />
+                      </div>
+                    </div>
+                  )}
                   {row.status === "PENDING" && editingId !== row.id && (
                     <RowActions>
                       <IconButton
@@ -157,7 +224,7 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
             ))}
           {!loading && rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-zinc-500">
+              <TableCell colSpan={8} className="text-zinc-500">
                 Aucune ligne pour cette période.
               </TableCell>
             </TableRow>

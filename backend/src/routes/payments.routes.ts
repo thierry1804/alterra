@@ -8,7 +8,12 @@ import { generatePayments } from "../services/payments/generate.service.js";
 import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
 import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
 import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
-import { correctPaymentAmount, listPayments } from "../services/payments/list.service.js";
+import {
+  correctPaymentAmount,
+  listMvolaExports,
+  listPayments,
+  markPaymentFailed,
+} from "../services/payments/list.service.js";
 
 export const paymentsRouter = Router();
 
@@ -38,6 +43,11 @@ const importStatusSchema = z.object({
   hasHeaderRow: z.boolean().optional(),
   referenceRowNumber: z.number().int().min(1).optional(),
   mapping: z.record(z.string()).optional(),
+  dryRun: z.boolean().optional(),
+});
+
+const failPaymentSchema = z.object({
+  failureReason: z.string().trim().min(10, "Motif requis (10 caractères minimum)"),
 });
 
 const listPaymentsQuery = z.object({
@@ -85,6 +95,36 @@ paymentsRouter.patch(
     }
   },
 );
+
+paymentsRouter.patch(
+  "/payments/:id/fail",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(paymentIdParams, "params"),
+  validate(failPaymentSchema),
+  async (req, res, next) => {
+    try {
+      const body = req.body as z.infer<typeof failPaymentSchema>;
+      const payment = await markPaymentFailed(req.params.id, {
+        failureReason: body.failureReason,
+        userId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
+      res.json(payment);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get("/payments/exports", requireAuth, requireRole(Role.ADMIN), async (_req, res, next) => {
+  try {
+    res.json({ data: await listMvolaExports() });
+  } catch (err) {
+    next(err);
+  }
+});
 
 paymentsRouter.post(
   "/payments/generate",
@@ -161,7 +201,7 @@ paymentsRouter.post(
   validate(importStatusSchema),
   async (req, res, next) => {
     try {
-      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping } = req.body as z.infer<
+      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping, dryRun } = req.body as z.infer<
         typeof importStatusSchema
       >;
       const buffer = Buffer.from(contentBase64, "base64");
@@ -169,6 +209,7 @@ paymentsRouter.post(
         hasHeaderRow,
         referenceRowNumber,
         mapping,
+        dryRun,
       });
       res.json(result);
     } catch (err) {

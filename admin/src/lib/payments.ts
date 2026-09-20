@@ -22,8 +22,29 @@ export interface PaymentRow {
   exportedAt: string | null;
   paidAt: string | null;
   failureReason: string | null;
+  reconciliationStatus: ReconciliationStatus | null;
+  mvolaReference: string | null;
+  transferFee: string | null;
   correctionReason: string | null;
   createdAt: string;
+}
+
+export type ReconciliationStatus = "CONFIRME" | "ECART_MONTANT" | "ORPHELIN" | "NON_CONFIRME";
+
+export const RECONCILIATION_LABELS: Record<ReconciliationStatus, string> = {
+  CONFIRME: "Confirmé par MVola",
+  ECART_MONTANT: "Écart de montant",
+  ORPHELIN: "Orphelin",
+  NON_CONFIRME: "Non confirmé",
+};
+
+export interface MvolaExportEntry {
+  id: string;
+  createdAt: string;
+  userEmail: string | null;
+  periodIso: string | null;
+  exportedCount: number | null;
+  filename: string | null;
 }
 
 export interface GeneratePaymentsResult {

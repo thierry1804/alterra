@@ -15,6 +15,7 @@ import {
   type WorkerImportFieldKey,
 } from "./worker-import-fields.js";
 import { suggestColumnMapping } from "./suggest-column-mapping.js";
+import { isValidMvolaNumber } from "../payments/mvola-description.js";
 
 export interface ImportRowError {
   row: number;
@@ -323,8 +324,12 @@ export async function parseWorkersWorkbook(
     }
     if (!values.firstName) rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis" });
     if (!values.lastName) rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis" });
-    if (!values.mvolaNumber || values.mvolaNumber.length < 9) {
-      rowErrors.push({ row: rowNumber, field: "mvolaNumber", message: "Numéro MVola invalide (min 9)" });
+    if (!isValidMvolaNumber(values.mvolaNumber ?? "")) {
+      rowErrors.push({
+        row: rowNumber,
+        field: "mvolaNumber",
+        message: "Numéro MVola invalide : 10 chiffres, préfixe 034 ou 038",
+      });
     }
     let siteCode = "";
     if (usingSiteShortCode) {

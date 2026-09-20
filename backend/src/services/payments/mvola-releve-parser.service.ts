@@ -47,7 +47,25 @@ function cellText(value: unknown): string {
   return String(value).trim();
 }
 
+const XLSX_SIGNATURE = Buffer.from([0x50, 0x4b, 0x03, 0x04]); // « PK » : classeur .xlsx (zip)
+const XLS_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]); // classeur .xls (OLE2)
+
+/** SheetJS lit aussi les CSV et le texte brut : on refuse tout ce qui n'est pas un vrai classeur Excel. */
+function assertExcelWorkbook(buffer: Buffer): void {
+  const isExcel =
+    buffer.subarray(0, XLSX_SIGNATURE.length).equals(XLSX_SIGNATURE) ||
+    buffer.subarray(0, XLS_SIGNATURE.length).equals(XLS_SIGNATURE);
+  if (!isExcel) {
+    throw new ApiError(
+      422,
+      "IMPORT_BADFORMAT",
+      "Le fichier n'est pas un classeur Excel (.xls ou .xlsx) : exportez le relevé MVola au format Excel",
+    );
+  }
+}
+
 function loadSheetRows(buffer: Buffer): unknown[][] {
+  assertExcelWorkbook(buffer);
   const sheets = xlsx.parse(buffer);
   const sheet = sheets[0];
   if (!sheet) {

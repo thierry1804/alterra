@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import type { ReportResult } from "./reports.service.js";
+import { htmlToPdfBuffer } from "./pdf-render.service.js";
 
 export type ExportFormat = "csv" | "xlsx" | "pdf";
 
@@ -40,7 +41,7 @@ export async function exportReport(
     return exportXlsx(report, baseName);
   }
 
-  return exportHtmlPdf(report, baseName);
+  return exportPdf(report, baseName);
 }
 
 async function exportXlsx(report: ReportResult, baseName: string): Promise<ExportedReport> {
@@ -62,11 +63,19 @@ async function exportXlsx(report: ReportResult, baseName: string): Promise<Expor
   };
 }
 
-function exportHtmlPdf(report: ReportResult, baseName: string): ExportedReport {
-  const headerCells = report.columns.map((column) => `<th>${column}</th>`).join("");
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function exportPdf(report: ReportResult, baseName: string): Promise<ExportedReport> {
+  const headerCells = report.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
   const bodyRows = report.rows
     .map((row) => {
-      const cells = report.columns.map((column) => `<td>${row[column] ?? ""}</td>`).join("");
+      const cells = report.columns.map((column) => `<td>${escapeHtml(row[column])}</td>`).join("");
       return `<tr>${cells}</tr>`;
     })
     .join("");
@@ -75,7 +84,7 @@ function exportHtmlPdf(report: ReportResult, baseName: string): ExportedReport {
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>${report.meta.title}</title>
+  <title>${escapeHtml(report.meta.title)}</title>
   <style>
     body { font-family: system-ui, sans-serif; font-size: 12px; color: #18181b; padding: 24px; }
     h1 { font-size: 18px; margin: 0 0 8px; }
@@ -86,7 +95,7 @@ function exportHtmlPdf(report: ReportResult, baseName: string): ExportedReport {
   </style>
 </head>
 <body>
-  <h1>${report.meta.title}</h1>
+  <h1>${escapeHtml(report.meta.title)}</h1>
   <p>Période : ${report.meta.dateFrom} → ${report.meta.dateTo} · ${report.meta.rowCount} ligne(s)</p>
   <table>
     <thead><tr>${headerCells}</tr></thead>
@@ -96,8 +105,8 @@ function exportHtmlPdf(report: ReportResult, baseName: string): ExportedReport {
 </html>`;
 
   return {
-    buffer: Buffer.from(html, "utf-8"),
-    contentType: "text/html; charset=utf-8",
-    filename: `${baseName}.html`,
+    buffer: await htmlToPdfBuffer(html),
+    contentType: "application/pdf",
+    filename: `${baseName}.pdf`,
   };
 }

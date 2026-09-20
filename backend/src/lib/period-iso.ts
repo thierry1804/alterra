@@ -5,6 +5,8 @@ import { getIsoWeekString } from "./week-iso.js";
 export interface ResolvedPeriod {
   weekIso: string;
   shortPeriod: string;
+  /** Année de la période (ISO) : `Sxx` et `Dxxx` se répètent chaque année. */
+  referenceYear: number;
   cycle: PaymentCycle;
   dateFrom: Date;
   dateTo: Date;
@@ -65,6 +67,7 @@ export function resolvePeriod(
     return {
       weekIso,
       shortPeriod,
+      referenceYear: Number(fullWeekMatch[1]),
       cycle: cycle ?? PaymentCycle.WEEKLY,
       dateFrom,
       dateTo,
@@ -79,6 +82,7 @@ export function resolvePeriod(
     return {
       weekIso,
       shortPeriod: `S${Number(shortWeekMatch[1])}`,
+      referenceYear,
       cycle: cycle ?? PaymentCycle.WEEKLY,
       dateFrom,
       dateTo,
@@ -93,6 +97,7 @@ export function resolvePeriod(
     return {
       weekIso: getIsoWeekString(dateFrom),
       shortPeriod,
+      referenceYear,
       cycle: cycle ?? PaymentCycle.DAILY,
       dateFrom,
       dateTo,

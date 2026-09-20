@@ -304,6 +304,21 @@ describe("Payments API", () => {
     expect(sheet.getRow(2).getCell(1).value).toBe(mockWorker.mvolaNumber);
   });
 
+  it("exportMvolaPayments writes the 5 spec columns (téléphone, description, période, montant, bio)", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID, includeHeader: true });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.buffer);
+    const sheet = workbook.getWorksheet("Paiements")!;
+    const header = [1, 2, 3, 4, 5].map((c) => sheet.getRow(1).getCell(c).value);
+    expect(header).toEqual(["Numéro téléphone", "Description", "Période", "Montant", "Bio Validée"]);
+    expect(sheet.getRow(2).getCell(3).value).toBe("S29");
+    expect(sheet.getRow(2).getCell(5).value).toBe("OUI");
+  });
+
   it("GET /payments/:period/export rejects when no exportable lines", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       { ...mockPayment, bioValid: false },

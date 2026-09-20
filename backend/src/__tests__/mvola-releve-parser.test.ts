@@ -69,6 +69,12 @@ describe("parseMvolaReleveWorkbook", () => {
     });
   });
 
+  it("rejette un fichier texte ou CSV qui n'est pas un classeur Excel (IMPORT_BADFORMAT)", () => {
+    const csv = Buffer.from("DATE;REFERENCE;MONTANT\n01/07/2026;X1;4000\n", "utf-8");
+    expect(() => detectMvolaReleveColumns(csv)).toThrowError(/pas un classeur Excel/);
+    expect(() => parseMvolaReleveWorkbook(csv)).toThrowError(/pas un classeur Excel/);
+  });
+
   it("ignore les lignes complètement vides", () => {
     const buffer = buildReleveFixture([
       ["2026-07-15 10:00:00", "3117400001", "'0382019280", "'0341234567", "Depot", "", "100"],

@@ -14,6 +14,7 @@ import {
   parseWorkersWorkbook,
 } from "../services/import/workers-import.service.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
+import { isValidMvolaNumber } from "../services/payments/mvola-description.js";
 
 export const workersRouter = Router();
 
@@ -52,7 +53,10 @@ const createWorkerSchema = z.object({
   matricule: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  mvolaNumber: z.string().min(9),
+  mvolaNumber: z
+    .string()
+    .trim()
+    .refine(isValidMvolaNumber, "Numéro MVola invalide : 10 chiffres, préfixe 034 ou 038"),
   cinNumber: z.string().optional(),
   siteId: z.string().uuid(),
   teamId: z.string().uuid().optional(),

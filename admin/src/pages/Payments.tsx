@@ -7,6 +7,7 @@ import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../li
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
 import BordereauTable from "../components/payments/BordereauTable";
+import MvolaExportHistory from "../components/payments/MvolaExportHistory";
 import MvolaExportButton from "../components/payments/MvolaExportButton";
 import MvolaImportDialog from "../components/payments/MvolaImportDialog";
 import { Button } from "../components/ui/button";
@@ -159,6 +160,8 @@ export default function PaymentsPage() {
       <KpiCards stats={paymentStats} />
 
       <BordereauTable rows={rows} loading={isLoading} onCorrected={() => void refetch()} />
+
+      <MvolaExportHistory refreshKey={data?.data?.filter((r) => r.status === "EXPORTED").length} />
 
       <MvolaImportDialog
         open={importOpen}

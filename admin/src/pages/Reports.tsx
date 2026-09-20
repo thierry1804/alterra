@@ -17,6 +17,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "../hooks/use-toast";
+import { QueryError } from "../components/ui/QueryError";
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>("pointages");
@@ -66,7 +67,7 @@ export default function ReportsPage() {
       const filenameMatch = disposition?.match(/filename="(.+)"/);
       const filename =
         filenameMatch?.[1] ??
-        `ALTERRA_${reportType}_${month}.${format === "pdf" ? "html" : format}`;
+        `ALTERRA_${reportType}_${month}.${format}`;
 
       const url = URL.createObjectURL(response.data);
       const link = document.createElement("a");
@@ -77,10 +78,7 @@ export default function ReportsPage() {
 
       toast({
         title: "Export terminé",
-        description:
-          format === "pdf"
-            ? "Rapport HTML téléchargé (imprimable en PDF)."
-            : `Fichier ${format.toUpperCase()} généré.`,
+        description: `Fichier ${format.toUpperCase()} généré.`,
       });
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur export";
@@ -184,7 +182,11 @@ export default function ReportsPage() {
             </span>
           )}
         </div>
-        <ReportPreviewTable report={previewQuery.data} loading={previewQuery.isLoading} />
+        {previewQuery.isError ? (
+          <QueryError what="l'aperçu du rapport" onRetry={() => void previewQuery.refetch()} />
+        ) : (
+          <ReportPreviewTable report={previewQuery.data} loading={previewQuery.isLoading} />
+        )}
       </section>
     </div>
   );

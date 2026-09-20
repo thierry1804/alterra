@@ -50,12 +50,13 @@ export async function generatePayments(
   input: GeneratePaymentsInput,
 ): Promise<GeneratePaymentsResult> {
   const resolved = resolvePeriod(input.periodIso, input.cycle, input.referenceYear);
-  const { shortPeriod, weekIso, dateFrom, dateTo, cycle } = resolved;
+  const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo, cycle } = resolved;
   const semaineIso = weekIso.split("-W")[1];
 
   const lockedPayment = await prisma.payment.findFirst({
     where: {
       periodIso: shortPeriod,
+      referenceYear,
       status: { in: [PaymentStatus.EXPORTED, PaymentStatus.PAID] },
     },
     select: { id: true },
@@ -148,6 +149,7 @@ export async function generatePayments(
     toCreate.push({
       workerId,
       periodIso: shortPeriod,
+      referenceYear,
       bordereau,
       cycle,
       amount: aggregate.amount,
@@ -167,7 +169,7 @@ export async function generatePayments(
 
   const createdPayments = await prisma.$transaction(async (tx) => {
     await tx.payment.deleteMany({
-      where: { periodIso: shortPeriod, status: PaymentStatus.PENDING },
+      where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
     });
 
     if (toCreate.length === 0) {
@@ -177,7 +179,7 @@ export async function generatePayments(
     await tx.payment.createMany({ data: toCreate });
 
     return tx.payment.findMany({
-      where: { periodIso: shortPeriod, status: PaymentStatus.PENDING },
+      where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
       orderBy: { createdAt: "asc" },
     });
   });
