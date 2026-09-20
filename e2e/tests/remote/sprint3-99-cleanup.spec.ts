@@ -55,7 +55,7 @@ test("Sprint 3 — nettoyage des données E2E-S3-", async () => {
   }
   report.paymentPeriods = [];
   for (const shortPeriod of periods) {
-    const res = await admin.get(`/payments?periodIso=${shortPeriod}`);
+    const res = await admin.get(`/payments?periodIso=${shortPeriod}&referenceYear=2090`);
     if (!res.ok) {
       note(`période ${shortPeriod}: lecture impossible (HTTP ${res.status})`);
       continue;
@@ -106,7 +106,7 @@ test("Sprint 3 — nettoyage des données E2E-S3-", async () => {
 
   /* ---- Paiements résiduels (non supprimables) ---- */
   for (const shortPeriod of periods) {
-    const res = await admin.get(`/payments?periodIso=${shortPeriod}`);
+    const res = await admin.get(`/payments?periodIso=${shortPeriod}&referenceYear=2090`);
     if (res.ok) {
       for (const p of res.body.data as any[]) {
         if (isE2E(p.worker?.matricule)) {

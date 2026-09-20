@@ -3,7 +3,7 @@ import { ApiClient } from "./support/api.js";
 import { E2E_PREFIX } from "./support/env.js";
 import { expectAudit, expectStatus } from "./support/helpers.js";
 import { persisted, randomPassword, stReset, track } from "./support/state.js";
-import { expectToast, heading, waitTableReady } from "./support/ui.js";
+import { expectToast, findRowLoadMore, heading, waitTableReady } from "./support/ui.js";
 
 const UC = "UC-FE-ADM-USERS";
 
@@ -127,8 +127,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     test.skip(!st.id, "utilisateur UI non créé");
     const page = await openAdmin("admin");
     await page.goto("/users");
-    const row = page.locator("tbody tr").filter({ hasText: st.email! });
-    await expect(row).toBeVisible();
+    const row = await findRowLoadMore(page, st.email!);
     await row.getByRole("button", { name: "Modifier" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.locator("#u-last").fill(`${st.lastName}-EDIT`);
@@ -138,7 +137,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     ]);
     expect(patch.status()).toBe(200);
     await expectToast(page, "Utilisateur mis à jour");
-    await expect(page.locator("tbody tr").filter({ hasText: `${st.lastName}-EDIT` })).toBeVisible();
+    await findRowLoadMore(page, `${st.lastName}-EDIT`);
     await expectAudit(admin, { entityType: "User", entityId: st.id!, action: "UPDATE" });
   });
 
@@ -146,7 +145,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     test.skip(!st.id, "utilisateur UI non créé");
     const page = await openAdmin("admin");
     await page.goto("/users");
-    const row = page.locator("tbody tr").filter({ hasText: st.email! });
+    const row = await findRowLoadMore(page, st.email!);
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes(`/api/v1/users/${st.id}/reset-password`)),
       row.getByRole("button", { name: "Réinitialiser le mot de passe" }).click(),
@@ -194,15 +193,14 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
 
     const page = await openAdmin("admin");
     await page.goto("/users");
-    const row = page.locator("tbody tr").filter({ hasText: email });
-    await expect(row).toBeVisible({ timeout: 30_000 });
+    const row = await findRowLoadMore(page, email);
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes(`/api/v1/users/${uid}/deactivate`)),
       row.getByRole("button", { name: "Désactiver" }).click(),
     ]);
     expect(resp.status()).toBe(200);
     await expectToast(page, "Utilisateur désactivé");
-    await expect(page.locator("tbody tr").filter({ hasText: email })).toContainText("Inactif");
+    await expect(await findRowLoadMore(page, email)).toContainText("Inactif");
     await expectAudit(admin, { entityType: "User", entityId: uid, action: "DEACTIVATE" });
 
     const denied = await ApiClient.rawLogin(email, password); // tentative de connexion refusée

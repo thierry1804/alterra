@@ -71,13 +71,13 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
 
   const runId = newRunId();
 
-  /* ---- Semaine de paie vierge (garde-fou : periodIso n'est pas qualifié par l'année) ---- */
+  /* ---- Semaine de paie vierge (les périodes sont qualifiées par l'année : les tests écrivent en 2090) ---- */
   // E2E_S3_SKIP_PAY=1 : n'écrit rien côté paiements (chaîne bordereau/export/import ignorée). Chaque exécution de la chaîne
   // consomme définitivement un numéro de semaine (paiements EXPORTED/PAID non supprimables par l'API).
   let pay: World["pay"] = null;
   const candidateWeeks = process.env.E2E_S3_SKIP_PAY === "1" ? [] : [46, 45, 44, 43, 42, 41, 40, 39, 38];
   for (const week of candidateWeeks) {
-    const res = await admin.get(`/payments?periodIso=S${week}`);
+    const res = await admin.get(`/payments?periodIso=S${week}&referenceYear=2090`);
     expectStatus(res, 200);
     if ((res.body.data as unknown[]).length === 0) {
       const year = 2090;
@@ -104,7 +104,9 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   }
   expect(site, "Aucun code site libre trouvé").toBeTruthy();
 
-  /* ---- Catégorie (code ACT9x pour respecter la grammaire du libellé MVola) + sous-activité ---- */
+  /* ---- Catégorie (code ACTnn pour respecter la grammaire du libellé MVola) + sous-activité ----
+     Un code de catégorie n'est jamais réutilisable après désactivation : ACT90 à ACT99 sont épuisés (runs du
+     20/09), la série ACT80 à ACT89 prend le relais. Prévoir une nouvelle série avant d'en manquer. */
   const units = await admin.get("/units?take=100");
   expectStatus(units, 200);
   const unit = ((units.body.data ?? units.body) as any[]).find((u) => u.active !== false);
@@ -112,7 +114,7 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
 
   let category: World["category"] | undefined;
   for (let i = 0; i < 20 && !category; i++) {
-    const code = `ACT9${randomDigits(1)}`;
+    const code = `ACT8${randomDigits(1)}`;
     const res = await admin.post("/activity-categories", { code, label: e2eName(runId, "CAT") });
     if (res.status === 201) {
       category = { id: res.body.id, code };

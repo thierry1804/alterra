@@ -27,6 +27,23 @@ export async function findRow(page: Page, text: string | RegExp, maxPages = 40):
   throw new Error(`Ligne « ${String(text)} » introuvable dans le tableau`);
 }
 
+/**
+ * Trouve une ligne d'un tableau à chargement par curseur (« Charger plus », 50 lignes par page).
+ * La liste des utilisateurs dépasse une page dès que la démonstration accumule des comptes de test.
+ */
+export async function findRowLoadMore(page: Page, text: string | RegExp, maxClicks = 30): Promise<Locator> {
+  await waitTableReady(page);
+  const loadMore = page.getByRole("button", { name: "Charger plus" });
+  for (let i = 0; i <= maxClicks; i++) {
+    const row = page.getByRole("row").filter({ hasText: text });
+    if ((await row.count()) > 0) return row.first();
+    if (!(await loadMore.isVisible().catch(() => false))) break;
+    await loadMore.click();
+    await expect(loadMore).toBeEnabled({ timeout: 15_000 }).catch(() => undefined);
+  }
+  throw new Error(`Ligne « ${String(text)} » introuvable dans le tableau`);
+}
+
 /** Toast Radix : le texte apparaît aussi dans une région live « Notification … » — on vise le texte exact. */
 export async function expectToast(page: Page, text: string): Promise<void> {
   await expect(page.getByText(text, { exact: true }).first()).toBeVisible();

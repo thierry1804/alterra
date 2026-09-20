@@ -8,6 +8,9 @@ import type { ApiClient } from "./support/api.js";
 import type { Page } from "@playwright/test";
 import type { World } from "./support/state.js";
 
+/** Lignes du bordereau : la page affiche aussi l'historique des exports, qui a ses propres `tbody tr`. */
+const bordereauRows = (page: Page) => page.locator("table").first().locator("tbody tr");
+
 /**
  * UC-FE-ADM-PAY-BORD / PAY-EXP / PAY-IMP — chaîne complète sur une SEMAINE DE PAIE VIERGE
  * (garde-fou : `periodIso` est stocké sous la forme S<n> sans année ; la génération supprime tous les paiements
@@ -22,7 +25,7 @@ test.describe.configure({ mode: "serial" });
 
 async function guardWeek(admin: ApiClient, world: World) {
   const pay = world.pay!;
-  const res = await admin.get(`/payments?periodIso=${pay.shortPeriod}`);
+  const res = await admin.get(`/payments?periodIso=${pay.shortPeriod}&referenceYear=${pay.year}`);
   expectStatus(res, 200);
   const foreign = (res.body.data as any[]).filter((p) => !String(p.worker?.matricule ?? "").startsWith("E2E-S3-"));
   expect(foreign, `GARDE-FOU : la période ${pay.shortPeriod} contient des paiements non E2E — arrêt`).toHaveLength(0);
@@ -107,7 +110,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     expect(generated.payments.filter((p: any) => p.bioValid)).toHaveLength(2);
     await expectToast(page, "Bordereau généré");
 
-    const rows = page.locator("tbody tr");
+    const rows = bordereauRows(page);
     await expect(rows).toHaveCount(3, { timeout: 20_000 });
     const mine = await listMine(admin, world);
     expect(mine).toHaveLength(3);
@@ -161,7 +164,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     test.setTimeout(180_000);
     const page = await openAdmin("admin");
     await gotoPayments(page, world);
-    const row = page.locator("tbody tr").filter({ hasText: world.workers[1].mvolaNumber });
+    const row = bordereauRows(page).filter({ hasText: world.workers[1].mvolaNumber });
     await expect(row).toBeVisible({ timeout: 20_000 });
     await row.getByRole("button", { name: "Corriger le montant" }).click();
     await row.locator('input[type="number"]').fill("2500");
@@ -176,7 +179,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     ]);
     expect(patch.status()).toBe(200);
     await expectToast(page, "Montant corrigé");
-    await expect(page.locator("tbody tr").filter({ hasText: world.workers[1].mvolaNumber })).toContainText(/2\D?500/);
+    await expect(bordereauRows(page).filter({ hasText: world.workers[1].mvolaNumber })).toContainText(/2\D?500/);
 
     const mine = await listMine(admin, world);
     const p2 = mine.find((p: any) => p.workerId === world.workers[1].id)!;
@@ -195,7 +198,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     test.setTimeout(180_000);
     const page = await openAdmin("admin");
     await gotoPayments(page, world);
-    await expect(page.locator("tbody tr")).toHaveCount(3, { timeout: 20_000 });
+    await expect(bordereauRows(page)).toHaveCount(3, { timeout: 20_000 });
     await page.getByLabel("Inclure l'en-tête").check();
 
     const exportBtn = page.getByRole("button", { name: "Export MVola" });
@@ -252,9 +255,9 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
       expect(p.exportedAt).toBeTruthy();
     }
     expect(after.find((x: any) => x.workerId === world.workers[2].id).status).toBe("PENDING");
-    await expect(page.locator("tbody tr").filter({ hasText: world.workers[0].mvolaNumber })).toContainText("Exporté");
+    await expect(bordereauRows(page).filter({ hasText: world.workers[0].mvolaNumber })).toContainText("Exporté");
     await expect(exportBtn).toBeDisabled(); // plus aucune ligne exportable
-    await expect(page.locator("tbody tr").filter({ hasText: world.workers[0].mvolaNumber }).getByRole("button", { name: "Corriger le montant" })).toHaveCount(0);
+    await expect(bordereauRows(page).filter({ hasText: world.workers[0].mvolaNumber }).getByRole("button", { name: "Corriger le montant" })).toHaveCount(0);
 
     // Historique / audit de l'export
     const exportAudit = await admin.get("/audit-log?entityType=Payment&action=EXPORT&limit=5");
@@ -312,7 +315,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     const dialog = page.getByRole("dialog");
     await dialog.locator('input[type="file"]').setInputFiles({ name: "sans-montant.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: noAmount });
     await expect(dialog.getByText(/Champs obligatoires à associer/)).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Lancer le rapprochement" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Prévisualiser le rapprochement" })).toBeDisabled();
     await page.keyboard.press("Escape");
     // Mauvaise extension
     await page.getByRole("button", { name: "Import retour MVola" }).click();
@@ -341,18 +344,32 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     ]);
 
     const page = await openAdmin("admin");
-    await page.goto("/payments");
-    await expect(heading(page, "Paiements")).toBeVisible();
+    await gotoPayments(page, world);
     await page.getByRole("button", { name: "Import retour MVola" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.locator('input[type="file"]').setInputFiles({ name: "releve-e2e.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: file });
     await expect(dialog.getByText("Associez chaque champ requis à une colonne du relevé.")).toBeVisible();
     await expect(dialog.locator('input[type="number"]')).toHaveValue("7"); // ligne d'en-tête détectée
+    // 1) Aperçu : le rapprochement est calculé mais rien n'est écrit
+    const [preview] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/v1/payments/import-status") && !r.url().includes("/columns") && r.request().method() === "POST"),
+      dialog.getByRole("button", { name: "Prévisualiser le rapprochement" }).click(),
+    ]);
+    expect(preview.status()).toBe(200);
+    expect(preview.request().postDataJSON().dryRun).toBe(true);
+    const previewResult = await preview.json();
+    expect(previewResult.confirme).toBe(1);
+    await expect(dialog.getByText(/Aperçu : rien n'est encore enregistré/)).toBeVisible();
+    const untouched = await listMine(admin, world);
+    expect(untouched.find((p: any) => p.workerId === world.workers[0].id)!.status, "l'aperçu ne doit rien écrire").toBe("EXPORTED");
+
+    // 2) Confirmation : le rapprochement est enregistré
     const [imp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/v1/payments/import-status") && !r.url().includes("/columns") && r.request().method() === "POST"),
-      dialog.getByRole("button", { name: "Lancer le rapprochement" }).click(),
+      dialog.getByRole("button", { name: "Confirmer et enregistrer" }).click(),
     ]);
     expect(imp.status()).toBe(200);
+    expect(imp.request().postDataJSON().dryRun).toBe(false);
     const result = await imp.json();
     expect(result.confirme).toBe(1);
     expect(result.ecartMontant).toBe(1);
@@ -362,13 +379,9 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     expect(result.internal).toBe(1);
     expect(result.ignored).toBe(1);
     expect(result.dejaTraite).toBe(0);
-    await expectToast(page, "Rapprochement terminé");
+    await expectToast(page, "Rapprochement enregistré");
     await expect(dialog.getByText("Confirmés", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Écarts de montant — revue manuelle")).toBeVisible();
-    // Critère backlog « résumé PAID/FAILED » : aucun résumé « échec » n'existe dans le rapprochement
-    await expect
-      .soft(dialog.getByText(/échec|failed/i), "Le résumé d'import ne présente pas de compteur PAID/FAILED (confirmés / écarts / orphelins / non confirmés)")
-      .toBeVisible({ timeout: 2_000 });
     await page.keyboard.press("Escape");
 
     // Effets sur les paiements
@@ -378,17 +391,24 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     expect(a1.status).toBe("PAID");
     expect(a1.paidAt).toBeTruthy();
     expect(a2.status, "l'écart de montant laisse le paiement EXPORTED").toBe("EXPORTED");
-    await expect(page.locator("tbody tr").filter({ hasText: world.workers[0].mvolaNumber })).toContainText("Payé");
-    test.info().annotations.push({
-      type: "constat",
-      description: "Le bordereau n'expose ni le statut de rapprochement (ECART_MONTANT / NON_CONFIRME) ni la référence MVola : l'écart n'est visible que dans la boîte de résultat de l'import.",
-    });
-    expect((a2 as any).reconciliationStatus, "statut de rapprochement absent de GET /payments").toBeUndefined();
+    await expect(bordereauRows(page).filter({ hasText: world.workers[0].mvolaNumber })).toContainText("Payé");
+    // Le bordereau expose le statut de rapprochement et la référence MVola
+    expect((a2 as any).reconciliationStatus, "statut de rapprochement exposé par GET /payments").toBe("ECART_MONTANT");
+    expect((a1 as any).reconciliationStatus).toBe("CONFIRME");
+    expect((a1 as any).mvolaReference, "référence MVola exposée").toBeTruthy();
+    await expect(bordereauRows(page).filter({ hasText: world.workers[1].mvolaNumber })).toContainText("Écart de montant");
 
     // Idempotence : réimporter le même relevé => références déjà traitées
     const replay = await admin.post("/payments/import-status", { contentBase64: file.toString("base64"), hasHeaderRow: true });
     expectStatus(replay, 200);
     expect(replay.body.dejaTraite).toBe(2);
     expect(replay.body.confirme).toBe(0);
+
+    // Échec explicite : motif obligatoire, réservé aux paiements exportés non payés
+    expectStatus(await admin.patch(`/payments/${a2.id}/fail`, { failureReason: "court" }), 400, 422);
+    expectStatus(await admin.patch(`/payments/${a1.id}/fail`, { failureReason: "paiement déjà exécuté, échec refusé" }), 422);
+    const failed = await admin.patch(`/payments/${a2.id}/fail`, { failureReason: "Virement non exécuté par MVola (recette)" });
+    expectStatus(failed, 200);
+    expect(failed.body.status).toBe("FAILED");
   });
 });
