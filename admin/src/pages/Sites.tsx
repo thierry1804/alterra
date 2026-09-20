@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
-import { Pencil, Power, PowerOff, Download } from "lucide-react";
+import { Pencil, Power, PowerOff, Download, MapPin } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -32,6 +32,8 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
+import { TableQueryError } from "../components/ui/QueryError";
+import { EmptyState } from "../components/ui/EmptyState";
 
 const PAGE_SIZE = 10;
 
@@ -50,7 +52,7 @@ export default function SitesPage() {
   const [editing, setEditing] = useState<Site | null>(null);
   const [form, setForm] = useState<SiteForm>(emptyForm);
 
-  const { data: sites = [], isLoading } = useQuery({
+  const { data: sites = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["sites"],
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
@@ -218,6 +220,18 @@ export default function SitesPage() {
               <TableRow>
                 <TableCell colSpan={6} className="text-zinc-500">
                   Chargement…
+                </TableCell>
+              </TableRow>
+            )}
+            {isError && <TableQueryError colSpan={6} what="les sites" onRetry={() => void refetch()} />}
+            {!isLoading && !isError && sorted.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={MapPin}
+                    title="Aucun site pour le moment"
+                    hint="Créez le premier site pour y rattacher des équipes et des MOC."
+                  />
                 </TableCell>
               </TableRow>
             )}

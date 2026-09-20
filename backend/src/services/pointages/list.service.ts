@@ -1,4 +1,4 @@
-import { PointageStatus, Prisma } from "@prisma/client";
+import { PointageStatus, Prisma, type Worker } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
 
@@ -54,6 +54,8 @@ export interface PointageListItem {
   createdAt: Date;
   updatedAt: Date;
   bioCheck: PointageBioCheckSummary | null;
+  /** MOC concerné : évite au client d'appeler GET /workers/:id pour chaque ligne. */
+  worker: Worker;
 }
 
 function buildWhere(filters: ListPointagesFilters): Prisma.PointageWhereInput {
@@ -109,6 +111,7 @@ export async function listPointages(filters: ListPointagesFilters) {
   const pointages = await prisma.pointage.findMany({
     where,
     take: take + 1,
+    include: { worker: true },
     ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
     orderBy: buildOrderBy(filters.orderBy, filters.dir ?? "asc"),
   });

@@ -206,3 +206,44 @@ export async function setSetting(key: string, value: string): Promise<void> {
 export async function deleteSetting(key: string): Promise<void> {
   await db.settings.delete(key);
 }
+
+/**
+ * Efface les données locales à la déconnexion : sur un téléphone partagé, le chef d'équipe suivant ne doit
+ * pas retrouver les MOC, activités, pointages ou gabarits du précédent. Seul ce qui n'a pas encore été
+ * envoyé au serveur est conservé (saisies hors ligne en attente, file de synchronisation) pour ne rien perdre.
+ */
+export async function purgeLocalData(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [
+      db.workers,
+      db.activities,
+      db.badges,
+      db.pointages,
+      db.pointings_synced,
+      db.media,
+      db.presenceLog,
+      db.biometricTemplates,
+      db.biometricOfflineChecks,
+    ],
+    async () => {
+      await Promise.all([
+        db.workers.clear(),
+        db.activities.clear(),
+        db.badges.clear(),
+        db.pointings_synced.clear(),
+        db.biometricTemplates.clear(),
+        db.pointages.where("status").anyOf("synced", "rejected").delete(),
+        db.media.filter((m) => m.uploaded).delete(),
+        db.presenceLog.filter((r) => r.synced).delete(),
+        db.biometricOfflineChecks.filter((c) => c.synced).delete(),
+      ]);
+    },
+  );
+
+  // Réponses d'API mises en cache par le service worker (liste des MOC, référentiels…).
+  if (typeof caches !== "undefined") {
+    const names = await caches.keys();
+    await Promise.all(names.filter((n) => n.includes("api")).map((n) => caches.delete(n)));
+  }
+}

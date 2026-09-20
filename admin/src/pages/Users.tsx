@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
+import { TableQueryError } from "../components/ui/QueryError";
 
 interface UserForm {
   email: string;
@@ -297,6 +298,9 @@ export default function UsersPage() {
                   Chargement…
                 </TableCell>
               </TableRow>
+            )}
+            {usersQuery.isError && (
+              <TableQueryError colSpan={8} what="les utilisateurs" onRetry={() => void usersQuery.refetch()} />
             )}
             {!usersQuery.isLoading &&
               users.map((user) => (

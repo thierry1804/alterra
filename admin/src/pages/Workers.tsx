@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
+import { TableQueryError } from "../components/ui/QueryError";
 
 interface WorkerForm {
   matricule: string;
@@ -426,6 +427,9 @@ export default function WorkersPage() {
                   Chargement…
                 </TableCell>
               </TableRow>
+            )}
+            {workersQuery.isError && (
+              <TableQueryError colSpan={8} what="les MOC" onRetry={() => void workersQuery.refetch()} />
             )}
             {!workersQuery.isLoading &&
               workers.map((worker) => (

@@ -44,6 +44,7 @@ import { toast } from "../hooks/use-toast";
 import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
 import { sortRows, useSortState } from "../components/ui/data-table/useClientSort";
 import { SortableHead } from "../components/ui/data-table/SortableHead";
+import { QueryError } from "../components/ui/QueryError";
 
 type CategoryWithSubActivities = ActivityCategory & { subActivities: ActivitySubActivity[] };
 
@@ -309,7 +310,13 @@ export default function ActivitiesPage() {
 
       {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
 
-      {!isLoading && (
+      {categoriesQuery.isError && (
+        <div className="rounded-lg border border-zinc-200">
+          <QueryError what="les activités" onRetry={() => void categoriesQuery.refetch()} />
+        </div>
+      )}
+
+      {!isLoading && !categoriesQuery.isError && (
         <div className="rounded-lg border border-zinc-200">
           <Table>
             <TableHeader>

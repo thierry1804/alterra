@@ -1,3 +1,5 @@
+import type { Worker } from "./referentials";
+
 export type PointageStatus = "PENDING" | "VALIDATED" | "REJECTED" | "NEEDS_CLARIFICATION";
 
 export interface PointageBioCheck {
@@ -28,6 +30,7 @@ export interface Pointage {
   createdAt: string;
   updatedAt: string;
   bioCheck: PointageBioCheck | null;
+  worker?: Worker;
 }
 
 export const POINTAGE_STATUS_LABELS: Record<PointageStatus, string> = {

@@ -1,7 +1,6 @@
 import {
   useInfiniteQuery,
   useMutation,
-  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -41,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { TableQueryError } from "../components/ui/QueryError";
 
 export default function PointagesPage() {
   const queryClient = useQueryClient();
@@ -167,23 +167,13 @@ export default function PointagesPage() {
     }
   }
 
-  const workerIds = useMemo(() => [...new Set(pointages.map((p) => p.workerId))], [pointages]);
-
-  const workerQueries = useQueries({
-    queries: workerIds.map((id) => ({
-      queryKey: ["worker", id],
-      queryFn: () => api.get<Worker>(`/workers/${id}`).then((r) => r.data),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
   const workersMap = useMemo(() => {
     const map = new Map<string, Worker>();
-    workerQueries.forEach((query, index) => {
-      if (query.data) map.set(workerIds[index], query.data);
+    pointages.forEach((p) => {
+      if (p.worker) map.set(p.workerId, p.worker);
     });
     return map;
-  }, [workerQueries, workerIds]);
+  }, [pointages]);
 
   const subActivitiesMap = useMemo(() => {
     const map = new Map<string, ActivitySubActivity>();
@@ -373,6 +363,9 @@ export default function PointagesPage() {
           </TableHeader>
           <TableBody>
             {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={10} />}
+            {pointagesQuery.isError && (
+              <TableQueryError colSpan={10} what="les pointages" onRetry={() => void pointagesQuery.refetch()} />
+            )}
             {!pointagesQuery.isLoading &&
               pointages.map((pointage) => (
                 <TableRow
@@ -441,7 +434,7 @@ export default function PointagesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            {!pointagesQuery.isLoading && pointages.length === 0 && (
+            {!pointagesQuery.isLoading && !pointagesQuery.isError && pointages.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={10} className="p-0">
                   <EmptyState

@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { TableQueryError } from "../components/ui/QueryError";
 
 export default function AuditLogPage() {
   const [page, setPage] = useState(1);
@@ -42,7 +43,7 @@ export default function AuditLogPage() {
 
   const { sortKey, sortDir, toggleSort } = useServerSort(null);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["audit-log", page, action, entityType, dateFrom, dateTo, sortKey, sortDir],
     queryFn: () =>
       api
@@ -232,7 +233,8 @@ export default function AuditLogPage() {
                 </TableCell>
               </TableRow>
             )}
-            {!isLoading && rows.length === 0 && (
+            {isError && <TableQueryError colSpan={7} what="le journal d'audit" onRetry={() => void refetch()} />}
+            {!isLoading && !isError && rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-zinc-600">
                   Aucune entrée pour ces filtres.
