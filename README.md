@@ -135,13 +135,13 @@ curl http://localhost:3001/health
 
 ### Accès distant (Cloudflare Tunnel)
 
-L'environnement de dev hybride peut être exposé publiquement via un Cloudflare Tunnel (`alterra-dev`), sans ouvrir de port entrant et sans interférer avec d'autres services sur la même machine :
+Un environnement de démonstration peut être exposé publiquement via un Cloudflare Tunnel (`alterra-dev`), sans ouvrir de port entrant et sans interférer avec d'autres services sur la même machine. **Il doit être servi en mode « build » (`npm run serve`, puis `./infra/scripts/deploy-dev.sh` après chaque mise à jour), jamais avec `npm run dev`** :
 
 - Admin : https://alterra-admin.boss-etech.net
 - PWA : https://alterra-pwa.boss-etech.net
 - API : https://alterra-backend.boss-etech.net/health
 
-Config du tunnel : `~/.cloudflared/config.yml` (hors dépôt, spécifique à la machine hôte). Les origines CORS correspondantes sont à ajouter dans `backend/.env` (`ADMIN_ORIGIN`, `PWA_ORIGIN`), et les hostnames dans `allowedHosts` (`admin/vite.config.ts`, `pwa/vite.config.ts`).
+Config du tunnel : `~/.cloudflared/config.yml` (hors dépôt, spécifique à la machine hôte). Les origines CORS correspondantes sont à ajouter dans `backend/.env` (`ADMIN_ORIGIN`, `PWA_ORIGIN`), et les hostnames dans `preview.allowedHosts` (`admin/vite.config.ts`, `pwa/vite.config.ts`). Le pare-feu et le durcissement de l'hôte sont décrits dans `docs/architecture-technique.md` §7.3.
 
 ## Qualité de code
 
