@@ -106,16 +106,20 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   expect(site, "Aucun code site libre trouvé").toBeTruthy();
 
   /* ---- Catégorie (code ACTnn pour respecter la grammaire du libellé MVola) + sous-activité ----
-     Un code de catégorie n'est jamais réutilisable après désactivation : ACT90 à ACT99 sont épuisés (runs du
-     20/09), la série ACT80 à ACT89 prend le relais. Prévoir une nouvelle série avant d'en manquer. */
+     Un code de catégorie n'est jamais réutilisable après désactivation : ACT80 à ACT99 sont épuisés (runs du
+     20/09) ; chaque exécution en consomme un. Il reste ACT30 à ACT79 : prévoir une autre solution avant d'en manquer. */
   const units = await admin.get("/units?take=100");
   expectStatus(units, 200);
   const unit = ((units.body.data ?? units.body) as any[]).find((u) => u.active !== false);
   expect(unit, "Aucune unité active disponible").toBeTruthy();
 
   let category: World["category"] | undefined;
-  for (let i = 0; i < 20 && !category; i++) {
-    const code = `ACT8${randomDigits(1)}`;
+  // Séries ACT70 à ACT79, puis ACT60…, ACT50…, ACT40…, ACT30… (ACT80 à ACT99 sont consommés) ; chiffres dans un ordre aléatoire.
+  const codes = ["7", "6", "5", "4", "3"].flatMap((series) =>
+    [...Array(10).keys()].sort(() => Math.random() - 0.5).map((digit) => `ACT${series}${digit}`),
+  );
+  for (const code of codes) {
+    if (category) break;
     const res = await admin.post("/activity-categories", { code, label: e2eName(runId, "CAT") });
     if (res.status === 201) {
       category = { id: res.body.id, code };
