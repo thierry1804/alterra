@@ -42,6 +42,8 @@ import {
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
 import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
+import { sortRows, useSortState } from "../components/ui/data-table/useClientSort";
+import { SortableHead } from "../components/ui/data-table/SortableHead";
 
 type CategoryWithSubActivities = ActivityCategory & { subActivities: ActivitySubActivity[] };
 
@@ -100,6 +102,9 @@ export default function ActivitiesPage() {
   }
 
   const [search, setSearch] = useState("");
+  const categorySort = useSortState();
+  // Un seul état de tri pour les tableaux de sous-activités : trier une colonne s'applique à toutes les catégories ouvertes.
+  const subSort = useSortState();
 
   const categoriesQuery = useInfiniteQuery({
     queryKey: ["activity-categories", search],
@@ -267,6 +272,21 @@ export default function ActivitiesPage() {
     }));
   }
 
+  type SubActivityRow = ReturnType<typeof groupSubActivities>[number];
+  const categoryAccessors: Record<string, (c: CategoryWithSubActivities) => unknown> = {
+    subCount: (c) => c.subActivities.length,
+    active: (c) => (c.active ? "Active" : "Inactive"),
+  };
+  const subAccessors: Record<string, (g: SubActivityRow) => unknown> = {
+    label: (g) => g.representative.label,
+    shortLabel: (g) => g.representative.shortLabel,
+    unit: (g) => g.representative.unit?.label,
+    unitRate: (g) => Number(g.representative.unitRate),
+    site: (g) => siteName(g.representative.siteId),
+    validFrom: (g) => g.representative.validFrom,
+  };
+  const sortedCategories = sortRows(categories, categorySort.sortKey, categorySort.sortDir, categoryAccessors);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -295,10 +315,10 @@ export default function ActivitiesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-9" />
-                <TableHead>Code</TableHead>
-                <TableHead>Libellé</TableHead>
-                <TableHead>Sous-activités</TableHead>
-                <TableHead>Statut</TableHead>
+                <SortableHead sortKey="code" label="Code" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
+                <SortableHead sortKey="label" label="Libellé" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
+                <SortableHead sortKey="subCount" label="Sous-activités" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
+                <SortableHead sortKey="active" label="Statut" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
                 <TableHead className="w-40">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -310,7 +330,7 @@ export default function ActivitiesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {categories.map((category) => {
+              {sortedCategories.map((category) => {
                 const isOpen = search.trim().length > 0 || expanded.has(category.id);
                 return (
                   <Fragment key={category.id}>
@@ -374,12 +394,12 @@ export default function ActivitiesPage() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="pl-10">Libellé</TableHead>
-                                <TableHead>Libellé court (MVola)</TableHead>
-                                <TableHead>Unité</TableHead>
-                                <TableHead>Tarif</TableHead>
-                                <TableHead>Site</TableHead>
-                                <TableHead>Depuis</TableHead>
+                                <SortableHead sortKey="label" label="Libellé" className="pl-10" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead sortKey="shortLabel" label="Libellé court (MVola)" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead sortKey="unit" label="Unité" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead sortKey="unitRate" label="Tarif" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead sortKey="site" label="Site" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead sortKey="validFrom" label="Depuis" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
                                 <TableHead className="w-40">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -391,7 +411,7 @@ export default function ActivitiesPage() {
                                   </TableCell>
                                 </TableRow>
                               )}
-                              {groupSubActivities(category.subActivities).map(
+                              {sortRows(groupSubActivities(category.subActivities), subSort.sortKey, subSort.sortDir, subAccessors).map(
                                 ({ representative: sub, siteOverrideCount }) => (
                                   <TableRow key={sub.groupKey}>
                                     <TableCell className="pl-10">{sub.label}</TableCell>
