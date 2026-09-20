@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
 import { ADMIN_APP, DEMO_ACCOUNTS, TERRAIN_APP_ROLES } from "../lib/access-info";
 import { useAppSettings } from "../hooks/useAppSettings";
+import LoginLeaves from "../components/auth/LoginLeaves";
 
 export default function Login() {
   const { login } = useAuth();
@@ -37,7 +38,7 @@ export default function Login() {
 
   return (
     <div
-      className="flex min-h-full items-center justify-center p-4"
+      className="relative flex min-h-full items-center justify-center overflow-hidden p-4"
       style={{
         background:
           "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.48), transparent 55%)," +
@@ -47,7 +48,8 @@ export default function Login() {
           "#fafafa",
       }}
     >
-      <div className="grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
+      <LoginLeaves />
+      <div className="relative z-10 grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
         <form
           onSubmit={onSubmit}
           className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
