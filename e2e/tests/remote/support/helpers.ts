@@ -68,6 +68,23 @@ export function expectStatus(res: ApiResult, ...statuses: number[]): void {
   ).toContain(res.status);
 }
 
+/** Années « réelles » à protéger : l'export et le rapprochement MVola raisonnent (encore) sur le numéro de semaine seul. */
+export const REAL_YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
+
+/**
+ * Nombre de paiements NON `E2E-S3-` portant ce numéro de semaine, toutes années réelles confondues.
+ * Un serveur qui ignore `referenceYear` renvoie toutes les années à chaque appel : le résultat est alors plus prudent.
+ */
+export async function foreignPaymentsForWeek(admin: ApiClient, week: number, years: number[] = REAL_YEARS): Promise<number> {
+  let foreign = 0;
+  for (const year of years) {
+    const res = await admin.get(`/payments?periodIso=S${week}&referenceYear=${year}`);
+    expectStatus(res, 200);
+    foreign += (res.body.data as any[]).filter((p) => !String(p.worker?.matricule ?? "").startsWith("E2E-S3-")).length;
+  }
+  return foreign;
+}
+
 export async function createPointages(
   cde: ApiClient,
   world: World,

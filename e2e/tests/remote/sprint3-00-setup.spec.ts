@@ -14,7 +14,7 @@ import {
   writeTmp,
   type World,
 } from "./support/state.js";
-import { expectStatus } from "./support/helpers.js";
+import { expectStatus, foreignPaymentsForWeek } from "./support/helpers.js";
 
 test.describe.configure({ mode: "serial" });
 
@@ -79,7 +79,8 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   for (const week of candidateWeeks) {
     const res = await admin.get(`/payments?periodIso=S${week}&referenceYear=2090`);
     expectStatus(res, 200);
-    if ((res.body.data as unknown[]).length === 0) {
+    // L'export MVola ignore encore l'année : la semaine ne doit contenir AUCUN paiement réel, quelle que soit l'année.
+    if ((res.body.data as unknown[]).length === 0 && (await foreignPaymentsForWeek(admin, week)) === 0) {
       const year = 2090;
       pay = {
         year,

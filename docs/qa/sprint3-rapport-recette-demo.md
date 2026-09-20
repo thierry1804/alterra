@@ -4,7 +4,7 @@ Recette réalisée **sur l'environnement de démonstration déployé** (pas en l
 
 ## Mise à jour : rejeu après correction
 
-**Conclusion actuelle : le jalon 3 est atteint sur la démonstration, sous trois réserves.** La suite rejouée après correction et déploiement (HEAD `0937e4d`, 20/09/2026 après 14 h 12 UTC) donne **95 tests réussis sur 95**, contre 74 sur 95 à la recette initiale. Le verdict « jalon non atteint » des sections suivantes décrit l'état **avant correction**.
+**Conclusion actuelle : le jalon 3 est atteint sur la démonstration, sous cinq réserves (les réserves 4 et 5 figurent dans la mise à jour 2 ci-dessous).** La suite rejouée après correction et déploiement (HEAD `0937e4d`, 20/09/2026 après 14 h 12 UTC) donne **95 tests réussis sur 95**, contre 74 sur 95 à la recette initiale. Le verdict « jalon non atteint » des sections suivantes décrit l'état **avant correction**.
 
 | Indicateur | Recette initiale | Rejeu après correction |
 |---|---:|---:|
@@ -24,6 +24,26 @@ Recette réalisée **sur l'environnement de démonstration déployé** (pas en l
 3. Non couvert par un rejeu automatique : rapport PDF hebdomadaire, sauvegarde et restauration, appareils réels, NFC, biométrie, critère « 600+ MOC ».
 
 Le rejeu doit se faire en deux passes (Admin, puis PWA) : l'API limite `/api/v1/auth/*` à 100 requêtes par 5 minutes et par adresse IP.
+
+## Mise à jour 2 : portée par année de l'export et du rapprochement MVola
+
+Une relecture des commits de correction (20/09/2026, après le rejeu) a relevé que **l'année de période n'a pas été appliquée partout** : la génération, la liste et le verrou de période la prennent en compte, mais pas l'export ni le rapprochement. Le rejeu à 95 sur 95 ne pouvait pas le voir (ses écritures se font sur des semaines vides de 2090). Un test dédié, `sprint3-zz-year-scope.spec.ts`, le confirme sur la démonstration déployée (HEAD `0937e4d`), avec des données 100 % `E2E-S3-` sur une même semaine en 2090 et en 2091 (S36) :
+
+| Vérification | Attendu | Obtenu |
+|---|---|---|
+| `GET /payments/S36/export?referenceYear=2090` | 2 lignes exportées (celles de 2090) ; les 2 lignes de 2091 restent `PENDING` | **4 lignes exportées** ; les 2 lignes de 2091 passent `EXPORTED` |
+| Aperçu de rapprochement d'un relevé qui confirme 1 paiement de 2090 | 1 confirmé, 1 « non confirmé » (le 2ᵉ paiement de 2090) | 1 confirmé, **3 « non confirmés » dont 2 de l'année 2091** |
+
+- **Cause** : `mvola-export.service.ts:39-43` ne retient que `shortPeriod` de `resolvePeriod` et filtre sur `periodIso` sans `referenceYear` ; `mvola-reconciliation.service.ts` (`periodWeekNumber`, `weeksInFile`) marque « non confirmés » tous les paiements exportés dont le numéro de semaine figure dans le relevé, quelle que soit l'année.
+- **Impact** : dès qu'une même semaine existe sur deux années, l'export d'une année exporte aussi les lignes en attente de l'autre (paiements réels envoyés à MVola au mauvais moment), et un relevé marque à tort des paiements d'une autre année comme non confirmés. Sans effet tant que chaque numéro de semaine n'a servi qu'une fois (2026).
+- **Correctif proposé** : ajouter `referenceYear` au `where` de l'export (`{ periodIso: shortPeriod, referenceYear, status: PENDING }`) ; pour le rapprochement, ne marquer « non confirmés » que les paiements dont le couple (site, semaine) figure dans le relevé et dont l'année de référence correspond à celle des dates du relevé (ou à la précédente autour du 1ᵉʳ janvier).
+- **Gravité** : majeure (envoi de paiements réels par l'export), à corriger avant la première semaine réutilisée en 2027.
+
+**Garde-fou renforcé dans la suite.** Tant que l'export ignore l'année, il pourrait embarquer des lignes réelles du même numéro de semaine : la suite refuse désormais toute écriture de paiement sur une semaine qui contient un paiement réel, **quelle que soit l'année** (2024 à 2031). Ce contrôle s'ajoute au contrôle de la période elle-même.
+
+**Données laissées par ce test** (nettoyage sans erreur) : 4 paiements `E2E-S3-` au statut `EXPORTED` (S36, 2090 et 2091), 4 pointages datés de 2090 et 2091 restés `VALIDATED`, et des contrôles biométriques de test. Les périodes portant une année, ils ne verrouillent aucune semaine réelle de 2026.
+
+**Réserves mises à jour** : aux trois réserves ci-dessus s'ajoutent (4) la portée par année de l'export et du rapprochement (ci-dessus) et (5) à vérifier : que l'API voit bien l'adresse IP réelle des clients derrière nginx et le tunnel, sans quoi la limite de 100 requêtes par 5 minutes sur `/api/v1/auth/*` serait partagée entre tous les utilisateurs.
 
 ---
 

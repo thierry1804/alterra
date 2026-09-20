@@ -1106,3 +1106,29 @@ npm run report:remote               # rapport HTML Playwright
 ```
 
 Variables optionnelles : `ALTERRA_ADMIN_URL`, `ALTERRA_PWA_URL`, `E2E_S3_KEEP=1` (garde le jeu de test), `E2E_S3_CHANNEL=chromium`.
+
+## 10. Vérification complémentaire : portée par année de l'export et du rapprochement (20 septembre 2026)
+
+Test ajouté après la relecture des commits de correction : `e2e/tests/remote/sprint3-zz-year-scope.spec.ts`, exécuté sur la démonstration déployée (HEAD `0937e4d`, migration `referenceYear` appliquée). Il crée, pour la **même semaine (S36) en 2090 et en 2091**, deux paiements de test par année (données 100 % `E2E-S3-`), exporte 2090, puis lit en **aperçu** (`dryRun`, sans écriture) le rapprochement d'un relevé qui ne confirme qu'un paiement de 2090.
+
+| Test | Résultat | Durée |
+|---|---|---:|
+| UC-FE-ADM-PAY-EXP › l'export d'une année n'embarque pas les lignes des autres années ; le rapprochement ne marque pas « non confirmés » les paiements d'une autre année | ❌ KO (2 constats) | 14.3 s |
+
+Annotations relevées par le test :
+
+- `export S36/2090 → 4 ligne(s) exportée(s) ; statuts 2091 après l'export : EXPORTED,EXPORTED` (attendu : 2 lignes, 2091 restant `PENDING,PENDING`).
+- `aperçu : confirmé 1, non confirmés 3 dont 2 de l'année 2091` (attendu : 1 non confirmé, aucun de 2091).
+
+Messages d'échec :
+
+```text
+EXPORT : l'export de S36 demandé pour 2090 a aussi exporté les lignes de 2091 (mvola-export.service.ts filtre sur periodIso sans referenceYear)
+RAPPROCHEMENT : un relevé de la semaine 36 marque « non confirmés » des paiements exportés d'une autre année (mvola-reconciliation.service.ts raisonne sur le numéro de semaine seul)
+```
+
+**Lecture** : les deux comportements de l'export et du rapprochement restent indépendants de l'année ; la correction A14 (`Payment.referenceYear`) est partielle. Le rejeu à 95 sur 95 ne pouvait pas le détecter (ses écritures se font sur des semaines vides de 2090). Détail, impact et correctif proposé : `docs/qa/sprint3-rapport-recette-demo.md`, « Mise à jour 2 ».
+
+**Garde-fou** : la suite refuse désormais d'écrire des paiements sur une semaine qui contient un paiement réel, quelle que soit l'année (2024 à 2031), tant que l'export ignore l'année.
+
+**Données laissées** : 4 paiements `E2E-S3-` `EXPORTED` (S36/2090 : 2 ; S36/2091 : 2), 4 pointages `VALIDATED` datés de 2090 et 2091, contrôles biométriques de test. Nettoyage : 0 erreur ; ces lignes ne verrouillent aucune semaine réelle de 2026 (les périodes portent une année).

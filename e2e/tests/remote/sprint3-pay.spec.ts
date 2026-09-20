@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import ExcelJS from "exceljs";
 import { test, expect } from "./support/fixtures.js";
-import { createPointages, expectAudit, expectStatus, readXlsx, setBio, xlsxBuffer } from "./support/helpers.js";
+import { createPointages, expectAudit, expectStatus, foreignPaymentsForWeek, readXlsx, setBio, xlsxBuffer } from "./support/helpers.js";
 import { addDays, randomDigits, stSave, track, TMP_DIR_FILE } from "./support/state.js";
 import { expectToast, heading } from "./support/ui.js";
 import type { ApiClient } from "./support/api.js";
@@ -29,6 +29,8 @@ async function guardWeek(admin: ApiClient, world: World) {
   expectStatus(res, 200);
   const foreign = (res.body.data as any[]).filter((p) => !String(p.worker?.matricule ?? "").startsWith("E2E-S3-"));
   expect(foreign, `GARDE-FOU : la période ${pay.shortPeriod} contient des paiements non E2E — arrêt`).toHaveLength(0);
+  // L'export MVola ignore encore l'année : aucun paiement réel ne doit exister pour ce numéro de semaine, quelle que soit l'année.
+  expect(await foreignPaymentsForWeek(admin, pay.weekNumber), `GARDE-FOU : paiements réels sur S${pay.weekNumber} d'une autre année — arrêt`).toBe(0);
   return res.body.data as any[];
 }
 

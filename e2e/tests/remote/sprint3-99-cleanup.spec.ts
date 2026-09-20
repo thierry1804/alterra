@@ -106,11 +106,13 @@ test("Sprint 3 — nettoyage des données E2E-S3-", async () => {
 
   /* ---- Paiements résiduels (non supprimables) ---- */
   for (const shortPeriod of periods) {
-    const res = await admin.get(`/payments?periodIso=${shortPeriod}&referenceYear=2090`);
-    if (res.ok) {
-      for (const p of res.body.data as any[]) {
-        if (isE2E(p.worker?.matricule)) {
-          report.payments.push({ id: p.id, period: shortPeriod, matricule: p.worker.matricule, status: p.status, bioValid: p.bioValid, amount: p.amount });
+    for (const year of [2090, 2091]) {
+      const res = await admin.get(`/payments?periodIso=${shortPeriod}&referenceYear=${year}`);
+      if (res.ok) {
+        for (const p of res.body.data as any[]) {
+          if (isE2E(p.worker?.matricule)) {
+            report.payments.push({ id: p.id, period: `${shortPeriod}/${year}`, matricule: p.worker.matricule, status: p.status, bioValid: p.bioValid, amount: p.amount });
+          }
         }
       }
     }

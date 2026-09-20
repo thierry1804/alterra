@@ -65,6 +65,7 @@ export default defineConfig({
         "**/sprint3-rbac.spec.ts",
         "**/sprint3-zz-audit-trail.spec.ts",
         "**/sprint3-zz-pay-format.spec.ts",
+        "**/sprint3-zz-year-scope.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: adminBaseUrl },
     },
