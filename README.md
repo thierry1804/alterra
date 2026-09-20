@@ -49,6 +49,8 @@ Trois modes sont disponibles selon vos besoins :
 | Admin       | `npm run dev` (Vite)      | —              | Docker (`admin`, nginx)         | 5173                       |
 | PWA         | `npm run dev` (Vite)      | —              | Docker (`pwa`, nginx)           | 5174                       |
 
+> **Ne jamais exposer `npm run dev` sur Internet.** Le serveur de développement Vite sert les fichiers du projet et n'est pas fait pour être public : il a été exploité lors de l'incident du 20 septembre 2026 (voir [`docs/architecture-technique.md`](docs/architecture-technique.md) §7.3). Sur le VPS de démonstration (tunnel Cloudflare), l'application tourne en mode « build » : `npm run serve` (service systemd `alterra-dev`) et `./infra/scripts/deploy-dev.sh` après chaque `git pull`.
+
 ### App complète en Docker (`--profile full`)
 
 Lance **toute l'application** en conteneurs (infra + API + frontends admin/pwa buildés et servis par nginx), sans aucun Node en local. Pratique pour une démo ou une QA de bout en bout.
