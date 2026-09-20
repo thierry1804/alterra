@@ -20,7 +20,8 @@
     "test:e2e": "npm run test -w e2e",
     "docs:guides": "node scripts/generate-guide-pdfs.mjs",
     "docker:dev:up": "docker compose up -d",
-    "docker:dev:down": "docker compose down"
+    "docker:dev:down": "docker compose down",
+    "serve": "concurrently -n backend,admin,pwa -c cyan,green,magenta \"npm run serve -w backend\" \"npm run preview -w admin\" \"npm run preview -w pwa\""
   },
   "engines": {
     "node": ">=20.19.0"

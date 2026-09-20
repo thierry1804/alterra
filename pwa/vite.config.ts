@@ -3,6 +3,14 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const apiProxy = {
+  "/api": {
+    target: `http://localhost:${process.env.API_PROXY_PORT ?? 3001}`,
+    changeOrigin: true,
+    xfwd: true, // transmet X-Forwarded-For — sans ça le backend ne voit que l'IP du proxy
+  },
+};
+
 export default defineConfig({
   plugins: [
     react(),
@@ -49,12 +57,14 @@ export default defineConfig({
     },
     port: 5174,
     allowedHosts: ["alterra-pwa.boss-etech.net"],
-    proxy: {
-      "/api": {
-        target: `http://localhost:${process.env.API_PROXY_PORT ?? 3001}`,
-        changeOrigin: true,
-        xfwd: true, // transmet X-Forwarded-For — sans ça le backend ne voit que l'IP du proxy Vite
-      },
-    },
+    proxy: apiProxy,
+  },
+  // Service public (tunnel Cloudflare) : build statique, sans serveur de dev ni accès aux sources.
+  preview: {
+    host: "127.0.0.1",
+    port: 5174,
+    strictPort: true,
+    allowedHosts: ["alterra-pwa.boss-etech.net"],
+    proxy: apiProxy,
   },
 });

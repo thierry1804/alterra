@@ -7,10 +7,12 @@
 #   sudo systemctl enable --now alterra-dev.service
 #
 # Adapter le chemin Node (nvm) et WorkingDirectory si différents sur la machine cible.
+# Les frontends sont servis en build statique (`vite preview`, 127.0.0.1) : lancer infra/scripts/deploy-dev.sh
+# après chaque mise à jour du code. Un serveur de dev exposé sur Internet sert les sources et a déjà été exploité.
 # Prérequis : infrastructure Docker (postgres/redis/minio) déjà lancée et backend/.env configuré.
 
 [Unit]
-Description=ALTERRA dev servers (backend + admin + pwa)
+Description=ALTERRA (API + frontends en build, exposés via le tunnel Cloudflare)
 After=docker.service network-online.target
 Wants=docker.service network-online.target
 
@@ -21,7 +23,7 @@ Group=debian
 WorkingDirectory=/home/debian/alterra
 Environment=API_PROXY_PORT=3010
 Environment=PATH=/home/debian/.nvm/versions/node/v22.12.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/debian/.nvm/versions/node/v22.12.0/bin/npm run dev
+ExecStart=/home/debian/.nvm/versions/node/v22.12.0/bin/npm run serve
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:/home/debian/alterra-dev.log
