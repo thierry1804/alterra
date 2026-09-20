@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
 import { ADMIN_APP, DEMO_ACCOUNTS, TERRAIN_APP_ROLES } from "../lib/access-info";
 import { useAppSettings } from "../hooks/useAppSettings";
+import LoginLandscape from "../components/auth/LoginLandscape";
 import LoginLeaves from "../components/auth/LoginLeaves";
 
 export default function Login() {
@@ -48,6 +49,7 @@ export default function Login() {
           "#fafafa",
       }}
     >
+      <LoginLandscape />
       <LoginLeaves />
       <div className="relative z-10 grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
         <form
