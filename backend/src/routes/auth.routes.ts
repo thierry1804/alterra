@@ -8,6 +8,7 @@ import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { ApiError } from "../middleware/error-handler.js";
+import { assertLoginNotLocked, clearLoginFailures, recordLoginFailure } from "../lib/login-lockout.js";
 import {
   REFRESH_COOKIE,
   issueRefreshToken,
@@ -28,12 +29,22 @@ const mfaVerifySchema = z.object({
   code: z.string().length(6),
 });
 
+let dummyHash: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+  dummyHash ??= argon2.hash("alterra-dummy-password", { type: argon2.argon2id });
+  return dummyHash;
+}
+
 authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password, mfaCode } = req.body;
+    await assertLoginNotLocked(email);
     const user = await basePrisma.user.findUnique({ where: { email } });
 
-    if (!user || !user.active || !(await argon2.verify(user.passwordHash, password))) {
+    // Toujours vérifier un hash (factice si compte inconnu) : temps de réponse identique, pas d'énumération.
+    const passwordOk = await argon2.verify(user?.passwordHash ?? (await getDummyHash()), password);
+    if (!user || !user.active || !passwordOk) {
+      await recordLoginFailure(email);
       throw new ApiError(401, "INVALID_CREDENTIALS", "Email ou mot de passe incorrect");
     }
 
@@ -42,10 +53,12 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
         throw new ApiError(401, "MFA_REQUIRED", "MFA code required for admin login");
       }
       if (!verifyLoginMfa(user.mfaSecret, mfaCode)) {
+        await recordLoginFailure(email);
         throw new ApiError(401, "INVALID_MFA_CODE", "Invalid MFA code");
       }
     }
 
+    await clearLoginFailures(email);
     const accessToken = signAccessToken({
       sub: user.id,
       role: user.role,

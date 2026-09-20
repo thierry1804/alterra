@@ -19,6 +19,8 @@ export type WeeklyPdfJobPayload = WeeklyPdfJobInput;
 
 export interface WeeklyPdfJobStatus {
   id: string;
+  /** Site du rapport — sert au contrôle d'appartenance côté route (anti-IDOR). */
+  siteId?: string;
   state: "waiting" | "active" | "completed" | "failed";
   result?: WeeklyPdfJobResult;
   error?: string;
@@ -26,6 +28,7 @@ export interface WeeklyPdfJobStatus {
 
 export interface DailyPdfJobStatus {
   id: string;
+  siteId?: string;
   state: "waiting" | "active" | "completed" | "failed";
   result?: DailyPdfJobResult;
   error?: string;
@@ -69,15 +72,16 @@ export async function enqueueWeeklyPdfJob(
 ): Promise<{ jobId: string }> {
   if (useSyncJobs()) {
     const jobId = `sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    syncWeeklyJobStore.set(jobId, { id: jobId, state: "active" });
+    syncWeeklyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "active" });
 
     void processWeeklyPdfJob(input)
       .then((result) => {
-        syncWeeklyJobStore.set(jobId, { id: jobId, state: "completed", result });
+        syncWeeklyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "completed", result });
       })
       .catch((error: unknown) => {
         syncWeeklyJobStore.set(jobId, {
           id: jobId,
+          siteId: input.siteId,
           state: "failed",
           error: error instanceof Error ? error.message : "Job failed",
         });
@@ -121,6 +125,7 @@ export async function getWeeklyPdfJobStatus(jobId: string): Promise<WeeklyPdfJob
 
   return {
     id: job.id!,
+    siteId: job.data.siteId,
     state: mappedState,
     result: job.returnvalue ?? undefined,
     error: job.failedReason ?? undefined,
@@ -148,15 +153,16 @@ export async function enqueueDailyPdfJob(
 ): Promise<{ jobId: string }> {
   if (useSyncJobs()) {
     const jobId = `sync-daily-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    syncDailyJobStore.set(jobId, { id: jobId, state: "active" });
+    syncDailyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "active" });
 
     void processDailyPdfJob(input)
       .then((result) => {
-        syncDailyJobStore.set(jobId, { id: jobId, state: "completed", result });
+        syncDailyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "completed", result });
       })
       .catch((error: unknown) => {
         syncDailyJobStore.set(jobId, {
           id: jobId,
+          siteId: input.siteId,
           state: "failed",
           error: error instanceof Error ? error.message : "Job failed",
         });
@@ -197,6 +203,7 @@ export async function getDailyPdfJobStatus(jobId: string): Promise<DailyPdfJobSt
 
   return {
     id: job.id!,
+    siteId: job.data.siteId,
     state: mappedState,
     result: job.returnvalue ?? undefined,
     error: job.failedReason ?? undefined,

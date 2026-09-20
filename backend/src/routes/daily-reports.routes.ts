@@ -117,7 +117,8 @@ dailyReportsRouter.get(
   async (req, res, next) => {
     try {
       const status = await getDailyPdfJobStatus(req.params.jobId);
-      if (!status) {
+      // 404 (et non 403) pour un job d'un autre site : n'indique pas l'existence de l'identifiant.
+      if (!status || (req.user!.role === Role.CHEF_SERVICE && status.siteId !== req.user!.siteId)) {
         throw new ApiError(404, "JOB_NOT_FOUND", "PDF job not found");
       }
       res.json(status);
