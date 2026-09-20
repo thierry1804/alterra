@@ -19,7 +19,8 @@
     "db:studio": "prisma studio",
     "import:templates": "tsx scripts/generate-import-templates.ts",
     "import:initial": "tsx scripts/import-initial-data.ts",
-    "serve": "tsx src/index.ts"
+    "serve": "tsx src/index.ts",
+    "db:reset-passwords": "tsx prisma/reset-passwords.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
