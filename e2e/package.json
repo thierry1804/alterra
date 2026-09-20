@@ -6,6 +6,8 @@
   "scripts": {
     "test": "playwright test -c playwright.config.ts",
     "test:ui": "playwright test -c playwright.config.ts --ui",
+    "test:remote": "playwright test -c playwright.remote.config.ts",
+    "report:remote": "playwright show-report playwright-report-remote",
     "report": "playwright show-report"
   },
   "devDependencies": {
