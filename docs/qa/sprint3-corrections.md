@@ -14,7 +14,7 @@ Suite à `sprint3-rapport-recette-demo.md` (20/09/2026). Chaque anomalie est ren
 | A10 — export MVola | 5 colonnes de la spécification par défaut ; `MVOLA_EXPORT_FORMAT=compact3` rétablit les 3 colonnes si MVola refuse les colonnes internes | `payments.test.ts` |
 | A11 — fichier non Excel | signature `.xlsx` / `.xls` vérifiée, sinon 422 `IMPORT_BADFORMAT` | `mvola-releve-parser.test.ts` |
 | A12 — import et rapports | aperçu avant écriture (`dryRun`, bouton « Confirmer et enregistrer »), `PATCH /payments/:id/fail` (statut `FAILED` avec motif), statut de rapprochement et référence dans le bordereau, historique des exports (`GET /payments/exports`), export « PDF » réellement en PDF (contenu échappé) | `report-export-pdf.test.ts` |
-| A14 — période sans année | colonne `Payment.referenceYear` (migration `20260920140000_payment_reference_year`, rétro-remplie depuis `createdAt`), utilisée par le verrou de période, la génération, l'export et la liste | — |
+| A14 — période sans année | colonne `Payment.referenceYear` (migration `20260920140000_payment_reference_year`, rétro-remplie depuis `createdAt`), utilisée par le verrou de période, la génération, l'export (filtre `referenceYear`), le rapprochement (clé année:semaine, `weekKey`) et la liste | `mvola-reconciliation.test.ts`, `payments.test.ts`, recette `sprint3-zz-year-scope.spec.ts` |
 | A15 — N+1 | `GET /pointages` inclut le MOC ; l'écran ne fait plus un `GET /workers/:id` par ligne | — |
 
 A13 (nom « RAKOTO ») est un réglage de l'application (Paramètres), pas un défaut de code.

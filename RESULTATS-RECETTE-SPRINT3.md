@@ -21,7 +21,7 @@ Aucun mot de passe, jeton ni identifiant secret n'apparaît ici. La recette init
 
 Les sections 1 à 9 ci-dessous décrivent la **recette initiale**, faite avant correction (74 tests réussis sur 95). Elles sont conservées telles quelles, comme état de départ. Cette section 0 rend compte du **rejeu de la même suite** après correction des anomalies A1 à A15 et déploiement sur la démonstration.
 
-**Résultat : 95 tests sur 95 réussis, 0 échec, 0 test ignoré** (75 tests Admin, 20 tests PWA).
+**Résultat : 95 tests sur 95 réussis, 0 échec, 0 test ignoré** (75 tests Admin, 20 tests PWA). Après ajout du test de portée par année (section 10) et correction de l'export et du rapprochement : **96 sur 96**.
 
 ### 0.1 Contexte du rejeu
 
@@ -1131,4 +1131,10 @@ RAPPROCHEMENT : un relevé de la semaine 36 marque « non confirmés » des paie
 
 **Garde-fou** : la suite refuse désormais d'écrire des paiements sur une semaine qui contient un paiement réel, quelle que soit l'année (2024 à 2031), tant que l'export ignore l'année.
 
-**Données laissées** : 4 paiements `E2E-S3-` `EXPORTED` (S36/2090 : 2 ; S36/2091 : 2), 4 pointages `VALIDATED` datés de 2090 et 2091, contrôles biométriques de test. Nettoyage : 0 erreur ; ces lignes ne verrouillent aucune semaine réelle de 2026 (les périodes portent une année).
+### 10.1 Correction et nouvelle exécution
+
+L'écart était réel : le filtre `referenceYear` de l'export, annoncé dans les corrections (A14), n'avait **pas été appliqué dans le code livré** (l'édition avait été perdue) ; le rapprochement ne tenait pas compte de l'année. Corrections : `mvola-export.service.ts` filtre sur `{ periodIso, referenceYear, status: PENDING }` ; `mvola-reconciliation.service.ts` ne marque « non confirmés » que les paiements dont l'année et la semaine sont couvertes par le relevé (clé « année:semaine » calculée par `weekKey` à partir de la date d'exécution, avec le cas des semaines à cheval sur le 1ᵉʳ janvier).
+
+Après redémarrage du service, le test `sprint3-zz-year-scope.spec.ts` **réussit** sur la démonstration. Rejeu complet après cette correction : **96 tests sur 96 réussis** (76 Admin, 20 PWA), en trois passes à cause de la limite de 100 requêtes d'authentification par 5 minutes et par IP (deux tests Admin avaient reçu des HTTP 429 dans la passe complète et ont été rejoués isolément avec succès). Codes de catégorie : `ACT80` à `ACT99` sont maintenant épuisés, la suite utilise `ACT30` à `ACT79`. Les données de test de cette section (S36, 2090 et 2091) ont été purgées.
+
+**Données laissées (avant purge)** : 4 paiements `E2E-S3-` `EXPORTED` (S36/2090 : 2 ; S36/2091 : 2), 4 pointages `VALIDATED` datés de 2090 et 2091, contrôles biométriques de test. Nettoyage : 0 erreur ; ces lignes ne verrouillent aucune semaine réelle de 2026 (les périodes portent une année).

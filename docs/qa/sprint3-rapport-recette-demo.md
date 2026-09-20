@@ -4,7 +4,7 @@ Recette réalisée **sur l'environnement de démonstration déployé** (pas en l
 
 ## Mise à jour : rejeu après correction
 
-**Conclusion actuelle : le jalon 3 est atteint sur la démonstration, sous cinq réserves (les réserves 4 et 5 figurent dans la mise à jour 2 ci-dessous).** La suite rejouée après correction et déploiement (HEAD `0937e4d`, 20/09/2026 après 14 h 12 UTC) donne **95 tests réussis sur 95**, contre 74 sur 95 à la recette initiale. Le verdict « jalon non atteint » des sections suivantes décrit l'état **avant correction**.
+**Conclusion actuelle : le jalon 3 est atteint sur la démonstration, sous quatre réserves (la réserve 4, portée par année de l'export et du rapprochement, a été corrigée : voir la mise à jour 2 ci-dessous ; la réserve 5 y figure aussi).** La suite rejouée après correction et déploiement (HEAD `0937e4d`, 20/09/2026 après 14 h 12 UTC) donne **95 tests réussis sur 95**, contre 74 sur 95 à la recette initiale. Le verdict « jalon non atteint » des sections suivantes décrit l'état **avant correction**.
 
 | Indicateur | Recette initiale | Rejeu après correction |
 |---|---:|---:|
@@ -27,6 +27,8 @@ Le rejeu doit se faire en deux passes (Admin, puis PWA) : l'API limite `/api/v1/
 
 ## Mise à jour 2 : portée par année de l'export et du rapprochement MVola
 
+**Statut : corrigé et vérifié (20/09/2026).** L'écart décrit ci-dessous était réel : le filtre `referenceYear` annoncé pour l'export n'avait pas été appliqué dans le code livré (l'édition avait été perdue) et le rapprochement n'a jamais tenu compte de l'année. Les deux sont corrigés (voir « Correction » plus bas) ; le test `sprint3-zz-year-scope.spec.ts` passe sur la démonstration.
+
 Une relecture des commits de correction (20/09/2026, après le rejeu) a relevé que **l'année de période n'a pas été appliquée partout** : la génération, la liste et le verrou de période la prennent en compte, mais pas l'export ni le rapprochement. Le rejeu à 95 sur 95 ne pouvait pas le voir (ses écritures se font sur des semaines vides de 2090). Un test dédié, `sprint3-zz-year-scope.spec.ts`, le confirme sur la démonstration déployée (HEAD `0937e4d`), avec des données 100 % `E2E-S3-` sur une même semaine en 2090 et en 2091 (S36) :
 
 | Vérification | Attendu | Obtenu |
@@ -38,6 +40,7 @@ Une relecture des commits de correction (20/09/2026, après le rejeu) a relevé 
 - **Impact** : dès qu'une même semaine existe sur deux années, l'export d'une année exporte aussi les lignes en attente de l'autre (paiements réels envoyés à MVola au mauvais moment), et un relevé marque à tort des paiements d'une autre année comme non confirmés. Sans effet tant que chaque numéro de semaine n'a servi qu'une fois (2026).
 - **Correctif proposé** : ajouter `referenceYear` au `where` de l'export (`{ periodIso: shortPeriod, referenceYear, status: PENDING }`) ; pour le rapprochement, ne marquer « non confirmés » que les paiements dont le couple (site, semaine) figure dans le relevé et dont l'année de référence correspond à celle des dates du relevé (ou à la précédente autour du 1ᵉʳ janvier).
 - **Gravité** : majeure (envoi de paiements réels par l'export), à corriger avant la première semaine réutilisée en 2027.
+- **Correction** : l'export filtre sur `{ periodIso, referenceYear, status: PENDING }`. Le rapprochement calcule une clé « année:semaine » à partir de la date d'exécution de chaque ligne du relevé (`weekKey` : une semaine 50 et plus payée en janvier ou février appartient à l'année précédente, une semaine 1 ou 2 payée en décembre à l'année suivante) et ne marque « non confirmés » que les paiements dont l'année et la semaine sont couvertes par le relevé. Tests unitaires : `mvola-reconciliation.test.ts`, `payments.test.ts`. Test de recette : `sprint3-zz-year-scope.spec.ts` réussi.
 
 **Garde-fou renforcé dans la suite.** Tant que l'export ignore l'année, il pourrait embarquer des lignes réelles du même numéro de semaine : la suite refuse désormais toute écriture de paiement sur une semaine qui contient un paiement réel, **quelle que soit l'année** (2024 à 2031). Ce contrôle s'ajoute au contrôle de la période elle-même.
 
