@@ -15,7 +15,7 @@ function hashToken(raw: string): string {
 function cookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV !== "test",
     sameSite: "strict" as const,
     maxAge: REFRESH_MAX_AGE_MS,
   };

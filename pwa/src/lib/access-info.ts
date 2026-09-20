@@ -21,7 +21,18 @@ export const ADMIN_APP: AppAccessLink = {
   href: import.meta.env.VITE_ADMIN_ORIGIN ?? "http://localhost:5173",
 };
 
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  { role: "Chef de service (MNK)", email: "cds.mnk@alterra.test", password: "test123!" },
-  { role: "Chef d'équipe MNK-1", email: "cde.mnk1@alterra.test", password: "test123!" },
-];
+/**
+ * Comptes de démonstration : injectés uniquement par VITE_DEMO_ACCOUNTS (JSON) sur le poste local.
+ * Jamais en dur dans le code — le serveur de dev est exposé sur Internet et sert ces sources.
+ */
+function loadDemoAccounts(): DemoAccount[] {
+  if (!import.meta.env.DEV) return [];
+  try {
+    const parsed: unknown = JSON.parse(import.meta.env.VITE_DEMO_ACCOUNTS ?? "[]");
+    return Array.isArray(parsed) ? (parsed as DemoAccount[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const DEMO_ACCOUNTS: DemoAccount[] = loadDemoAccounts();

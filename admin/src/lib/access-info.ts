@@ -21,7 +21,18 @@ export const TERRAIN_APP: AppAccessLink = {
   href: import.meta.env.VITE_PWA_ORIGIN ?? "http://localhost:5174",
 };
 
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  { role: "Administrateur", email: "admin@alterra.mg", password: "ChangeMe123!" },
-  { role: "Chef de service (MNK)", email: "cds.mnk@alterra.test", password: "test123!" },
-];
+/**
+ * Comptes de démonstration : injectés uniquement par VITE_DEMO_ACCOUNTS (JSON) sur le poste local.
+ * Jamais en dur dans le code — le serveur de dev est exposé sur Internet et sert ces sources.
+ */
+function loadDemoAccounts(): DemoAccount[] {
+  if (!import.meta.env.DEV) return [];
+  try {
+    const parsed: unknown = JSON.parse(import.meta.env.VITE_DEMO_ACCOUNTS ?? "[]");
+    return Array.isArray(parsed) ? (parsed as DemoAccount[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const DEMO_ACCOUNTS: DemoAccount[] = loadDemoAccounts();

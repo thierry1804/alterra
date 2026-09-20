@@ -102,7 +102,7 @@ export default function AppSettingsPage() {
       const res = await api.get("/system/backup", { responseType: "blob" });
       const disposition = res.headers["content-disposition"] as string | undefined;
       const match = disposition?.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? "alterra-backup.sql.gz";
+      const filename = match?.[1] ?? "alterra-backup.dump";
       const url = URL.createObjectURL(res.data as Blob);
       const link = document.createElement("a");
       link.href = url;
@@ -253,7 +253,7 @@ export default function AppSettingsPage() {
               <input
                 ref={backupFileInputRef}
                 type="file"
-                accept=".gz"
+                accept=".dump"
                 className="hidden"
                 onChange={(e) => void handleBackupFileChange(e)}
               />
@@ -263,7 +263,7 @@ export default function AppSettingsPage() {
                 disabled={uploadingBackup}
                 onClick={() => backupFileInputRef.current?.click()}
               >
-                {uploadingBackup ? "Envoi…" : "Choisir un fichier .sql.gz"}
+                {uploadingBackup ? "Envoi…" : "Choisir un fichier .dump"}
               </Button>
               <p className="mt-1 text-xs text-zinc-500">
                 Remplace intégralement les données actuelles — à utiliser avec précaution.

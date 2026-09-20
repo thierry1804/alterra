@@ -1,0 +1,18 @@
+# Applique infra/scripts/firewall-dev.sh au démarrage (après Docker, qui crée la chaîne DOCKER-USER)
+# et à chaque redémarrage du démon Docker.
+#
+# Installation :
+#   sudo cp infra/systemd/alterra-firewall.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now alterra-firewall.service
+[Unit]
+Description=Pare-feu ALTERRA (ferme les ports de dev exposés)
+After=docker.service network-online.target
+Wants=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/debian/alterra/infra/scripts/firewall-dev.sh
+
+[Install]
+WantedBy=multi-user.target docker.service

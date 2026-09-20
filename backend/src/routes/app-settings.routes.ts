@@ -15,6 +15,7 @@ export const appSettingsRouter = Router();
 
 const SETTINGS_ID = "singleton";
 const DEFAULT_APP_NAME = "ALTERRA";
+const ICON_MAX_BYTES = 2 * 1024 * 1024;
 const ICON_EXTENSIONS = ["png", "jpg", "svg", "webp"] as const;
 
 const CONTENT_TYPE_BY_EXT: Record<(typeof ICON_EXTENSIONS)[number], string> = {
@@ -120,6 +121,13 @@ appSettingsRouter.post(
       const { iconKey } = req.body as z.infer<typeof confirmIconSchema>;
       assertIconKeyPrefix(iconKey);
 
+      const stat = await minioClient.statObject(BUCKETS.assets, iconKey).catch(() => null);
+      if (!stat) throw new ApiError(422, "ICON_NOT_UPLOADED", "Fichier icône introuvable");
+      if (stat.size > ICON_MAX_BYTES) {
+        await minioClient.removeObject(BUCKETS.assets, iconKey).catch(() => undefined);
+        throw new ApiError(413, "ICON_TOO_LARGE", "Icône trop volumineuse (2 Mo maximum)");
+      }
+
       const before = await getAppSetting();
 
       const updated = await prisma.appSetting.upsert({
@@ -163,6 +171,9 @@ appSettingsRouter.get("/app-settings/icon", async (_req, res, next) => {
     const stream = await minioClient.getObject(BUCKETS.assets, settings.iconKey);
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=300");
+    // Un SVG ouvert directement s'exécute dans l'origine de l'API : on le neutralise.
+    res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     stream.on("error", next);
     stream.pipe(res);
   } catch (err) {

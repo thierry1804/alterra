@@ -25,7 +25,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return res.status(err.status).json({
       code: err.code,
       message: err.message,
-      details: err.details,
+      details: err.status >= 500 ? undefined : err.details,
       traceId: req.id,
     });
   }

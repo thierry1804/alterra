@@ -4,10 +4,12 @@ import { startDailyPdfWorker, startWeeklyPdfWorker, stopDailyPdfWorker, stopWeek
 import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
 import { ensureBuckets } from "./services/storage/minio.js";
+import { assertSecureConfig } from "./lib/security-config.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
 async function main() {
+  assertSecureConfig();
   await prisma.$connect();
   await ensureBuckets().catch((err) => logger.warn({ err }, "MinIO bucket bootstrap skipped"));
 

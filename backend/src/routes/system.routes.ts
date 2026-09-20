@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { spawn } from "node:child_process";
-import { createGzip, createGunzip } from "node:zlib";
+import { Transform } from "node:stream";
 import { Role } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
@@ -31,6 +31,24 @@ function timestampSuffix(): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
+const MAX_BACKUP_BYTES = 500 * 1024 * 1024;
+
+/** Refuse tout fichier qui n'est pas une archive pg_dump au format custom (en-tête "PGDMP"). */
+function requirePgDumpHeader() {
+  let checked = false;
+  return new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      if (!checked) {
+        if (chunk.length < 5 || chunk.subarray(0, 5).toString("latin1") !== "PGDMP") {
+          return cb(new ApiError(422, "INVALID_BACKUP_FILE", "Fichier invalide : sauvegarde .dump ALTERRA attendue"));
+        }
+        checked = true;
+      }
+      cb(null, chunk);
+    },
+  });
+}
+
 const restoreSchema = z.object({
   backupKey: z.string().min(1),
 });
@@ -45,7 +63,7 @@ systemRouter.get("/system/backup", requireAuth, requireRole(Role.ADMIN), async (
   const { host, port, user, password, dbname } = pgConnParams();
   const dump = spawn(
     "pg_dump",
-    ["-h", host, "-p", port, "-U", user, "-d", dbname, "--clean", "--if-exists", "--no-owner", "--no-privileges"],
+    ["-h", host, "-p", port, "-U", user, "-d", dbname, "-Fc", "--no-owner", "--no-privileges"],
     { env: { ...process.env, PGPASSWORD: password } },
   );
 
@@ -65,17 +83,17 @@ systemRouter.get("/system/backup", requireAuth, requireRole(Role.ADMIN), async (
     if (code !== 0 && !failed) {
       logger.error({ code, stderr }, "pg_dump exited with error");
       if (!res.headersSent) {
-        next(new ApiError(500, "BACKUP_FAILED", "pg_dump a échoué", { code, stderr }));
+        next(new ApiError(500, "BACKUP_FAILED", "pg_dump a échoué"));
       } else {
         res.destroy();
       }
     }
   });
 
-  res.setHeader("Content-Type", "application/gzip");
-  res.setHeader("Content-Disposition", `attachment; filename="alterra-backup-${timestampSuffix()}.sql.gz"`);
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("Content-Disposition", `attachment; filename="alterra-backup-${timestampSuffix()}.dump"`);
 
-  dump.stdout.pipe(createGzip()).pipe(res);
+  dump.stdout.pipe(res);
 
   res.on("close", async () => {
     if (res.writableFinished) {
@@ -111,33 +129,56 @@ systemRouter.post(
   validate(restoreSchema),
   async (req, res, next) => {
     const { backupKey } = req.body as z.infer<typeof restoreSchema>;
-    assertBackupKeyPrefix(backupKey);
 
     try {
+      assertBackupKeyPrefix(backupKey);
+      const stat = await minioClient.statObject(BUCKETS.assets, backupKey);
+      if (stat.size > MAX_BACKUP_BYTES) {
+        await minioClient.removeObject(BUCKETS.assets, backupKey).catch(() => undefined);
+        throw new ApiError(413, "BACKUP_TOO_LARGE", "Fichier de sauvegarde trop volumineux");
+      }
       const objectStream = await minioClient.getObject(BUCKETS.assets, backupKey);
       const { host, port, user, password, dbname } = pgConnParams();
 
-      const restore = spawn("psql", ["-h", host, "-p", port, "-U", user, "-d", dbname], {
-        env: { ...process.env, PGPASSWORD: password },
-      });
+      // pg_restore (format custom) n'exécute que des commandes d'archive — contrairement à psql
+      // qui interpréterait des méta-commandes (\\!cmd) d'un fichier fourni par l'utilisateur.
+      const restore = spawn(
+        "pg_restore",
+        ["-h", host, "-p", port, "-U", user, "-d", dbname, "--clean", "--if-exists", "--no-owner", "--no-privileges", "--single-transaction", "--exit-on-error"],
+        {
+          env: { ...process.env, PGPASSWORD: password },
+        },
+      );
 
       let stderr = "";
       restore.stderr.on("data", (chunk) => {
         stderr += chunk.toString();
       });
 
-      const exitCode = await new Promise<number>((resolve, reject) => {
-        restore.on("error", reject);
-        restore.on("close", (code) => resolve(code ?? 1));
-        objectStream.pipe(createGunzip()).pipe(restore.stdin).on("error", reject);
-      });
-
-      await minioClient.removeObject(BUCKETS.assets, backupKey).catch((err) =>
-        logger.warn({ err, backupKey }, "cleanup of restored backup object failed"),
-      );
+      let exitCode: number;
+      try {
+        exitCode = await new Promise<number>((resolve, reject) => {
+          const guard = requirePgDumpHeader();
+          const fail = (err: Error) => {
+            restore.kill();
+            reject(err);
+          };
+          restore.on("error", fail);
+          restore.on("close", (code) => resolve(code ?? 1));
+          objectStream.on("error", fail);
+          guard.on("error", fail);
+          restore.stdin.on("error", () => undefined);
+          objectStream.pipe(guard).pipe(restore.stdin);
+        });
+      } finally {
+        await minioClient.removeObject(BUCKETS.assets, backupKey).catch((err) =>
+          logger.warn({ err, backupKey }, "cleanup of backup object failed"),
+        );
+      }
 
       if (exitCode !== 0) {
-        throw new ApiError(500, "RESTORE_FAILED", "psql a échoué pendant la restauration", { stderr });
+        logger.error({ exitCode, stderr }, "pg_restore failed");
+        throw new ApiError(500, "RESTORE_FAILED", "La restauration a échoué — la base n'a pas été modifiée (transaction annulée)");
       }
 
       await writeAuditLog({

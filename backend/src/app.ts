@@ -20,10 +20,9 @@ export function createApp(): Express {
   const app = express();
 
   app.disable("x-powered-by");
-  // Un seul reverse proxy en amont (nginx en prod, Vite en dev) : fait confiance au
-  // premier hop de X-Forwarded-For pour req.ip — sans ça, l'IP journalisée dans
-  // l'audit est celle du proxy (::1 en dev), jamais celle de l'utilisateur.
-  app.set("trust proxy", 1);
+  // Nombre de reverse proxies devant l'API (nginx = 1 ; cloudflared → Vite → API en dev = 2).
+  // Sans ça req.ip est l'IP du proxy : audit faux et rate-limit partagé par tous les clients.
+  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS ?? 1));
   app.use(helmet());
   app.use(cors({ origin: ORIGINS, credentials: true }));
   app.use(express.json({ limit: "2mb" }));
@@ -36,7 +35,7 @@ export function createApp(): Express {
     "/api/v1/auth",
     rateLimit({
       windowMs: 5 * 60 * 1000,
-      limit: process.env.NODE_ENV === "production" ? 10 : 1000,
+      limit: process.env.NODE_ENV === "production" ? 10 : 100,
       standardHeaders: true,
       legacyHeaders: false,
     }),
