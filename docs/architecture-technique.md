@@ -364,6 +364,7 @@ erDiagram
 ### 7.2 Secrets, données et fichiers
 
 - **Secrets** : au démarrage, `lib/security-config.ts` compare `JWT_SECRET`, `JWT_REFRESH_SECRET`, `MFA_ENCRYPTION_KEY`, `MINIO_ACCESS_KEY` et `MINIO_SECRET_KEY` aux valeurs du `.env.example` public : arrêt immédiat en production, erreur bruyante sinon. Rotation : `infra/scripts/rotate-secrets.sh` (JWT, MFA, sessions, mot de passe admin) et `infra/scripts/rotate-infra-secrets.sh` (Postgres, Redis, MinIO). `backend/.env` reste en `600`.
+- **Mots de passe de comptes** : aucun n'est écrit dans le code, les tests ou la documentation. Ils ne vivent qu'en base, hachés (argon2id). Le seed les lit dans `SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD`, ou les génère au hasard et les affiche une seule fois, pour les seuls comptes qu'il vient de créer. La CI génère des mots de passe aléatoires à chaque exécution.
 - **Fichiers** : buckets MinIO privés, URLs pré-signées de 15 min, aucun fichier servi directement par Express — sauf l'icône de l'application, relayée par l'API avec `Content-Security-Policy: sandbox` et `nosniff` (un SVG ouvert directement ne peut pas s'exécuter dans l'origine de l'API) ; taille et existence de l'objet vérifiées côté serveur à la confirmation.
 - **Sauvegarde et restauration depuis l'Admin** (`routes/system.routes.ts`, ADMIN uniquement ; la sauvegarde et la restauration sont inscrites au journal d'audit) :
   - sauvegarde = `pg_dump -Fc` (format custom, flux direct vers le navigateur, rien n'est stocké côté serveur) ;

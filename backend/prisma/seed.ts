@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { PrismaClient, BioProvider, Role, WorkerStatus } from "@prisma/client";
 import argon2 from "argon2";
 import {
@@ -8,7 +9,6 @@ import {
   ACTIVITY_CATEGORIES,
   UNITS,
   ADMIN_ID,
-  ADMIN_PASSWORD,
   cdsId,
   cdeId,
   EXPECTED_SEED_COUNTS,
@@ -16,17 +16,26 @@ import {
   SITES,
   SUB_ACTIVITIES,
   teamId,
-  USER_PASSWORD,
   workerId,
 } from "./seed-data.js";
 
 const prisma = new PrismaClient();
 
+/** Mot de passe fourni par l'environnement, sinon généré au hasard : jamais écrit dans le code. */
+function passwordFor(envKey: string): { value: string; generated: boolean } {
+  const provided = process.env[envKey];
+  if (provided) {
+    if (provided.length < 12) throw new Error(`${envKey} doit faire au moins 12 caractères`);
+    return { value: provided, generated: false };
+  }
+  return { value: randomBytes(18).toString("base64url"), generated: true };
+}
+
 async function main() {
-  const [adminHash, userHash] = await Promise.all([
-    argon2.hash(ADMIN_PASSWORD),
-    argon2.hash(USER_PASSWORD),
-  ]);
+  const admin = passwordFor("SEED_ADMIN_PASSWORD");
+  const user = passwordFor("SEED_USER_PASSWORD");
+  const [adminHash, userHash] = await Promise.all([argon2.hash(admin.value), argon2.hash(user.value)]);
+  const emailsBefore = new Set((await prisma.user.findMany({ select: { email: true } })).map((u) => u.email));
 
   /** IDs réels en base (peuvent différer des UUID seed-data si sites préexistants). */
   const siteIdByShortCode = new Map<string, string>();
@@ -214,8 +223,22 @@ async function main() {
     EXPECTED_SEED_COUNTS.subActivities,
     EXPECTED_SEED_COUNTS.workers,
   );
-  console.log("Admin: admin@alterra.mg / %s", ADMIN_PASSWORD);
-  console.log("CDS/CDE: *@alterra.test / %s", USER_PASSWORD);
+
+  // Les mots de passe ne vivent qu'en base (hachés). Un mot de passe généré n'est affiché qu'ici, une seule fois,
+  // et seulement pour les comptes réellement créés par ce passage (un compte existant garde son mot de passe).
+  const emailsAfter = (await prisma.user.findMany({ select: { email: true } })).map((u) => u.email);
+  const created = emailsAfter.filter((email) => !emailsBefore.has(email));
+  const report = (label: string, emails: string[], secret: { value: string; generated: boolean }, envKey: string) => {
+    if (emails.length === 0) return console.log("%s : comptes existants conservés, mot de passe inchangé", label);
+    console.log(
+      "%s : %d compte(s) créé(s) — mot de passe %s",
+      label,
+      emails.length,
+      secret.generated ? `généré (à noter maintenant, non récupérable) : ${secret.value}` : `fourni par ${envKey}`,
+    );
+  };
+  report("Admin (admin@alterra.mg)", created.filter((e) => e === "admin@alterra.mg"), admin, "SEED_ADMIN_PASSWORD");
+  report("CDS/CDE (*@alterra.test)", created.filter((e) => e.endsWith("@alterra.test")), user, "SEED_USER_PASSWORD");
 }
 
 main()

@@ -234,8 +234,8 @@ Il existe aussi un mode « stack complète » (`docker compose up -d`, API conte
 
 | Rôle       | Email                          | Mot de passe   |
 | ---------- | ------------------------------- | --------------- |
-| Admin      | `admin@alterra.mg`              | `ChangeMe123!`  |
-| Chef de Service / Chef d'Équipe | `*@alterra.test` (ex. `cds.<code-site>@alterra.test`) | `test123!` |
+| Admin      | `admin@alterra.mg`              | `SEED_ADMIN_PASSWORD` (sinon généré, affiché une fois par le seed) |
+| Chef de Service / Chef d'Équipe | `*@alterra.test` (ex. `cds.<code-site>@alterra.test`) | `SEED_USER_PASSWORD` (sinon généré, affiché une fois par le seed) |
 | MinIO console | `alterra_admin` | `alterra_dev_secret` (console sur `:9001`) |
 
 Le seed crée 5 sites, 21 utilisateurs (1 admin + 5 CDS + 15 CDE), 10 activités et 50 MOC — un jeu de données de développement réduit, pas la volumétrie de production (~600 MOC, 40/équipe) décrite au §1.

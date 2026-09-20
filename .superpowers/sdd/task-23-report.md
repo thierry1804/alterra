@@ -42,9 +42,9 @@ Variables optionnelles : `E2E_ADMIN_EMAIL`, `E2E_CDE_EMAIL`, `E2E_CDS_EMAIL`, `E
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
-| Admin | admin@alterra.mg | ChangeMe123! |
-| CDE | cde.mnk1@alterra.test | test123! |
-| CDS | cds.mnk@alterra.test | test123! |
+| Admin | admin@alterra.mg | <mot de passe du seed> |
+| CDE | cde.mnk1@alterra.test | <mot de passe du seed> |
+| CDS | cds.mnk@alterra.test | <mot de passe du seed> |
 | PIN PWA | — | 1234 |
 
 ## CI

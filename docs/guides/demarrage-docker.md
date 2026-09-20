@@ -90,11 +90,11 @@ curl http://localhost:3001/health
 
 | Rôle | Email | Mot de passe |
 | --- | --- | --- |
-| Admin | `admin@alterra.mg` | `ChangeMe123!` |
-| CDS / CDE | `*@alterra.test` | `test123!` |
+| Admin | `admin@alterra.mg` | défini par `SEED_ADMIN_PASSWORD`, sinon généré et affiché **une seule fois** par `npm run db:setup` |
+| CDS / CDE | `*@alterra.test` | défini par `SEED_USER_PASSWORD`, sinon généré et affiché une seule fois |
 | MinIO console | `alterra_admin` | `alterra_dev_secret` |
 
-> ⚠️ Identifiants de **développement uniquement**. Jamais en staging/prod (voir `infra/` + `.env.prod`).
+> Les mots de passe des comptes ne sont écrits nulle part dans le code : ils vivent en base (hachés). Un compte déjà créé garde son mot de passe quand on relance le seed. Comptes de **développement uniquement**. Jamais en staging/prod (voir `infra/` + `.env.prod`).
 
 ---
 

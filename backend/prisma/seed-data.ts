@@ -12,8 +12,6 @@ export const EXPECTED_SEED_COUNTS = {
 } as const;
 
 export const ADMIN_ID = "00000000-0000-0000-0002-000000000001";
-export const ADMIN_PASSWORD = "ChangeMe123!";
-export const USER_PASSWORD = "test123!";
 
 export const SITES = [
   {

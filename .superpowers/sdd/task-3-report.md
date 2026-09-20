@@ -47,7 +47,7 @@
 
 | Entité | Quantité | Détail |
 | ------ | -------- | ------ |
-| Admin | 1 | `admin@alterra.mg` / `ChangeMe123!` |
+| Admin | 1 | `admin@alterra.mg` / `<mot de passe du seed>` |
 | CDS | 5 | `cds.{site}@alterra.test` — 1 par site |
 | CDE | 15 | `cde.{site}{1-3}@alterra.test` — 3 équipes/site |
 | Sites | 5 | MNK, ANT, ANJ, MGT, AMB |
@@ -55,7 +55,7 @@
 | Activités | 10 | UUIDs `0006-*`, 5 liées aux sites |
 | MOC | 50 | 10 par site, matricules `MOC-{SITE}-01..10` |
 
-Mot de passe CDS/CDE : `test123!`
+Mot de passe CDS/CDE : `<mot de passe du seed>`
 
 ### Tests
 

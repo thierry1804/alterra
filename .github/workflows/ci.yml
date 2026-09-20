@@ -77,6 +77,15 @@ jobs:
 
       - run: npm ci
 
+      - name: Mots de passe de test (aléatoires, propres à cette exécution)
+        run: |
+          ADMIN_PW="$(openssl rand -hex 16)"; USER_PW="$(openssl rand -hex 16)"
+          echo "::add-mask::$ADMIN_PW"; echo "::add-mask::$USER_PW"
+          {
+            echo "SEED_ADMIN_PASSWORD=$ADMIN_PW"; echo "E2E_ADMIN_PASSWORD=$ADMIN_PW"
+            echo "SEED_USER_PASSWORD=$USER_PW";   echo "E2E_USER_PASSWORD=$USER_PW"
+          } >> "$GITHUB_ENV"
+
       - name: Prisma migrate + seed
         run: npx prisma migrate deploy && npm run db:seed
         working-directory: backend

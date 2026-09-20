@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { Role } from "@prisma/client";
 import argon2 from "argon2";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { resetRedisForTests } from "../lib/redis.js";
 import { encryptMfaSecret, clearPendingMfaForTests } from "../services/auth/mfa.service.js";
 import { generateSecret, generateSync } from "otplib";
 
+/** Mot de passe aléatoire propre à chaque exécution : aucun secret en dur dans les tests. */
+const TEST_PASSWORD = randomBytes(12).toString("hex");
 const MOCK_USER_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
 const RAW_REFRESH = "known-refresh-token-for-tests";
@@ -61,7 +63,7 @@ describe("auth endpoints", () => {
     await resetRedisForTests();
     clearPendingMfaForTests();
     refreshTokenState = { revokedAt: null };
-    mockUser.passwordHash = await argon2.hash("ChangeMe123!", { type: argon2.argon2id });
+    mockUser.passwordHash = await argon2.hash(TEST_PASSWORD, { type: argon2.argon2id });
     mockUser.mfaSecret = null;
 
     vi.mocked(prisma.user.findUnique).mockImplementation(async ({ where }) => {
@@ -146,7 +148,7 @@ describe("auth endpoints", () => {
     const app = createApp();
     const res = await request(app)
       .post("/api/v1/auth/login")
-      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
+      .send({ email: "admin@alterra.mg", password: TEST_PASSWORD });
 
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBeTypeOf("string");
@@ -159,7 +161,7 @@ describe("auth endpoints", () => {
     const app = createApp();
     const res = await request(app)
       .post("/api/v1/auth/login")
-      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
+      .send({ email: "admin@alterra.mg", password: TEST_PASSWORD });
 
     const header = decodeTokenHeader(res.body.accessToken);
     expect(header.alg).toBe("HS256");
@@ -236,7 +238,7 @@ describe("auth endpoints", () => {
 
     const withoutMfa = await request(app)
       .post("/api/v1/auth/login")
-      .send({ email: "admin@alterra.mg", password: "ChangeMe123!" });
+      .send({ email: "admin@alterra.mg", password: TEST_PASSWORD });
 
     expect(withoutMfa.status).toBe(401);
     expect(withoutMfa.body.code).toBe("MFA_REQUIRED");
@@ -244,7 +246,7 @@ describe("auth endpoints", () => {
     const code = generateSync({ secret });
     const withMfa = await request(app)
       .post("/api/v1/auth/login")
-      .send({ email: "admin@alterra.mg", password: "ChangeMe123!", mfaCode: code });
+      .send({ email: "admin@alterra.mg", password: TEST_PASSWORD, mfaCode: code });
 
     expect(withMfa.status).toBe(200);
     expect(withMfa.body.accessToken).toBeTypeOf("string");

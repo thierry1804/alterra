@@ -57,7 +57,7 @@ Lance **toute l'application** en conteneurs (infra + API + frontends admin/pwa b
 
 ```bash
 docker compose --profile full up -d --build
-npm run db:setup -w backend    # migrations + seed (première fois, depuis un poste avec Node)
+npm run db:setup -w backend    # migrations + seed (première fois) — affiche UNE fois les mots de passe générés, ou utilise SEED_ADMIN_PASSWORD / SEED_USER_PASSWORD
 ```
 
 - Admin : http://localhost:5173
@@ -73,7 +73,7 @@ Lance toute l'infrastructure + l'API conteneurisée (image `backend/Dockerfile`,
 ```bash
 npm install
 docker compose up -d --build    # postgres, redis, minio, api
-npm run db:setup -w backend     # migrations + seed (première fois)
+npm run db:setup -w backend     # migrations + seed (première fois) — mots de passe générés affichés une seule fois
 curl http://localhost:3001/health
 # {"status":"ok","db":"up","timestamp":"..."}
 ```

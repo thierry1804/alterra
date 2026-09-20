@@ -143,9 +143,9 @@ Remplir PV recette (`docs/qa/recette-v1.md` Jour 1).
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
-| Admin | admin@alterra.mg | ChangeMe123! |
-| CDS MNK | cds.mnk@alterra.test | test123! |
-| CDE MNK-1 | cde.mnk1@alterra.test | test123! |
+| Admin | admin@alterra.mg | communiqué par l'administrateur |
+| CDS MNK | cds.mnk@alterra.test | communiqué par l'administrateur |
+| CDE MNK-1 | cde.mnk1@alterra.test | communiqué par l'administrateur |
 | PIN PWA | — | 1234 (formation uniquement) |
 
 ---
