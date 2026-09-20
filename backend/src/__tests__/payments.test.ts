@@ -304,6 +304,19 @@ describe("Payments API", () => {
     expect(sheet.getRow(2).getCell(1).value).toBe(mockWorker.mvolaNumber);
   });
 
+  it("exportMvolaPayments only reads the requested year (referenceYear in the filter)", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    await exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID, referenceYear: 2091 });
+
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ periodIso: "S29", referenceYear: 2091, status: "PENDING" }),
+      }),
+    );
+  });
+
   it("exportMvolaPayments writes the 5 spec columns (téléphone, description, période, montant, bio)", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
     vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });

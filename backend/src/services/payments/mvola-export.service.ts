@@ -36,11 +36,12 @@ export async function exportMvolaPayments(
     includeHeader?: boolean;
   },
 ): Promise<ExportMvolaResult> {
-  const { shortPeriod } = resolvePeriod(periodIso, undefined, options.referenceYear);
+  const { shortPeriod, referenceYear } = resolvePeriod(periodIso, undefined, options.referenceYear);
 
   const pendingPayments = await prisma.payment.findMany({
     where: {
       periodIso: shortPeriod,
+      referenceYear,
       status: PaymentStatus.PENDING,
     },
     include: { worker: true },

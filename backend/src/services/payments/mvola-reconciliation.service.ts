@@ -61,6 +61,20 @@ function periodWeekNumber(periodIso: string): number {
   return Number(periodIso.replace(/^S/i, ""));
 }
 
+/**
+ * Clé « année:semaine » d'une ligne du relevé. L'année est celle de la date d'exécution, sauf autour du 1er janvier :
+ * une semaine 50 et plus payée en janvier ou février appartient à l'année précédente, une semaine 1 ou 2 payée en
+ * décembre à l'année suivante. Sans date lisible, l'année est inconnue (`?`) et seul le numéro de semaine compte.
+ */
+export function weekKey(semaine: number, executedAt: Date): string {
+  if (Number.isNaN(executedAt.getTime())) return `?:${semaine}`;
+  let year = executedAt.getFullYear();
+  const month = executedAt.getMonth();
+  if (semaine >= 50 && month <= 1) year -= 1;
+  else if (semaine <= 2 && month === 11) year += 1;
+  return `${year}:${semaine}`;
+}
+
 function buildKey(site: string, semaine: number, bordereau: number, suffix: string): string {
   return `${site.toLowerCase()}|${semaine}|${bordereau}|${suffix}`;
 }
@@ -113,7 +127,7 @@ export async function reconcileMvolaReleve(
   const referenceIndex = new Map(existingReferences.map((p) => [p.mvolaReference as string, p.id]));
 
   const touched = new Set<string>();
-  const weeksInFile = new Set<number>();
+  const weeksInFile = new Set<string>();
   const result: MvolaReconciliationResult = {
     confirme: 0,
     ecartMontant: 0,
@@ -147,7 +161,8 @@ export async function reconcileMvolaReleve(
     const label = parseSalaryLabel(row.description ?? "");
     if (!label) continue;
 
-    weeksInFile.add(label.semaine);
+    const executedAt = new Date(row.dateHeure.replace(" ", "T"));
+    weeksInFile.add(weekKey(label.semaine, executedAt));
 
     if (referenceIndex.has(row.reference)) {
       result.dejaTraite += 1;
@@ -181,7 +196,6 @@ export async function reconcileMvolaReleve(
     }
 
     touched.add(payment.id);
-    const executedAt = new Date(row.dateHeure.replace(" ", "T"));
     const montantAttendu = new Prisma.Decimal(montantReleve);
 
     if (montantAttendu.equals(payment.amount)) {
@@ -239,7 +253,14 @@ export async function reconcileMvolaReleve(
 
   for (const payment of candidates) {
     if (touched.has(payment.id)) continue;
-    if (!weeksInFile.has(periodWeekNumber(payment.periodIso))) continue;
+    // Seuls les paiements de la semaine ET de l'année couvertes par le relevé peuvent être « non confirmés ».
+    const week = periodWeekNumber(payment.periodIso);
+    const year = payment.referenceYear ?? payment.createdAt?.getFullYear();
+    const covered =
+      year === undefined
+        ? [...weeksInFile].some((key) => key.endsWith(`:${week}`))
+        : weeksInFile.has(`${year}:${week}`) || weeksInFile.has(`?:${week}`);
+    if (!covered) continue;
 
     await writePayment({
       where: { id: payment.id },
