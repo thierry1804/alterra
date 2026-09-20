@@ -1,11 +1,12 @@
 # Résultats détaillés — Recette Sprint 3 sur l'environnement de démonstration
 
-Détail complet, test par test, de la recette du Sprint 3 (jalon 3) réalisée le **20 septembre 2026** sur l'environnement déployé. Ce document complète la synthèse `docs/qa/sprint3-rapport-recette-demo.md` (verdict, anomalies, correctifs proposés, purge des données).
+Détail complet, test par test, de la recette du Sprint 3 (jalon 3) sur l'environnement de démonstration, en deux temps le **20 septembre 2026** : la recette initiale (74 tests réussis sur 95, avant correction) puis son rejeu après correction (**95 sur 95**). Ce document complète `docs/qa/sprint3-rapport-recette-demo.md` (verdict initial, anomalies) et `docs/qa/sprint3-corrections.md` (corrections).
 
-Aucun code applicatif n'a été modifié. Aucun mot de passe, jeton ni identifiant secret n'apparaît ici.
+Aucun mot de passe, jeton ni identifiant secret n'apparaît ici. La recette initiale n'a modifié aucun code applicatif ; les corrections sont décrites en section 0.
 
 ## Sommaire
 
+0. [Rejeu après correction](#0-rejeu-après-correction-20-septembre-2026)
 1. [Contexte et campagne](#1-contexte-et-campagne)
 2. [Synthèse chiffrée](#2-synthèse-chiffrée)
 3. [Résultat détaillé par spec](#3-résultat-détaillé-par-spec)
@@ -16,7 +17,300 @@ Aucun code applicatif n'a été modifié. Aucun mot de passe, jeton ni identifia
 8. [Comptes réels sollicités et effets de bord](#8-comptes-réels-sollicités-et-effets-de-bord)
 9. [Preuves, limites et rejeu](#9-preuves-limites-et-rejeu)
 
-## 1. Contexte et campagne
+## 0. Rejeu après correction (20 septembre 2026)
+
+Les sections 1 à 9 ci-dessous décrivent la **recette initiale**, faite avant correction (74 tests réussis sur 95). Elles sont conservées telles quelles, comme état de départ. Cette section 0 rend compte du **rejeu de la même suite** après correction des anomalies A1 à A15 et déploiement sur la démonstration.
+
+**Résultat : 95 tests sur 95 réussis, 0 échec, 0 test ignoré** (75 tests Admin, 20 tests PWA).
+
+### 0.1 Contexte du rejeu
+
+| Élément | Valeur |
+|---|---|
+| Date | 20/09/2026, après le déploiement de 14 h 12 UTC |
+| Code déployé | branche `develop`, HEAD `0937e4d` (quatre commits de correction : `cfa8c22`, `a3cc121`, `10951f3`, `0937e4d`) |
+| Bundles déployés | Admin `index-DPla6o6H.js` / `index-7LPp1ijo.css`, PWA `index-BTpov1yW.js` / `index-CZhYqiI3.css` |
+| Migration | `20260920140000_payment_reference_year` appliquée |
+| Navigateur | Chromium de Playwright (`E2E_S3_CHANNEL=chromium`), exécuté depuis le VPS, 1 worker, 0 retry |
+| Passes | deux passes : projet `admin` (78 réussis : 75 tests plus 3 d'infrastructure), puis projet `pwa` (23 réussis : 20 tests plus 3 d'infrastructure) |
+| Comptes | administrateur, `cds.amb`, `cde.amb2` et comptes de test `E2E-S3-` ; mots de passe passés par variables d'environnement |
+
+**Pourquoi deux passes.** L'API limite les routes `/api/v1/auth/*` à 100 requêtes par 5 minutes et par adresse IP. Toute la suite depuis une seule adresse dépasse cette limite : un premier passage complet a reçu des HTTP 429 sur quatre tests PWA (dont la connexion de `cds.amb`), sans lien avec les corrections.
+
+### 0.2 Synthèse par spec, avant et après
+
+| Spec | UC | Avant (OK / KO) | Après (OK / KO) |
+|---|---|---:|---:|
+| `sprint3-sites.spec.ts` | UC-FE-ADM-SITES | 5 / 2 | 7 / 0 |
+| `sprint3-activities.spec.ts` | UC-FE-ADM-ACT | 6 / 1 | 7 / 0 |
+| `sprint3-workers.spec.ts` | UC-FE-ADM-WORKERS | 9 / 2 | 11 / 0 |
+| `sprint3-users.spec.ts` | UC-FE-ADM-USERS | 5 / 4 | 9 / 0 |
+| `sprint3-pointages.spec.ts` | UC-FE-ADM-PNT | 4 / 3 | 7 / 0 |
+| `sprint3-pay.spec.ts` | UC-FE-ADM-PAY-BORD / PAY-EXP / PAY-IMP | 7 / 1 | 8 / 0 |
+| `sprint3-zz-pay-format.spec.ts` | UC-FE-ADM-PAY-EXP / PAY-IMP | 0 / 2 | 2 / 0 |
+| `sprint3-reports.spec.ts` | UC-FE-ADM-REP | 4 / 2 | 6 / 0 |
+| `sprint3-audit.spec.ts` | UC-FE-ADM-AUDIT | 3 / 1 | 4 / 0 |
+| `sprint3-zz-audit-trail.spec.ts` | Transverse | 1 / 0 | 1 / 0 |
+| `sprint3-rbac.spec.ts` | Transverse (RBAC) | 12 / 1 | 13 / 0 |
+| `sprint3-pwa-setup.spec.ts` | UC-FE-PWA-SETUP | 6 / 0 | 6 / 0 |
+| `sprint3-pwa-auth.spec.ts` | UC-FE-PWA-AUTH | 12 / 2 | 14 / 0 |
+| **Total** | | **74 / 21** | **95 / 0** |
+
+Le nombre de tests d'un cas d'usage peut différer entre les deux colonnes : la recette initiale comptait le dernier résultat de chaque test sur plusieurs runs, et des tests ont été ajoutés ou adaptés pour le rejeu (voir 0.5).
+
+### 0.3 Résultat détaillé par test
+
+Légende : ✅ réussi. Aucun test n'est en échec ni ignoré. Les notes reprennent les annotations émises par les tests (mesures, constats).
+
+#### Sites
+
+`sprint3-sites.spec.ts` — UC-FE-ADM-SITES
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | liste paginée, cohérente avec la réponse API (lecture seule) | ✅ OK | 1.4 s |  |
+| 2 | création via le formulaire (écriture E2E-S3-) | ✅ OK | 2.7 s |  |
+| 3 | validations du formulaire (UI + API) | ✅ OK | 2.3 s |  |
+| 4 | édition : le code est immuable, la localisation modifiable | ✅ OK | 3.3 s |  |
+| 5 | désactivation | ✅ OK | 3.1 s |  |
+| 6 | état vide : message explicite attendu | ✅ OK | 1.3 s |  |
+| 7 | état d'erreur : message explicite attendu | ✅ OK | 2.7 s |  |
+
+#### Activités et tarif versionné RG-04
+
+`sprint3-activities.spec.ts` — UC-FE-ADM-ACT
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | liste des catégories, recherche et dépliage (lecture seule) | ✅ OK | 3.7 s |  |
+| 2 | création d'une catégorie via le formulaire + validations | ✅ OK | 2.9 s |  |
+| 3 | changement de tarif : version fermée + nouvelle version (RG-04), historique visible | ✅ OK | 2.9 s |  |
+| 4 | validations du tarif | ✅ OK | 0.1 s |  |
+| 5 | désactivation de la sous-activité et de la catégorie | ✅ OK | 0.2 s |  |
+| 6 | état vide | ✅ OK | 1.5 s |  |
+| 7 | état d'erreur : message explicite attendu | ✅ OK | 2.8 s |  |
+
+#### MOC, volumétrie et import Excel
+
+`sprint3-workers.spec.ts` — UC-FE-ADM-WORKERS
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | volumétrie du référentiel réel : rendu, chargement par curseur, recherche (lecture seule) | ✅ OK | 7.8 s | volumétrie: 316 MOC réels ; rendu initial 1483 ms ; chargement complet (6 clics) 5738 ms ; recherche d'un nom réel (14 caractères, masqué) → 1 ligne(s) en 171 ms ; critère 600+: volume réel 316 < 600 MOC : critère « 600+ lignes » non éprouvé sur le réel (extrapolation seulement) |
+| 2 | filtres site et statut (jeu E2E) | ✅ OK | 1.8 s |  |
+| 3 | état d'erreur : message explicite attendu | ✅ OK | 2.8 s |  |
+| 4 | création via le formulaire | ✅ OK | 3.6 s |  |
+| 5 | validations serveur : doublons et formats | ✅ OK | 0.2 s |  |
+| 6 | édition (fiche) puis suppression avec confirmation | ✅ OK | 3.3 s |  |
+| 7 | import : fichier valide (aperçu puis import réel, données E2E) | ✅ OK | 3.3 s |  |
+| 8 | import : fichier mal formé et mauvaise extension | ✅ OK | 3.3 s |  |
+| 9 | import : colonne obligatoire absente | ✅ OK | 1.8 s |  |
+| 10 | import : doublons dans le fichier, lignes en erreur, doublon en base (aperçu seulement) | ✅ OK | 0.3 s |  |
+| 11 | import : un numéro MVola déjà en base met à jour le MOC existant (upsert silencieux) | ✅ OK | 0.2 s | constat: L'import met à jour sans avertissement bloquant le MOC dont le n° MVola existe déjà (mention « à mettre à jour » dans l'aperçu uniquement). |
+
+#### Utilisateurs
+
+`sprint3-users.spec.ts` — UC-FE-ADM-USERS
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | liste et filtre par rôle, cohérents avec l'API (lecture seule) | ✅ OK | 1.8 s |  |
+| 2 | état d'erreur : message explicite attendu | ✅ OK | 2.9 s |  |
+| 3 | création via le formulaire avec mot de passe temporaire généré | ✅ OK | 4.4 s |  |
+| 4 | création avec un mot de passe saisi (champ « optionnel » du formulaire) | ✅ OK | 2.6 s |  |
+| 5 | validations serveur : e-mail invalide, mot de passe court, e-mail en doublon | ✅ OK | 0.5 s |  |
+| 6 | édition via le formulaire | ✅ OK | 17.8 s |  |
+| 7 | réinitialisation du mot de passe | ✅ OK | 18.7 s |  |
+| 8 | mot de passe réinitialisé : le compte reste bloqué 15 min (jetons neufs refusés) | ✅ OK | 0.7 s |  |
+| 9 | désactivation : compte inactif refusé, sessions existantes révoquées | ✅ OK | 3.7 s |  |
+
+#### Pointages
+
+`sprint3-pointages.spec.ts` — UC-FE-ADM-PNT
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | liste, requêtes réseau et filtres cohérents avec l'API | ✅ OK | 4.3 s | performance: 50 pointages affichés → 0 requêtes GET /workers/:id (une par MOC distinct, N+1) |
+| 2 | état d'erreur : message explicite attendu | ✅ OK | 2.4 s |  |
+| 3 | sync des pointages : création, idempotence, validations | ✅ OK | 0.3 s |  |
+| 4 | détail puis correction avec motif obligatoire, tracée dans l'audit | ✅ OK | 3.3 s |  |
+| 5 | validation refusée sans bio OK, rejet avec motif obligatoire | ✅ OK | 3.2 s | diagnostic: validate sans bio : admin → HTTP 422 BIO_NOT_OK ; CDS → HTTP 422 BIO_NOT_OK |
+| 6 | isolation : CDE et CDS E2E ne voient que leurs pointages | ✅ OK | 0.1 s |  |
+| 7 | état vide : message explicite | ✅ OK | 1.5 s |  |
+
+#### Bordereau, export et import MVola
+
+`sprint3-pay.spec.ts` — UC-FE-ADM-PAY-BORD / PAY-EXP / PAY-IMP
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | préparation : pointages validés (bio OK) et garde-fou de période | ✅ OK | 2.1 s | biométrie: contrôle bio obtenu via : offline |
+| 2 | état vide, génération du bordereau, statut bio, régénération | ✅ OK | 2.8 s | constat: Régénération : identifiants de lignes tous remplacés (suppression + recréation des lignes PENDING). |
+| 3 | correction inline du montant avec motif obligatoire | ✅ OK | 2.5 s |  |
+| 4 | export MVola : téléchargement, en-têtes, contenu vérifié colonne par colonne | ✅ OK | 2.5 s |  |
+| 5 | règles après export : nouvel export, régénération et correction refusés | ✅ OK | 0.2 s |  |
+| 6 | import : relevé sans rapprochement possible => paiements « non confirmés » | ✅ OK | 0.1 s |  |
+| 7 | import : fichier mal formé ou colonnes manquantes | ✅ OK | 2.1 s | constat: fichier non Excel envoyé à /payments/import-status/columns → HTTP 422 |
+| 8 | import du relevé : confirmé, écart de montant, orphelin, frais, ignoré, interne | ✅ OK | 2.9 s |  |
+
+#### Conformité du fichier exporté et rejet d'un fichier non Excel
+
+`sprint3-zz-pay-format.spec.ts` — UC-FE-ADM-PAY-EXP / PAY-IMP
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | un fichier qui n'est pas un classeur Excel est refusé à la lecture des colonnes | ✅ OK | 0.0 s |  |
+| 2 | l'en-tête du fichier exporté respecte la spécification MVola (5 colonnes) | ✅ OK | 0.0 s |  |
+
+#### Rapports
+
+`sprint3-reports.spec.ts` — UC-FE-ADM-REP
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | aperçu « Pointages mensuels » cohérent avec l'API | ✅ OK | 1.4 s |  |
+| 2 | aperçu « Paiements mensuels » cohérent avec l'API | ✅ OK | 1.6 s |  |
+| 3 | aperçu « Présence par site » cohérent avec l'API | ✅ OK | 1.7 s |  |
+| 4 | période sans donnée : état vide ; filtre site | ✅ OK | 1.8 s |  |
+| 5 | état d'erreur : message explicite attendu | ✅ OK | 2.8 s |  |
+| 6 | export CSV, Excel et « PDF » du rapport Pointages | ✅ OK | 2.0 s |  |
+
+#### Journal d'audit
+
+`sprint3-audit.spec.ts` — UC-FE-ADM-AUDIT
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | table paginée cohérente avec l'API, navigation Précédent/Suivant | ✅ OK | 2.1 s |  |
+| 2 | filtres action, entité, période ; état vide ; réinitialisation | ✅ OK | 3.2 s |  |
+| 3 | le journal est en lecture seule (aucune route de modification) | ✅ OK | 0.2 s |  |
+| 4 | état d'erreur : message explicite attendu | ✅ OK | 2.8 s |  |
+
+#### Traçabilité de toutes les mutations de test
+
+`sprint3-zz-audit-trail.spec.ts` — Transverse
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | toutes les entités créées par la recette sont tracées dans l'audit (API = source de l'écran Audit) | ✅ OK | 1.1 s | audit: site: 14/14 tracés ; category: 13/13 tracés ; subActivity: 16/16 tracés ; user: 43/43 tracés ; team: 10/10 tracés ; worker: 39/39 tracés ; pointage: 42/42 tracés ; payment: 24/24 tracés |
+
+#### RBAC, isolation par site, comptes inactifs
+
+`sprint3-rbac.spec.ts` — Transverse (RBAC)
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | administrateur : accès à tous les écrans | ✅ OK | 20.4 s |  |
+| 2 | chef de service (AMB) : uniquement Tableau de bord et Pointages | ✅ OK | 13.9 s |  |
+| 3 | chef d'équipe : refusé sur tout l'Admin | ✅ OK | 12.3 s |  |
+| 4 | chef de service : la session Admin survit à un rechargement de page (F5) | ✅ OK | 4.2 s |  |
+| 5 | écran de connexion Admin : aucun panneau de comptes de démonstration | ✅ OK | 1.3 s |  |
+| 6 | sans jeton ou avec un jeton falsifié : 401 | ✅ OK | 0.4 s |  |
+| 7 | chef de service : 403 sur les routes Admin, lectures limitées à son site | ✅ OK | 0.9 s |  |
+| 8 | chef d'équipe : 403 sur les routes Admin et de validation | ✅ OK | 0.6 s |  |
+| 9 | isolation entre sites : AMB et ANJ ne partagent aucune donnée | ✅ OK | 0.5 s |  |
+| 10 | isolation UI : l'écran Pointages du chef de service n'affiche que son site | ✅ OK | 3.1 s |  |
+| 11 | compte inactif : connexion refusée (API + écran de connexion) | ✅ OK | 2.4 s |  |
+| 12 | compte de démonstration inactif réel : 1 seule tentative | ✅ OK | 0.2 s |  |
+| 13 | mauvais mot de passe : message générique, puis connexion normale | ✅ OK | 2.8 s |  |
+
+#### Manifest, service worker, précache, Dexie
+
+`sprint3-pwa-setup.spec.ts` — UC-FE-PWA-SETUP
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | manifest servi, lié à la page et installable (contrôle CDP « installabilityErrors ») | ✅ OK | 1.0 s | manifest: display=standalone start_url=/ icônes=192x192:image/png,512x512:image/png ; installabilité: aucune erreur |
+| 2 | service worker enregistré, actif ; précache Workbox complet | ✅ OK | 1.8 s | précache: 8 entrées ; caches : workbox-precache-v2-https://alterra-pwa.boss-etech.net/(8), api-cache(1) ; version: sw.js 13d36729809f ; bundle /assets/index-BTpov1yW.js /assets/index-CZhYqiI3.css |
+| 3 | assets servis par le service worker (cache-first) et cache API (network-first) | ✅ OK | 1.7 s |  |
+| 4 | navigation hors ligne : l'application se recharge depuis le cache | ✅ OK | 1.9 s |  |
+| 5 | schéma Dexie complet (base « alterra ») | ✅ OK | 1.0 s |  |
+| 6 | écran de connexion PWA : aucun panneau de comptes de démonstration | ✅ OK | 1.1 s |  |
+
+#### Connexion PWA, PIN, hors ligne, déconnexion
+
+`sprint3-pwa-auth.spec.ts` — UC-FE-PWA-AUTH
+
+| # | Test | Résultat | Durée | Notes |
+|---:|---|---|---:|---|
+| 1 | connexion, validations du PIN, session chiffrée en local | ✅ OK | 2.1 s |  |
+| 2 | référentiel synchronisé dans Dexie (persistance après rechargement) | ✅ OK | 0.6 s | dexie: après synchro : {"workers":4,"activities":19,"pointages":0,"pointings_synced":0,"media":0,"syncQueue":0,"biometricTemplates":0,"presenceLog":0,"badges":0,"biometricOfflineChecks":0} |
+| 3 | verrouillage : mauvais PIN refusé, bon PIN accepté | ✅ OK | 0.6 s |  |
+| 4 | rafraîchissement de session : un 401 déclenche /auth/refresh puis rejoue la requête | ✅ OK | 25.3 s | inconclusif: Aucun GET API émis par l'écran chef d'équipe : le rejeu après 401 n'a pas pu être observé depuis l'UI. ; refresh: POST /auth/refresh direct → HTTP 200 |
+| 5 | hors ligne : déverrouillage local puis retour en ligne | ✅ OK | 1.0 s |  |
+| 6 | verdict : le rechargement hors ligne fonctionne (service worker) | ✅ OK | 0.0 s | hors ligne: {"reloadError":null,"controlled":true,"offlineWorkers":4,"before":4} |
+| 7 | verrouillage automatique après 30 min d'inactivité | ✅ OK | 0.8 s |  |
+| 8 | le chef d'équipe est renvoyé hors des écrans chef de service | ✅ OK | 0.8 s |  |
+| 9 | déconnexion : session révoquée et données locales sensibles purgées | ✅ OK | 0.6 s | purge: Dexie après déconnexion : {"workers":0,"activities":0,"pointages":0,"pointings_synced":0,"media":0,"syncQueue":0,"biometricTemplates":0,"presenceLog":0,"badges":0,"biometricOfflineChecks":0} |
+| 10 | le chef de service n'accède qu'aux données de son site (PWA) | ✅ OK | 8.4 s |  |
+| 11 | « Se déconnecter » depuis l'écran verrouillé révoque la session serveur | ✅ OK | 0.4 s |  |
+| 12 | 2 échecs de connexion : message générique, puis connexion normale et périmètre d'équipe | ✅ OK | 6.7 s | périmètre: Dexie : 3 MOC ; API (CDE) : 3 MOC ; jeu E2E : 3 |
+| 13 | compte inactif : connexion PWA refusée, aucune session créée | ✅ OK | 2.0 s |  |
+| 14 | l'API est jointe via la même origine que la PWA (aucune adresse d'API codée en dur) | ✅ OK | 3.2 s |  |
+
+### 0.4 Anomalies : constat initial, correction, preuve du rejeu
+
+| Anomalie | Correction | Test du rejeu qui la couvre |
+|---|---|---|
+| A1 — `GET /me` en 500 (chef de service, chef d'équipe) | Portée par site ou équipe : la clé unique reste au premier niveau du `where` (`mergeUniqueWhere`) | RBAC › la session du chef de service survit à un rechargement (F5) |
+| A2 — rejeu de synchro en 500 | Même correction qu'A1 | Pointages › sync : création, idempotence |
+| A3 — validation par le chef de service en 500 | Même correction qu'A1 | Pointages › validation refusée sans bio OK : CDS → 422 `BIO_NOT_OK` |
+| A4 — création d'utilisateur en 500 | `password` retiré de l'appel Prisma ; doublon en 409 | Utilisateurs › création avec mot de passe saisi ; validations serveur |
+| A5 — compte bloqué 15 min après réinitialisation | Invalidation des seuls jetons émis avant la réinitialisation | Utilisateurs › le compte fonctionne après réinitialisation |
+| A6 — déconnexion sans révocation (écran verrouillé) | `POST /auth/logout` sans jeton d'accès | PWA-AUTH › « Se déconnecter » depuis l'écran verrouillé révoque la session |
+| A7 — pas de purge locale | `purgeLocalData()` à la déconnexion | PWA-AUTH › données locales purgées à la déconnexion |
+| A8 — numéro MVola invalide accepté | 034 ou 038 + 7 chiffres | MOC › validations serveur |
+| A9 — pas d'état d'erreur ou vide | Composant d'erreur avec « Recharger » ; état vide de Sites | les 8 tests « état vide » / « état d'erreur » |
+| A10 — export à 3 colonnes | 5 colonnes de la spécification (`MVOLA_EXPORT_FORMAT=compact3` pour revenir à 3) | zz-pay-format › en-tête à 5 colonnes |
+| A11 — fichier non Excel accepté | Signature `.xlsx` / `.xls` vérifiée, 422 `IMPORT_BADFORMAT` | zz-pay-format › fichier non Excel refusé |
+| A12 — import sans aperçu, sans échec ; « PDF » en HTML | Aperçu puis confirmation ; `PATCH /payments/:id/fail` ; rapprochement dans le bordereau ; historique des exports ; vrai PDF | Paiements › import du relevé ; Rapports › export CSV, Excel et PDF |
+| A13 — nom « RAKOTO » | Aucune : réglage de l'application (Paramètres), pas un défaut | — (décision à prendre) |
+| A14 — période sans année | Colonne `Payment.referenceYear` ; verrou, génération, export et liste tiennent compte de l'année | Paiements : la suite écrit en 2090 sans toucher aux semaines 2026 |
+| A15 — N+1 sur Pointages | MOC inclus dans `GET /pointages` | Pointages › liste : 0 requête `GET /workers/:id` pour 50 lignes |
+
+### 0.5 Tests adaptés pour le rejeu
+
+Les tests ont été modifiés uniquement là où le comportement de l'application a changé volontairement :
+
+- **Périodes de paie** : les lectures `GET /payments` passent `referenceYear` (2090 pour les données de test), puisque les périodes portent désormais une année.
+- **Import du relevé MVola** : le test suit le parcours en deux temps (« Prévisualiser le rapprochement » puis « Confirmer et enregistrer »), vérifie que l'aperçu n'écrit rien, contrôle le statut de rapprochement et la référence dans le bordereau, puis le marquage en échec avec motif. L'ancien contrôle « compteur FAILED dans le résumé » est remplacé, l'import ne pouvant pas déduire un échec.
+- **Écran Paiements** : le bordereau est ciblé explicitement (`table` première position), la page contenant aussi le tableau de l'historique des exports.
+- **Liste des utilisateurs** : nouvel utilitaire `findRowLoadMore` (clics « Charger plus »), la liste dépassant 50 comptes.
+- **Codes de catégorie** : un code n'est jamais réutilisable après désactivation ; `ACT90` à `ACT99` sont épuisés, la série `ACT80` à `ACT89` prend le relais.
+- **Affichage « Payé »** : le test charge la période de test avant l'import, ce qui permet de vérifier l'affichage « Payé » du bordereau après import (point « non vérifié » de la recette initiale, désormais couvert et réussi).
+
+### 0.6 Mesures relevées pendant le rejeu
+
+| Mesure | Valeur |
+|---|---|
+| Requêtes `GET /workers/:id` sur l'écran Pointages | 0 pour 50 pointages affichés (12 pour 30 avant correction) |
+| Volumétrie de l'écran MOC | 316 MOC lus, rendu initial 1 483 ms, chargement complet (6 clics) 5 738 ms, recherche 171 ms. Le critère « 600+ lignes » reste non éprouvé sur le réel |
+| MOC réels dans l'API | 313 actifs ; l'écart avec 316 (rejeu) et 319 (recette initiale) correspond aux MOC de test actifs au moment de la mesure (explication probable, non vérifiée ligne à ligne) |
+| Fichier non Excel envoyé à `/payments/import-status/columns` | HTTP 422 (200 avant correction) |
+
+### 0.7 Données après le rejeu
+
+- **Paiements** : les 15 paiements de test de la recette initiale ont été supprimés avant le rejeu, puis ceux du rejeu (année 2090) après. Les lignes supprimées sont sauvegardées en JSON hors dépôt. Il reste les **4 paiements réels de S37/2026**, intacts ; les semaines S47 à S51 sont libres. Grâce à l'année portée par chaque paiement, la purge annoncée en §7 n'est plus une condition pour la semaine 47.
+- **Pointages de test de 2090** : rejetés (les pointages validés de 2090 d'une passe alimentaient la génération de la passe suivante).
+- **Autres données de test** : sites, utilisateurs, sous-activités, catégories, équipes désactivés ; MOC supprimés (logique) ; entrées d'audit conservées.
+- **Effets de bord** : chaque connexion réussie met à jour `lastLoginAt` et crée un jeton de rafraîchissement.
+
+### 0.8 Réserves et limites
+
+- **Format d'export MVola** : 5 colonnes par défaut, à confirmer avec Etech ; `MVOLA_EXPORT_FORMAT=compact3` rétablit les 3 colonnes sans changer le code.
+- **A13** : décider si le nom affiché reste « RAKOTO » ou revient à ALTERRA.
+- **PWA** : les saisies non envoyées sont conservées à la déconnexion (pour ne rien perdre) ; elles restent visibles du chef d'équipe suivant sur un téléphone partagé.
+- **Non couvert par le rejeu** : rapport PDF hebdomadaire (envoi d'e-mail), sauvegarde et restauration de la base, appareils réels, NFC, biométrie, critère « 600+ MOC », rejeu après 401 depuis l'interface PWA.
+- **Import Excel des MOC** : met toujours à jour, sans blocage, un MOC dont le numéro MVola existe déjà (comportement inchangé).
+
+---
+
+## Recette initiale (avant correction)
+
+Sections 1 à 9 : état de la démonstration constaté le 20 septembre 2026 avant toute correction. Elles ne décrivent plus l'état actuel ; voir la section 0.
+
+
+## 1. Contexte et campagne (recette initiale)
 
 | Élément | Valeur |
 |---|---|

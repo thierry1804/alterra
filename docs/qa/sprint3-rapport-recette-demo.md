@@ -1,9 +1,34 @@
 # Rapport de recette — Sprint 3 « Admin complet et PWA setup » (jalon 3)
 
-Recette réalisée **sur l'environnement de démonstration déployé** (pas en local), le 20 septembre 2026.
-Aucun code applicatif n'a été modifié. Aucun mot de passe n'apparaît dans ce document, dans les tests ni dans les fichiers versionnés.
+Recette réalisée **sur l'environnement de démonstration déployé** (pas en local), le 20 septembre 2026, en deux temps : la **recette initiale** (avant correction, §1 à §11 ci-dessous) puis son **rejeu après correction** (résumé ci-après). Aucun mot de passe n'apparaît dans ce document, dans les tests ni dans les fichiers versionnés.
+
+## Mise à jour : rejeu après correction
+
+**Conclusion actuelle : le jalon 3 est atteint sur la démonstration, sous trois réserves.** La suite rejouée après correction et déploiement (HEAD `0937e4d`, 20/09/2026 après 14 h 12 UTC) donne **95 tests réussis sur 95**, contre 74 sur 95 à la recette initiale. Le verdict « jalon non atteint » des sections suivantes décrit l'état **avant correction**.
+
+| Indicateur | Recette initiale | Rejeu après correction |
+|---|---:|---:|
+| Tests réussis / échoués | 74 / 21 | **95 / 0** |
+| Cas d'usage conformes / partiels | 5 / 7 | **12 / 0** |
+| Anomalies traitées | 15 constatées | 14 corrigées, A13 à trancher (réglage, pas un défaut) |
+
+- **Corrections** : `docs/qa/sprint3-corrections.md` (commits `cfa8c22`, `a3cc121`, `10951f3`, `0937e4d`).
+- **Détail test par test du rejeu** : `RESULTATS-RECETTE-SPRINT3.md`, section 0.
+- **Paiements de test** : purgés (15 lignes de la recette initiale, puis celles du rejeu) ; les périodes de paie portent désormais une année, les tests écrivent en 2090 et ne verrouillent plus les semaines réelles. Le point d'attention sur S47 à S51 (§1, §8) est levé.
+- **Tests adaptés** au rejeu : lectures avec l'année de période, import du relevé en deux temps (aperçu puis confirmation), bordereau ciblé (la page contient aussi l'historique des exports), recherche par « Charger plus » dans la liste des utilisateurs, codes de catégorie `ACT80` à `ACT89` (`ACT90` à `ACT99` épuisés).
+
+**Réserves :**
+
+1. Format d'export MVola : 5 colonnes (spécification) par défaut, à confirmer avec Etech ; `MVOLA_EXPORT_FORMAT=compact3` revient à 3 colonnes.
+2. Nom affiché « RAKOTO » ou « ALTERRA » (A13) : décision à prendre.
+3. Non couvert par un rejeu automatique : rapport PDF hebdomadaire, sauvegarde et restauration, appareils réels, NFC, biométrie, critère « 600+ MOC ».
+
+Le rejeu doit se faire en deux passes (Admin, puis PWA) : l'API limite `/api/v1/auth/*` à 100 requêtes par 5 minutes et par adresse IP.
 
 ---
+
+# Recette initiale (avant correction)
+
 
 ## 1. Synthèse
 
