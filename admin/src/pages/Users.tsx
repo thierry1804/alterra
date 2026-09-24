@@ -56,7 +56,10 @@ const emptyForm: UserForm = {
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<AppUser["role"] | "">("");
+  const [siteFilter, setSiteFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AppUser | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm);
@@ -70,13 +73,16 @@ export default function UsersPage() {
   const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
 
   const usersQuery = useInfiniteQuery({
-    queryKey: ["users", roleFilter, sortKey, sortDir],
+    queryKey: ["users", search, roleFilter, siteFilter, statusFilter, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
         .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
           params: {
+            q: search || undefined,
             role: roleFilter || undefined,
+            siteId: siteFilter || undefined,
+            active: statusFilter || undefined,
             cursor: pageParam,
             take: 50,
             orderBy: sortKey ?? undefined,
@@ -125,7 +131,14 @@ export default function UsersPage() {
           : await fetchAllCursorPages<AppUser>((cursor) =>
               api
                 .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
-                  params: { role: roleFilter || undefined, cursor, take: 100 },
+                  params: {
+                    q: search || undefined,
+                    role: roleFilter || undefined,
+                    siteId: siteFilter || undefined,
+                    active: statusFilter || undefined,
+                    cursor,
+                    take: 100,
+                  },
                 })
                 .then((r) => r.data),
             );
@@ -239,18 +252,47 @@ export default function UsersPage() {
         }
       />
 
-      <select
-        className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
-        value={roleFilter}
-        onChange={(e) => setRoleFilter(e.target.value as AppUser["role"] | "")}
-      >
-        <option value="">Tous les rôles</option>
-        {(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => (
-          <option key={role} value={role}>
-            {USER_ROLE_LABELS[role]}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-wrap gap-3">
+        <Input
+          placeholder="Rechercher (nom, email…)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as AppUser["role"] | "")}
+        >
+          <option value="">Tous les rôles</option>
+          {(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => (
+            <option key={role} value={role}>
+              {USER_ROLE_LABELS[role]}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={siteFilter}
+          onChange={(e) => setSiteFilter(e.target.value)}
+        >
+          <option value="">Tous les sites</option>
+          {sites.map((site) => (
+            <option key={site.id} value={site.id}>
+              {site.shortCode}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
+        >
+          <option value="">Tous statuts</option>
+          <option value="true">Actif</option>
+          <option value="false">Inactif</option>
+        </select>
+      </div>
 
       <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>
         <Button

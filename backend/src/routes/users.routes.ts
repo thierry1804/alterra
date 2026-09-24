@@ -36,11 +36,23 @@ const listUsersQuery = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "true")),
+  q: z.string().min(1).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
   orderBy: z.enum(USER_SORT_FIELDS).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
 });
+
+/** Case-insensitive partial match on nom/prénom/email (Prisma ilike). */
+function buildUserSearchFilter(q: string): Prisma.UserWhereInput {
+  return {
+    OR: [
+      { firstName: { contains: q, mode: "insensitive" } },
+      { lastName: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+    ],
+  };
+}
 
 const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
@@ -75,7 +87,7 @@ usersRouter.use(requireAuth, requireRole(Role.ADMIN));
 
 usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) => {
   try {
-    const { role, siteId, active, cursor, take, orderBy, dir } = req.query as z.infer<
+    const { role, siteId, active, q, cursor, take, orderBy, dir } = req.query as z.infer<
       typeof listUsersQuery
     >;
 
@@ -83,6 +95,7 @@ usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) =
     if (role) where.role = role;
     if (siteId) where.siteId = siteId;
     if (active !== undefined) where.active = active;
+    if (q) Object.assign(where, buildUserSearchFilter(q));
 
     const pageSize = take ?? 50;
     const sortDir = dir ?? "asc";
