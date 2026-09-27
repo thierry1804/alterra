@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
-import { Pencil, Power, PowerOff, Download, MapPin } from "lucide-react";
+import { Pencil, Power, PowerOff, Download, MapPin, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -34,6 +34,8 @@ import {
 import { toast } from "../hooks/use-toast";
 import { TableQueryError } from "../components/ui/QueryError";
 import { EmptyState } from "../components/ui/EmptyState";
+import SitePickerMap from "../components/sites/SitePickerMap";
+import { geocodeLocationText, reverseGeocodeCityName } from "../lib/reverse-geocode";
 
 const PAGE_SIZE = 10;
 
@@ -41,9 +43,26 @@ interface SiteForm {
   name: string;
   shortCode: string;
   location: string;
+  geoLat: number | null;
+  geoLng: number | null;
 }
 
-const emptyForm: SiteForm = { name: "", shortCode: "", location: "" };
+const emptyForm: SiteForm = {
+  name: "",
+  shortCode: "",
+  location: "",
+  geoLat: null,
+  geoLng: null,
+};
+
+/** 3 premières lettres du nom de ville, en majuscules — conforme au pattern [A-Z]{2,3} du code site. */
+function codeFromCityName(name: string): string {
+  const lettersOnly = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z]/g, "");
+  return lettersOnly.slice(0, 3).toUpperCase();
+}
 
 export default function SitesPage() {
   const queryClient = useQueryClient();
@@ -51,6 +70,7 @@ export default function SitesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [form, setForm] = useState<SiteForm>(emptyForm);
+  const [geocoding, setGeocoding] = useState(false);
 
   const { data: sites = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["sites"],
@@ -106,11 +126,15 @@ export default function SitesPage() {
         name: form.name.trim(),
         shortCode: form.shortCode.trim().toUpperCase(),
         location: form.location.trim() || undefined,
+        geoLat: form.geoLat ?? undefined,
+        geoLng: form.geoLng ?? undefined,
       };
       if (editing) {
         return api.patch<Site>(`/sites/${editing.id}`, {
           name: payload.name,
           location: payload.location ?? null,
+          geoLat: form.geoLat,
+          geoLng: form.geoLng,
         });
       }
       return api.post<Site>("/sites", payload);
@@ -146,8 +170,56 @@ export default function SitesPage() {
       name: site.name,
       shortCode: site.shortCode,
       location: site.location ?? "",
+      geoLat: site.geoLat,
+      geoLng: site.geoLng,
     });
     setDialogOpen(true);
+  }
+
+  async function handleMapPick(lat: number, lng: number) {
+    setForm((f) => ({ ...f, geoLat: lat, geoLng: lng }));
+    setGeocoding(true);
+    try {
+      const city = await reverseGeocodeCityName(lat, lng);
+      if (city) {
+        setForm((f) => ({
+          ...f,
+          location: city,
+          name: f.name.trim() ? f.name : city,
+          shortCode: f.shortCode.trim() ? f.shortCode : codeFromCityName(city),
+        }));
+      }
+    } catch {
+      toast({
+        title: "Géolocalisation indisponible",
+        description: "Les coordonnées ont été enregistrées, saisis la localisation manuellement.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeocoding(false);
+    }
+  }
+
+  async function handleLocationSearch() {
+    const query = form.location.trim();
+    if (!query) return;
+    setGeocoding(true);
+    try {
+      const result = await geocodeLocationText(query);
+      if (result) {
+        setForm((f) => ({ ...f, geoLat: result.lat, geoLng: result.lng }));
+      } else {
+        toast({
+          title: "Localisation introuvable",
+          description: `Aucun résultat pour « ${query} » à Madagascar.`,
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({ title: "Recherche indisponible", variant: "destructive" });
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   return (
@@ -304,7 +376,7 @@ export default function SitesPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le site" : "Nouveau site"}</DialogTitle>
             <DialogDescription>
@@ -312,41 +384,78 @@ export default function SitesPage() {
             </DialogDescription>
           </DialogHeader>
           <form
-            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
               saveMutation.mutate();
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="site-name">Nom</Label>
-              <Input
-                id="site-name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                required
-              />
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="site-name">Nom</Label>
+                  <Input
+                    id="site-name"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="site-code">Code</Label>
+                  <Input
+                    id="site-code"
+                    value={form.shortCode}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, shortCode: e.target.value.toUpperCase() }))
+                    }
+                    disabled={!!editing}
+                    pattern="[A-Z]{2,3}"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="site-location">
+                    Localisation {geocoding && <span className="text-zinc-400">(recherche…)</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="site-location"
+                      value={form.location}
+                      onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleLocationSearch();
+                        }
+                      }}
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700 disabled:opacity-50"
+                      onClick={() => void handleLocationSearch()}
+                      disabled={geocoding || !form.location.trim()}
+                      aria-label="Chercher cette localisation sur la carte"
+                    >
+                      <Search className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Position (cliquer sur la carte pour choisir)</Label>
+                <SitePickerMap
+                  value={
+                    form.geoLat != null && form.geoLng != null
+                      ? { lat: form.geoLat, lng: form.geoLng }
+                      : null
+                  }
+                  onPick={(lat, lng) => void handleMapPick(lat, lng)}
+                  className="h-72"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="site-code">Code</Label>
-              <Input
-                id="site-code"
-                value={form.shortCode}
-                onChange={(e) => setForm((f) => ({ ...f, shortCode: e.target.value.toUpperCase() }))}
-                disabled={!!editing}
-                pattern="[A-Z]{2,3}"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="site-location">Localisation</Label>
-              <Input
-                id="site-location"
-                value={form.location}
-                onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Annuler
               </Button>
