@@ -103,12 +103,13 @@ export default function ActivitiesPage() {
   }
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
   const categorySort = useSortState();
   // Un seul état de tri pour les tableaux de sous-activités : trier une colonne s'applique à toutes les catégories ouvertes.
   const subSort = useSortState();
 
   const categoriesQuery = useInfiniteQuery({
-    queryKey: ["activity-categories", search],
+    queryKey: ["activity-categories", search, statusFilter],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -122,6 +123,7 @@ export default function ActivitiesPage() {
             cursor: pageParam,
             take: 50,
             q: search || undefined,
+            active: statusFilter || undefined,
           },
         })
         .then((r) => r.data),
@@ -301,12 +303,23 @@ export default function ActivitiesPage() {
         }
       />
 
-      <Input
-        placeholder="Rechercher (code, libellé, sous-activité…)"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-xs"
-      />
+      <div className="flex flex-wrap gap-3">
+        <Input
+          placeholder="Rechercher (code, libellé, sous-activité…)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
+        >
+          <option value="">Tous statuts</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
 
       {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
 

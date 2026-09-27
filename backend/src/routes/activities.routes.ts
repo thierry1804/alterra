@@ -93,6 +93,10 @@ async function assertUnitCodeAvailable(code: string, excludeId?: string) {
 
 const listUnitsQuery = cursorPaginationQuery.extend({
   q: z.string().min(1).optional(),
+  active: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
 });
 
 activitiesRouter.get(
@@ -101,11 +105,14 @@ activitiesRouter.get(
   validate(listUnitsQuery, "query"),
   async (req, res, next) => {
     try {
-      const { cursor, take, q } = req.query as unknown as z.infer<typeof listUnitsQuery>;
+      const { cursor, take, q, active } = req.query as unknown as z.infer<typeof listUnitsQuery>;
       const pageSize = take ?? 50;
 
+      const where: Prisma.UnitWhereInput = q ? codeLabelSearchFilter(q) : {};
+      if (active !== undefined) where.active = active;
+
       const units = await prisma.unit.findMany({
-        where: q ? codeLabelSearchFilter(q) : undefined,
+        where,
         orderBy: [{ code: "asc" }, { id: "asc" }],
         take: pageSize + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -214,6 +221,10 @@ activitiesRouter.delete(
 const listCategoriesQuery = cursorPaginationQuery.extend({
   includeSubActivities: z.enum(["true", "false"]).optional(),
   q: z.string().min(1).optional(),
+  active: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
 });
 
 activitiesRouter.get(
@@ -222,30 +233,32 @@ activitiesRouter.get(
   validate(listCategoriesQuery, "query"),
   async (req, res, next) => {
     try {
-      const { cursor, take, includeSubActivities, q } = req.query as unknown as z.infer<
+      const { cursor, take, includeSubActivities, q, active } = req.query as unknown as z.infer<
         typeof listCategoriesQuery
       >;
       const pageSize = take ?? 50;
 
+      const where: Prisma.ActivityCategoryWhereInput = {};
+      if (active !== undefined) where.active = active;
+      if (q) {
+        where.OR = [
+          { code: { contains: q, mode: "insensitive" } },
+          { label: { contains: q, mode: "insensitive" } },
+          {
+            subActivities: {
+              some: {
+                OR: [
+                  { label: { contains: q, mode: "insensitive" } },
+                  { shortLabel: { contains: q, mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+        ];
+      }
+
       const categories = await prisma.activityCategory.findMany({
-        where: q
-          ? {
-              OR: [
-                { code: { contains: q, mode: "insensitive" } },
-                { label: { contains: q, mode: "insensitive" } },
-                {
-                  subActivities: {
-                    some: {
-                      OR: [
-                        { label: { contains: q, mode: "insensitive" } },
-                        { shortLabel: { contains: q, mode: "insensitive" } },
-                      ],
-                    },
-                  },
-                },
-              ],
-            }
-          : undefined,
+        where,
         orderBy: [{ code: "asc" }, { id: "asc" }],
         take: pageSize + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

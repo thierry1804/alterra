@@ -41,14 +41,20 @@ export default function UnitsPage() {
   const [unitForm, setUnitForm] = useState<UnitForm>(emptyUnitForm);
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
 
   const unitsQuery = useInfiniteQuery({
-    queryKey: ["units", search],
+    queryKey: ["units", search, statusFilter],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
         .get<{ data: Unit[]; nextCursor: string | null; hasMore: boolean }>("/units", {
-          params: { cursor: pageParam, take: 50, q: search || undefined },
+          params: {
+            cursor: pageParam,
+            take: 50,
+            q: search || undefined,
+            active: statusFilter || undefined,
+          },
         })
         .then((r) => r.data),
     getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
@@ -112,12 +118,23 @@ export default function UnitsPage() {
         }
       />
 
-      <Input
-        placeholder="Rechercher (code, libellé…)"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-xs"
-      />
+      <div className="flex flex-wrap gap-3">
+        <Input
+          placeholder="Rechercher (code, libellé…)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
+        >
+          <option value="">Tous statuts</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
 
       {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
 
