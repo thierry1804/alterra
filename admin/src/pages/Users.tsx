@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import type { AppUser, Site } from "../lib/referentials";
 import { USER_ROLE_LABELS, formatDate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
-import { Pencil, KeyRound, UserX, Download } from "lucide-react";
+import { Pencil, KeyRound, UserX, Download, Eye, EyeOff, RefreshCw, Copy } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -54,6 +54,14 @@ const emptyForm: UserForm = {
   password: "",
 };
 
+/** Même alphabet que generateTempPassword côté backend (pas de caractères ambigus type 0/O/l/1). */
+function generateClientPassword(length = 12): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -64,6 +72,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<AppUser | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -215,6 +224,7 @@ export default function UsersPage() {
   function openCreate() {
     setEditing(null);
     setForm({ ...emptyForm, siteId: sites[0]?.id ?? "" });
+    setShowPassword(false);
     setDialogOpen(true);
   }
 
@@ -377,7 +387,10 @@ export default function UsersPage() {
                       <IconButton
                         icon={KeyRound}
                         label="Réinitialiser le mot de passe"
-                        loading={resetPasswordMutation.isPending}
+                        loading={
+                          resetPasswordMutation.isPending &&
+                          resetPasswordMutation.variables?.id === user.id
+                        }
                         onClick={() => resetPasswordMutation.mutate(user)}
                       />
                       {user.active && (
@@ -385,7 +398,10 @@ export default function UsersPage() {
                           icon={UserX}
                           label="Désactiver"
                           variant="destructive"
-                          loading={deactivateMutation.isPending}
+                          loading={
+                            deactivateMutation.isPending &&
+                            deactivateMutation.variables?.id === user.id
+                          }
                           onClick={() => deactivateMutation.mutate(user)}
                         />
                       )}
@@ -485,12 +501,40 @@ export default function UsersPage() {
             {!editing && (
               <div className="space-y-2">
                 <Label htmlFor="u-password">Mot de passe (optionnel)</Label>
-                <Input
-                  id="u-password"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="u-password"
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, password: generateClientPassword() }));
+                      setShowPassword(true);
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" aria-hidden />
+                    Générer
+                  </Button>
+                </div>
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -511,13 +555,32 @@ export default function UsersPage() {
             <DialogTitle>Mot de passe temporaire</DialogTitle>
             <DialogDescription>Communiquez ce mot de passe à l&apos;utilisateur.</DialogDescription>
           </DialogHeader>
-          <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm">
-            {tempPassword}
-          </p>
-          <div className="flex justify-end">
-            <Button type="button" onClick={() => setTempPassword(null)}>
-              Fermer
-            </Button>
+          <div className="space-y-4">
+            <div className="relative">
+              <Input
+                readOnly
+                value={tempPassword ?? ""}
+                onFocus={(e) => e.target.select()}
+                className="pr-9 font-mono text-sm"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                onClick={() => {
+                  if (!tempPassword) return;
+                  void navigator.clipboard.writeText(tempPassword);
+                  toast({ title: "Mot de passe copié" });
+                }}
+                aria-label="Copier le mot de passe"
+              >
+                <Copy className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={() => setTempPassword(null)}>
+                Fermer
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
