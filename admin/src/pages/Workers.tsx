@@ -74,9 +74,12 @@ export default function WorkersPage() {
   const [editing, setEditing] = useState<Worker | null>(null);
   const [form, setForm] = useState<WorkerForm>(emptyForm);
   const [matriculeGenerating, setMatriculeGenerating] = useState(false);
-  const [matriculeEdited, setMatriculeEdited] = useState(false);
   const [matriculeLocked, setMatriculeLocked] = useState(true);
   const [matriculeSeq, setMatriculeSeq] = useState<number | null>(null);
+  // Ref plutôt que state : autofillMatricule est appelé juste après openCreate()/le
+  // changement de site, dans le même tick — un state ne serait pas encore à jour
+  // (closure figée sur l'ancienne valeur) au moment où autofillMatricule le lit.
+  const matriculeEditedRef = useRef(false);
   const matriculeInputRef = useRef<HTMLInputElement>(null);
 
   const { data: sites = [] } = useQuery({
@@ -283,7 +286,7 @@ export default function WorkersPage() {
       setMatriculeSeq(lastSeq + 1);
       // Ne pas écraser une saisie manuelle du matricule (mais un changement de site doit
       // pouvoir régénérer un matricule qui n'a encore jamais été touché à la main).
-      setForm((f) => (matriculeEdited ? f : { ...f, matricule: nextMatricule }));
+      setForm((f) => (matriculeEditedRef.current ? f : { ...f, matricule: nextMatricule }));
     } finally {
       setMatriculeGenerating(false);
     }
@@ -293,7 +296,7 @@ export default function WorkersPage() {
     setEditing(null);
     const defaultSiteId = sites[0]?.id ?? "";
     setForm({ ...emptyForm, siteId: defaultSiteId });
-    setMatriculeEdited(false);
+    matriculeEditedRef.current = false;
     setMatriculeLocked(true);
     setMatriculeSeq(null);
     setDialogOpen(true);
@@ -311,7 +314,7 @@ export default function WorkersPage() {
       hiredAt: worker.hiredAt.slice(0, 10),
       status: worker.status,
     });
-    setMatriculeEdited(true);
+    matriculeEditedRef.current = true;
     setMatriculeLocked(true);
     setMatriculeSeq(null);
     setDialogOpen(true);
@@ -587,7 +590,7 @@ export default function WorkersPage() {
                     ref={matriculeInputRef}
                     value={form.matricule}
                     onChange={(e) => {
-                      setMatriculeEdited(true);
+                      matriculeEditedRef.current = true;
                       setForm((f) => ({ ...f, matricule: e.target.value }));
                     }}
                     readOnly={matriculeLocked}
