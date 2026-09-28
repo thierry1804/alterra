@@ -200,10 +200,22 @@ function assertNotImpossibleScope(model: ScopedModel): Record<string, unknown> |
   return scope;
 }
 
-/** Synchronous validation of direct scope fields on create/update data. Exported for unit tests. */
-export function validateDirectFieldsInScope(model: ScopedModel, data: Record<string, unknown>): void {
+/**
+ * Synchronous validation of direct scope fields on create/update data. Exported for unit tests.
+ *
+ * On `create`, a scoped field must be present and match the caller's scope (there is no existing
+ * row to fall back on). On a partial `update`, the target row is already scope-checked via the
+ * `where` clause (see `scopedWriteHandler`), so a field the request doesn't touch is left alone —
+ * only a field actually present in `data` is checked against the caller's scope.
+ */
+export function validateDirectFieldsInScope(
+  model: ScopedModel,
+  data: Record<string, unknown>,
+  options?: { partial?: boolean },
+): void {
   const scope = assertNotImpossibleScope(model);
   if (!scope) return;
+  const partial = options?.partial ?? false;
 
   switch (model) {
     case "Worker": {
@@ -211,17 +223,15 @@ export function validateDirectFieldsInScope(model: ScopedModel, data: Record<str
       const teamId = extractField(data, "teamId");
       if ("siteId" in scope) {
         if (siteId === undefined) {
-          throw new RlsScopeError("Worker requires scoped siteId");
-        }
-        if (siteId !== scope.siteId) {
+          if (!partial) throw new RlsScopeError("Worker requires scoped siteId");
+        } else if (siteId !== scope.siteId) {
           throw new RlsScopeError("Worker siteId out of scope");
         }
       }
       if ("teamId" in scope) {
         if (teamId === undefined) {
-          throw new RlsScopeError("Worker requires scoped teamId");
-        }
-        if (teamId !== scope.teamId) {
+          if (!partial) throw new RlsScopeError("Worker requires scoped teamId");
+        } else if (teamId !== scope.teamId) {
           throw new RlsScopeError("Worker teamId out of scope");
         }
       }
@@ -234,9 +244,8 @@ export function validateDirectFieldsInScope(model: ScopedModel, data: Record<str
       const siteId = extractField(data, "siteId");
       if ("siteId" in scope) {
         if (siteId === undefined) {
-          throw new RlsScopeError("Team requires scoped siteId");
-        }
-        if (siteId !== scope.siteId) {
+          if (!partial) throw new RlsScopeError("Team requires scoped siteId");
+        } else if (siteId !== scope.siteId) {
           throw new RlsScopeError("Team siteId out of scope");
         }
       }
@@ -247,17 +256,15 @@ export function validateDirectFieldsInScope(model: ScopedModel, data: Record<str
       const teamId = extractField(data, "teamId");
       if ("siteId" in scope) {
         if (siteId === undefined) {
-          throw new RlsScopeError("User requires scoped siteId");
-        }
-        if (siteId !== scope.siteId) {
+          if (!partial) throw new RlsScopeError("User requires scoped siteId");
+        } else if (siteId !== scope.siteId) {
           throw new RlsScopeError("User siteId out of scope");
         }
       }
       if ("teamId" in scope) {
         if (teamId === undefined) {
-          throw new RlsScopeError("User requires scoped teamId");
-        }
-        if (teamId !== scope.teamId) {
+          if (!partial) throw new RlsScopeError("User requires scoped teamId");
+        } else if (teamId !== scope.teamId) {
           throw new RlsScopeError("User teamId out of scope");
         }
       }
@@ -289,10 +296,10 @@ export async function validateRelatedIdsInScope(
   basePrisma: PrismaClient,
   model: ScopedModel,
   data: Record<string, unknown>,
-  options?: { requireWorkerId?: boolean },
+  options?: { requireWorkerId?: boolean; partial?: boolean },
 ): Promise<void> {
   assertNotImpossibleScope(model);
-  validateDirectFieldsInScope(model, data);
+  validateDirectFieldsInScope(model, data, { partial: options?.partial });
 
   if (model === "Pointage" || model === "Payment") {
     const workerId = extractField(data, "workerId");
@@ -348,7 +355,10 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
         args = { ...args, where: mergeUniqueWhere(args.where, scope) };
       }
       if (args.data) {
-        await validateRelatedIdsInScope(basePrisma, model, args.data, { requireWorkerId: false });
+        await validateRelatedIdsInScope(basePrisma, model, args.data, {
+          requireWorkerId: false,
+          partial: true,
+        });
       }
       return query(args);
     }
@@ -358,7 +368,10 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
         args = { ...args, where: mergeWhere(args.where, scope) };
       }
       if (args.data) {
-        await validateRelatedIdsInScope(basePrisma, model, args.data, { requireWorkerId: false });
+        await validateRelatedIdsInScope(basePrisma, model, args.data, {
+          requireWorkerId: false,
+          partial: true,
+        });
       }
       return query(args);
     }
@@ -369,7 +382,10 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
       }
       await validateRelatedIdsInScope(basePrisma, model, args.create ?? {}, { requireWorkerId: true });
       if (args.update) {
-        await validateRelatedIdsInScope(basePrisma, model, args.update, { requireWorkerId: false });
+        await validateRelatedIdsInScope(basePrisma, model, args.update, {
+          requireWorkerId: false,
+          partial: true,
+        });
       }
       return query(args);
     }

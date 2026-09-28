@@ -271,6 +271,36 @@ describe("RBAC", () => {
         },
       );
     });
+
+    it("allows a CHEF_SERVICE Team update that doesn't touch siteId (partial)", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope(
+              "Team",
+              { name: "Equipe B", chefId: MOCK_CDS_ID },
+              { partial: true },
+            ),
+          ).not.toThrow();
+        },
+      );
+    });
+
+    it("still rejects a CHEF_SERVICE Team update carrying a wrong siteId (partial)", () => {
+      runWithRequestContext(
+        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(() =>
+            validateDirectFieldsInScope(
+              "Team",
+              { siteId: "00000000-0000-4000-8000-000000000099" },
+              { partial: true },
+            ),
+          ).toThrow(RlsScopeError);
+        },
+      );
+    });
   });
 
   describe("writeAuditLog", () => {
