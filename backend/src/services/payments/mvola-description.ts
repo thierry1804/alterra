@@ -31,5 +31,5 @@ export function buildMvolaDescription(
 }
 
 export function isValidMvolaNumber(value: string): boolean {
-  return /^03[48]\d{7}$/.test(value.trim());
+  return /^03[468]\d{7}$/.test(value.trim());
 }

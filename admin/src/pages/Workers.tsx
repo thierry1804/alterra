@@ -76,6 +76,7 @@ export default function WorkersPage() {
   const [matriculeGenerating, setMatriculeGenerating] = useState(false);
   const [matriculeEdited, setMatriculeEdited] = useState(false);
   const [matriculeLocked, setMatriculeLocked] = useState(true);
+  const [matriculeSeq, setMatriculeSeq] = useState<number | null>(null);
   const matriculeInputRef = useRef<HTMLInputElement>(null);
 
   const { data: sites = [] } = useQuery({
@@ -201,6 +202,7 @@ export default function WorkersPage() {
         siteId: form.siteId,
         hiredAt: form.hiredAt,
         status: form.status,
+        ...(!editing && matriculeSeq !== null ? { legacyMocId: matriculeSeq } : {}),
       };
       if (editing) {
         return api.patch<Worker>(`/workers/${editing.id}`, payload);
@@ -278,6 +280,7 @@ export default function WorkersPage() {
         return Number.isFinite(seq) ? Math.max(max, seq) : max;
       }, 0);
       const nextMatricule = `${prefix}${pad2(lastSeq + 1)}`;
+      setMatriculeSeq(lastSeq + 1);
       // Ne pas écraser une saisie manuelle du matricule (mais un changement de site doit
       // pouvoir régénérer un matricule qui n'a encore jamais été touché à la main).
       setForm((f) => (matriculeEdited ? f : { ...f, matricule: nextMatricule }));
@@ -292,6 +295,7 @@ export default function WorkersPage() {
     setForm({ ...emptyForm, siteId: defaultSiteId });
     setMatriculeEdited(false);
     setMatriculeLocked(true);
+    setMatriculeSeq(null);
     setDialogOpen(true);
     if (defaultSiteId) void autofillMatricule(defaultSiteId);
   }
@@ -309,6 +313,7 @@ export default function WorkersPage() {
     });
     setMatriculeEdited(true);
     setMatriculeLocked(true);
+    setMatriculeSeq(null);
     setDialogOpen(true);
   }
 
@@ -558,7 +563,7 @@ export default function WorkersPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</DialogTitle>
             <DialogDescription>
-              Numéro MVola au format 034XXXXXXXX ou 038XXXXXXXX.
+              Numéro MVola au format 034XXXXXXXX, 036XXXXXXXX ou 038XXXXXXXX.
             </DialogDescription>
           </DialogHeader>
           <form

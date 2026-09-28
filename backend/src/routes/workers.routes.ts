@@ -56,7 +56,7 @@ const createWorkerSchema = z.object({
   mvolaNumber: z
     .string()
     .trim()
-    .refine(isValidMvolaNumber, "Numéro MVola invalide : 10 chiffres, préfixe 034 ou 038"),
+    .refine(isValidMvolaNumber, "Numéro MVola invalide : 10 chiffres, préfixe 034, 036 ou 038"),
   cinNumber: z.string().optional(),
   siteId: z.string().uuid(),
   teamId: z.string().uuid().optional(),

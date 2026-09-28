@@ -48,14 +48,22 @@ async function nextFallbackMatriculeNumber(
   counters: Map<string, number>,
 ): Promise<number> {
   if (!counters.has(siteCode)) {
+    const prefix = `MOC-${siteCode}-`;
     const site = await prisma.site.findFirst({
       where: { shortCode: siteCode },
       select: { id: true },
     });
-    const existingCount = site
-      ? await prisma.worker.count({ where: { siteId: site.id, deletedAt: null } })
-      : 0;
-    counters.set(siteCode, existingCount);
+    const siteWorkers = site
+      ? await prisma.worker.findMany({
+          where: { siteId: site.id, deletedAt: null, matricule: { startsWith: prefix } },
+          select: { matricule: true },
+        })
+      : [];
+    const maxSeq = siteWorkers.reduce((max, w) => {
+      const seq = Number(w.matricule.slice(prefix.length));
+      return Number.isFinite(seq) ? Math.max(max, seq) : max;
+    }, 0);
+    counters.set(siteCode, maxSeq);
   }
   const next = counters.get(siteCode)! + 1;
   counters.set(siteCode, next);
@@ -243,9 +251,7 @@ export async function parseInitialWorkersWorkbook(
 
     const matricule =
       values.matricule ||
-      (legacyMocId !== undefined
-        ? `MOC-${siteShortCode}-L${legacyMocId}`
-        : `MOC-${siteShortCode}-R${String(await nextFallbackMatriculeNumber(siteShortCode, fallbackMatriculeCounters)).padStart(3, "0")}`);
+      `MOC-${siteShortCode}-${String(await nextFallbackMatriculeNumber(siteShortCode, fallbackMatriculeCounters)).padStart(2, "0")}`;
 
     valid.push({
       row: rowNumber,

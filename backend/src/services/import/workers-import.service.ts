@@ -95,14 +95,22 @@ async function nextFallbackMatriculeNumber(
   counters: Map<string, number>,
 ): Promise<number> {
   if (!counters.has(siteCode)) {
+    const prefix = `MOC-${siteCode}-`;
     const site = await prisma.site.findFirst({
       where: { shortCode: siteCode },
       select: { id: true },
     });
-    const existingCount = site
-      ? await prisma.worker.count({ where: { siteId: site.id, deletedAt: null } })
-      : 0;
-    counters.set(siteCode, existingCount);
+    const siteWorkers = site
+      ? await prisma.worker.findMany({
+          where: { siteId: site.id, deletedAt: null, matricule: { startsWith: prefix } },
+          select: { matricule: true },
+        })
+      : [];
+    const maxSeq = siteWorkers.reduce((max, w) => {
+      const seq = Number(w.matricule.slice(prefix.length));
+      return Number.isFinite(seq) ? Math.max(max, seq) : max;
+    }, 0);
+    counters.set(siteCode, maxSeq);
   }
   const next = counters.get(siteCode)! + 1;
   counters.set(siteCode, next);
@@ -328,7 +336,7 @@ export async function parseWorkersWorkbook(
       rowErrors.push({
         row: rowNumber,
         field: "mvolaNumber",
-        message: "Numéro MVola invalide : 10 chiffres, préfixe 034 ou 038",
+        message: "Numéro MVola invalide : 10 chiffres, préfixe 034, 036 ou 038",
       });
     }
     let siteCode = "";
@@ -363,10 +371,8 @@ export async function parseWorkersWorkbook(
 
     let matricule = values.matricule;
     if (!matricule && usingSiteShortCode) {
-      matricule =
-        legacyMocId !== undefined
-          ? `MOC-${siteCode}-L${legacyMocId}`
-          : `MOC-${siteCode}-R${String(await nextFallbackMatriculeNumber(siteCode, fallbackMatriculeCounters)).padStart(3, "0")}`;
+      const seq = await nextFallbackMatriculeNumber(siteCode, fallbackMatriculeCounters);
+      matricule = `MOC-${siteCode}-${String(seq).padStart(2, "0")}`;
     }
 
     valid.push({

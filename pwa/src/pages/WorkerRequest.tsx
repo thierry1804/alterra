@@ -188,7 +188,7 @@ export default function WorkerRequest() {
               id="wkr-mvola"
               value={mvolaNumber}
               onChange={(event) => setMvolaNumber(event.target.value)}
-              placeholder="034…"
+              placeholder="034…, 036…, 038…"
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>

@@ -146,7 +146,7 @@ describe("initial import parsers", () => {
     expect(result.errors.some((error) => error.field === "legacyMocId")).toBe(true);
   });
 
-  it("parseInitialWorkersWorkbook generates matricule MOC-{SITE}-L{legacyMocId} when matricule is absent but legacyMocId is provided", async () => {
+  it("parseInitialWorkersWorkbook stores legacyMocId but still generates a sequential matricule when matricule is absent", async () => {
     const buffer = await buildWorkbook(
       ["legacyMocId", "firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
       [["84", "Jean", "Rakoto", "0340000001", "MNK", "2025-01-01"]],
@@ -154,11 +154,15 @@ describe("initial import parsers", () => {
 
     const result = await parseInitialWorkersWorkbook(buffer);
     expect(result.errors).toHaveLength(0);
-    expect(result.valid[0]?.matricule).toBe("MOC-MNK-L84");
+    expect(result.valid[0]?.matricule).toBe("MOC-MNK-01");
+    expect(result.valid[0]?.legacyMocId).toBe(84);
   });
 
-  it("parseInitialWorkersWorkbook generates sequential matricule MOC-{SITE}-R{NNN} when both matricule and legacyMocId are absent", async () => {
-    vi.mocked(prisma.worker.count).mockResolvedValue(2);
+  it("parseInitialWorkersWorkbook generates sequential matricule MOC-{SITE}-{NN} when matricule is absent, continuing from the highest existing sequence", async () => {
+    vi.mocked(prisma.worker.findMany).mockResolvedValue([
+      { matricule: "MOC-MNK-01" },
+      { matricule: "MOC-MNK-02" },
+    ] as never);
     const buffer = await buildWorkbook(
       ["firstName", "lastName", "mvolaNumber", "siteShortCode", "hiredAt"],
       [
@@ -169,7 +173,7 @@ describe("initial import parsers", () => {
 
     const result = await parseInitialWorkersWorkbook(buffer);
     expect(result.errors).toHaveLength(0);
-    expect(result.valid[0]?.matricule).toBe("MOC-MNK-R003");
-    expect(result.valid[1]?.matricule).toBe("MOC-MNK-R004");
+    expect(result.valid[0]?.matricule).toBe("MOC-MNK-03");
+    expect(result.valid[1]?.matricule).toBe("MOC-MNK-04");
   });
 });
