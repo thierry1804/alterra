@@ -6,23 +6,23 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — PresenceRecord + sync | ✅ | `POST /presence/sync` idempotent (clientUuid) |
-| 2 — Badge CRUD | ✅ | `GET/POST/PATCH/DELETE /badges` |
-| 3 — Tests Android | ⏭ | Tests unitaires API ; tests physiques = checklist flotte |
+| Step                      | Statut | Détail                                                   |
+| ------------------------- | ------ | -------------------------------------------------------- |
+| 1 — PresenceRecord + sync | ✅     | `POST /presence/sync` idempotent (clientUuid)            |
+| 2 — Badge CRUD            | ✅     | `GET/POST/PATCH/DELETE /badges`                          |
+| 3 — Tests Android         | ⏭      | Tests unitaires API ; tests physiques = checklist flotte |
 
 ## API
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| POST | `/presence/sync` | CDE, CDS, ADMIN |
-| GET | `/presence` | CDE, CDS, ADMIN |
-| GET | `/badges` | CDE, CDS, ADMIN |
-| GET | `/badges/:id` | CDE, CDS, ADMIN |
-| POST | `/badges` | ADMIN |
-| PATCH | `/badges/:id` | ADMIN |
-| DELETE | `/badges/:id` | ADMIN (révocation) |
+| Méthode | Route            | Rôle               |
+| ------- | ---------------- | ------------------ |
+| POST    | `/presence/sync` | CDE, CDS, ADMIN    |
+| GET     | `/presence`      | CDE, CDS, ADMIN    |
+| GET     | `/badges`        | CDE, CDS, ADMIN    |
+| GET     | `/badges/:id`    | CDE, CDS, ADMIN    |
+| POST    | `/badges`        | ADMIN              |
+| PATCH   | `/badges/:id`    | ADMIN              |
+| DELETE  | `/badges/:id`    | ADMIN (révocation) |
 
 ## Fichiers
 

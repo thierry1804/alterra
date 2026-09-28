@@ -34,10 +34,7 @@ export async function upsertBadgeMapping(nfcTagId: string, workerId: string): Pr
 }
 
 export async function hasPresenceToday(workerId: string, date = todayIsoDate()): Promise<boolean> {
-  const existing = await db.presenceLog
-    .where("[workerId+date]")
-    .equals([workerId, date])
-    .first();
+  const existing = await db.presenceLog.where("[workerId+date]").equals([workerId, date]).first();
   return !!existing;
 }
 

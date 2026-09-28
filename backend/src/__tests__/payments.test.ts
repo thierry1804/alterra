@@ -314,7 +314,13 @@ describe("Payments API", () => {
     await workbook.xlsx.load(result.buffer);
     const sheet = workbook.getWorksheet("Paiements")!;
     const header = [1, 2, 3, 4, 5].map((c) => sheet.getRow(1).getCell(c).value);
-    expect(header).toEqual(["Numéro téléphone", "Description", "Période", "Montant", "Bio Validée"]);
+    expect(header).toEqual([
+      "Numéro téléphone",
+      "Description",
+      "Période",
+      "Montant",
+      "Bio Validée",
+    ]);
     expect(sheet.getRow(2).getCell(3).value).toBe("S29");
     expect(sheet.getRow(2).getCell(5).value).toBe("OUI");
   });

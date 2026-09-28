@@ -2,10 +2,7 @@ import { Prisma, RequestStatus, Role, WorkerStatus } from "@prisma/client";
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
-import {
-  assertActivityCancelAllowed,
-  assertActivityDecisionAllowed,
-} from "./workflow-state.js";
+import { assertActivityCancelAllowed, assertActivityDecisionAllowed } from "./workflow-state.js";
 
 export interface ListWorkerRequestsInput {
   status?: RequestStatus;

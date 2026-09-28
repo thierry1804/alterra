@@ -68,7 +68,12 @@ export default function MvolaExportButton({
         />
         Inclure l&apos;en-tête
       </label>
-      <Button type="button" variant="outline" disabled={disabled || loading} onClick={() => void handleExport()}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled || loading}
+        onClick={() => void handleExport()}
+      >
         <Download className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
         {loading ? "Export…" : "Export MVola"}
       </Button>

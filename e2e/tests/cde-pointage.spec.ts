@@ -10,7 +10,10 @@ test.describe("CDE — saisie lot et sync", () => {
       timeout: 20_000,
     });
 
-    const firstActivity = page.locator("button").filter({ hasText: /trou|plant|Ar/i }).first();
+    const firstActivity = page
+      .locator("button")
+      .filter({ hasText: /trou|plant|Ar/i })
+      .first();
     await expect(firstActivity).toBeVisible({ timeout: 20_000 });
     await firstActivity.click();
 

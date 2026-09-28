@@ -5,10 +5,7 @@ import {
   renderWeeklyInvoiceHtml,
   renderWeeklyReportHtml,
 } from "./pdf-render.service.js";
-import {
-  buildWeeklyReportViewModel,
-  type WeeklyPdfJobInput,
-} from "./weekly-data.service.js";
+import { buildWeeklyReportViewModel, type WeeklyPdfJobInput } from "./weekly-data.service.js";
 
 export interface WeeklyPdfJobResult {
   siteId: string;
@@ -24,9 +21,7 @@ function buildObjectKey(weekIso: string, siteCode: string, kind: "rapport" | "fa
   return `reports/${weekIso}/${siteCode}/${kind}_${stamp}.pdf`;
 }
 
-export async function processWeeklyPdfJob(
-  input: WeeklyPdfJobInput,
-): Promise<WeeklyPdfJobResult> {
+export async function processWeeklyPdfJob(input: WeeklyPdfJobInput): Promise<WeeklyPdfJobResult> {
   const viewModel = await buildWeeklyReportViewModel(input);
 
   const [reportHtml, invoiceHtml] = [

@@ -67,11 +67,11 @@ Recette fonctionnelle de clôture V1 avec un référent métier et un représent
 
 ## Grille de sévérité
 
-| Niveau | Définition | Délai cible |
-|--------|------------|-------------|
-| P1 | Bloquant métier ou perte de données | J+1 |
-| P2 | Contournement possible, UX dégradée | J+3 |
-| P3 | Cosmétique, doc | J+5 |
+| Niveau | Définition                          | Délai cible |
+| ------ | ----------------------------------- | ----------- |
+| P1     | Bloquant métier ou perte de données | J+1         |
+| P2     | Contournement possible, UX dégradée | J+3         |
+| P3     | Cosmétique, doc                     | J+5         |
 
 ## Livrables
 

@@ -24,13 +24,13 @@ Procédure manuelle pour valider le parcours CDE sans réseau sur un site réel,
 
 ## Déroulé J1 (journée pilote)
 
-| Heure | Action | Critère succès |
-|-------|--------|----------------|
-| 07:00 | Sync matin en 4G/Wi-Fi | Référentiel à jour, pas d’erreur |
-| 07:15 | Basculer offline (mode avion) | Bandeau « Hors ligne » visible |
-| 07:30–16:00 | Saisie lots normale | Lots enregistrés localement, pas de perte |
-| 16:30 | Retour réseau | Sync auto ou manuelle réussie |
-| 17:00 | Contrôle Admin | Pointages visibles, montants cohérents |
+| Heure       | Action                        | Critère succès                            |
+| ----------- | ----------------------------- | ----------------------------------------- |
+| 07:00       | Sync matin en 4G/Wi-Fi        | Référentiel à jour, pas d’erreur          |
+| 07:15       | Basculer offline (mode avion) | Bandeau « Hors ligne » visible            |
+| 07:30–16:00 | Saisie lots normale           | Lots enregistrés localement, pas de perte |
+| 16:30       | Retour réseau                 | Sync auto ou manuelle réussie             |
+| 17:00       | Contrôle Admin                | Pointages visibles, montants cohérents    |
 
 ## Points de contrôle
 

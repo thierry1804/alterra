@@ -66,9 +66,7 @@ export function collectGeoBounds(
   options: { siteId?: string; includeZones: boolean; includeParcels: boolean },
 ): [number, number][] {
   const points: [number, number][] = [];
-  const visibleSites = options.siteId
-    ? sites.filter((site) => site.id === options.siteId)
-    : sites;
+  const visibleSites = options.siteId ? sites.filter((site) => site.id === options.siteId) : sites;
 
   visibleSites.forEach((site) => {
     if (site.geoLat != null && site.geoLng != null) {

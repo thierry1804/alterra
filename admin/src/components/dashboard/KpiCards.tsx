@@ -52,11 +52,8 @@ export default function KpiCards({ kpis, stats }: KpiCardsProps) {
     (kpis
       ? dashboardItems.map((item) => {
           const value =
-            item.key === "pendingPaymentsAmount"
-              ? kpis.pendingPaymentsAmount
-              : kpis[item.key];
-          const highlightPending =
-            item.key === "pendingPointages" && kpis.pendingPointages > 10;
+            item.key === "pendingPaymentsAmount" ? kpis.pendingPaymentsAmount : kpis[item.key];
+          const highlightPending = item.key === "pendingPointages" && kpis.pendingPointages > 10;
           const highlightPayments =
             item.key === "pendingPaymentsAmount" && kpis.pendingPaymentsCount > 0;
           return {
@@ -98,9 +95,7 @@ export default function KpiCards({ kpis, stats }: KpiCardsProps) {
                 >
                   {item.displayValue}
                 </p>
-                {item.sublabel && (
-                  <p className="mt-1 text-xs text-muted">{item.sublabel}</p>
-                )}
+                {item.sublabel && <p className="mt-1 text-xs text-muted">{item.sublabel}</p>}
               </div>
               <span
                 className={cn(

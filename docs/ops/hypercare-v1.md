@@ -16,13 +16,13 @@ Documents liés :
 
 ## 1. Périmètre hypercare
 
-| Inclus | Exclus (→ backlog V2 ou contrat maintenance) |
-|--------|------------------------------------------------|
-| Bugs bloquants P1/P2 | Nouvelles fonctionnalités |
-| Hotfix prod (< 4 h cible P1) | Refonte UX majeure |
-| Ajustements UX mineurs (< 0,5 j) | Intégrations non prévues V1 |
-| Support astreinte réactive | Formation sites supplémentaires |
-| 3 réunions bilan hebdomadaire | Évolution NFC, workflows demandes |
+| Inclus                           | Exclus (→ backlog V2 ou contrat maintenance) |
+| -------------------------------- | -------------------------------------------- |
+| Bugs bloquants P1/P2             | Nouvelles fonctionnalités                    |
+| Hotfix prod (< 4 h cible P1)     | Refonte UX majeure                           |
+| Ajustements UX mineurs (< 0,5 j) | Intégrations non prévues V1                  |
+| Support astreinte réactive       | Formation sites supplémentaires              |
+| 3 réunions bilan hebdomadaire    | Évolution NFC, workflows demandes            |
 
 ---
 
@@ -30,11 +30,11 @@ Documents liés :
 
 ### 2.1 Organisation
 
-| Rôle | Responsabilité | Disponibilité |
-|------|----------------|---------------|
+| Rôle                            | Responsabilité                    | Disponibilité                                       |
+| ------------------------------- | --------------------------------- | --------------------------------------------------- |
 | **Astreinte technique** (NextA) | Incidents infra, API, déploiement | 08h–20h jours ouvrés + best effort soir/week-end P1 |
-| **Référent métier** (ALTERRA) | Priorisation, communication sites | Heures bureau |
-| **Admin système site** | Première ligne terrain | Téléphone campagne |
+| **Référent métier** (ALTERRA)   | Priorisation, communication sites | Heures bureau                                       |
+| **Admin système site**          | Première ligne terrain            | Téléphone campagne                                  |
 
 **Canaux :**
 
@@ -44,11 +44,11 @@ Documents liés :
 
 ### 2.2 Calendrier type
 
-| Semaine | Focus |
-|---------|-------|
+| Semaine     | Focus                                                              |
+| ----------- | ------------------------------------------------------------------ |
 | S1 post-MEP | Stabilisation login, sync, saisie lot ; présence terrain renforcée |
-| S2 | Paiements MVola, validation CDS, volumétrie réelle |
-| S3 | Consolidation, clôture anomalies, préparation sortie hypercare |
+| S2          | Paiements MVola, validation CDS, volumétrie réelle                 |
+| S3          | Consolidation, clôture anomalies, préparation sortie hypercare     |
 
 ### 2.3 Prise d'appel
 
@@ -61,11 +61,11 @@ Documents liés :
 
 ## 3. Grille de sévérité
 
-| Niveau | Définition | Délai prise en charge | Délai résolution cible |
-|--------|------------|----------------------|------------------------|
-| **P1** | Campagne arrêtée, perte de données, paiement bloqué | 30 min | 4 h (hotfix ou rollback) |
-| **P2** | Fonction dégradée avec contournement pénible | 2 h | 24 h |
-| **P3** | Cosmétique, doc, question utilisateur | J+1 ouvré | Sprint suivant |
+| Niveau | Définition                                          | Délai prise en charge | Délai résolution cible   |
+| ------ | --------------------------------------------------- | --------------------- | ------------------------ |
+| **P1** | Campagne arrêtée, perte de données, paiement bloqué | 30 min                | 4 h (hotfix ou rollback) |
+| **P2** | Fonction dégradée avec contournement pénible        | 2 h                   | 24 h                     |
+| **P3** | Cosmétique, doc, question utilisateur               | J+1 ouvré             | Sprint suivant           |
 
 **Exemples P1 :** sync impossible 100 % CDE, admin inaccessible, corruption base, fuite données.  
 **Exemples P2 :** bio lent, export MVola partiel, KPI admin incorrect.  
@@ -155,13 +155,13 @@ Autorisés sans cadrage V2 si **≤ 0,5 j-h** et **sans impact schéma DB** :
 
 ## 7. Sortie hypercare (fin semaine 3)
 
-| Critère | Seuil |
-|---------|-------|
-| P1 ouverts | 0 |
-| P2 ouverts | ≤ 2 avec plan daté |
+| Critère      | Seuil                                |
+| ------------ | ------------------------------------ |
+| P1 ouverts   | 0                                    |
+| P2 ouverts   | ≤ 2 avec plan daté                   |
 | Sync terrain | > 95 % lots sync J+0 sur site pilote |
-| MVola | 1 cycle export/import réussi en prod |
-| Formation | PV recette signé |
+| MVola        | 1 cycle export/import réussi en prod |
+| Formation    | PV recette signé                     |
 
 **Passage maintenance long terme :** voir contrat infogérance (hors périmètre firm 50 j-h V1).
 
@@ -169,12 +169,12 @@ Autorisés sans cadrage V2 si **≤ 0,5 j-h** et **sans impact schéma DB** :
 
 ## 8. Contacts (à compléter avant MEP)
 
-| Rôle | Nom | Téléphone | Email |
-|------|-----|-----------|-------|
-| Astreinte technique | | | |
-| Référent ALTERRA | | | |
-| Admin système | | | |
+| Rôle                | Nom | Téléphone | Email |
+| ------------------- | --- | --------- | ----- |
+| Astreinte technique |     |           |       |
+| Référent ALTERRA    |     |           |       |
+| Admin système       |     |           |       |
 
 ---
 
-*Task 25 — OPS-HYPERCARE · ALTERRA V1*
+_Task 25 — OPS-HYPERCARE · ALTERRA V1_

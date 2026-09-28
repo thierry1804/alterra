@@ -13,14 +13,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton, RowActions } from "../ui/IconButton";
 import { Input } from "../ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { toast } from "../../hooks/use-toast";
 import { api } from "../../lib/api";
 
@@ -53,8 +46,15 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
   });
 
   const correctMutation = useMutation({
-    mutationFn: ({ id, amount, correctionReason }: { id: string; amount: number; correctionReason: string }) =>
-      api.patch(`/payments/${id}`, { amount, correctionReason }),
+    mutationFn: ({
+      id,
+      amount,
+      correctionReason,
+    }: {
+      id: string;
+      amount: number;
+      correctionReason: string;
+    }) => api.patch(`/payments/${id}`, { amount, correctionReason }),
     onSuccess: () => {
       toast({ title: "Montant corrigé" });
       setEditingId(null);
@@ -136,7 +136,9 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                 <TableCell className="text-xs">
                   {row.reconciliationStatus ? (
                     <>
-                      <Badge variant={row.reconciliationStatus === "CONFIRME" ? "success" : "warning"}>
+                      <Badge
+                        variant={row.reconciliationStatus === "CONFIRME" ? "success" : "warning"}
+                      >
                         {RECONCILIATION_LABELS[row.reconciliationStatus]}
                       </Badge>
                       {row.mvolaReference && (
@@ -174,7 +176,9 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                           type="button"
                           size="sm"
                           disabled={failReason.trim().length < 10 || failMutation.isPending}
-                          onClick={() => failMutation.mutate({ id: row.id, failureReason: failReason.trim() })}
+                          onClick={() =>
+                            failMutation.mutate({ id: row.id, failureReason: failReason.trim() })
+                          }
                         >
                           Confirmer
                         </Button>

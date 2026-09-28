@@ -38,14 +38,7 @@ export interface World {
 }
 
 export type RegistryKind =
-  | "site"
-  | "category"
-  | "subActivity"
-  | "worker"
-  | "user"
-  | "team"
-  | "pointage"
-  | "payment";
+  "site" | "category" | "subActivity" | "worker" | "user" | "team" | "pointage" | "payment";
 
 export interface RegistryEntry {
   kind: RegistryKind;

@@ -9,7 +9,10 @@ import { stLoad } from "./support/state.js";
 test("UC-FE-ADM-PAY-IMP › un fichier qui n'est pas un classeur Excel est refusé à la lecture des colonnes", async () => {
   const st = stLoad<{ status?: number }>("pay-import-garbage");
   test.skip(st.status === undefined, "test d'import non exécuté");
-  expect(st.status, `fichier texte accepté par /payments/import-status/columns (HTTP ${st.status}) : lu comme CSV au lieu d'être rejeté`).toBeGreaterThanOrEqual(400);
+  expect(
+    st.status,
+    `fichier texte accepté par /payments/import-status/columns (HTTP ${st.status}) : lu comme CSV au lieu d'être rejeté`,
+  ).toBeGreaterThanOrEqual(400);
 });
 
 test("UC-FE-ADM-PAY-EXP › l'en-tête du fichier exporté respecte la spécification MVola (5 colonnes)", async () => {

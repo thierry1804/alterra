@@ -8,7 +8,8 @@ import { TableQueryError } from "../ui/QueryError";
 export default function MvolaExportHistory({ refreshKey }: { refreshKey?: number }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["payments-exports", refreshKey],
-    queryFn: () => api.get<{ data: MvolaExportEntry[] }>("/payments/exports").then((r) => r.data.data),
+    queryFn: () =>
+      api.get<{ data: MvolaExportEntry[] }>("/payments/exports").then((r) => r.data.data),
   });
 
   return (
@@ -34,7 +35,11 @@ export default function MvolaExportHistory({ refreshKey }: { refreshKey?: number
               </TableRow>
             )}
             {isError && (
-              <TableQueryError colSpan={5} what="l'historique des exports" onRetry={() => void refetch()} />
+              <TableQueryError
+                colSpan={5}
+                what="l'historique des exports"
+                onRetry={() => void refetch()}
+              />
             )}
             {!isLoading && !isError && (data ?? []).length === 0 && (
               <TableRow>

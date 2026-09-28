@@ -118,9 +118,7 @@ async function nextFallbackMatriculeNumber(
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function detectFileDuplicates(rows: ValidImportRow[]): ImportRowError[] {
@@ -190,9 +188,7 @@ async function validateRowsAgainstDb(rows: ValidImportRow[]): Promise<ImportRowE
   const knownSiteIds = new Set(sites.map((s) => s.id));
   const knownTeamIds = new Set(teams.map((t) => t.id));
   const workerByMvola = new Map(existingWorkers.map((w) => [w.mvolaNumber, w]));
-  const workerByMatricule = new Map(
-    existingWorkers.map((w) => [w.matricule.toLowerCase(), w]),
-  );
+  const workerByMatricule = new Map(existingWorkers.map((w) => [w.matricule.toLowerCase(), w]));
 
   for (const row of rows) {
     if (!knownSiteIds.has(row.siteId)) {
@@ -254,7 +250,10 @@ export async function parseWorkersWorkbook(
   const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
-    return { valid: [], errors: [{ row: 0, field: "sheet", message: "Feuille Excel introuvable" }] };
+    return {
+      valid: [],
+      errors: [{ row: 0, field: "sheet", message: "Feuille Excel introuvable" }],
+    };
   }
 
   const { mapping } = options;
@@ -330,7 +329,8 @@ export async function parseWorkersWorkbook(
     if (!usingSiteShortCode && !values.matricule) {
       rowErrors.push({ row: rowNumber, field: "matricule", message: "Requis" });
     }
-    if (!values.firstName) rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis" });
+    if (!values.firstName)
+      rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis" });
     if (!values.lastName) rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis" });
     if (!isValidMvolaNumber(values.mvolaNumber ?? "")) {
       rowErrors.push({
@@ -356,7 +356,12 @@ export async function parseWorkersWorkbook(
       rowErrors.push({ row: rowNumber, field: "teamId", message: "UUID équipe invalide" });
     }
 
-    const legacyMocId = parseOptionalIntField(values.legacyMocId, rowNumber, "legacyMocId", rowErrors);
+    const legacyMocId = parseOptionalIntField(
+      values.legacyMocId,
+      rowNumber,
+      "legacyMocId",
+      rowErrors,
+    );
     const hiredAt = parseHiredAt(values.hiredAt, rowNumber, rowErrors);
     const statusRaw = values.status?.trim();
     const status = statusRaw ? parseStatus(statusRaw) : WorkerStatus.ACTIVE;
@@ -452,10 +457,14 @@ export async function detectWorkersImportColumns(
   const workbook = await loadXlsxWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) {
-    return { columns: [], fields: WORKER_IMPORT_FIELDS, suggestedMapping: {}, referenceRowNumber: 1 };
+    return {
+      columns: [],
+      fields: WORKER_IMPORT_FIELDS,
+      suggestedMapping: {},
+      referenceRowNumber: 1,
+    };
   }
-  const resolvedRowNumber =
-    referenceRowNumber ?? (hasHeaderRow ? detectHeaderRowNumber(sheet) : 1);
+  const resolvedRowNumber = referenceRowNumber ?? (hasHeaderRow ? detectHeaderRowNumber(sheet) : 1);
   const columns = detectColumns(sheet, hasHeaderRow, resolvedRowNumber);
   const suggestedMapping = hasHeaderRow ? suggestColumnMapping(columns) : {};
   return {

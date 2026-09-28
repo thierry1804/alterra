@@ -105,9 +105,7 @@ async function main() {
     if (result.report.errors.length > 0) {
       console.error(`\n${result.report.errors.length} erreur(s) — import annulé après validation.`);
       for (const error of result.report.errors.slice(0, 20)) {
-        console.error(
-          `  [${error.sheet ?? "?"}] L${error.row} ${error.field}: ${error.message}`,
-        );
+        console.error(`  [${error.sheet ?? "?"}] L${error.row} ${error.field}: ${error.message}`);
       }
       process.exitCode = 1;
     } else {

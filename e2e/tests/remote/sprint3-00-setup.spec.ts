@@ -75,12 +75,16 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   // E2E_S3_SKIP_PAY=1 : n'écrit rien côté paiements (chaîne bordereau/export/import ignorée). Chaque exécution de la chaîne
   // consomme définitivement un numéro de semaine (paiements EXPORTED/PAID non supprimables par l'API).
   let pay: World["pay"] = null;
-  const candidateWeeks = process.env.E2E_S3_SKIP_PAY === "1" ? [] : [46, 45, 44, 43, 42, 41, 40, 39, 38];
+  const candidateWeeks =
+    process.env.E2E_S3_SKIP_PAY === "1" ? [] : [46, 45, 44, 43, 42, 41, 40, 39, 38];
   for (const week of candidateWeeks) {
     const res = await admin.get(`/payments?periodIso=S${week}&referenceYear=2090`);
     expectStatus(res, 200);
     // L'export MVola ignore encore l'année : la semaine ne doit contenir AUCUN paiement réel, quelle que soit l'année.
-    if ((res.body.data as unknown[]).length === 0 && (await foreignPaymentsForWeek(admin, week)) === 0) {
+    if (
+      (res.body.data as unknown[]).length === 0 &&
+      (await foreignPaymentsForWeek(admin, week)) === 0
+    ) {
       const year = 2090;
       pay = {
         year,
@@ -97,7 +101,11 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   let site: World["site"] | undefined;
   for (let i = 0; i < 40 && !site; i++) {
     const code = randomLetters(3);
-    const res = await admin.post("/sites", { name: e2eName(runId, "SITE"), shortCode: code, location: `${E2E_PREFIX}zone de test` });
+    const res = await admin.post("/sites", {
+      name: e2eName(runId, "SITE"),
+      shortCode: code,
+      location: `${E2E_PREFIX}zone de test`,
+    });
     if (res.status === 201) {
       site = { id: res.body.id, code, name: res.body.name };
       track("site", site.id, site.name);
@@ -151,7 +159,11 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
     expectStatus(res, 201);
     track("user", res.body.user.id, email);
     expect(res.body.temporaryPassword, "mot de passe temporaire absent de la réponse").toBeTruthy();
-    return { id: res.body.user.id as string, email, password: res.body.temporaryPassword as string };
+    return {
+      id: res.body.user.id as string,
+      email,
+      password: res.body.temporaryPassword as string,
+    };
   }
   const cds = await createUser("CHEF_SERVICE", "cds");
   const cde = await createUser("CHEF_EQUIPE", "cde");
@@ -191,7 +203,13 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
     });
     expectStatus(res, 201);
     track("worker", res.body.id, matricule);
-    workers.push({ id: res.body.id, matricule, firstName: `${E2E_PREFIX}W${i}`, lastName: runId, mvolaNumber: mvola });
+    workers.push({
+      id: res.body.id,
+      matricule,
+      firstName: `${E2E_PREFIX}W${i}`,
+      lastName: runId,
+      mvolaNumber: mvola,
+    });
   }
 
   const world: World = {
@@ -199,7 +217,13 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
     site: site!,
     category: category!,
     unitId: unit.id,
-    subActivity: { id: sub.body.id, groupKey: sub.body.groupKey, label: subLabel, shortLabel: "Essai", rate: 1000 },
+    subActivity: {
+      id: sub.body.id,
+      groupKey: sub.body.groupKey,
+      label: subLabel,
+      shortLabel: "Essai",
+      rate: 1000,
+    },
     cds,
     cde,
     team: { id: team.body.id, name: teamName },
@@ -210,6 +234,8 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   await admin.dispose();
   test.info().annotations.push({
     type: "semaine-paie",
-    description: pay ? `${pay.periodIso} (${pay.shortPeriod}) vierge` : "AUCUNE semaine vierge : tests d'écriture du bordereau ignorés",
+    description: pay
+      ? `${pay.periodIso} (${pay.shortPeriod}) vierge`
+      : "AUCUNE semaine vierge : tests d'écriture du bordereau ignorés",
   });
 });

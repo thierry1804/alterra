@@ -40,7 +40,13 @@ function requirePgDumpHeader() {
     transform(chunk: Buffer, _enc, cb) {
       if (!checked) {
         if (chunk.length < 5 || chunk.subarray(0, 5).toString("latin1") !== "PGDMP") {
-          return cb(new ApiError(422, "INVALID_BACKUP_FILE", "Fichier invalide : sauvegarde .dump ALTERRA attendue"));
+          return cb(
+            new ApiError(
+              422,
+              "INVALID_BACKUP_FILE",
+              "Fichier invalide : sauvegarde .dump ALTERRA attendue",
+            ),
+          );
         }
         checked = true;
       }
@@ -91,7 +97,10 @@ systemRouter.get("/system/backup", requireAuth, requireRole(Role.ADMIN), async (
   });
 
   res.setHeader("Content-Type", "application/octet-stream");
-  res.setHeader("Content-Disposition", `attachment; filename="alterra-backup-${timestampSuffix()}.dump"`);
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="alterra-backup-${timestampSuffix()}.dump"`,
+  );
 
   dump.stdout.pipe(res);
 
@@ -144,7 +153,22 @@ systemRouter.post(
       // qui interpréterait des méta-commandes (\\!cmd) d'un fichier fourni par l'utilisateur.
       const restore = spawn(
         "pg_restore",
-        ["-h", host, "-p", port, "-U", user, "-d", dbname, "--clean", "--if-exists", "--no-owner", "--no-privileges", "--single-transaction", "--exit-on-error"],
+        [
+          "-h",
+          host,
+          "-p",
+          port,
+          "-U",
+          user,
+          "-d",
+          dbname,
+          "--clean",
+          "--if-exists",
+          "--no-owner",
+          "--no-privileges",
+          "--single-transaction",
+          "--exit-on-error",
+        ],
         {
           env: { ...process.env, PGPASSWORD: password },
         },
@@ -171,14 +195,18 @@ systemRouter.post(
           objectStream.pipe(guard).pipe(restore.stdin);
         });
       } finally {
-        await minioClient.removeObject(BUCKETS.assets, backupKey).catch((err) =>
-          logger.warn({ err, backupKey }, "cleanup of backup object failed"),
-        );
+        await minioClient
+          .removeObject(BUCKETS.assets, backupKey)
+          .catch((err) => logger.warn({ err, backupKey }, "cleanup of backup object failed"));
       }
 
       if (exitCode !== 0) {
         logger.error({ exitCode, stderr }, "pg_restore failed");
-        throw new ApiError(500, "RESTORE_FAILED", "La restauration a échoué — la base n'a pas été modifiée (transaction annulée)");
+        throw new ApiError(
+          500,
+          "RESTORE_FAILED",
+          "La restauration a échoué — la base n'a pas été modifiée (transaction annulée)",
+        );
       }
 
       await writeAuditLog({

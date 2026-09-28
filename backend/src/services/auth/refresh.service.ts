@@ -104,7 +104,10 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
 }
 
 /** Revoke a refresh token from cookie value, blacklist in Redis, clear cookie. */
-export async function revokeRefreshToken(rawToken: string | undefined, res: Response): Promise<void> {
+export async function revokeRefreshToken(
+  rawToken: string | undefined,
+  res: Response,
+): Promise<void> {
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

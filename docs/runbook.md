@@ -37,15 +37,15 @@ Voir checklist complète : [docs/deploy/production.md](deploy/production.md)
 
 #### Playbook MEP (mise en production)
 
-| Étape | Action | Responsable | Durée cible |
-| ----- | ------ | ----------- | ------------- |
-| J-7 | Recette staging OK (`docs/qa/recette-v1.md`) | Métier + QA | — |
-| J-3 | Backup manuel + test restore sur staging | Ops | 30 min |
-| J-1 | Communication fenêtre maintenance (mardi 12h–14h) | ALTERRA | — |
-| J0 | Tag release Git + images GHCR buildées | Dev | 15 min |
-| J0 | `./scripts/deploy.sh` sur prod | Ops | 20 min |
-| J0 | Smoke test public + vérif KPI admin | Ops + métier | 15 min |
-| J+1 | Hypercare (Task 25) — astreinte réactive | Support | 3 semaines |
+| Étape | Action                                            | Responsable  | Durée cible |
+| ----- | ------------------------------------------------- | ------------ | ----------- |
+| J-7   | Recette staging OK (`docs/qa/recette-v1.md`)      | Métier + QA  | —           |
+| J-3   | Backup manuel + test restore sur staging          | Ops          | 30 min      |
+| J-1   | Communication fenêtre maintenance (mardi 12h–14h) | ALTERRA      | —           |
+| J0    | Tag release Git + images GHCR buildées            | Dev          | 15 min      |
+| J0    | `./scripts/deploy.sh` sur prod                    | Ops          | 20 min      |
+| J0    | Smoke test public + vérif KPI admin               | Ops + métier | 15 min      |
+| J+1   | Hypercare (Task 25) — astreinte réactive          | Support      | 3 semaines  |
 
 Voir [docs/ops/hypercare-v1.md](ops/hypercare-v1.md) : grille P1–P3, hotfix, bilan hebdo.
 

@@ -46,9 +46,7 @@ export async function exportMvolaPayments(
     include: { worker: true },
   });
 
-  const exportable = pendingPayments.filter(
-    (payment) => payment.bioValid && payment.amount.gt(0),
-  );
+  const exportable = pendingPayments.filter((payment) => payment.bioValid && payment.amount.gt(0));
   const excludedCount = pendingPayments.length - exportable.length;
 
   if (exportable.length === 0) {

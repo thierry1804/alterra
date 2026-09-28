@@ -20,7 +20,13 @@ const listZonesQuery = z.object({
   siteId: z.string().uuid().optional(),
 });
 
-const zoneCodeSchema = z.string().trim().min(1).max(20).transform((v) => v.toUpperCase()).nullable();
+const zoneCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(20)
+  .transform((v) => v.toUpperCase())
+  .nullable();
 
 const createZoneSchema = z.object({
   siteId: z.string().uuid(),
@@ -198,7 +204,11 @@ zonesRouter.post(
         });
         if (!zone) throw new ApiError(404, "NOT_FOUND", "Zone introuvable");
         if (zone._count.parcelles > 0) {
-          throw new ApiError(409, "ZONE_HAS_PARCELLES", "Supprimez d'abord les parcelles de la zone");
+          throw new ApiError(
+            409,
+            "ZONE_HAS_PARCELLES",
+            "Supprimez d'abord les parcelles de la zone",
+          );
         }
         await prisma.zone.delete({ where: { id: zone.id } });
         await writeAuditLog({

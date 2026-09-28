@@ -14,9 +14,7 @@ export interface PresenceSyncRunResult {
   rejected: number;
 }
 
-export async function syncBadgeCache(options: {
-  teamId?: string | null;
-}): Promise<number> {
+export async function syncBadgeCache(options: { teamId?: string | null }): Promise<number> {
   if (!navigator.onLine) {
     return db.badges.count();
   }

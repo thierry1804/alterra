@@ -9,20 +9,20 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Schéma Prisma V1 complet (13 modèles) | ✅ |
-| 1 | `RefreshToken` (tokenHash, expiresAt, revokedAt, deviceInfo?) | ✅ |
-| 1 | `PasswordReset` (tokenHash, expiresAt, usedAt) | ✅ |
-| 1 | Relations User ↔ tokens | ✅ |
-| 1 | Modèles V2 conservés | ✅ |
-| 2 | Migration `v1_refresh_password_reset` | ✅ (SQL versionné) |
-| 3 | Seed déterministe (UUIDs fixes) | ✅ |
-| 3 | 1 admin, 5 CDS, 15 CDE | ✅ |
-| 3 | 5 sites, 10 activités, 50 MOC | ✅ |
-| 4 | `npm run db:setup -w backend` | ⚠️ Bloqué — Postgres `:5433` injoignable |
-| 5 | Test vitest comptages seed | ✅ (skip si DB down) |
-| 6 | `npm run test -w backend` | ✅ PASS |
+| Step | Item                                                          | Status                                   |
+| ---- | ------------------------------------------------------------- | ---------------------------------------- |
+| 1    | Schéma Prisma V1 complet (13 modèles)                         | ✅                                       |
+| 1    | `RefreshToken` (tokenHash, expiresAt, revokedAt, deviceInfo?) | ✅                                       |
+| 1    | `PasswordReset` (tokenHash, expiresAt, usedAt)                | ✅                                       |
+| 1    | Relations User ↔ tokens                                       | ✅                                       |
+| 1    | Modèles V2 conservés                                          | ✅                                       |
+| 2    | Migration `v1_refresh_password_reset`                         | ✅ (SQL versionné)                       |
+| 3    | Seed déterministe (UUIDs fixes)                               | ✅                                       |
+| 3    | 1 admin, 5 CDS, 15 CDE                                        | ✅                                       |
+| 3    | 5 sites, 10 activités, 50 MOC                                 | ✅                                       |
+| 4    | `npm run db:setup -w backend`                                 | ⚠️ Bloqué — Postgres `:5433` injoignable |
+| 5    | Test vitest comptages seed                                    | ✅ (skip si DB down)                     |
+| 6    | `npm run test -w backend`                                     | ✅ PASS                                  |
 
 ---
 
@@ -45,15 +45,15 @@
 - `backend/prisma/seed-data.ts` — constantes, UUIDs fixes, comptages attendus
 - `backend/prisma/seed.ts` — upserts idempotents
 
-| Entité | Quantité | Détail |
-| ------ | -------- | ------ |
-| Admin | 1 | `admin@alterra.mg` / `<mot de passe du seed>` |
-| CDS | 5 | `cds.{site}@alterra.test` — 1 par site |
-| CDE | 15 | `cde.{site}{1-3}@alterra.test` — 3 équipes/site |
-| Sites | 5 | MNK, ANT, ANJ, MGT, AMB |
-| Équipes | 15 | `{SITE}-1`, `{SITE}-2`, `{SITE}-3` |
-| Activités | 10 | UUIDs `0006-*`, 5 liées aux sites |
-| MOC | 50 | 10 par site, matricules `MOC-{SITE}-01..10` |
+| Entité    | Quantité | Détail                                          |
+| --------- | -------- | ----------------------------------------------- |
+| Admin     | 1        | `admin@alterra.mg` / `<mot de passe du seed>`   |
+| CDS       | 5        | `cds.{site}@alterra.test` — 1 par site          |
+| CDE       | 15       | `cde.{site}{1-3}@alterra.test` — 3 équipes/site |
+| Sites     | 5        | MNK, ANT, ANJ, MGT, AMB                         |
+| Équipes   | 15       | `{SITE}-1`, `{SITE}-2`, `{SITE}-3`              |
+| Activités | 10       | UUIDs `0006-*`, 5 liées aux sites               |
+| MOC       | 50       | 10 par site, matricules `MOC-{SITE}-01..10`     |
 
 Mot de passe CDS/CDE : `<mot de passe du seed>`
 

@@ -26,10 +26,13 @@ export async function exportKeyToBase64(key: CryptoKey): Promise<string> {
 }
 
 export async function importKeyFromBase64(value: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", fromBase64(value) as unknown as BufferSource, "AES-GCM", true, [
-    "encrypt",
-    "decrypt",
-  ]);
+  return crypto.subtle.importKey(
+    "raw",
+    fromBase64(value) as unknown as BufferSource,
+    "AES-GCM",
+    true,
+    ["encrypt", "decrypt"],
+  );
 }
 
 export interface EncryptedPayload {

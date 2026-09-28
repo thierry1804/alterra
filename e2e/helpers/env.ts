@@ -1,7 +1,10 @@
 /** Les mots de passe viennent de la base seedée : fournis par l'environnement, jamais en dur. */
 function required(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} requis — mot de passe défini via SEED_*_PASSWORD (ou affiché une fois par npm run db:seed)`);
+  if (!value)
+    throw new Error(
+      `${name} requis — mot de passe défini via SEED_*_PASSWORD (ou affiché une fois par npm run db:seed)`,
+    );
   return value;
 }
 

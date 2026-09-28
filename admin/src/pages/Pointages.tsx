@@ -1,9 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
@@ -364,7 +359,11 @@ export default function PointagesPage() {
           <TableBody>
             {pointagesQuery.isLoading && <TableRowsSkeleton rows={8} cols={10} />}
             {pointagesQuery.isError && (
-              <TableQueryError colSpan={10} what="les pointages" onRetry={() => void pointagesQuery.refetch()} />
+              <TableQueryError
+                colSpan={10}
+                what="les pointages"
+                onRetry={() => void pointagesQuery.refetch()}
+              />
             )}
             {!pointagesQuery.isLoading &&
               pointages.map((pointage) => (

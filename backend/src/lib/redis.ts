@@ -2,8 +2,7 @@ import { createClient, type RedisClientType } from "redis";
 import { logger } from "./logger.js";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
-const USE_IN_MEMORY =
-  process.env.NODE_ENV === "test" || process.env.REDIS_IN_MEMORY === "true";
+const USE_IN_MEMORY = process.env.NODE_ENV === "test" || process.env.REDIS_IN_MEMORY === "true";
 
 type RedisLike = {
   setEx(key: string, ttlSeconds: number, value: string): Promise<void>;
@@ -85,7 +84,10 @@ export async function isRefreshTokenBlacklisted(tokenHash: string): Promise<bool
 const MFA_PENDING_PREFIX = "mfa:pending:";
 const MFA_PENDING_TTL_SECONDS = 10 * 60;
 
-export async function storePendingMfaSecret(userId: string, encryptedSecret: string): Promise<void> {
+export async function storePendingMfaSecret(
+  userId: string,
+  encryptedSecret: string,
+): Promise<void> {
   const redis = await getRedis();
   await redis.setEx(`${MFA_PENDING_PREFIX}${userId}`, MFA_PENDING_TTL_SECONDS, encryptedSecret);
 }
@@ -103,7 +105,10 @@ export async function deletePendingMfaSecret(userId: string): Promise<void> {
 const USER_BLOCKED_PREFIX = "user:blocked:";
 const USER_BLOCKED_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-export async function blockUser(userId: string, ttlSeconds = USER_BLOCKED_TTL_SECONDS): Promise<void> {
+export async function blockUser(
+  userId: string,
+  ttlSeconds = USER_BLOCKED_TTL_SECONDS,
+): Promise<void> {
   const redis = await getRedis();
   await redis.setEx(`${USER_BLOCKED_PREFIX}${userId}`, ttlSeconds, "1");
 }
@@ -121,7 +126,10 @@ const TOKENS_VALID_AFTER_TTL_SECONDS = 60 * 60;
  * Invalide les jetons d'accès émis AVANT maintenant (réinitialisation du mot de passe), sans bloquer le compte :
  * une nouvelle connexion produit un jeton plus récent, accepté immédiatement.
  */
-export async function invalidateTokensIssuedBefore(userId: string, nowMs = Date.now()): Promise<void> {
+export async function invalidateTokensIssuedBefore(
+  userId: string,
+  nowMs = Date.now(),
+): Promise<void> {
   const redis = await getRedis();
   await redis.setEx(
     `${TOKENS_VALID_AFTER_PREFIX}${userId}`,
@@ -130,7 +138,10 @@ export async function invalidateTokensIssuedBefore(userId: string, nowMs = Date.
   );
 }
 
-export async function areTokensRevoked(userId: string, issuedAtSeconds: number | undefined): Promise<boolean> {
+export async function areTokensRevoked(
+  userId: string,
+  issuedAtSeconds: number | undefined,
+): Promise<boolean> {
   const redis = await getRedis();
   const validAfter = await redis.get(`${TOKENS_VALID_AFTER_PREFIX}${userId}`);
   if (validAfter === null) return false;

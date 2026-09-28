@@ -11,7 +11,11 @@ export interface ListPaymentsFilters {
 }
 
 export async function listPayments(filters: ListPaymentsFilters) {
-  const { shortPeriod, referenceYear } = resolvePeriod(filters.periodIso, undefined, filters.referenceYear);
+  const { shortPeriod, referenceYear } = resolvePeriod(
+    filters.periodIso,
+    undefined,
+    filters.referenceYear,
+  );
 
   const where: Prisma.PaymentWhereInput = {
     periodIso: shortPeriod,
@@ -150,11 +154,18 @@ export async function listMvolaExports(limit = 50) {
   });
 
   const userIds = [...new Set(entries.map((e) => e.userId).filter((id): id is string => !!id))];
-  const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } });
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, email: true },
+  });
   const emailById = new Map(users.map((u) => [u.id, u.email]));
 
   return entries.map((entry) => {
-    const after = (entry.after ?? {}) as { periodIso?: string; exportedCount?: number; filename?: string };
+    const after = (entry.after ?? {}) as {
+      periodIso?: string;
+      exportedCount?: number;
+      filename?: string;
+    };
     return {
       id: String(entry.id),
       createdAt: entry.createdAt.toISOString(),

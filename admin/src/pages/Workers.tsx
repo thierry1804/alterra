@@ -480,7 +480,11 @@ export default function WorkersPage() {
               </TableRow>
             )}
             {workersQuery.isError && (
-              <TableQueryError colSpan={8} what="les MOC" onRetry={() => void workersQuery.refetch()} />
+              <TableQueryError
+                colSpan={8}
+                what="les MOC"
+                onRetry={() => void workersQuery.refetch()}
+              />
             )}
             {!workersQuery.isLoading &&
               workers.map((worker) => (
@@ -580,9 +584,7 @@ export default function WorkersPage() {
               <div className="space-y-2">
                 <Label htmlFor="w-matricule">
                   Matricule{" "}
-                  {matriculeGenerating && (
-                    <span className="text-zinc-400">(génération…)</span>
-                  )}
+                  {matriculeGenerating && <span className="text-zinc-400">(génération…)</span>}
                 </Label>
                 <div className="relative">
                   <Input

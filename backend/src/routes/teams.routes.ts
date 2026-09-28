@@ -78,7 +78,10 @@ function assertCanManageMembers(req: Request, teamId: string): void {
   }
 }
 
-async function assertTeamReadable(req: Request, team: { id: string; siteId: string }): Promise<void> {
+async function assertTeamReadable(
+  req: Request,
+  team: { id: string; siteId: string },
+): Promise<void> {
   if (req.user!.role === Role.CHEF_EQUIPE && req.user!.teamId !== team.id) {
     throw new ApiError(403, "FORBIDDEN", "Accès équipe refusé");
   }
@@ -162,8 +165,7 @@ teamsRouter.get(
   requireRole(...CDS_ROLES),
   async (req, res, next) => {
     try {
-      const siteId =
-        req.user!.role === Role.CHEF_SERVICE ? req.user!.siteId : req.query.siteId;
+      const siteId = req.user!.role === Role.CHEF_SERVICE ? req.user!.siteId : req.query.siteId;
       if (!siteId) {
         throw new ApiError(422, "SITE_REQUIRED", "Site requis pour lister les chefs");
       }

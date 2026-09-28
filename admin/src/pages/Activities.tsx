@@ -288,7 +288,12 @@ export default function ActivitiesPage() {
     site: (g) => siteName(g.representative.siteId),
     validFrom: (g) => g.representative.validFrom,
   };
-  const sortedCategories = sortRows(categories, categorySort.sortKey, categorySort.sortDir, categoryAccessors);
+  const sortedCategories = sortRows(
+    categories,
+    categorySort.sortKey,
+    categorySort.sortDir,
+    categoryAccessors,
+  );
 
   return (
     <div className="space-y-6">
@@ -335,10 +340,34 @@ export default function ActivitiesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-9" />
-                <SortableHead sortKey="code" label="Code" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
-                <SortableHead sortKey="label" label="Libellé" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
-                <SortableHead sortKey="subCount" label="Sous-activités" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
-                <SortableHead sortKey="active" label="Statut" currentKey={categorySort.sortKey} currentDir={categorySort.sortDir} onSort={categorySort.toggleSort} />
+                <SortableHead
+                  sortKey="code"
+                  label="Code"
+                  currentKey={categorySort.sortKey}
+                  currentDir={categorySort.sortDir}
+                  onSort={categorySort.toggleSort}
+                />
+                <SortableHead
+                  sortKey="label"
+                  label="Libellé"
+                  currentKey={categorySort.sortKey}
+                  currentDir={categorySort.sortDir}
+                  onSort={categorySort.toggleSort}
+                />
+                <SortableHead
+                  sortKey="subCount"
+                  label="Sous-activités"
+                  currentKey={categorySort.sortKey}
+                  currentDir={categorySort.sortDir}
+                  onSort={categorySort.toggleSort}
+                />
+                <SortableHead
+                  sortKey="active"
+                  label="Statut"
+                  currentKey={categorySort.sortKey}
+                  currentDir={categorySort.sortDir}
+                  onSort={categorySort.toggleSort}
+                />
                 <TableHead className="w-40">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -414,12 +443,49 @@ export default function ActivitiesPage() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <SortableHead sortKey="label" label="Libellé" className="pl-10" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
-                                <SortableHead sortKey="shortLabel" label="Libellé court (MVola)" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
-                                <SortableHead sortKey="unit" label="Unité" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
-                                <SortableHead sortKey="unitRate" label="Tarif" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
-                                <SortableHead sortKey="site" label="Site" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
-                                <SortableHead sortKey="validFrom" label="Depuis" currentKey={subSort.sortKey} currentDir={subSort.sortDir} onSort={subSort.toggleSort} />
+                                <SortableHead
+                                  sortKey="label"
+                                  label="Libellé"
+                                  className="pl-10"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
+                                <SortableHead
+                                  sortKey="shortLabel"
+                                  label="Libellé court (MVola)"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
+                                <SortableHead
+                                  sortKey="unit"
+                                  label="Unité"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
+                                <SortableHead
+                                  sortKey="unitRate"
+                                  label="Tarif"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
+                                <SortableHead
+                                  sortKey="site"
+                                  label="Site"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
+                                <SortableHead
+                                  sortKey="validFrom"
+                                  label="Depuis"
+                                  currentKey={subSort.sortKey}
+                                  currentDir={subSort.sortDir}
+                                  onSort={subSort.toggleSort}
+                                />
                                 <TableHead className="w-40">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -431,60 +497,63 @@ export default function ActivitiesPage() {
                                   </TableCell>
                                 </TableRow>
                               )}
-                              {sortRows(groupSubActivities(category.subActivities), subSort.sortKey, subSort.sortDir, subAccessors).map(
-                                ({ representative: sub, siteOverrideCount }) => (
-                                  <TableRow key={sub.groupKey}>
-                                    <TableCell className="pl-10">{sub.label}</TableCell>
-                                    <TableCell>{sub.shortLabel}</TableCell>
-                                    <TableCell>{sub.unit?.label}</TableCell>
-                                    <TableCell>{formatRate(sub.unitRate)}</TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        {siteName(sub.siteId)}
-                                        {siteOverrideCount > 0 && (
-                                          <Badge variant="default">
-                                            +{siteOverrideCount} site
-                                            {siteOverrideCount > 1 ? "s" : ""}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>{formatDate(sub.validFrom)}</TableCell>
-                                    <TableCell>
-                                      <RowActions>
-                                        <IconButton
-                                          icon={Pencil}
-                                          label="Modifier"
-                                          variant="brand"
-                                          onClick={() => openEditSub(sub)}
-                                        />
-                                        <IconButton
-                                          icon={MapPinned}
-                                          label="Gérer les tarifs par site"
-                                          onClick={() => openSitesModal(sub)}
-                                        />
-                                        <IconButton
-                                          icon={History}
-                                          label="Historique des tarifs"
-                                          onClick={() =>
-                                            setHistory({
-                                              groupKey: sub.groupKey,
-                                              siteId: sub.siteId,
-                                              label: sub.label,
-                                            })
-                                          }
-                                        />
-                                        <IconButton
-                                          icon={Power}
-                                          label="Désactiver"
-                                          variant="destructive"
-                                          onClick={() => deactivateSubMutation.mutate(sub)}
-                                        />
-                                      </RowActions>
-                                    </TableCell>
-                                  </TableRow>
-                                ),
-                              )}
+                              {sortRows(
+                                groupSubActivities(category.subActivities),
+                                subSort.sortKey,
+                                subSort.sortDir,
+                                subAccessors,
+                              ).map(({ representative: sub, siteOverrideCount }) => (
+                                <TableRow key={sub.groupKey}>
+                                  <TableCell className="pl-10">{sub.label}</TableCell>
+                                  <TableCell>{sub.shortLabel}</TableCell>
+                                  <TableCell>{sub.unit?.label}</TableCell>
+                                  <TableCell>{formatRate(sub.unitRate)}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      {siteName(sub.siteId)}
+                                      {siteOverrideCount > 0 && (
+                                        <Badge variant="default">
+                                          +{siteOverrideCount} site
+                                          {siteOverrideCount > 1 ? "s" : ""}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{formatDate(sub.validFrom)}</TableCell>
+                                  <TableCell>
+                                    <RowActions>
+                                      <IconButton
+                                        icon={Pencil}
+                                        label="Modifier"
+                                        variant="brand"
+                                        onClick={() => openEditSub(sub)}
+                                      />
+                                      <IconButton
+                                        icon={MapPinned}
+                                        label="Gérer les tarifs par site"
+                                        onClick={() => openSitesModal(sub)}
+                                      />
+                                      <IconButton
+                                        icon={History}
+                                        label="Historique des tarifs"
+                                        onClick={() =>
+                                          setHistory({
+                                            groupKey: sub.groupKey,
+                                            siteId: sub.siteId,
+                                            label: sub.label,
+                                          })
+                                        }
+                                      />
+                                      <IconButton
+                                        icon={Power}
+                                        label="Désactiver"
+                                        variant="destructive"
+                                        onClick={() => deactivateSubMutation.mutate(sub)}
+                                      />
+                                    </RowActions>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
                             </TableBody>
                           </Table>
                         </TableCell>

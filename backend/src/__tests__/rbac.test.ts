@@ -110,12 +110,9 @@ describe("RBAC", () => {
     });
 
     it("getSiteFilter returns siteId for CHEF_SERVICE", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(getSiteFilter()).toEqual({ siteId: MOCK_SITE_ID });
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(getSiteFilter()).toEqual({ siteId: MOCK_SITE_ID });
+      });
     });
 
     it("getSiteFilter returns empty for ADMIN", () => {
@@ -183,27 +180,21 @@ describe("RBAC", () => {
 
   describe("validateDirectFieldsInScope", () => {
     it("accepts Worker create data matching CHEF_SERVICE siteId", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(() =>
-            validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID, firstName: "A" }),
-          ).not.toThrow();
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() =>
+          validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID, firstName: "A" }),
+        ).not.toThrow();
+      });
     });
 
     it("rejects Worker create data with wrong siteId", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(() =>
-            validateDirectFieldsInScope("Worker", {
-              siteId: "00000000-0000-4000-8000-000000000099",
-            }),
-          ).toThrow(RlsScopeError);
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() =>
+          validateDirectFieldsInScope("Worker", {
+            siteId: "00000000-0000-4000-8000-000000000099",
+          }),
+        ).toThrow(RlsScopeError);
+      });
     });
 
     it("rejects Worker create when CHEF_SERVICE has no siteId (fail-closed)", () => {
@@ -262,44 +253,35 @@ describe("RBAC", () => {
     });
 
     it("rejects User create without siteId for CHEF_SERVICE", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(() =>
-            validateDirectFieldsInScope("User", { email: "x@test.mg", role: Role.CHEF_EQUIPE }),
-          ).toThrow(RlsScopeError);
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() =>
+          validateDirectFieldsInScope("User", { email: "x@test.mg", role: Role.CHEF_EQUIPE }),
+        ).toThrow(RlsScopeError);
+      });
     });
 
     it("allows a CHEF_SERVICE Team update that doesn't touch siteId (partial)", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(() =>
-            validateDirectFieldsInScope(
-              "Team",
-              { name: "Equipe B", chefId: MOCK_CDS_ID },
-              { partial: true },
-            ),
-          ).not.toThrow();
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() =>
+          validateDirectFieldsInScope(
+            "Team",
+            { name: "Equipe B", chefId: MOCK_CDS_ID },
+            { partial: true },
+          ),
+        ).not.toThrow();
+      });
     });
 
     it("still rejects a CHEF_SERVICE Team update carrying a wrong siteId (partial)", () => {
-      runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
-        () => {
-          expect(() =>
-            validateDirectFieldsInScope(
-              "Team",
-              { siteId: "00000000-0000-4000-8000-000000000099" },
-              { partial: true },
-            ),
-          ).toThrow(RlsScopeError);
-        },
-      );
+      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() =>
+          validateDirectFieldsInScope(
+            "Team",
+            { siteId: "00000000-0000-4000-8000-000000000099" },
+            { partial: true },
+          ),
+        ).toThrow(RlsScopeError);
+      });
     });
   });
 

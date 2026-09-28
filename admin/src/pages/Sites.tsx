@@ -72,7 +72,12 @@ export default function SitesPage() {
   const [form, setForm] = useState<SiteForm>(emptyForm);
   const [geocoding, setGeocoding] = useState(false);
 
-  const { data: sites = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: sites = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["sites"],
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
@@ -98,7 +103,9 @@ export default function SitesPage() {
       const failed = res.data.results.filter((r) => r.status === "error");
       selection.clear();
       toast({
-        title: failed.length ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)` : "Statut mis à jour",
+        title: failed.length
+          ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
+          : "Statut mis à jour",
         description: failed[0]?.error,
         variant: failed.length ? "destructive" : undefined,
       });
@@ -280,10 +287,34 @@ export default function SitesPage() {
                   aria-label="Tout sélectionner"
                 />
               </TableHead>
-              <SortableHead sortKey="name" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="shortCode" label="Code" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="location" label="Localisation" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="active" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="name"
+                label="Nom"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="shortCode"
+                label="Code"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="location"
+                label="Localisation"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="active"
+                label="Statut"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-40">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -295,7 +326,9 @@ export default function SitesPage() {
                 </TableCell>
               </TableRow>
             )}
-            {isError && <TableQueryError colSpan={6} what="les sites" onRetry={() => void refetch()} />}
+            {isError && (
+              <TableQueryError colSpan={6} what="les sites" onRetry={() => void refetch()} />
+            )}
             {!isLoading && !isError && sorted.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="p-0">
@@ -309,7 +342,10 @@ export default function SitesPage() {
             )}
             {!isLoading &&
               pagedSites.map((site) => (
-                <TableRow key={site.id} data-state={selection.isSelected(site.id) ? "selected" : undefined}>
+                <TableRow
+                  key={site.id}
+                  data-state={selection.isSelected(site.id) ? "selected" : undefined}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selection.isSelected(site.id)}
@@ -379,9 +415,7 @@ export default function SitesPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le site" : "Nouveau site"}</DialogTitle>
-            <DialogDescription>
-              Code site : 2 à 3 lettres majuscules (ex. MNK).
-            </DialogDescription>
+            <DialogDescription>Code site : 2 à 3 lettres majuscules (ex. MNK).</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {

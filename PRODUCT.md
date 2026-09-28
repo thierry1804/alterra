@@ -14,11 +14,11 @@ Plateforme institutionnelle de suivi terrain pour programmes de travail communau
 
 ## Target Users
 
-| Rôle | Surface | Contexte |
-|------|---------|----------|
-| ADMIN | Admin web | Configuration référentiels, paiements, audit |
-| CHEF_SERVICE | Admin + PWA | Validation, clôture, supervision équipes |
-| CHEF_EQUIPE | PWA terrain | Saisie présence, lot, NFC, sync offline |
+| Rôle         | Surface     | Contexte                                     |
+| ------------ | ----------- | -------------------------------------------- |
+| ADMIN        | Admin web   | Configuration référentiels, paiements, audit |
+| CHEF_SERVICE | Admin + PWA | Validation, clôture, supervision équipes     |
+| CHEF_EQUIPE  | PWA terrain | Saisie présence, lot, NFC, sync offline      |
 
 ## Brand Personality
 

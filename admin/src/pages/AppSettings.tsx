@@ -51,7 +51,8 @@ export default function AppSettingsPage() {
   const editedAppName = appName || savedAppName;
 
   const saveNameMutation = useMutation({
-    mutationFn: (name: string) => api.patch<AppSettingsResponse>("/app-settings", { appName: name }),
+    mutationFn: (name: string) =>
+      api.patch<AppSettingsResponse>("/app-settings", { appName: name }),
     onSuccess: () => {
       toast({ title: "Nom de l'application mis à jour" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
@@ -70,11 +71,19 @@ export default function AppSettingsPage() {
 
     const ext = ICON_MIME_TO_EXT[file.type];
     if (!ext) {
-      toast({ title: "Format non supporté", description: "PNG, JPG, SVG ou WebP uniquement.", variant: "destructive" });
+      toast({
+        title: "Format non supporté",
+        description: "PNG, JPG, SVG ou WebP uniquement.",
+        variant: "destructive",
+      });
       return;
     }
     if (file.size > ICON_MAX_BYTES) {
-      toast({ title: "Fichier trop volumineux", description: "2 Mo maximum.", variant: "destructive" });
+      toast({
+        title: "Fichier trop volumineux",
+        description: "2 Mo maximum.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -84,7 +93,11 @@ export default function AppSettingsPage() {
         "/app-settings/icon-upload-url",
         { ext },
       );
-      await fetch(presign.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      await fetch(presign.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
       await api.post("/app-settings/icon", { iconKey: presign.iconKey });
       toast({ title: "Icône mise à jour" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
@@ -114,7 +127,11 @@ export default function AppSettingsPage() {
       toast({ title: "Sauvegarde téléchargée" });
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : err;
-      toast({ title: "Échec de la sauvegarde", description: String(message), variant: "destructive" });
+      toast({
+        title: "Échec de la sauvegarde",
+        description: String(message),
+        variant: "destructive",
+      });
     } finally {
       setDownloadingBackup(false);
     }
@@ -160,7 +177,11 @@ export default function AppSettingsPage() {
       cancelPendingRestore();
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : err;
-      toast({ title: "Échec de la restauration", description: String(message), variant: "destructive" });
+      toast({
+        title: "Échec de la restauration",
+        description: String(message),
+        variant: "destructive",
+      });
     } finally {
       setRestoring(false);
     }
@@ -186,7 +207,11 @@ export default function AppSettingsPage() {
             />
             <Button
               type="button"
-              disabled={saveNameMutation.isPending || !editedAppName.trim() || editedAppName === savedAppName}
+              disabled={
+                saveNameMutation.isPending ||
+                !editedAppName.trim() ||
+                editedAppName === savedAppName
+              }
               onClick={() => saveNameMutation.mutate(editedAppName.trim())}
             >
               {saveNameMutation.isPending ? "Enregistrement…" : "Enregistrer"}
@@ -200,7 +225,11 @@ export default function AppSettingsPage() {
         <div className="space-y-2">
           <Label>Icône</Label>
           <div className="flex items-center gap-4">
-            <img src={iconUrl} alt="" className="h-16 w-16 rounded border border-zinc-200 object-cover" />
+            <img
+              src={iconUrl}
+              alt=""
+              className="h-16 w-16 rounded border border-zinc-200 object-cover"
+            />
             <div className="space-y-1">
               <input
                 ref={fileInputRef}
@@ -294,7 +323,12 @@ export default function AppSettingsPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" disabled={restoring} onClick={cancelPendingRestore}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={restoring}
+                  onClick={cancelPendingRestore}
+                >
                   Annuler
                 </Button>
                 <Button

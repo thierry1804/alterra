@@ -22,10 +22,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.user = verifyAccessToken(header.slice("Bearer ".length));
 
     if (await isUserBlocked(req.user.sub)) {
-      return res.status(401).json({ code: "USER_BLOCKED", message: "Compte utilisateur désactivé" });
+      return res
+        .status(401)
+        .json({ code: "USER_BLOCKED", message: "Compte utilisateur désactivé" });
     }
     if (await areTokensRevoked(req.user.sub, req.user.iat)) {
-      return res.status(401).json({ code: "TOKEN_REVOKED", message: "Session expirée, reconnectez-vous" });
+      return res
+        .status(401)
+        .json({ code: "TOKEN_REVOKED", message: "Session expirée, reconnectez-vous" });
     }
 
     updateRequestContext({

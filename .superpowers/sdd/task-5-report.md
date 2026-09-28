@@ -9,13 +9,13 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Guard rôles paramétrable (403 typé via ApiError) | ✅ |
-| 2 | Middleware Prisma filtrage siteId (CDS) / teamId (CDE) | ✅ |
-| 3 | Audit log append-only (extension Prisma + triggers PG) | ✅ |
-| 4 | Tests RBAC par rôle (vitest, mocks Prisma) | ✅ |
-| 5 | `npm run lint -w backend && npm run test -w backend` | ✅ PASS |
+| Step | Item                                                   | Status  |
+| ---- | ------------------------------------------------------ | ------- |
+| 1    | Guard rôles paramétrable (403 typé via ApiError)       | ✅      |
+| 2    | Middleware Prisma filtrage siteId (CDS) / teamId (CDE) | ✅      |
+| 3    | Audit log append-only (extension Prisma + triggers PG) | ✅      |
+| 4    | Tests RBAC par rôle (vitest, mocks Prisma)             | ✅      |
+| 5    | `npm run lint -w backend && npm run test -w backend`   | ✅ PASS |
 
 ---
 
@@ -84,24 +84,24 @@ npm run test -w backend  → PASS
 
 ## Fichiers créés / modifiés
 
-| Fichier | Action |
-| ------- | ------ |
-| `backend/src/middleware/rbac.ts` | Modifié |
-| `backend/src/middleware/prisma-rls.ts` | Créé |
-| `backend/src/middleware/audit.interceptor.ts` | Créé |
-| `backend/src/services/audit/audit.service.ts` | Créé |
-| `backend/src/lib/prisma-base.ts` | Créé |
-| `backend/src/lib/prisma.ts` | Modifié |
-| `backend/src/lib/jwt.ts` | Modifié |
-| `backend/src/middleware/auth.ts` | Modifié |
-| `backend/src/app.ts` | Modifié |
-| `backend/src/routes/auth.routes.ts` | Modifié |
-| `backend/src/routes/workers.routes.ts` | Modifié |
-| `backend/src/routes/pointages.routes.ts` | Modifié |
-| `backend/src/services/auth/refresh.service.ts` | Modifié |
-| `backend/prisma/migrations/20260721180000_audit_triggers/migration.sql` | Créé |
-| `backend/src/__tests__/rbac.test.ts` | Créé |
-| `backend/src/__tests__/auth.test.ts` | Modifié (teamId dans JWT) |
+| Fichier                                                                 | Action                    |
+| ----------------------------------------------------------------------- | ------------------------- |
+| `backend/src/middleware/rbac.ts`                                        | Modifié                   |
+| `backend/src/middleware/prisma-rls.ts`                                  | Créé                      |
+| `backend/src/middleware/audit.interceptor.ts`                           | Créé                      |
+| `backend/src/services/audit/audit.service.ts`                           | Créé                      |
+| `backend/src/lib/prisma-base.ts`                                        | Créé                      |
+| `backend/src/lib/prisma.ts`                                             | Modifié                   |
+| `backend/src/lib/jwt.ts`                                                | Modifié                   |
+| `backend/src/middleware/auth.ts`                                        | Modifié                   |
+| `backend/src/app.ts`                                                    | Modifié                   |
+| `backend/src/routes/auth.routes.ts`                                     | Modifié                   |
+| `backend/src/routes/workers.routes.ts`                                  | Modifié                   |
+| `backend/src/routes/pointages.routes.ts`                                | Modifié                   |
+| `backend/src/services/auth/refresh.service.ts`                          | Modifié                   |
+| `backend/prisma/migrations/20260721180000_audit_triggers/migration.sql` | Créé                      |
+| `backend/src/__tests__/rbac.test.ts`                                    | Créé                      |
+| `backend/src/__tests__/auth.test.ts`                                    | Modifié (teamId dans JWT) |
 
 ---
 
@@ -118,13 +118,13 @@ npm run test -w backend  → PASS
 **Commit:** `f42dcaa`  
 **Status:** ✅ Findings critiques et importants corrigés
 
-| # | Sévérité | Finding | Correction |
-| - | -------- | ------- | ---------- |
-| 1 | Critique | RLS mutations absentes | Extension `$extends` étendue à create/update/delete/upsert/updateMany/deleteMany sur Worker, Pointage, Payment, Team, User ; validation workerId/siteId/teamId en scope |
-| 2 | Critique | Fail-open si siteId/teamId manquant | `getModelScopeFilter`, `getSiteFilter`, `getTeamFilter` retournent `{ id: '00000000-0000-0000-0000-000000000000' }` (fail-closed) |
-| 3 | Important | AuditLog mutable | Trigger `audit_log_append_only` BEFORE UPDATE OR DELETE sur AuditLog |
-| 4 | Important | Double source audit | Extension Prisma audit supprimée ; triggers PG = source canonique mutations entités ; `writeAuditLog()` réservé aux actions explicites (LOGIN, EXPORT) |
-| 5 | Important | Audit non-atomique | N/A — plus d'audit post-mutation applicatif sur entités |
+| #   | Sévérité  | Finding                             | Correction                                                                                                                                                              |
+| --- | --------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Critique  | RLS mutations absentes              | Extension `$extends` étendue à create/update/delete/upsert/updateMany/deleteMany sur Worker, Pointage, Payment, Team, User ; validation workerId/siteId/teamId en scope |
+| 2   | Critique  | Fail-open si siteId/teamId manquant | `getModelScopeFilter`, `getSiteFilter`, `getTeamFilter` retournent `{ id: '00000000-0000-0000-0000-000000000000' }` (fail-closed)                                       |
+| 3   | Important | AuditLog mutable                    | Trigger `audit_log_append_only` BEFORE UPDATE OR DELETE sur AuditLog                                                                                                    |
+| 4   | Important | Double source audit                 | Extension Prisma audit supprimée ; triggers PG = source canonique mutations entités ; `writeAuditLog()` réservé aux actions explicites (LOGIN, EXPORT)                  |
+| 5   | Important | Audit non-atomique                  | N/A — plus d'audit post-mutation applicatif sur entités                                                                                                                 |
 
 ### Tests ajoutés (`rbac.test.ts`)
 

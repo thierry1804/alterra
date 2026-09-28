@@ -172,7 +172,10 @@ appSettingsRouter.get("/app-settings/icon", async (_req, res, next) => {
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=300");
     // Un SVG ouvert directement s'exécute dans l'origine de l'API : on le neutralise.
-    res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'");
+    res.setHeader(
+      "Content-Security-Policy",
+      "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+    );
     res.setHeader("X-Content-Type-Options", "nosniff");
     stream.on("error", next);
     stream.pipe(res);
@@ -199,7 +202,12 @@ appSettingsRouter.get("/manifest.webmanifest", async (_req, res, next) => {
       lang: "fr",
       icons: [
         { src: "/api/v1/app-settings/icon", sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: "/api/v1/app-settings/icon", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+        {
+          src: "/api/v1/app-settings/icon",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "any maskable",
+        },
       ],
     });
   } catch (err) {

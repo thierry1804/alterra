@@ -39,7 +39,8 @@ async function main() {
     where: { deletedAt: null },
     select: { id: true, email: true },
   });
-  if (!users.some((u) => u.email === ADMIN_EMAIL)) throw new Error(`Compte ${ADMIN_EMAIL} introuvable`);
+  if (!users.some((u) => u.email === ADMIN_EMAIL))
+    throw new Error(`Compte ${ADMIN_EMAIL} introuvable`);
 
   const expected = new Map<string, string>();
   for (const user of users) {
@@ -60,21 +61,30 @@ async function main() {
   for (const row of stored) {
     if (await argon2.verify(row.passwordHash, expected.get(row.id)!)) verified++;
   }
-  if (verified !== users.length) throw new Error(`Vérification échouée : ${verified}/${users.length} hachages corrects`);
+  if (verified !== users.length)
+    throw new Error(`Vérification échouée : ${verified}/${users.length} hachages corrects`);
 
   const revoked = await prisma.refreshToken.updateMany({
     where: { revokedAt: null },
     data: { revokedAt: new Date() },
   });
   await prisma.auditLog.create({
-    data: { action: "UPDATE", entityType: "User", after: { passwordsReset: users.length, sessionsRevoked: revoked.count } },
+    data: {
+      action: "UPDATE",
+      entityType: "User",
+      after: { passwordsReset: users.length, sessionsRevoked: revoked.count },
+    },
   });
 
   const file = join(homedir(), ".alterra-admin-credentials");
   writeFileSync(file, `${ADMIN_EMAIL}\n${adminPassword}\n`, { mode: 0o600 });
   chmodSync(file, 0o600);
 
-  console.log("%d comptes mis à jour et vérifiés — %d sessions révoquées", users.length, revoked.count);
+  console.log(
+    "%d comptes mis à jour et vérifiés — %d sessions révoquées",
+    users.length,
+    revoked.count,
+  );
   console.log("Admin (%s) : %s", ADMIN_EMAIL, adminPassword);
   console.log("Autres comptes (%d) : %s", users.length - 1, userPassword);
   console.log("Le mot de passe admin est aussi dans %s (chmod 600).", file);

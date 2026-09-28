@@ -29,9 +29,7 @@ export default function WorkerRow({
 }: WorkerRowProps) {
   const quantityNumber = Number(value.quantity);
   const lineAmount =
-    Number.isFinite(quantityNumber) && quantityNumber > 0
-      ? quantityNumber * unitRate
-      : 0;
+    Number.isFinite(quantityNumber) && quantityNumber > 0 ? quantityNumber * unitRate : 0;
 
   function updateQuantity(nextQuantity: string) {
     onChange({ ...value, quantity: nextQuantity });

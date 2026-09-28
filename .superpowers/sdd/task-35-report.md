@@ -6,11 +6,11 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — File unifiée onglets | ✅ | Activités / MOC / Précisions |
-| 2 — Tri ancienneté + drawer | ✅ | `sortByOldest`, drawer détail |
-| 3 — Actions décision | ✅ | Accepter / Refuser / Complément |
+| Step                        | Statut | Détail                          |
+| --------------------------- | ------ | ------------------------------- |
+| 1 — File unifiée onglets    | ✅     | Activités / MOC / Précisions    |
+| 2 — Tri ancienneté + drawer | ✅     | `sortByOldest`, drawer détail   |
+| 3 — Actions décision        | ✅     | Accepter / Refuser / Complément |
 
 ## Fichiers
 

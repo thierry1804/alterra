@@ -12,7 +12,18 @@ import { loadWorld, track } from "./support/state.js";
  * des comptes E2E-S3-.
  */
 const UC = "UC-FE-PWA-AUTH";
-const STORES = ["workers", "activities", "pointages", "pointings_synced", "media", "syncQueue", "biometricTemplates", "presenceLog", "badges", "biometricOfflineChecks"];
+const STORES = [
+  "workers",
+  "activities",
+  "pointages",
+  "pointings_synced",
+  "media",
+  "syncQueue",
+  "biometricTemplates",
+  "presenceLog",
+  "badges",
+  "biometricOfflineChecks",
+];
 
 async function newPwaContext(browser: import("@playwright/test").Browser): Promise<BrowserContext> {
   return browser.newContext({ ...devices["Pixel 7"], baseURL: PWA_URL, serviceWorkers: "allow" });
@@ -113,7 +124,12 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
   test.describe.configure({ mode: "serial" });
   let ctx: BrowserContext;
   let page: Page;
-  let offlineOutcome: { reloadError: string | null; controlled: boolean; offlineWorkers: number | null; before: number } | null = null;
+  let offlineOutcome: {
+    reloadError: string | null;
+    controlled: boolean;
+    offlineWorkers: number | null;
+    before: number;
+  } | null = null;
 
   test.beforeAll(async ({ browser }) => {
     ctx = await newPwaContext(browser);
@@ -124,7 +140,9 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
   });
   test.afterEach(async ({}, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus && page && !page.isClosed()) {
-      await testInfo.attach("screenshot", { body: await page.screenshot(), contentType: "image/png" }).catch(() => undefined);
+      await testInfo
+        .attach("screenshot", { body: await page.screenshot(), contentType: "image/png" })
+        .catch(() => undefined);
     }
   });
 
@@ -148,10 +166,16 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
 
   test(`${UC} › référentiel synchronisé dans Dexie (persistance après rechargement)`, async ({}, testInfo) => {
     await expect
-      .poll(async () => (await readCounts(page)).workers ?? 0, { timeout: 60_000, message: "aucun MOC synchronisé dans Dexie" })
+      .poll(async () => (await readCounts(page)).workers ?? 0, {
+        timeout: 60_000,
+        message: "aucun MOC synchronisé dans Dexie",
+      })
       .toBeGreaterThan(0);
     const before = await readCounts(page);
-    testInfo.annotations.push({ type: "dexie", description: `après synchro : ${JSON.stringify(before)}` });
+    testInfo.annotations.push({
+      type: "dexie",
+      description: `après synchro : ${JSON.stringify(before)}`,
+    });
     expect(before.activities ?? 0).toBeGreaterThan(0);
 
     // Un rechargement doit restaurer la session locale sans repasser par /login (pas de PIN à ressaisir).
@@ -168,12 +192,19 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     await page.route(pattern, async (route) => {
       if (route.request().method() === "GET" && injected === 0) {
         injected++;
-        return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ code: "TOKEN_EXPIRED", message: "expired" }) });
+        return route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "TOKEN_EXPIRED", message: "expired" }),
+        });
       }
       return route.continue();
     });
     const refresh = page
-      .waitForResponse((r) => r.url().includes("/api/v1/auth/refresh") && r.request().method() === "POST", { timeout: 25_000 })
+      .waitForResponse(
+        (r) => r.url().includes("/api/v1/auth/refresh") && r.request().method() === "POST",
+        { timeout: 25_000 },
+      )
       .catch(() => null);
     // Quitte puis rejoint l'écran d'accueil (SPA, sans rechargement) et force une synchronisation.
     await page.getByRole("link", { name: /Synchronisation/ }).click();
@@ -185,15 +216,27 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     if (!resp) {
       // Inconclusif : l'écran chef d'équipe ne déclenche aucun GET (données lues dans Dexie ; la synchro ne fait que des POST).
       // Le refresh n'a pas pu être provoqué depuis l'interface sans jeton expiré — vérifié par l'API dans le test suivant.
-      test.info().annotations.push({ type: "inconclusif", description: "Aucun GET API émis par l'écran chef d'équipe : le rejeu après 401 n'a pas pu être observé depuis l'UI." });
+      test.info().annotations.push({
+        type: "inconclusif",
+        description:
+          "Aucun GET API émis par l'écran chef d'équipe : le rejeu après 401 n'a pas pu être observé depuis l'UI.",
+      });
       const direct = await page.request.post("/api/v1/auth/refresh"); // cookie de session du contexte
-      test.info().annotations.push({ type: "refresh", description: `POST /auth/refresh direct → HTTP ${direct.status()}` });
-      expect(direct.status(), "le refresh de session doit fonctionner avec le cookie httpOnly").toBe(200);
+      test.info().annotations.push({
+        type: "refresh",
+        description: `POST /auth/refresh direct → HTTP ${direct.status()}`,
+      });
+      expect(
+        direct.status(),
+        "le refresh de session doit fonctionner avec le cookie httpOnly",
+      ).toBe(200);
       return;
     }
     expect(resp.status()).toBe(200);
     expect(injected).toBe(1);
-    expect(new URL(page.url()).pathname, "la session doit survivre au rafraîchissement").not.toBe("/login");
+    expect(new URL(page.url()).pathname, "la session doit survivre au rafraîchissement").not.toBe(
+      "/login",
+    );
   });
 
   test(`${UC} › hors ligne : rechargement local puis retour en ligne`, async () => {
@@ -227,7 +270,9 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
 
   test(`${UC} › verdict : le rechargement hors ligne fonctionne (service worker)`, async () => {
     test.skip(!offlineOutcome, "le test hors ligne n'a pas produit de résultat");
-    test.info().annotations.push({ type: "hors ligne", description: JSON.stringify(offlineOutcome) });
+    test
+      .info()
+      .annotations.push({ type: "hors ligne", description: JSON.stringify(offlineOutcome) });
     expect(
       offlineOutcome!.reloadError,
       `Rechargement hors ligne impossible (${offlineOutcome!.reloadError}) alors que la page ${offlineOutcome!.controlled ? "était" : "n'était pas"} contrôlée par le service worker : l'application n'est pas servie hors ligne`,
@@ -251,25 +296,41 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     const settings = await readSettings(page);
     expect(settings.session, "session locale conservée après déconnexion").toBeUndefined();
     const counts = await readCounts(page);
-    testInfo.annotations.push({ type: "purge", description: `Dexie après déconnexion : ${JSON.stringify(counts)}` });
+    testInfo.annotations.push({
+      type: "purge",
+      description: `Dexie après déconnexion : ${JSON.stringify(counts)}`,
+    });
     expect(counts.biometricTemplates ?? 0, "templates biométriques conservés").toBe(0);
     for (const table of ["workers", "pointages", "syncQueue", "presenceLog"]) {
       expect
-        .soft(counts[table] ?? 0, `table Dexie « ${table} » non purgée à la déconnexion (données personnelles des MOC / pointages restent dans le navigateur)`)
+        .soft(
+          counts[table] ?? 0,
+          `table Dexie « ${table} » non purgée à la déconnexion (données personnelles des MOC / pointages restent dans le navigateur)`,
+        )
         .toBe(0);
     }
     const apiCache = await page.evaluate(async () => {
       const out: string[] = [];
       for (const name of await window.caches.keys()) {
-        if (!/precache/i.test(name)) out.push(...(await (await window.caches.open(name)).keys()).map((r) => new URL(r.url).pathname));
+        if (!/precache/i.test(name))
+          out.push(
+            ...(await (await window.caches.open(name)).keys()).map((r) => new URL(r.url).pathname),
+          );
       }
       return out.filter((p) => /\/api\/v1\/(workers|teams|pointages|users|me)/.test(p));
     });
-    expect.soft(apiCache, "réponses API personnelles conservées dans le cache du service worker après déconnexion").toEqual([]);
+    expect
+      .soft(
+        apiCache,
+        "réponses API personnelles conservées dans le cache du service worker après déconnexion",
+      )
+      .toEqual([]);
 
     // Le jeton de rafraîchissement doit être révoqué côté serveur
     const refresh = await page.request.post("/api/v1/auth/refresh");
-    expect.soft(refresh.status(), "le refresh token doit être révoqué par la déconnexion").toBe(401);
+    expect
+      .soft(refresh.status(), "le refresh token doit être révoqué par la déconnexion")
+      .toBe(401);
   });
 });
 
@@ -290,7 +351,9 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
   });
   test.afterEach(async ({}, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus && page && !page.isClosed()) {
-      await testInfo.attach("screenshot", { body: await page.screenshot(), contentType: "image/png" }).catch(() => undefined);
+      await testInfo
+        .attach("screenshot", { body: await page.screenshot(), contentType: "image/png" })
+        .catch(() => undefined);
     }
   });
 
@@ -302,9 +365,14 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
     expect(ownWorkers.size).toBeGreaterThan(0);
     const seen: Array<{ url: string; ids: string[] }> = [];
     page.on("response", async (r) => {
-      if (r.request().method() === "GET" && /\/api\/v1\/(pointages|workers)(\?|$)/.test(r.url()) && r.ok()) {
+      if (
+        r.request().method() === "GET" &&
+        /\/api\/v1\/(pointages|workers)(\?|$)/.test(r.url()) &&
+        r.ok()
+      ) {
         const body = await r.json().catch(() => null);
-        if (body?.data) seen.push({ url: r.url(), ids: body.data.map((x: any) => x.workerId ?? x.id) });
+        if (body?.data)
+          seen.push({ url: r.url(), ids: body.data.map((x: any) => x.workerId ?? x.id) });
       }
     });
     await login(page, email, password);
@@ -312,7 +380,9 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
     await page.waitForTimeout(6_000);
     expect(seen.length, "aucune requête de données observée").toBeGreaterThan(0);
     const foreign = seen.flatMap((s) => s.ids).filter((id) => !ownWorkers.has(id));
-    expect(foreign, "identifiants de MOC hors site reçus par la PWA du chef de service").toEqual([]);
+    expect(foreign, "identifiants de MOC hors site reçus par la PWA du chef de service").toEqual(
+      [],
+    );
     await api.dispose();
 
     // Écran réservé au chef d'équipe : redirection vers la validation
@@ -331,7 +401,10 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
     expect(settings.session).toBeUndefined();
 
     const refresh = await page.request.post("/api/v1/auth/refresh");
-    expect(refresh.status(), "après déconnexion, le refresh token doit être révoqué côté serveur").toBe(401);
+    expect(
+      refresh.status(),
+      "après déconnexion, le refresh token doit être révoqué côté serveur",
+    ).toBe(401);
   });
 });
 
@@ -339,7 +412,9 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
 /* Scénario C — comptes E2E : échecs, périmètre d'équipe, compte inactif */
 /* ================================================================== */
 test.describe(`${UC} — comptes E2E-S3-`, () => {
-  test(`${UC} › 2 échecs de connexion : message générique, puis connexion normale et périmètre d'équipe`, async ({ browser }, testInfo) => {
+  test(`${UC} › 2 échecs de connexion : message générique, puis connexion normale et périmètre d'équipe`, async ({
+    browser,
+  }, testInfo) => {
     test.setTimeout(240_000);
     const world = loadWorld();
     const ctx = await newPwaContext(browser);
@@ -362,21 +437,37 @@ test.describe(`${UC} — comptes E2E-S3-`, () => {
       const api = new ApiClient(world.cde.email, world.cde.password);
       await api.login();
       const visible = (await api.getAllCursor<any>("/workers?take=100")).map((w) => w.id);
-      testInfo.annotations.push({ type: "périmètre", description: `Dexie : ${ids.length} MOC ; API (CDE) : ${visible.length} MOC ; jeu E2E : ${world.workers.length}` });
-      for (const w of world.workers) expect(ids, `MOC E2E ${w.matricule} absent de Dexie`).toContain(w.id);
-      expect(ids.every((id) => visible.includes(id)), "Dexie contient des MOC hors du périmètre du chef d'équipe").toBe(true);
+      testInfo.annotations.push({
+        type: "périmètre",
+        description: `Dexie : ${ids.length} MOC ; API (CDE) : ${visible.length} MOC ; jeu E2E : ${world.workers.length}`,
+      });
+      for (const w of world.workers)
+        expect(ids, `MOC E2E ${w.matricule} absent de Dexie`).toContain(w.id);
+      expect(
+        ids.every((id) => visible.includes(id)),
+        "Dexie contient des MOC hors du périmètre du chef d'équipe",
+      ).toBe(true);
       await api.dispose();
     } finally {
       await ctx.close();
     }
   });
 
-  test(`${UC} › compte inactif : connexion PWA refusée, aucune session créée`, async ({ browser }) => {
+  test(`${UC} › compte inactif : connexion PWA refusée, aucune session créée`, async ({
+    browser,
+  }) => {
     const world = loadWorld();
     const admin = new ApiClient(realCredentials("admin").email, realCredentials("admin").password);
     await admin.login();
     const email = `e2e-s3-pwa-inactive-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
-    const created = await admin.post("/users", { email, role: "CHEF_EQUIPE", firstName: "E2E-S3-PWAINACT", lastName: world.runId, siteId: world.site.id, active: false });
+    const created = await admin.post("/users", {
+      email,
+      role: "CHEF_EQUIPE",
+      firstName: "E2E-S3-PWAINACT",
+      lastName: world.runId,
+      siteId: world.site.id,
+      active: false,
+    });
     expect(created.status).toBe(201);
     track("user", created.body.user.id, email);
     const password = created.body.temporaryPassword as string;
@@ -398,7 +489,9 @@ test.describe(`${UC} — comptes E2E-S3-`, () => {
     }
   });
 
-  test(`${UC} › l'API est jointe via la même origine que la PWA (aucune adresse d'API codée en dur)`, async ({ browser }) => {
+  test(`${UC} › l'API est jointe via la même origine que la PWA (aucune adresse d'API codée en dur)`, async ({
+    browser,
+  }) => {
     const ctx = await newPwaContext(browser);
     const page = await ctx.newPage();
     const hosts = new Set<string>();

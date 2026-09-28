@@ -346,7 +346,9 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
     const scope = getModelScopeFilter(model);
 
     if (operation === "create") {
-      await validateRelatedIdsInScope(basePrisma, model, args.data ?? {}, { requireWorkerId: true });
+      await validateRelatedIdsInScope(basePrisma, model, args.data ?? {}, {
+        requireWorkerId: true,
+      });
       return query(args);
     }
 
@@ -380,7 +382,9 @@ function scopedWriteHandler(basePrisma: PrismaClient, model: ScopedModel, operat
       if (scope) {
         args = { ...args, where: mergeUniqueWhere(args.where, scope) };
       }
-      await validateRelatedIdsInScope(basePrisma, model, args.create ?? {}, { requireWorkerId: true });
+      await validateRelatedIdsInScope(basePrisma, model, args.create ?? {}, {
+        requireWorkerId: true,
+      });
       if (args.update) {
         await validateRelatedIdsInScope(basePrisma, model, args.update, {
           requireWorkerId: false,

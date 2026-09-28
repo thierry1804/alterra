@@ -21,11 +21,11 @@ Améliorer le wizard d’import Excel MOC (`ImportDialog`) pour :
 
 ## Décisions produit
 
-| Sujet | Choix |
-|---|---|
-| Auto-map | Alias exacts + fuzzy (sous-chaîne / similarité) ; préremplissage éditable |
+| Sujet          | Choix                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| Auto-map       | Alias exacts + fuzzy (sous-chaîne / similarité) ; préremplissage éditable                       |
 | Import partiel | Bouton « Importer les X lignes valides » dès qu’il y a ≥ 1 ligne OK ; erreurs listées au-dessus |
-| Progression | Texte « Import en cours… » pendant la mutation ; récap à la fin (pas de % / SSE / job) |
+| Progression    | Texte « Import en cours… » pendant la mutation ; récap à la fin (pas de % / SSE / job)          |
 
 ## Architecture (approche retenue)
 
@@ -61,13 +61,13 @@ Excel → POST /columns → { columns, fields, suggestedMapping }
 
 **Alias (exemples, non exhaustifs)**
 
-- `firstName` : prénom, prenom, first name, firstname  
-- `lastName` : nom, nom de famille, last name, lastname  
-- `mvolaNumber` : mvola, numéro mvola, num mvola, telephone, téléphone  
-- `siteShortCode` : code site, site, shortcode, site code  
-- `matricule` : matricule  
-- `legacyMocId` : id moc, legacy, id historique  
-- `hiredAt` : date embauche, date d'embauche, hired at  
+- `firstName` : prénom, prenom, first name, firstname
+- `lastName` : nom, nom de famille, last name, lastname
+- `mvolaNumber` : mvola, numéro mvola, num mvola, telephone, téléphone
+- `siteShortCode` : code site, site, shortcode, site code
+- `matricule` : matricule
+- `legacyMocId` : id moc, legacy, id historique
+- `hiredAt` : date embauche, date d'embauche, hired at
 
 ### 2. Import partiel (backend + API)
 

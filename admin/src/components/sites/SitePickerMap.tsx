@@ -47,12 +47,7 @@ export interface SitePickerMapProps {
 export default function SitePickerMap({ value, onPick, className }: SitePickerMapProps) {
   const tiles = tileConfig();
   return (
-    <div
-      className={cn(
-        "h-64 w-full overflow-hidden rounded-md border border-zinc-300",
-        className,
-      )}
-    >
+    <div className={cn("h-64 w-full overflow-hidden rounded-md border border-zinc-300", className)}>
       <MapContainer
         center={value ? [value.lat, value.lng] : MADAGASCAR_CENTER}
         zoom={value ? 9 : MADAGASCAR_ZOOM}

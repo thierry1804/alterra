@@ -78,8 +78,7 @@ export async function upsertWorkerTemplate(input: {
   if (!worker) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
 
   const capturedAt = new Date();
-  const expiresAt =
-    input.expiresAt ?? new Date(capturedAt.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const expiresAt = input.expiresAt ?? new Date(capturedAt.getTime() + 90 * 24 * 60 * 60 * 1000);
 
   await prisma.biometricTemplate.upsert({
     where: { workerId: input.workerId },

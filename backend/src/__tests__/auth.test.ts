@@ -85,9 +85,7 @@ describe("auth endpoints", () => {
       deviceInfo: null,
       createdAt: new Date(),
     });
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
-      fn(prisma as never),
-    );
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => fn(prisma as never));
     vi.mocked(prisma.refreshToken.findUnique).mockImplementation(async ({ where }) => {
       if ("tokenHash" in where && where.tokenHash === REFRESH_HASH) {
         return {

@@ -104,9 +104,5 @@ export function resolvePeriod(
     };
   }
 
-  throw new ApiError(
-    422,
-    "INVALID_PERIOD",
-    "periodIso must be 2026-W18, S18, or D138 format",
-  );
+  throw new ApiError(422, "INVALID_PERIOD", "periodIso must be 2026-W18, S18, or D138 format");
 }

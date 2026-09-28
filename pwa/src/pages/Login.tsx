@@ -56,55 +56,55 @@ export default function Login() {
           onSubmit={onSubmit}
           className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
         >
-        <div>
-          <img src={iconUrl} alt={appName} className="h-14 w-auto" />
-          <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
-            Terrain · Registre de suivi
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Connexion chef d&apos;équipe / chef de service
-          </p>
-        </div>
+          <div>
+            <img src={iconUrl} alt={appName} className="h-14 w-auto" />
+            <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
+              Terrain · Registre de suivi
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Connexion chef d&apos;équipe / chef de service
+            </p>
+          </div>
 
-        {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
 
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium text-zinc-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1">
+            <label htmlFor="email" className="text-sm font-medium text-zinc-700">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </div>
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium text-zinc-700">
-            Mot de passe
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1">
+            <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+              Mot de passe
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Connexion…" : "Se connecter"}
-        </Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Connexion…" : "Se connecter"}
+          </Button>
         </form>
 
         <LoginAccessPanel

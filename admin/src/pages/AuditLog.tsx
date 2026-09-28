@@ -123,7 +123,12 @@ export default function AuditLogPage() {
         title="Journal d'audit"
         description="Actions sensibles tracées — consultation en lecture seule."
         action={
-          <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={exporting}
+            onClick={() => void handleExport()}
+          >
             <Download className="h-4 w-4" aria-hidden />
             {exporting ? "Export…" : "Exporter"}
           </Button>
@@ -217,11 +222,41 @@ export default function AuditLogPage() {
                   aria-label="Tout sélectionner"
                 />
               </TableHead>
-              <SortableHead sortKey="createdAt" label="Date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="userId" label="Utilisateur" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="action" label="Action" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="entityType" label="Entité" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="entityId" label="ID" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="createdAt"
+                label="Date"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="userId"
+                label="Utilisateur"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="action"
+                label="Action"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="entityType"
+                label="Entité"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="entityId"
+                label="ID"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-24">Détail</TableHead>
             </TableRow>
           </TableHeader>
@@ -233,7 +268,13 @@ export default function AuditLogPage() {
                 </TableCell>
               </TableRow>
             )}
-            {isError && <TableQueryError colSpan={7} what="le journal d'audit" onRetry={() => void refetch()} />}
+            {isError && (
+              <TableQueryError
+                colSpan={7}
+                what="le journal d'audit"
+                onRetry={() => void refetch()}
+              />
+            )}
             {!isLoading && !isError && rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-zinc-600">
@@ -242,7 +283,10 @@ export default function AuditLogPage() {
               </TableRow>
             )}
             {rows.map((entry) => (
-              <TableRow key={entry.id} data-state={selection.isSelected(entry.id) ? "selected" : undefined}>
+              <TableRow
+                key={entry.id}
+                data-state={selection.isSelected(entry.id) ? "selected" : undefined}
+              >
                 <TableCell>
                   <Checkbox
                     checked={selection.isSelected(entry.id)}
@@ -296,11 +340,7 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      <AuditDetailDrawer
-        entry={selected}
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-      />
+      <AuditDetailDrawer entry={selected} open={drawerOpen} onOpenChange={setDrawerOpen} />
     </div>
   );
 }

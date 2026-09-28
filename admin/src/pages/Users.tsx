@@ -99,7 +99,7 @@ export default function UsersPage() {
           },
         })
         .then((r) => r.data),
-    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
 
   const users = useMemo(
@@ -159,7 +159,10 @@ export default function UsersPage() {
           { header: "Email", accessor: (u) => u.email ?? "" },
           { header: "Rôle", accessor: (u) => USER_ROLE_LABELS[u.role] },
           { header: "Site", accessor: (u) => siteName(u.siteId) },
-          { header: "Dernière connexion", accessor: (u) => (u.lastLoginAt ? formatDate(u.lastLoginAt) : "") },
+          {
+            header: "Dernière connexion",
+            accessor: (u) => (u.lastLoginAt ? formatDate(u.lastLoginAt) : ""),
+          },
           { header: "Statut", accessor: (u) => (u.active ? "Actif" : "Inactif") },
         ],
         "utilisateurs",
@@ -242,7 +245,7 @@ export default function UsersPage() {
   }
 
   const siteName = (siteId: string | null) =>
-    siteId ? sites.find((s) => s.id === siteId)?.shortCode ?? "—" : "—";
+    siteId ? (sites.find((s) => s.id === siteId)?.shortCode ?? "—") : "—";
 
   return (
     <div className="space-y-6">
@@ -251,7 +254,12 @@ export default function UsersPage() {
         description="Comptes Admin, CDS et CDE."
         action={
           <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={exporting} onClick={() => void handleExport()}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exporting}
+              onClick={() => void handleExport()}
+            >
               <Download className="h-4 w-4" aria-hidden />
               {exporting ? "Export…" : "Exporter"}
             </Button>
@@ -334,12 +342,48 @@ export default function UsersPage() {
                   aria-label="Tout sélectionner"
                 />
               </TableHead>
-              <SortableHead sortKey="lastName" label="Nom" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="email" label="Email" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="role" label="Rôle" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="siteId" label="Site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="lastLoginAt" label="Dernière connexion" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHead sortKey="active" label="Statut" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHead
+                sortKey="lastName"
+                label="Nom"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="email"
+                label="Email"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="role"
+                label="Rôle"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="siteId"
+                label="Site"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="lastLoginAt"
+                label="Dernière connexion"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                sortKey="active"
+                label="Statut"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-56">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -352,11 +396,18 @@ export default function UsersPage() {
               </TableRow>
             )}
             {usersQuery.isError && (
-              <TableQueryError colSpan={8} what="les utilisateurs" onRetry={() => void usersQuery.refetch()} />
+              <TableQueryError
+                colSpan={8}
+                what="les utilisateurs"
+                onRetry={() => void usersQuery.refetch()}
+              />
             )}
             {!usersQuery.isLoading &&
               users.map((user) => (
-                <TableRow key={user.id} data-state={selection.isSelected(user.id) ? "selected" : undefined}>
+                <TableRow
+                  key={user.id}
+                  data-state={selection.isSelected(user.id) ? "selected" : undefined}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selection.isSelected(user.id)}
@@ -514,7 +565,9 @@ export default function UsersPage() {
                       type="button"
                       className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
                       onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                      aria-label={
+                        showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                      }
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" aria-hidden />

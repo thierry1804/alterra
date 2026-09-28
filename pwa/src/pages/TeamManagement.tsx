@@ -121,8 +121,7 @@ interface TeamCardProps {
 }
 
 type TeamConfirmAction =
-  | { type: "deactivate" }
-  | { type: "remove"; workerId: string; workerName: string };
+  { type: "deactivate" } | { type: "remove"; workerId: string; workerName: string };
 
 function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: TeamCardProps) {
   const [expanded, setExpanded] = useState(!canEditStructure);
@@ -226,7 +225,9 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
             {!team.active ? " · Inactive" : ""}
           </p>
         </div>
-        <span className="shrink-0 text-xs font-medium text-zinc-600">{expanded ? "Masquer" : "Gérer"}</span>
+        <span className="shrink-0 text-xs font-medium text-zinc-600">
+          {expanded ? "Masquer" : "Gérer"}
+        </span>
       </button>
 
       {expanded && (
@@ -240,7 +241,10 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
           {canEditStructure && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-zinc-600" htmlFor={`name-${team.id}`}>
+                <label
+                  className="block text-xs font-medium text-zinc-600"
+                  htmlFor={`name-${team.id}`}
+                >
                   Nom
                 </label>
                 <input
@@ -251,7 +255,10 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-600" htmlFor={`chef-${team.id}`}>
+                <label
+                  className="block text-xs font-medium text-zinc-600"
+                  htmlFor={`chef-${team.id}`}
+                >
                   Chef d'équipe
                 </label>
                 <select
@@ -298,7 +305,10 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
             ) : (
               <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
                 {members.map((member) => (
-                  <li key={member.id} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                  <li
+                    key={member.id}
+                    className="flex items-center justify-between gap-2 px-3 py-1.5"
+                  >
                     <span className="text-sm text-zinc-800">{memberLabel(member)}</span>
                     <IconButton
                       icon={IconTrash}
@@ -342,9 +352,7 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
               ? `${confirmAction.workerName} sera retiré de l'équipe « ${team.name} ».`
               : ""
         }
-        confirmLabel={
-          confirmAction?.type === "deactivate" ? "Désactiver" : "Retirer"
-        }
+        confirmLabel={confirmAction?.type === "deactivate" ? "Désactiver" : "Retirer"}
         destructive
         busy={busy}
         onConfirm={handleConfirmAction}
@@ -392,7 +400,9 @@ export default function TeamManagement() {
       setTeamDetails(new Map(details.map((detail) => [detail.id, detail])));
 
       if (isCds) {
-        const chefsResponse = await api.get<{ data: TeamSummary["chef"][] }>("/teams/chef-candidates");
+        const chefsResponse = await api.get<{ data: TeamSummary["chef"][] }>(
+          "/teams/chef-candidates",
+        );
         setChefs(chefsResponse.data.data);
       }
     } catch (err) {
@@ -495,7 +505,12 @@ export default function TeamManagement() {
               </select>
             </div>
           </div>
-          <Button type="button" className="mt-3" disabled={creating || !newTeamName.trim()} onClick={() => void createTeam()}>
+          <Button
+            type="button"
+            className="mt-3"
+            disabled={creating || !newTeamName.trim()}
+            onClick={() => void createTeam()}
+          >
             Créer l'équipe
           </Button>
         </section>

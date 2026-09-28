@@ -6,11 +6,11 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Guides utilisateur | ✅ | 3 guides MD + PDF (~15 p. équivalent chacun) |
-| 2 — Doc exploitation | ✅ | `docs/runbook.md` enrichi (MEP, backup/restore) |
-| 3 — Formation pilote | ✅ | `docs/guides/formation-pilote.md` (½j Admin+CDS, ½j CDE) |
+| Step                   | Statut | Détail                                                   |
+| ---------------------- | ------ | -------------------------------------------------------- |
+| 1 — Guides utilisateur | ✅     | 3 guides MD + PDF (~15 p. équivalent chacun)             |
+| 2 — Doc exploitation   | ✅     | `docs/runbook.md` enrichi (MEP, backup/restore)          |
+| 3 — Formation pilote   | ✅     | `docs/guides/formation-pilote.md` (½j Admin+CDS, ½j CDE) |
 
 ## Fichiers
 
@@ -28,11 +28,11 @@ npm run docs:guides
 
 ## Contenu guides
 
-| Guide | Sections principales |
-|-------|---------------------|
+| Guide | Sections principales                                      |
+| ----- | --------------------------------------------------------- |
 | Admin | Connexion MFA, 9 modules sidebar, MVola, audit, dépannage |
-| CDS | PWA, PIN, validation hebdo, bio, sync |
-| CDE | Activité jour, saisie lot, offline, sync, rejets |
+| CDS   | PWA, PIN, validation hebdo, bio, sync                     |
+| CDE   | Activité jour, saisie lot, offline, sync, rejets          |
 
 Les encarts `[Capture]` marquent les emplacements screenshots à compléter en session formation.
 

@@ -292,7 +292,8 @@ usersRouter.post("/:id/deactivate", validate(userIdParams, "params"), async (req
 
     const user = await deactivateUser(req.params.id, {
       ip: req.ip,
-      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      userAgent:
+        typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
     });
 
     res.json({
@@ -310,7 +311,8 @@ usersRouter.post("/bulk-deactivate", validate(bulkIdsOnlySchema), async (req, re
     const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
     const meta = {
       ip: req.ip,
-      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      userAgent:
+        typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
     };
     const results = await runBulk(ids, async (id) => {
       const existing = await prisma.user.findFirst({ where: { id, deletedAt: null } });

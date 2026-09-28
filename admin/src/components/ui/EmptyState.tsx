@@ -11,7 +11,13 @@ interface EmptyStateProps {
 }
 
 /** État vide qui oriente l'utilisateur (prochaine action), pas un simple « aucune donnée ». */
-export function EmptyState({ icon: Icon = Inbox, title, hint, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon = Inbox,
+  title,
+  hint,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
     <div
       className={cn(

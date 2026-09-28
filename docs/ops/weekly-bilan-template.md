@@ -1,6 +1,6 @@
 # Bilan hypercare — Semaine ___ post-MEP
 
-**Date :** ____/____/2026  
+**Date :** ****/****/2026  
 **Participants :**  
 **Durée :** 30–45 min
 
@@ -9,10 +9,10 @@
 ## 1. Synthèse incidents
 
 | Sévérité | Ouverts début semaine | Nouveaux | Résolus | Restants |
-|----------|----------------------|----------|---------|----------|
-| P1 | | | | |
-| P2 | | | | |
-| P3 | | | | |
+| -------- | --------------------- | -------- | ------- | -------- |
+| P1       |                       |          |         |          |
+| P2       |                       |          |         |          |
+| P3       |                       |          |         |          |
 
 Référence : [incident-register.md](incident-register.md)
 
@@ -20,37 +20,37 @@ Référence : [incident-register.md](incident-register.md)
 
 ## 2. Incidents notables
 
-| ID | Résumé | Impact métier | Action | Owner |
-|----|--------|---------------|--------|-------|
-| | | | | |
+| ID  | Résumé | Impact métier | Action | Owner |
+| --- | ------ | ------------- | ------ | ----- |
+|     |        |               |        |       |
 
 ---
 
 ## 3. Métriques terrain (semaine)
 
-| Indicateur | Valeur | Commentaire |
-|------------|--------|-------------|
-| CDE actifs / attendus | | |
-| Taux sync J+0 | | |
-| Validations CDS en attente | | |
-| Lignes MVola bloquées bio | | |
-| Uptime sonde externe | | |
+| Indicateur                 | Valeur | Commentaire |
+| -------------------------- | ------ | ----------- |
+| CDE actifs / attendus      |        |             |
+| Taux sync J+0              |        |             |
+| Validations CDS en attente |        |             |
+| Lignes MVola bloquées bio  |        |             |
+| Uptime sonde externe       |        |             |
 
 ---
 
 ## 4. Hotfix déployés
 
 | Date | TAG git | Description | Rollback ? |
-|------|---------|-------------|------------|
-| | | | Non |
+| ---- | ------- | ----------- | ---------- |
+|      |         |             | Non        |
 
 ---
 
 ## 5. UX mineurs livrés
 
-| Description | PR | Déployé |
-|-------------|-----|---------|
-| | | ☐ |
+| Description | PR  | Déployé |
+| ----------- | --- | ------- |
+|             |     | ☐       |
 
 ---
 
@@ -65,10 +65,10 @@ Référence : [incident-register.md](incident-register.md)
 ## 7. Plan semaine suivante
 
 | Priorité | Action | Owner | Échéance |
-|----------|--------|-------|----------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
+| -------- | ------ | ----- | -------- |
+| 1        |        |       |          |
+| 2        |        |       |          |
+| 3        |        |       |          |
 
 ---
 
@@ -79,8 +79,8 @@ Référence : [incident-register.md](incident-register.md)
 - [ ] Cycle MVola prod OK
 - [ ] PV recette à jour
 
-**Prochaine réunion :** ____/____/2026
+**Prochaine réunion :** ****/****/2026
 
 ---
 
-*Task 25 — réunion hebdomadaire bilan*
+_Task 25 — réunion hebdomadaire bilan_

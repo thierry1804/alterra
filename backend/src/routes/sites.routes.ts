@@ -17,9 +17,7 @@ const bulkStatusSchema = z.object({ ids: bulkIdsSchema, active: z.boolean() });
 
 const createSiteSchema = z.object({
   name: z.string().min(2),
-  shortCode: z
-    .string()
-    .regex(/^[A-Z]{2,3}$/, "Code site : 2 à 3 lettres majuscules (ex. MNK)"),
+  shortCode: z.string().regex(/^[A-Z]{2,3}$/, "Code site : 2 à 3 lettres majuscules (ex. MNK)"),
   location: z.string().optional(),
   geoLat: z.number().optional(),
   geoLng: z.number().optional(),
@@ -44,48 +42,43 @@ sitesRouter.get("/sites", requireAuth, async (req, res, next) => {
   }
 });
 
-sitesRouter.get(
-  "/sites/geo",
-  requireAuth,
-  requireRole(Role.ADMIN),
-  async (req, res, next) => {
-    try {
-      const sites = await prisma.site.findMany({
-        where: { active: true },
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          shortCode: true,
-          geoLat: true,
-          geoLng: true,
-          zones: {
-            orderBy: { name: "asc" },
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              geoPolygon: true,
-              parcelles: {
-                orderBy: { name: "asc" },
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                  surfaceHa: true,
-                  geoPolygon: true,
-                },
+sitesRouter.get("/sites/geo", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
+  try {
+    const sites = await prisma.site.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        shortCode: true,
+        geoLat: true,
+        geoLng: true,
+        zones: {
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            geoPolygon: true,
+            parcelles: {
+              orderBy: { name: "asc" },
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                surfaceHa: true,
+                geoPolygon: true,
               },
             },
           },
         },
-      });
-      res.json({ data: sites });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+      },
+    });
+    res.json({ data: sites });
+  } catch (err) {
+    next(err);
+  }
+});
 
 sitesRouter.get(
   "/sites/:id",

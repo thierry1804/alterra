@@ -6,11 +6,11 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Leaflet + tuiles | ✅ | OSM par défaut, MapTiler si `VITE_MAPTILER_KEY` |
-| 2 — Marqueurs sites | ✅ | CircleMarker + popup nom/code/stats |
-| 3 — Couches zones/parcelles | ✅ | Polygones GeoJSON activables, popups |
+| Step                        | Statut | Détail                                          |
+| --------------------------- | ------ | ----------------------------------------------- |
+| 1 — Leaflet + tuiles        | ✅     | OSM par défaut, MapTiler si `VITE_MAPTILER_KEY` |
+| 2 — Marqueurs sites         | ✅     | CircleMarker + popup nom/code/stats             |
+| 3 — Couches zones/parcelles | ✅     | Polygones GeoJSON activables, popups            |
 
 ## Fichiers
 

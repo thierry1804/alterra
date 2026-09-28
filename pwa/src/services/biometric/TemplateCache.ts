@@ -1,9 +1,5 @@
 import { api } from "../../lib/api";
-import {
-  decryptString,
-  encryptString,
-  type EncryptedPayload,
-} from "../../lib/crypto";
+import { decryptString, encryptString, type EncryptedPayload } from "../../lib/crypto";
 import { db } from "../../db/db";
 import { getDeviceKey } from "../../lib/session";
 

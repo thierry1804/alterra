@@ -126,7 +126,10 @@ async function validateRowsAgainstDb(
   const mvolaNumbers = rows.map((row) => row.mvolaNumber);
 
   const [sites, teams, existingWorkers] = await Promise.all([
-    prisma.site.findMany({ where: { shortCode: { in: siteCodes } }, select: { id: true, shortCode: true } }),
+    prisma.site.findMany({
+      where: { shortCode: { in: siteCodes } },
+      select: { id: true, shortCode: true },
+    }),
     teamNames.length > 0
       ? prisma.team.findMany({
           where: { name: { in: teamNames } },
@@ -147,7 +150,9 @@ async function validateRowsAgainstDb(
     if (!siteByCode.has(code)) siteByCode.set(code, `pending:${code}`);
   }
   const teamBySiteAndName = new Map(teams.map((team) => [`${team.siteId}::${team.name}`, team.id]));
-  const existingMatricules = new Set(existingWorkers.map((worker) => worker.matricule.toLowerCase()));
+  const existingMatricules = new Set(
+    existingWorkers.map((worker) => worker.matricule.toLowerCase()),
+  );
   const existingMvolas = new Set(existingWorkers.map((worker) => worker.mvolaNumber));
 
   for (const row of rows) {
@@ -178,10 +183,20 @@ async function validateRowsAgainstDb(
     }
 
     if (existingMatricules.has(row.matricule.toLowerCase())) {
-      errors.push({ row: row.row, field: "matricule", message: "Matricule déjà en base", sheet: "workers" });
+      errors.push({
+        row: row.row,
+        field: "matricule",
+        message: "Matricule déjà en base",
+        sheet: "workers",
+      });
     }
     if (existingMvolas.has(row.mvolaNumber)) {
-      errors.push({ row: row.row, field: "mvolaNumber", message: "MVola déjà en base", sheet: "workers" });
+      errors.push({
+        row: row.row,
+        field: "mvolaNumber",
+        message: "MVola déjà en base",
+        sheet: "workers",
+      });
     }
   }
 
@@ -218,15 +233,27 @@ export async function parseInitialWorkersWorkbook(
 
     const rowErrors: ImportRowError[] = [];
 
-    if (!values.firstName) rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis", sheet: "workers" });
-    if (!values.lastName) rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis", sheet: "workers" });
+    if (!values.firstName)
+      rowErrors.push({ row: rowNumber, field: "firstName", message: "Requis", sheet: "workers" });
+    if (!values.lastName)
+      rowErrors.push({ row: rowNumber, field: "lastName", message: "Requis", sheet: "workers" });
     if (!values.mvolaNumber || values.mvolaNumber.length < 9) {
-      rowErrors.push({ row: rowNumber, field: "mvolaNumber", message: "Numéro MVola invalide (min 9)", sheet: "workers" });
+      rowErrors.push({
+        row: rowNumber,
+        field: "mvolaNumber",
+        message: "Numéro MVola invalide (min 9)",
+        sheet: "workers",
+      });
     }
 
     const siteShortCode = values.siteShortCode.toUpperCase();
     if (!siteShortCode || !/^[A-Z]{2,3}$/.test(siteShortCode)) {
-      rowErrors.push({ row: rowNumber, field: "siteShortCode", message: "Code site invalide", sheet: "workers" });
+      rowErrors.push({
+        row: rowNumber,
+        field: "siteShortCode",
+        message: "Code site invalide",
+        sheet: "workers",
+      });
     }
 
     const legacyMocIdErrors: ImportRowError[] = [];
@@ -237,11 +264,21 @@ export async function parseInitialWorkersWorkbook(
       legacyMocIdErrors,
     );
     rowErrors.push(...legacyMocIdErrors.map((e) => ({ ...e, sheet: "workers" })));
-    const hiredAt = parseDateField(values.hiredAt, rowNumber, "hiredAt", rowErrors.map((e) => ({ ...e, sheet: "workers" })));
+    const hiredAt = parseDateField(
+      values.hiredAt,
+      rowNumber,
+      "hiredAt",
+      rowErrors.map((e) => ({ ...e, sheet: "workers" })),
+    );
     const statusRaw = values.status?.trim();
     const status = statusRaw ? parseStatus(statusRaw) : WorkerStatus.ACTIVE;
     if (statusRaw && !status) {
-      rowErrors.push({ row: rowNumber, field: "status", message: "Statut invalide", sheet: "workers" });
+      rowErrors.push({
+        row: rowNumber,
+        field: "status",
+        message: "Statut invalide",
+        sheet: "workers",
+      });
     }
 
     if (rowErrors.length > 0) {
@@ -278,7 +315,9 @@ export async function parseInitialWorkersWorkbook(
       ),
   );
 
-  errors.push(...(await validateRowsAgainstDb(rowsWithoutFileDupes, options?.knownSiteCodes ?? [])));
+  errors.push(
+    ...(await validateRowsAgainstDb(rowsWithoutFileDupes, options?.knownSiteCodes ?? [])),
+  );
 
   const invalidRows = new Set(errors.map((error) => error.row));
   return { valid: valid.filter((row) => !invalidRows.has(row.row)), errors };
@@ -305,9 +344,7 @@ export async function importInitialWorkersRows(rows: ValidInitialWorkerRow[], dr
     const created = [];
     for (const row of rows) {
       const siteId = siteByCode.get(row.siteShortCode)!;
-      const teamId = row.teamName
-        ? teamBySiteAndName.get(`${siteId}::${row.teamName}`)
-        : undefined;
+      const teamId = row.teamName ? teamBySiteAndName.get(`${siteId}::${row.teamName}`) : undefined;
 
       const worker = await tx.worker.create({
         data: {

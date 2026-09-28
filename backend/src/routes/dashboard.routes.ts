@@ -22,7 +22,7 @@ dashboardRouter.get(
     try {
       const query = req.query as z.infer<typeof dashboardQuery>;
       const scopedSiteId =
-        req.user!.role === Role.CHEF_SERVICE ? req.user!.siteId ?? query.siteId : query.siteId;
+        req.user!.role === Role.CHEF_SERVICE ? (req.user!.siteId ?? query.siteId) : query.siteId;
 
       const summary = await getDashboardSummary(prisma, scopedSiteId ?? undefined);
       res.json(summary);

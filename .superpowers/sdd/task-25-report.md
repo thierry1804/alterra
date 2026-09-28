@@ -6,12 +6,12 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Astreinte 3 semaines | ✅ | Organisation, canaux, calendrier S1–S3 |
-| 2 — Hotfix bugs bloquants | ✅ | Workflow + commandes deploy/rollback |
-| 3 — UX mineurs | ✅ | Critères ≤ 0,5 j-h, process validation |
-| 4 — Réunion hebdo bilan | ✅ | Template 30–45 min |
+| Step                      | Statut | Détail                                 |
+| ------------------------- | ------ | -------------------------------------- |
+| 1 — Astreinte 3 semaines  | ✅     | Organisation, canaux, calendrier S1–S3 |
+| 2 — Hotfix bugs bloquants | ✅     | Workflow + commandes deploy/rollback   |
+| 3 — UX mineurs            | ✅     | Critères ≤ 0,5 j-h, process validation |
+| 4 — Réunion hebdo bilan   | ✅     | Template 30–45 min                     |
 
 ## Fichiers
 

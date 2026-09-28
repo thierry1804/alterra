@@ -1,6 +1,11 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
-import { startDailyPdfWorker, startWeeklyPdfWorker, stopDailyPdfWorker, stopWeeklyPdfWorker } from "./jobs/pdf.worker.js";
+import {
+  startDailyPdfWorker,
+  startWeeklyPdfWorker,
+  stopDailyPdfWorker,
+  stopWeeklyPdfWorker,
+} from "./jobs/pdf.worker.js";
 import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
 import { ensureBuckets } from "./services/storage/minio.js";

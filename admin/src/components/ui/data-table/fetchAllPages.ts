@@ -6,7 +6,9 @@
 
 /** Pagination par curseur (Travailleurs, Utilisateurs, Pointages). */
 export async function fetchAllCursorPages<T>(
-  fetchPage: (cursor: string | null) => Promise<{ data: T[]; nextCursor: string | null; hasMore: boolean }>,
+  fetchPage: (
+    cursor: string | null,
+  ) => Promise<{ data: T[]; nextCursor: string | null; hasMore: boolean }>,
   maxPages = 200,
 ): Promise<T[]> {
   const all: T[] = [];

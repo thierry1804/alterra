@@ -1,11 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { loadXlsxWorkbook } from "./excel-workbook.js";
-import {
-  buildHeaderMap,
-  missingHeaders,
-  rowValues,
-  type ImportRowError,
-} from "./excel-utils.js";
+import { buildHeaderMap, missingHeaders, rowValues, type ImportRowError } from "./excel-utils.js";
 
 export interface ValidSiteRow {
   row: number;
@@ -86,7 +81,12 @@ export async function parseSitesWorkbook(buffer: Buffer): Promise<SitesImportPre
     }
 
     if (!values.name || values.name.length < 2) {
-      rowErrors.push({ row: rowNumber, field: "name", message: "Nom requis (min 2)", sheet: "sites" });
+      rowErrors.push({
+        row: rowNumber,
+        field: "name",
+        message: "Nom requis (min 2)",
+        sheet: "sites",
+      });
     }
 
     if (rowErrors.length > 0) {

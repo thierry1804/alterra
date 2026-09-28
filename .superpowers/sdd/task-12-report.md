@@ -7,24 +7,24 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Table filtrable avec photo miniature | ✅ |
-| 2 | Drawer détail (géoloc, bio, historique validation) | ✅ |
-| 3 | Correction inline avec motif obligatoire (ADMIN) | ✅ |
-| 4 | Validation / rejet CDS+ADMIN | ✅ |
-| 5 | `npm run lint -w admin && npm run build -w admin` | ✅ PASS |
+| Step | Item                                               | Status  |
+| ---- | -------------------------------------------------- | ------- |
+| 1    | Table filtrable avec photo miniature               | ✅      |
+| 2    | Drawer détail (géoloc, bio, historique validation) | ✅      |
+| 3    | Correction inline avec motif obligatoire (ADMIN)   | ✅      |
+| 4    | Validation / rejet CDS+ADMIN                       | ✅      |
+| 5    | `npm run lint -w admin && npm run build -w admin`  | ✅ PASS |
 
 ---
 
 ## Fichiers
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `pages/Pointages.tsx` | Liste cursor, filtres statut/dates, résolution noms MOC |
-| `components/pointages/PointageDetailDrawer.tsx` | Détail, géoloc, bio, validate/reject/correct |
-| `components/pointages/CorrectionForm.tsx` | Correction admin (qty, activité, date, motif ≥10) |
-| `lib/pointages.ts` | Types et helpers statut/montant |
+| Fichier                                         | Rôle                                                    |
+| ----------------------------------------------- | ------------------------------------------------------- |
+| `pages/Pointages.tsx`                           | Liste cursor, filtres statut/dates, résolution noms MOC |
+| `components/pointages/PointageDetailDrawer.tsx` | Détail, géoloc, bio, validate/reject/correct            |
+| `components/pointages/CorrectionForm.tsx`       | Correction admin (qty, activité, date, motif ≥10)       |
+| `lib/pointages.ts`                              | Types et helpers statut/montant                         |
 
 ---
 

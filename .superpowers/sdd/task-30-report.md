@@ -6,11 +6,11 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — NDEFReader lecture | ✅ | `pwa/src/lib/nfc.ts` — session continue, normalisation UID |
-| 2 — Feedback visuel + son | ✅ | Pulse scan, flash états, bip Web Audio |
-| 3 — Badge inconnu + log local | ✅ | Dexie `presenceLog` + `badges`, journal du jour |
+| Step                          | Statut | Détail                                                     |
+| ----------------------------- | ------ | ---------------------------------------------------------- |
+| 1 — NDEFReader lecture        | ✅     | `pwa/src/lib/nfc.ts` — session continue, normalisation UID |
+| 2 — Feedback visuel + son     | ✅     | Pulse scan, flash états, bip Web Audio                     |
+| 3 — Badge inconnu + log local | ✅     | Dexie `presenceLog` + `badges`, journal du jour            |
 
 ## Fichiers
 

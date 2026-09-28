@@ -8,7 +8,11 @@ import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { ApiError } from "../middleware/error-handler.js";
-import { assertLoginNotLocked, clearLoginFailures, recordLoginFailure } from "../lib/login-lockout.js";
+import {
+  assertLoginNotLocked,
+  clearLoginFailures,
+  recordLoginFailure,
+} from "../lib/login-lockout.js";
 import {
   REFRESH_COOKIE,
   issueRefreshToken,

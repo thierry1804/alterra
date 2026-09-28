@@ -1,16 +1,5 @@
-import {
-  REPORT_COLUMN_LABELS,
-  formatReportCell,
-  type ReportPreview,
-} from "../../lib/reports";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { REPORT_COLUMN_LABELS, formatReportCell, type ReportPreview } from "../../lib/reports";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 interface ReportPreviewTableProps {
   report: ReportPreview | undefined;

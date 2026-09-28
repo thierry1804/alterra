@@ -34,8 +34,13 @@ function passwordFor(envKey: string): { value: string; generated: boolean } {
 async function main() {
   const admin = passwordFor("SEED_ADMIN_PASSWORD");
   const user = passwordFor("SEED_USER_PASSWORD");
-  const [adminHash, userHash] = await Promise.all([argon2.hash(admin.value), argon2.hash(user.value)]);
-  const emailsBefore = new Set((await prisma.user.findMany({ select: { email: true } })).map((u) => u.email));
+  const [adminHash, userHash] = await Promise.all([
+    argon2.hash(admin.value),
+    argon2.hash(user.value),
+  ]);
+  const emailsBefore = new Set(
+    (await prisma.user.findMany({ select: { email: true } })).map((u) => u.email),
+  );
 
   /** IDs réels en base (peuvent différer des UUID seed-data si sites préexistants). */
   const siteIdByShortCode = new Map<string, string>();
@@ -228,17 +233,35 @@ async function main() {
   // et seulement pour les comptes réellement créés par ce passage (un compte existant garde son mot de passe).
   const emailsAfter = (await prisma.user.findMany({ select: { email: true } })).map((u) => u.email);
   const created = emailsAfter.filter((email) => !emailsBefore.has(email));
-  const report = (label: string, emails: string[], secret: { value: string; generated: boolean }, envKey: string) => {
-    if (emails.length === 0) return console.log("%s : comptes existants conservés, mot de passe inchangé", label);
+  const report = (
+    label: string,
+    emails: string[],
+    secret: { value: string; generated: boolean },
+    envKey: string,
+  ) => {
+    if (emails.length === 0)
+      return console.log("%s : comptes existants conservés, mot de passe inchangé", label);
     console.log(
       "%s : %d compte(s) créé(s) — mot de passe %s",
       label,
       emails.length,
-      secret.generated ? `généré (à noter maintenant, non récupérable) : ${secret.value}` : `fourni par ${envKey}`,
+      secret.generated
+        ? `généré (à noter maintenant, non récupérable) : ${secret.value}`
+        : `fourni par ${envKey}`,
     );
   };
-  report("Admin (admin@alterra.mg)", created.filter((e) => e === "admin@alterra.mg"), admin, "SEED_ADMIN_PASSWORD");
-  report("CDS/CDE (*@alterra.test)", created.filter((e) => e.endsWith("@alterra.test")), user, "SEED_USER_PASSWORD");
+  report(
+    "Admin (admin@alterra.mg)",
+    created.filter((e) => e === "admin@alterra.mg"),
+    admin,
+    "SEED_ADMIN_PASSWORD",
+  );
+  report(
+    "CDS/CDE (*@alterra.test)",
+    created.filter((e) => e.endsWith("@alterra.test")),
+    user,
+    "SEED_USER_PASSWORD",
+  );
 }
 
 main()

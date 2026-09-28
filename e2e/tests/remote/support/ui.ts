@@ -14,7 +14,8 @@ export async function findRow(page: Page, text: string | RegExp, maxPages = 40):
   for (let attempt = 0; attempt < 4; attempt++) {
     await waitTableReady(page);
     const previous = page.getByRole("button", { name: "Précédent" });
-    while ((await previous.isVisible().catch(() => false)) && (await previous.isEnabled())) await previous.click();
+    while ((await previous.isVisible().catch(() => false)) && (await previous.isEnabled()))
+      await previous.click();
     const next = page.getByRole("button", { name: "Suivant" });
     for (let i = 0; i < maxPages; i++) {
       const row = page.getByRole("row").filter({ hasText: text });
@@ -31,7 +32,11 @@ export async function findRow(page: Page, text: string | RegExp, maxPages = 40):
  * Trouve une ligne d'un tableau à chargement par curseur (« Charger plus », 50 lignes par page).
  * La liste des utilisateurs dépasse une page dès que la démonstration accumule des comptes de test.
  */
-export async function findRowLoadMore(page: Page, text: string | RegExp, maxClicks = 30): Promise<Locator> {
+export async function findRowLoadMore(
+  page: Page,
+  text: string | RegExp,
+  maxClicks = 30,
+): Promise<Locator> {
   await waitTableReady(page);
   const loadMore = page.getByRole("button", { name: "Charger plus" });
   for (let i = 0; i <= maxClicks; i++) {
@@ -39,7 +44,9 @@ export async function findRowLoadMore(page: Page, text: string | RegExp, maxClic
     if ((await row.count()) > 0) return row.first();
     if (!(await loadMore.isVisible().catch(() => false))) break;
     await loadMore.click();
-    await expect(loadMore).toBeEnabled({ timeout: 15_000 }).catch(() => undefined);
+    await expect(loadMore)
+      .toBeEnabled({ timeout: 15_000 })
+      .catch(() => undefined);
   }
   throw new Error(`Ligne « ${String(text)} » introuvable dans le tableau`);
 }
@@ -54,7 +61,10 @@ export function heading(page: Page, name: string | RegExp): Locator {
 }
 
 /** Compte les requêtes sortantes vers l'API correspondant au motif (contrôle « aucun appel réseau »). */
-export function countRequests(page: Page, match: (url: string, method: string) => boolean): { count: () => number } {
+export function countRequests(
+  page: Page,
+  match: (url: string, method: string) => boolean,
+): { count: () => number } {
   let n = 0;
   page.on("request", (req) => {
     if (match(req.url(), req.method())) n++;

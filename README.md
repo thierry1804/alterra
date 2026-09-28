@@ -34,10 +34,10 @@ node -v        # doit afficher >= 20.19.0
 
 Trois modes sont disponibles selon vos besoins :
 
-| Mode               | Commande infra                              | API                         | Frontends              | Cas d'usage                                   |
-| ------------------ | ------------------------------------------- | --------------------------- | ---------------------- | --------------------------------------------- |
-| **Dev hybride**    | `docker compose up -d postgres redis minio` | `npm run dev -w backend`    | `npm run dev` (Vite)   | développement quotidien (hot-reload tsx/vite) |
-| **Stack complète** | `docker compose up -d`                      | conteneur `api` (port 3001) | —                      | smoke test, CI local, sans Node pour l'API    |
+| Mode               | Commande infra                                | API                         | Frontends            | Cas d'usage                                   |
+| ------------------ | --------------------------------------------- | --------------------------- | -------------------- | --------------------------------------------- |
+| **Dev hybride**    | `docker compose up -d postgres redis minio`   | `npm run dev -w backend`    | `npm run dev` (Vite) | développement quotidien (hot-reload tsx/vite) |
+| **Stack complète** | `docker compose up -d`                        | conteneur `api` (port 3001) | —                    | smoke test, CI local, sans Node pour l'API    |
 | **App complète**   | `docker compose --profile full up -d --build` | conteneur `api` (port 3001) | conteneurs nginx     | démo / QA de toute l'appli sans Node local    |
 
 | Composant   | Dev hybride               | Stack complète | App complète (`--profile full`) | Port                       |

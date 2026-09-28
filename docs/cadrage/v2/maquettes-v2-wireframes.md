@@ -28,12 +28,12 @@
 └─────────────────────────────────────┘
 ```
 
-| État | UI |
-|------|-----|
-| Lecture | Pulse anneau + instruction |
-| OK | Flash vert + bip + nom MOC 2s |
-| Badge inconnu | Rouge « Badge non enregistré » + log |
-| NFC indisponible | Lien mode manuel (MANUAL source) |
+| État             | UI                                   |
+| ---------------- | ------------------------------------ |
+| Lecture          | Pulse anneau + instruction           |
+| OK               | Flash vert + bip + nom MOC 2s        |
+| Badge inconnu    | Rouge « Badge non enregistré » + log |
+| NFC indisponible | Lien mode manuel (MANUAL source)     |
 
 ---
 
@@ -62,12 +62,12 @@ Formulaire : nom équipe, chef (autocomplete users CDE), membres (multi-select M
 
 ### Demande activité
 
-| Champ | Type |
-|-------|------|
-| Libellé proposé | text |
-| Unité | select |
-| Tarif proposé | number Ar |
-| Justification | textarea |
+| Champ           | Type      |
+| --------------- | --------- |
+| Libellé proposé | text      |
+| Unité           | select    |
+| Tarif proposé   | number Ar |
+| Justification   | textarea  |
 
 Statuts : `PENDING` → `APPROVED` / `REJECTED` (Admin).
 
@@ -100,7 +100,15 @@ Exemple GeoJSON :
 ```json
 {
   "type": "Polygon",
-  "coordinates": [[[47.52, -18.91], [47.53, -18.91], [47.53, -18.90], [47.52, -18.90], [47.52, -18.91]]]
+  "coordinates": [
+    [
+      [47.52, -18.91],
+      [47.53, -18.91],
+      [47.53, -18.9],
+      [47.52, -18.9],
+      [47.52, -18.91]
+    ]
+  ]
 }
 ```
 
@@ -127,14 +135,14 @@ Exemple GeoJSON :
 
 ## Frames Figma attendus (post-atelier)
 
-| Frame | Variantes |
-|-------|-----------|
-| `PWA/NFC-scan` | idle, success, unknown badge, no NFC |
-| `PWA/Teams-CDS` | list, edit |
-| `PWA/Request-activity` | form, submitted |
-| `Admin/Zones` | hierarchy, geo editor |
-| `Admin/Map` | layers on/off |
+| Frame                  | Variantes                            |
+| ---------------------- | ------------------------------------ |
+| `PWA/NFC-scan`         | idle, success, unknown badge, no NFC |
+| `PWA/Teams-CDS`        | list, edit                           |
+| `PWA/Request-activity` | form, submitted                      |
+| `Admin/Zones`          | hierarchy, geo editor                |
+| `Admin/Map`            | layers on/off                        |
 
 ---
 
-*Task 27 Step 2 — compléter liens Figma après atelier*
+_Task 27 Step 2 — compléter liens Figma après atelier_

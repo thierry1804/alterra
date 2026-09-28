@@ -52,26 +52,26 @@ Le retour d'intent transite par des query params côté client, donc **falsifiab
 
 ## 3. Impacts techniques identifiés (non appliqués)
 
-| Zone | Impact |
-| --- | --- |
-| `backend/src/services/biometric/AxianBiometricProvider.ts` | Obsolète tel quel (appel REST cloud direct). À remplacer par un endpoint recevant + validant le callback transmis par la PWA. |
-| `backend/src/services/biometric/check-offline.service.ts` | À supprimer (plus d'offline). |
-| Enum `BioProvider` (Prisma) | Retirer `LOCAL_OFFLINE`. Garder `MOCK` / `MANUAL` (tests, formation, recette sans YAS) + nouveau mode intent (nom à définir, ex. `YAS_APK`). |
-| PWA `services/biometric/` | Ajouter déclenchement intent + page/route de callback (`/bio-callback`) qui parse le retour et relaie au backend. |
-| `pwa/db/` (Dexie/IndexedDB) | Retirer tout cache biométrique offline lié à l'ancien design. |
-| `docs/cadrage/ateliers-compte-rendu.md` §3 | Règles biométriques (seuils, provider, stockage photo) à revalider — la photo n'est plus envoyée par le backend à YAS, elle est capturée par l'APK elle-même. |
+| Zone                                                       | Impact                                                                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/src/services/biometric/AxianBiometricProvider.ts` | Obsolète tel quel (appel REST cloud direct). À remplacer par un endpoint recevant + validant le callback transmis par la PWA.                                 |
+| `backend/src/services/biometric/check-offline.service.ts`  | À supprimer (plus d'offline).                                                                                                                                 |
+| Enum `BioProvider` (Prisma)                                | Retirer `LOCAL_OFFLINE`. Garder `MOCK` / `MANUAL` (tests, formation, recette sans YAS) + nouveau mode intent (nom à définir, ex. `YAS_APK`).                  |
+| PWA `services/biometric/`                                  | Ajouter déclenchement intent + page/route de callback (`/bio-callback`) qui parse le retour et relaie au backend.                                             |
+| `pwa/db/` (Dexie/IndexedDB)                                | Retirer tout cache biométrique offline lié à l'ancien design.                                                                                                 |
+| `docs/cadrage/ateliers-compte-rendu.md` §3                 | Règles biométriques (seuils, provider, stockage photo) à revalider — la photo n'est plus envoyée par le backend à YAS, elle est capturée par l'APK elle-même. |
 
 ---
 
 ## 4. Questions ouvertes avant implémentation
 
-| ID | Question | Responsable |
-| --- | --- | --- |
-| Q-BIO-APK-01 | Format exact de l'intent (package name réel, scheme, paramètres attendus) — doc technique YAS à obtenir | YAS |
-| Q-BIO-APK-02 | Le retour de callback est-il signé/vérifiable côté serveur ? Quel mécanisme (clé publique, endpoint de confirmation server-to-server) ? | YAS |
-| Q-BIO-APK-03 | L'APK est-elle pré-requise/pré-installée sur les devices terrain, ou installée à la volée si absente (fallback si intent échoue — app non installée) ? | YAS + Admin ALTERRA |
-| Q-BIO-APK-04 | Comportement si connectivité coupée pendant le flux intent (PWA online-only désormais — quel état/erreur si l'APK elle-même a besoin de réseau) ? | YAS |
-| Q-BIO-APK-05 | ~~La photo est-elle toujours "non stockée après envoi" comme en V1, sachant que la capture est maintenant faite par l'APK, pas par la PWA ?~~ **Réponse : oui, confirmé.** | YAS + RGPD |
+| ID           | Question                                                                                                                                                                   | Responsable         |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Q-BIO-APK-01 | Format exact de l'intent (package name réel, scheme, paramètres attendus) — doc technique YAS à obtenir                                                                    | YAS                 |
+| Q-BIO-APK-02 | Le retour de callback est-il signé/vérifiable côté serveur ? Quel mécanisme (clé publique, endpoint de confirmation server-to-server) ?                                    | YAS                 |
+| Q-BIO-APK-03 | L'APK est-elle pré-requise/pré-installée sur les devices terrain, ou installée à la volée si absente (fallback si intent échoue — app non installée) ?                     | YAS + Admin ALTERRA |
+| Q-BIO-APK-04 | Comportement si connectivité coupée pendant le flux intent (PWA online-only désormais — quel état/erreur si l'APK elle-même a besoin de réseau) ?                          | YAS                 |
+| Q-BIO-APK-05 | ~~La photo est-elle toujours "non stockée après envoi" comme en V1, sachant que la capture est maintenant faite par l'APK, pas par la PWA ?~~ **Réponse : oui, confirmé.** | YAS + RGPD          |
 
 **Réponses obtenues :**
 
