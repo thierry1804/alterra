@@ -26,14 +26,13 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 interface MemberSearchProps {
-  siteId: string;
   teamId: string;
   existingMemberIds: Set<string>;
   onAdd: (workerId: string) => Promise<void>;
   disabled?: boolean;
 }
 
-function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: MemberSearchProps) {
+function MemberSearch({ teamId, existingMemberIds, onAdd, disabled }: MemberSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WorkerSearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -48,9 +47,10 @@ function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: Me
     const timer = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await api.get<{ data: WorkerSearchHit[] }>("/workers", {
-          params: { q: query.trim(), siteId, status: "ACTIVE", take: 20 },
-        });
+        const response = await api.get<{ data: WorkerSearchHit[] }>(
+          `/teams/${teamId}/eligible-workers`,
+          { params: { q: query.trim(), take: 20 } },
+        );
         setResults(
           response.data.data.filter(
             (worker) => !existingMemberIds.has(worker.id) && worker.teamId !== teamId,
@@ -64,7 +64,7 @@ function MemberSearch({ siteId, teamId, existingMemberIds, onAdd, disabled }: Me
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [query, siteId, teamId, existingMemberIds]);
+  }, [query, teamId, existingMemberIds]);
 
   async function handleAdd(workerId: string) {
     setBusyId(workerId);
@@ -320,7 +320,6 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
           </div>
 
           <MemberSearch
-            siteId={team.siteId}
             teamId={team.id}
             existingMemberIds={memberIds}
             onAdd={addMember}

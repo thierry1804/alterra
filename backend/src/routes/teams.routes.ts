@@ -36,6 +36,11 @@ const addMemberSchema = z.object({
   workerId: z.string().uuid(),
 });
 
+const eligibleWorkersQuery = z.object({
+  q: z.string().min(1).optional(),
+  take: z.coerce.number().int().min(1).max(50).default(20),
+});
+
 const TEAM_ROLES = [Role.CHEF_SERVICE, Role.CHEF_EQUIPE, Role.ADMIN] as const;
 const CDS_ROLES = [Role.CHEF_SERVICE, Role.ADMIN] as const;
 
@@ -407,6 +412,65 @@ teamsRouter.delete(
         userAgent: req.headers["user-agent"],
       });
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * Recherche de travailleurs éligibles à un ajout dans l'équipe. Utilise `basePrisma` (hors RLS) :
+ * `GET /workers` est automatiquement restreint à l'équipe de l'appelant pour un CHEF_EQUIPE, ce qui
+ * le rendrait incapable d'y trouver un travailleur libre ou d'une autre équipe à ajouter à la sienne.
+ * Le contrôle d'accès reste manuel ci-dessous (mêmes gardes que la mutation POST membres).
+ */
+teamsRouter.get(
+  "/teams/:id/eligible-workers",
+  requireAuth,
+  requireRole(...TEAM_ROLES),
+  validate(teamIdParams, "params"),
+  validate(eligibleWorkersQuery, "query"),
+  async (req, res, next) => {
+    try {
+      const team = await loadTeamOr404(req.params.id);
+      assertCanManageMembers(req, team.id);
+      await assertTeamReadable(req, team);
+
+      const { q, take } = req.query as unknown as z.infer<typeof eligibleWorkersQuery>;
+      const where: Prisma.WorkerWhereInput = {
+        siteId: team.siteId,
+        deletedAt: null,
+        status: WorkerStatus.ACTIVE,
+        // Un CHEF_EQUIPE ne peut jamais ajouter un travailleur d'une autre équipe (403 à la mutation
+        // POST /members) : autant ne pas le lister comme "éligible". CHEF_SERVICE/ADMIN gardent la
+        // vue complète du site, pour pouvoir transférer un travailleur entre équipes.
+        ...(req.user!.role === Role.CHEF_EQUIPE
+          ? { OR: [{ teamId: null }, { teamId: team.id }] }
+          : {}),
+        ...(q
+          ? {
+              AND: [
+                {
+                  OR: [
+                    { firstName: { contains: q, mode: "insensitive" } },
+                    { lastName: { contains: q, mode: "insensitive" } },
+                    { matricule: { contains: q, mode: "insensitive" } },
+                    { mvolaNumber: { contains: q, mode: "insensitive" } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      };
+
+      const workers = await basePrisma.worker.findMany({
+        where,
+        select: workerMemberSelect,
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        take,
+      });
+
+      res.json({ data: workers });
     } catch (err) {
       next(err);
     }
