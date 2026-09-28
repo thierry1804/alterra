@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -16,6 +17,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [needsMfa, setNeedsMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,15 +101,30 @@ export default function Login() {
             <label htmlFor="password" className="text-sm font-medium text-zinc-700">
               Mot de passe
             </label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="Mot de passe"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-9"
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden />
+                )}
+              </button>
+            </div>
           </div>
 
           {needsMfa && (
