@@ -1,5 +1,3 @@
-const PBKDF2_ITERATIONS = 120_000;
-
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
   bytes.forEach((byte) => {
@@ -17,56 +15,21 @@ function fromBase64(value: string): Uint8Array {
   return bytes;
 }
 
-export function generateSalt(length = 16): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(length));
+/** Clé locale à l'appareil, sans secret utilisateur : protège les données au repos (templates biométriques) contre une simple inspection d'IndexedDB. */
+export async function generateDeviceKey(): Promise<CryptoKey> {
+  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }
 
-export async function deriveKeyFromPin(pin: string, salt: Uint8Array): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const baseKey = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: salt as unknown as BufferSource,
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
+export async function exportKeyToBase64(key: CryptoKey): Promise<string> {
+  const raw = await crypto.subtle.exportKey("raw", key);
+  return toBase64(new Uint8Array(raw));
 }
 
-export async function hashPin(pin: string, salt: Uint8Array): Promise<string> {
-  const encoder = new TextEncoder();
-  const baseKey = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: salt as unknown as BufferSource,
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    baseKey,
-    256,
-  );
-
-  return toBase64(new Uint8Array(bits));
+export async function importKeyFromBase64(value: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey("raw", fromBase64(value) as unknown as BufferSource, "AES-GCM", true, [
+    "encrypt",
+    "decrypt",
+  ]);
 }
 
 export interface EncryptedPayload {

@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { loginPwa } from "../helpers/auth.js";
-import { CDE_EMAIL, PIN, USER_PASSWORD } from "../helpers/env.js";
+import { CDE_EMAIL, USER_PASSWORD } from "../helpers/env.js";
 
 test.describe("CDE — présence NFC (mode manuel)", () => {
   test("enregistre une présence via le mode dégradé", async ({ page }) => {
-    await loginPwa(page, CDE_EMAIL, USER_PASSWORD, PIN);
+    await loginPwa(page, CDE_EMAIL, USER_PASSWORD);
 
     await expect(page.getByRole("heading", { name: "Activité du jour" })).toBeVisible({
       timeout: 20_000,

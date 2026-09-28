@@ -1,13 +1,4 @@
-import {
-  decryptString,
-  deriveKeyFromPin,
-  encryptString,
-  fromBase64,
-  generateSalt,
-  hashPin,
-  toBase64,
-  type EncryptedPayload,
-} from "./crypto";
+import { exportKeyToBase64, generateDeviceKey, importKeyFromBase64 } from "./crypto";
 import { deleteSetting, getSetting, setSetting } from "../db/db";
 
 export interface AuthUser {
@@ -25,12 +16,10 @@ interface StoredSessionPayload {
   user: AuthUser;
 }
 
-const SETTING_PIN_SALT = "pinSalt";
-const SETTING_PIN_VERIFIER = "pinVerifier";
-const SETTING_SESSION = "sessionEncrypted";
-const SETTING_LAST_ACTIVITY = "lastActivityAt";
+const SETTING_SESSION = "session";
+const SETTING_DEVICE_KEY = "deviceKey";
 
-let memorySessionKey: CryptoKey | null = null;
+let memoryDeviceKey: CryptoKey | null = null;
 let memoryAccessToken: string | null = null;
 let memoryUser: AuthUser | null = null;
 
@@ -46,128 +35,54 @@ export function isSessionUnlocked(): boolean {
   return memoryAccessToken !== null && memoryUser !== null;
 }
 
-export async function hasPinConfigured(): Promise<boolean> {
-  const verifier = await getSetting(SETTING_PIN_VERIFIER);
-  return !!verifier;
+/** Clé de chiffrement au repos pour les données locales sensibles (templates biométriques) — sans secret utilisateur, générée une fois par appareil. */
+export function getDeviceKey(): CryptoKey | null {
+  return memoryDeviceKey;
 }
 
-export async function hasPersistedSession(): Promise<boolean> {
-  const encrypted = await getSetting(SETTING_SESSION);
-  return !!encrypted;
+async function ensureDeviceKey(): Promise<CryptoKey> {
+  if (memoryDeviceKey) return memoryDeviceKey;
+
+  const stored = await getSetting(SETTING_DEVICE_KEY);
+  if (stored) {
+    memoryDeviceKey = await importKeyFromBase64(stored);
+    return memoryDeviceKey;
+  }
+
+  const key = await generateDeviceKey();
+  await setSetting(SETTING_DEVICE_KEY, await exportKeyToBase64(key));
+  memoryDeviceKey = key;
+  return key;
 }
 
-export async function configurePinAndPersistSession(
-  pin: string,
-  accessToken: string,
-  user: AuthUser,
-): Promise<void> {
-  if (!/^\d{4}$/.test(pin)) {
-    throw new Error("PIN_INVALID");
-  }
+/** Restaure la session persistée en mémoire au démarrage de l'app (hors-ligne, sans appel réseau). */
+export async function restoreSession(): Promise<boolean> {
+  await ensureDeviceKey();
 
-  const salt = generateSalt();
-  const key = await deriveKeyFromPin(pin, salt);
-  const payload: StoredSessionPayload = { accessToken, user };
-  const encrypted = await encryptString(JSON.stringify(payload), key);
-  const verifier = await hashPin(pin, salt);
+  const raw = await getSetting(SETTING_SESSION);
+  if (!raw) return false;
 
-  await setSetting(SETTING_PIN_SALT, toBase64(salt));
-  await setSetting(SETTING_PIN_VERIFIER, verifier);
-  await setSetting(SETTING_SESSION, JSON.stringify(encrypted));
-  await touchActivity();
-
-  memorySessionKey = key;
-  memoryAccessToken = accessToken;
-  memoryUser = user;
-}
-
-export async function unlockSessionWithPin(pin: string): Promise<StoredSessionPayload> {
-  if (!/^\d{4}$/.test(pin)) {
-    throw new Error("PIN_INVALID");
-  }
-
-  const saltB64 = await getSetting(SETTING_PIN_SALT);
-  const verifier = await getSetting(SETTING_PIN_VERIFIER);
-  const encryptedRaw = await getSetting(SETTING_SESSION);
-
-  if (!saltB64 || !verifier || !encryptedRaw) {
-    throw new Error("SESSION_NOT_FOUND");
-  }
-
-  const salt = fromBase64(saltB64);
-  const pinHash = await hashPin(pin, salt);
-  if (pinHash !== verifier) {
-    throw new Error("PIN_INCORRECT");
-  }
-
-  const key = await deriveKeyFromPin(pin, salt);
-  const encrypted = JSON.parse(encryptedRaw) as EncryptedPayload;
-  const plaintext = await decryptString(encrypted, key);
-  const payload = JSON.parse(plaintext) as StoredSessionPayload;
-
-  memorySessionKey = key;
+  const payload = JSON.parse(raw) as StoredSessionPayload;
   memoryAccessToken = payload.accessToken;
   memoryUser = payload.user;
-  await touchActivity();
-
-  return payload;
+  return true;
 }
 
-export async function persistSessionWithMemoryKey(
-  accessToken: string,
-  user: AuthUser,
-): Promise<void> {
-  if (!memorySessionKey) {
-    throw new Error("NOT_UNLOCKED");
-  }
-
+export async function persistSession(accessToken: string, user: AuthUser): Promise<void> {
+  await ensureDeviceKey();
   const payload: StoredSessionPayload = { accessToken, user };
-  const encrypted = await encryptString(JSON.stringify(payload), memorySessionKey);
-  await setSetting(SETTING_SESSION, JSON.stringify(encrypted));
+  await setSetting(SETTING_SESSION, JSON.stringify(payload));
   memoryAccessToken = accessToken;
   memoryUser = user;
-  await touchActivity();
 }
 
 export async function updatePersistedAccessToken(accessToken: string): Promise<void> {
   if (!memoryUser) return;
-  await persistSessionWithMemoryKey(accessToken, memoryUser);
-}
-
-export async function touchActivity(): Promise<void> {
-  await setSetting(SETTING_LAST_ACTIVITY, new Date().toISOString());
-}
-
-export async function getLastActivityAt(): Promise<Date | null> {
-  const value = await getSetting(SETTING_LAST_ACTIVITY);
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-export function getMemorySessionKey(): CryptoKey | null {
-  return memorySessionKey;
-}
-
-export function lockSession(): void {
-  memorySessionKey = null;
-  memoryAccessToken = null;
-  memoryUser = null;
+  await persistSession(accessToken, memoryUser);
 }
 
 export async function clearPersistedSession(): Promise<void> {
-  lockSession();
-  await deleteSetting(SETTING_PIN_SALT);
-  await deleteSetting(SETTING_PIN_VERIFIER);
+  memoryAccessToken = null;
+  memoryUser = null;
   await deleteSetting(SETTING_SESSION);
-  await deleteSetting(SETTING_LAST_ACTIVITY);
-}
-
-export const INACTIVITY_LOCK_MS = 30 * 60 * 1000;
-
-export async function shouldLockForInactivity(now = Date.now()): Promise<boolean> {
-  if (!(await hasPinConfigured())) return false;
-  const lastActivity = await getLastActivityAt();
-  if (!lastActivity) return isSessionUnlocked();
-  return now - lastActivity.getTime() >= INACTIVITY_LOCK_MS;
 }

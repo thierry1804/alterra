@@ -1,17 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { loginAdmin, loginPwa } from "../helpers/auth.js";
-import {
-  ADMIN_URL,
-  CDS_EMAIL,
-  PIN,
-  USER_PASSWORD,
-} from "../helpers/env.js";
+import { ADMIN_URL, CDS_EMAIL, USER_PASSWORD } from "../helpers/env.js";
 
 test.describe("Workflows V2 — demandes terrain", () => {
   test("CDS soumet une demande activité visible côté Admin", async ({ page, browser }) => {
     const label = `Activité E2E ${Date.now()}`;
 
-    await loginPwa(page, CDS_EMAIL, USER_PASSWORD, PIN);
+    await loginPwa(page, CDS_EMAIL, USER_PASSWORD);
     await page.getByRole("link", { name: "Activités" }).click();
     await expect(page.getByRole("heading", { name: "Demande d'activité" })).toBeVisible();
 

@@ -2,50 +2,22 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { api, type AuthUser } from "../lib/api";
 import {
   clearPersistedSession,
-  configurePinAndPersistSession,
   getMemoryUser,
-  hasPersistedSession,
-  hasPinConfigured,
-  isSessionUnlocked,
-  lockSession,
-  shouldLockForInactivity,
-  touchActivity,
-  persistSessionWithMemoryKey,
-  unlockSessionWithPin,
+  persistSession,
+  restoreSession,
 } from "../lib/session";
 import { clearBiometricTemplates } from "../services/biometric/TemplateCache";
 import { purgeLocalData } from "../db/db";
 import { AuthContext } from "./auth-context";
 
-interface PendingSession {
-  accessToken: string;
-  user: AuthUser;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLocked, setIsLocked] = useState(true);
-  const [needsPinSetup, setNeedsPinSetup] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
-  const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
 
   useEffect(() => {
     async function bootstrap() {
-      const pinConfigured = await hasPinConfigured();
-      const persisted = await hasPersistedSession();
-
-      if (pinConfigured && persisted) {
-        const inactiveLock = await shouldLockForInactivity();
-        if (inactiveLock) {
-          lockSession();
-          setIsLocked(true);
-        } else {
-          setIsLocked(true);
-        }
-      } else {
-        setIsLocked(false);
-      }
-
+      const restored = await restoreSession();
+      if (restored) setUser(getMemoryUser());
       setBootstrapped(true);
     }
 
@@ -57,56 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
-
-    const pinConfigured = await hasPinConfigured();
-    if (!pinConfigured) {
-      setPendingSession({ accessToken: res.data.accessToken, user: res.data.user });
-      setNeedsPinSetup(true);
-      setUser(null);
-      setIsLocked(false);
-      return "/unlock?setup=1";
-    }
-
-    setPendingSession({ accessToken: res.data.accessToken, user: res.data.user });
-    setNeedsPinSetup(false);
-    setUser(null);
-    setIsLocked(true);
-    return "/unlock";
-  }, []);
-
-  const completePinSetup = useCallback(
-    async (pin: string) => {
-      if (!pendingSession) throw new Error("NO_PENDING_SESSION");
-      await configurePinAndPersistSession(pin, pendingSession.accessToken, pendingSession.user);
-      setUser(pendingSession.user);
-      setPendingSession(null);
-      setNeedsPinSetup(false);
-      setIsLocked(false);
-    },
-    [pendingSession],
-  );
-
-  const unlock = useCallback(
-    async (pin: string) => {
-      await unlockSessionWithPin(pin);
-
-      if (pendingSession) {
-        await persistSessionWithMemoryKey(pendingSession.accessToken, pendingSession.user);
-        setUser(pendingSession.user);
-        setPendingSession(null);
-      } else {
-        setUser(getMemoryUser());
-      }
-
-      setIsLocked(false);
-    },
-    [pendingSession],
-  );
-
-  const lock = useCallback(() => {
-    lockSession();
-    setUser(null);
-    setIsLocked(true);
+    await persistSession(res.data.accessToken, res.data.user);
+    setUser(res.data.user);
+    return "/";
   }, []);
 
   const logout = useCallback(async () => {
@@ -114,46 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearBiometricTemplates().catch(() => undefined);
     await purgeLocalData().catch(() => undefined);
     await clearPersistedSession();
-    setPendingSession(null);
-    setNeedsPinSetup(false);
     setUser(null);
-    setIsLocked(false);
-  }, []);
-
-  const touch = useCallback(() => {
-    if (!isSessionUnlocked()) return;
-    void touchActivity();
-    setUser(getMemoryUser());
   }, []);
 
   const value = useMemo(
     () => ({
       user,
-      isAuthenticated: !!user && !isLocked,
-      isLocked,
-      needsPinSetup,
+      isAuthenticated: !!user,
       bootstrapped,
-      pendingSession,
       login,
-      completePinSetup,
-      unlock,
-      lock,
       logout,
-      touch,
     }),
-    [
-      user,
-      isLocked,
-      needsPinSetup,
-      bootstrapped,
-      pendingSession,
-      login,
-      completePinSetup,
-      unlock,
-      lock,
-      logout,
-      touch,
-    ],
+    [user, bootstrapped, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

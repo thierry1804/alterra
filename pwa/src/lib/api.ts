@@ -1,10 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import {
-  clearPersistedSession,
-  getMemoryAccessToken,
-  lockSession,
-  updatePersistedAccessToken,
-} from "./session";
+import { clearPersistedSession, getMemoryAccessToken, updatePersistedAccessToken } from "./session";
 
 export const api = axios.create({
   baseURL: "/api/v1",
@@ -37,7 +32,6 @@ async function refreshAccessToken(): Promise<string | null> {
     await updatePersistedAccessToken(token);
     return token;
   } catch {
-    lockSession();
     await clearPersistedSession().catch(() => undefined);
     if (window.location.pathname !== "/login") {
       window.location.assign("/login");

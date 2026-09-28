@@ -4,15 +4,14 @@ import { PWA_URL, realCredentials } from "./support/env.js";
 import { loadWorld, track } from "./support/state.js";
 
 /**
- * UC-FE-PWA-AUTH — connexion PWA, PIN, jeton chiffré (WebCrypto), rafraîchissement de session,
- * verrouillage à 30 min, hors ligne, déconnexion et purge locale, comptes inactifs, périmètre CDS/CDE.
+ * UC-FE-PWA-AUTH — connexion PWA, session persistée localement (sans PIN), rafraîchissement de
+ * session, hors ligne, déconnexion et purge locale, comptes inactifs, périmètre CDS/CDE.
  *
  * Les jetons de rafraîchissement sont à usage unique : chaque scénario ouvre un contexte navigateur
  * dédié et ne se reconnecte pas. Les échecs de connexion sont limités à 2 par compte et ne visent que
  * des comptes E2E-S3-.
  */
 const UC = "UC-FE-PWA-AUTH";
-const PIN = "4826";
 const STORES = ["workers", "activities", "pointages", "pointings_synced", "media", "syncQueue", "biometricTemplates", "presenceLog", "badges", "biometricOfflineChecks"];
 
 async function newPwaContext(browser: import("@playwright/test").Browser): Promise<BrowserContext> {
@@ -83,28 +82,24 @@ const readWorkerIds = (page: Page) =>
       }),
   );
 
-/** Connexion + création du PIN. Le mot de passe ne sert qu'au remplissage du champ. */
-async function loginAndSetPin(page: Page, email: string, password: string, pin = PIN) {
+async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page).toHaveURL(/\/unlock/, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Créer un code PIN" })).toBeVisible();
-  await page.locator("#pin").fill(pin);
-  await page.locator("#confirmPin").fill(pin);
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page).not.toHaveURL(/\/(unlock|login)/, { timeout: 30_000 });
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
 }
 
-async function unlockWith(page: Page, pin = PIN) {
-  await expect(page.getByRole("heading", { name: "Déverrouiller" })).toBeVisible({ timeout: 30_000 });
-  await page.locator("#pin").fill(pin);
-  await page.getByRole("button", { name: "Déverrouiller" }).click();
-  await expect(page).not.toHaveURL(/\/(unlock|login)/, { timeout: 30_000 });
+async function logoutFromMoreSheet(page: Page) {
+  await page.getByRole("button", { name: "Plus d'options" }).click();
+  const [logout] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/v1/auth/logout")),
+    page.getByRole("button", { name: "Déconnexion" }).click(),
+  ]);
+  return logout;
 }
 
-/** Navigation SPA sans rechargement (un rechargement verrouille la session en mémoire). */
+/** Navigation SPA sans rechargement. */
 const spaNavigate = (page: Page, path: string) =>
   page.evaluate((p) => {
     window.history.pushState({}, "", p);
@@ -133,38 +128,22 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     }
   });
 
-  test(`${UC} › connexion, validations du PIN, session chiffrée en local`, async () => {
+  test(`${UC} › connexion, session persistée localement (sans PIN)`, async () => {
     const { email, password } = realCredentials("cde_amb2");
     await page.goto("/login");
     await expect(page.getByText(/Comptes de démonstration/i)).toHaveCount(0);
-    await page.locator("#email").fill(email);
-    await page.locator("#password").fill(password);
-    await page.getByRole("button", { name: "Se connecter" }).click();
-    await expect(page).toHaveURL(/\/unlock\?setup=1/, { timeout: 30_000 });
-
-    // Validations du PIN
-    await page.locator("#pin").fill("12");
-    await page.locator("#confirmPin").fill("12");
-    await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.getByText("Le PIN doit contenir 4 chiffres.")).toBeVisible();
-    await page.locator("#pin").fill(PIN);
-    await page.locator("#confirmPin").fill("1111");
-    await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.getByText("Les codes PIN ne correspondent pas.")).toBeVisible();
-    await page.locator("#confirmPin").fill(PIN);
-    await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page).not.toHaveURL(/\/(unlock|login)/, { timeout: 30_000 });
+    await login(page, email, password);
     expect(new URL(page.url()).pathname).toBe("/");
     await expect(page.getByText("Chef d'équipe").first()).toBeVisible();
 
-    // Le jeton n'est jamais stocké en clair : session AES-GCM dérivée du PIN (PBKDF2)
+    // La session (jeton + utilisateur) est persistée localement pour un redémarrage hors-ligne.
     const settings = await readSettings(page);
-    expect(Object.keys(settings)).toEqual(expect.arrayContaining(["pinSalt", "pinVerifier", "sessionEncrypted", "lastActivityAt"]));
-    const blob = settings.sessionEncrypted;
-    expect(blob).not.toContain("eyJ"); // préfixe d'un JWT en clair
-    expect(blob.toLowerCase()).not.toContain(email.toLowerCase());
-    expect(Object.keys(JSON.parse(blob)).length).toBeGreaterThanOrEqual(2); // iv + données chiffrées
-    expect(settings.pinVerifier).not.toBe(PIN);
+    expect(settings.session).toBeDefined();
+    const payload = JSON.parse(settings.session);
+    expect(payload.accessToken).toEqual(expect.any(String));
+    expect(payload.user?.email?.toLowerCase()).toBe(email.toLowerCase());
+    // Une clé d'appareil protège au repos les données sensibles locales (templates biométriques).
+    expect(settings.deviceKey).toBeDefined();
   });
 
   test(`${UC} › référentiel synchronisé dans Dexie (persistance après rechargement)`, async ({}, testInfo) => {
@@ -175,23 +154,12 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     testInfo.annotations.push({ type: "dexie", description: `après synchro : ${JSON.stringify(before)}` });
     expect(before.activities ?? 0).toBeGreaterThan(0);
 
+    // Un rechargement doit restaurer la session locale sans repasser par /login (pas de PIN à ressaisir).
     await page.reload();
-    await expect(page).toHaveURL(/\/unlock/); // mémoire vidée : PIN exigé
-    await unlockWith(page);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
     const after = await readCounts(page);
     expect(after.workers).toBeGreaterThanOrEqual(before.workers);
     expect(after.activities).toBeGreaterThanOrEqual(before.activities);
-  });
-
-  test(`${UC} › verrouillage : mauvais PIN refusé, bon PIN accepté`, async () => {
-    await page.reload();
-    await expect(page.getByRole("heading", { name: "Déverrouiller" })).toBeVisible();
-    await page.locator("#pin").fill("0000");
-    await page.getByRole("button", { name: "Déverrouiller" }).click();
-    await expect(page.getByText("Code PIN incorrect.")).toBeVisible();
-    await page.locator("#pin").fill(PIN);
-    await page.getByRole("button", { name: "Déverrouiller" }).click();
-    await expect(page).not.toHaveURL(/\/(unlock|login)/, { timeout: 30_000 });
   });
 
   test(`${UC} › rafraîchissement de session : un 401 déclenche /auth/refresh puis rejoue la requête`, async () => {
@@ -228,7 +196,7 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     expect(new URL(page.url()).pathname, "la session doit survivre au rafraîchissement").not.toBe("/login");
   });
 
-  test(`${UC} › hors ligne : déverrouillage local puis retour en ligne`, async () => {
+  test(`${UC} › hors ligne : rechargement local puis retour en ligne`, async () => {
     const before = await readCounts(page);
     const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
     await ctx.setOffline(true);
@@ -240,16 +208,16 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
         return null;
       });
       if (reloaded) {
-        await unlockWith(page); // PIN vérifié localement, sans réseau
+        // Session restaurée localement, sans réseau (pas de PIN, pas d'appel /auth/refresh nécessaire).
+        await expect(page).not.toHaveURL(/\/login/);
         await expect(page.getByText(/Hors ligne/).first()).toBeVisible({ timeout: 30_000 });
         offlineWorkers = (await readCounts(page)).workers;
       }
     } finally {
       await ctx.setOffline(false);
     }
-    // Reprise : de nouveau en ligne, on retrouve une session déverrouillée pour les tests suivants
+    // Reprise : de nouveau en ligne pour les tests suivants
     await page.goto("/");
-    await unlockWith(page);
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
     await expect(page.getByText(/Hors ligne/)).toHaveCount(0, { timeout: 60_000 });
 
@@ -267,22 +235,8 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
     expect(offlineOutcome!.offlineWorkers).toBe(offlineOutcome!.before);
   });
 
-  test(`${UC} › verrouillage automatique après 30 min d'inactivité`, async () => {
-    const p2 = await ctx.newPage();
-    try {
-      await p2.clock.install();
-      await p2.goto("/");
-      await unlockWith(p2);
-      await p2.clock.fastForward("31:00");
-      await expect(p2.getByRole("heading", { name: "Déverrouiller" })).toBeVisible({ timeout: 15_000 });
-    } finally {
-      await p2.close();
-    }
-  });
-
   test(`${UC} › le chef d'équipe est renvoyé hors des écrans chef de service`, async () => {
     await page.bringToFront();
-    // La page a été rechargée par le test hors ligne : elle est déjà déverrouillée, on reste en SPA.
     await spaNavigate(page, "/validation");
     await page.waitForTimeout(800);
     expect(new URL(page.url()).pathname).toBe("/");
@@ -290,18 +244,12 @@ test.describe(`${UC} — chef d'équipe (cde.amb2)`, () => {
   });
 
   test(`${UC} › déconnexion : session révoquée et données locales sensibles purgées`, async ({}, testInfo) => {
-    await page.getByRole("button", { name: "Plus d'options" }).click();
-    const [logout] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/v1/auth/logout")),
-      page.getByRole("button", { name: "Déconnexion" }).click(),
-    ]);
+    const logout = await logoutFromMoreSheet(page);
     expect(logout.status()).toBe(204);
     await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
 
     const settings = await readSettings(page);
-    for (const key of ["pinSalt", "pinVerifier", "sessionEncrypted", "lastActivityAt"]) {
-      expect(settings[key], `réglage local « ${key} » conservé après déconnexion`).toBeUndefined();
-    }
+    expect(settings.session, "session locale conservée après déconnexion").toBeUndefined();
     const counts = await readCounts(page);
     testInfo.annotations.push({ type: "purge", description: `Dexie après déconnexion : ${JSON.stringify(counts)}` });
     expect(counts.biometricTemplates ?? 0, "templates biométriques conservés").toBe(0);
@@ -359,7 +307,7 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
         if (body?.data) seen.push({ url: r.url(), ids: body.data.map((x: any) => x.workerId ?? x.id) });
       }
     });
-    await loginAndSetPin(page, email, password);
+    await login(page, email, password);
     expect(new URL(page.url()).pathname).toBe("/validation");
     await page.waitForTimeout(6_000);
     expect(seen.length, "aucune requête de données observée").toBeGreaterThan(0);
@@ -373,23 +321,17 @@ test.describe(`${UC} — chef de service (cds.amb)`, () => {
     expect(new URL(page.url()).pathname).toBe("/validation");
   });
 
-  test(`${UC} › « Se déconnecter » depuis l'écran verrouillé révoque la session serveur`, async () => {
+  test(`${UC} › « Déconnexion » révoque la session serveur`, async () => {
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Déverrouiller" })).toBeVisible();
-    await page.getByRole("button", { name: "Se déconnecter" }).click();
+    await expect(page).not.toHaveURL(/\/login/);
+    const logout = await logoutFromMoreSheet(page);
+    expect(logout.status()).toBe(204);
     await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
     const settings = await readSettings(page);
-    expect(settings.sessionEncrypted).toBeUndefined();
+    expect(settings.session).toBeUndefined();
 
-    // Le refresh token doit être invalide : la déconnexion depuis l'écran verrouillé n'a aucun jeton d'accès en mémoire.
     const refresh = await page.request.post("/api/v1/auth/refresh");
-    const status = refresh.status();
-    if (status === 200) {
-      // Nettoyage : ne pas laisser une session serveur active après la recette
-      const token = (await refresh.json()).accessToken as string;
-      await page.request.post("/api/v1/auth/logout", { headers: { Authorization: `Bearer ${token}` } });
-    }
-    expect(status, "après « Se déconnecter » (écran verrouillé), le refresh token est encore valide côté serveur").toBe(401);
+    expect(refresh.status(), "après déconnexion, le refresh token doit être révoqué côté serveur").toBe(401);
   });
 });
 
@@ -411,7 +353,7 @@ test.describe(`${UC} — comptes E2E-S3-`, () => {
         await expect(page.getByText("Email ou mot de passe incorrect.")).toBeVisible();
         await expect(page).toHaveURL(/\/login/);
       }
-      await loginAndSetPin(page, world.cde.email, world.cde.password);
+      await login(page, world.cde.email, world.cde.password);
       await expect
         .poll(async () => (await readCounts(page)).workers ?? 0, { timeout: 60_000 })
         .toBeGreaterThan(0);
@@ -450,7 +392,7 @@ test.describe(`${UC} — comptes E2E-S3-`, () => {
       await expect(page.getByText("Email ou mot de passe incorrect.")).toBeVisible();
       await expect(page).toHaveURL(/\/login/);
       const settings = await readSettings(page);
-      expect(settings.sessionEncrypted).toBeUndefined();
+      expect(settings.session).toBeUndefined();
     } finally {
       await ctx.close();
     }

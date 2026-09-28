@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { loginPwa } from "../helpers/auth.js";
-import { CDE_EMAIL, CDS_EMAIL, PIN, USER_PASSWORD } from "../helpers/env.js";
+import { CDE_EMAIL, CDS_EMAIL, USER_PASSWORD } from "../helpers/env.js";
 
 test.describe("CDE — journée offline simulée", () => {
   test("enregistre un pointage hors ligne puis affiche le statut sync", async ({ page, context }) => {
-    await loginPwa(page, CDE_EMAIL, USER_PASSWORD, PIN);
+    await loginPwa(page, CDE_EMAIL, USER_PASSWORD);
 
     await expect(page.getByRole("heading", { name: "Activité du jour" })).toBeVisible({
       timeout: 20_000,
@@ -33,7 +33,7 @@ test.describe("CDE — journée offline simulée", () => {
   });
 
   test("CDS consulte le résumé de clôture journalière", async ({ page }) => {
-    await loginPwa(page, CDS_EMAIL, USER_PASSWORD, PIN);
+    await loginPwa(page, CDS_EMAIL, USER_PASSWORD);
     await page.getByRole("link", { name: "Clôture" }).click();
 
     await expect(page.getByRole("heading", { name: "Clôture journalière" })).toBeVisible({
