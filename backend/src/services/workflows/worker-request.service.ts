@@ -2,10 +2,7 @@ import { Prisma, RequestStatus, Role, WorkerStatus } from "@prisma/client";
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
-import {
-  assertActivityCancelAllowed,
-  assertActivityDecisionAllowed,
-} from "./workflow-state.js";
+import { assertActivityCancelAllowed, assertActivityDecisionAllowed } from "./workflow-state.js";
 
 export interface ListWorkerRequestsInput {
   status?: RequestStatus;
@@ -149,8 +146,16 @@ export async function decideWorkerRequest(
       requestedById: request.requestedById,
     });
     const site = await tx.site.findUniqueOrThrow({ where: { id: siteId } });
-    const workerCount = await tx.worker.count({ where: { siteId: site.id, deletedAt: null } });
-    const matricule = `MOC-${site.shortCode}-R${String(workerCount + 1).padStart(3, "0")}`;
+    const prefix = `MOC-${site.shortCode}-`;
+    const siteWorkers = await tx.worker.findMany({
+      where: { siteId: site.id, deletedAt: null, matricule: { startsWith: prefix } },
+      select: { matricule: true },
+    });
+    const maxSeq = siteWorkers.reduce((max, w) => {
+      const seq = Number(w.matricule.slice(prefix.length));
+      return Number.isFinite(seq) ? Math.max(max, seq) : max;
+    }, 0);
+    const matricule = `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
 
     const worker = await tx.worker.create({
       data: {

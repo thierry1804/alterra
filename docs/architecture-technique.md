@@ -25,11 +25,11 @@
 
 ALTERRA est une plateforme de gestion du pointage journalier de main-d'œuvre casuelle (MOC) sur des sites agricoles/industriels, avec calcul de paie à la tâche, validation hiérarchique et vérification biométrique. Trois applications composent le système :
 
-| Application | Rôle | Utilisateurs |
-| --- | --- | --- |
-| **PWA terrain** (`pwa/`) | Saisie du pointage sur le terrain, **offline-first** (IndexedDB/Dexie), synchronisation par lots | Chefs d'équipe, Chefs de service (mobilité terrain) |
-| **Back-office Admin** (`admin/`) | Pilotage : référentiels (sites, zones, activités, unités, travailleurs), validation, paie et réconciliation MVola, rapports, audit, réglages (nom/icône, sauvegarde de la base) | Chefs de service, Administrateurs |
-| **API** (`backend/`) | Cœur métier unique : auth, RBAC, sync, calcul de paie, biométrie, rapports | Consommée par les deux fronts |
+| Application                      | Rôle                                                                                                                                                                            | Utilisateurs                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **PWA terrain** (`pwa/`)         | Saisie du pointage sur le terrain, **offline-first** (IndexedDB/Dexie), synchronisation par lots                                                                                | Chefs d'équipe, Chefs de service (mobilité terrain) |
+| **Back-office Admin** (`admin/`) | Pilotage : référentiels (sites, zones, activités, unités, travailleurs), validation, paie et réconciliation MVola, rapports, audit, réglages (nom/icône, sauvegarde de la base) | Chefs de service, Administrateurs                   |
+| **API** (`backend/`)             | Cœur métier unique : auth, RBAC, sync, calcul de paie, biométrie, rapports                                                                                                      | Consommée par les deux fronts                       |
 
 Le système est un **monolithe modulaire** (une seule API Express/Prisma), pas des microservices : justifié par le périmètre (5 sites, quelques centaines de MOC, une à deux dizaines d'utilisateurs simultanés). La complexité vient de la **connectivité intermittente terrain** (2G/3G/4G, coupures) plutôt que du volume.
 
@@ -122,12 +122,12 @@ flowchart TB
 
 ### 2.3 Environnements
 
-| Environnement | Où | Différences clés |
-| --- | --- | --- |
-| **Développement** | Poste dev, `docker-compose.yml` racine | Infra Docker (postgres/redis/minio) + apps en `npm run dev` (hot-reload tsx/Vite), ou stack complète avec `api` conteneurisé. **Le mode `npm run dev` ne doit jamais être exposé sur Internet** (voir §7.3) |
-| **Démonstration / dev public** | VPS Debian partagé, tunnel Cloudflare `boss-etech.net` | API en `tsx` (sans watch), frontends **construits** et servis par `vite preview` sur `127.0.0.1`, infra Docker, pare-feu + fail2ban. Détail §2.4 et §9.2 |
-| **Staging** | VPS ou second Compose isolé | Même topologie que prod, données anonymisées, recette avant chaque mise en production |
-| **Production** | Serveur on-premise Antananarivo | `infra/docker-compose.prod.yml` — nginx, cloudflared, postgres, redis, minio, pgBackRest, uptime-kuma, netdata |
+| Environnement                  | Où                                                     | Différences clés                                                                                                                                                                                            |
+| ------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Développement**              | Poste dev, `docker-compose.yml` racine                 | Infra Docker (postgres/redis/minio) + apps en `npm run dev` (hot-reload tsx/Vite), ou stack complète avec `api` conteneurisé. **Le mode `npm run dev` ne doit jamais être exposé sur Internet** (voir §7.3) |
+| **Démonstration / dev public** | VPS Debian partagé, tunnel Cloudflare `boss-etech.net` | API en `tsx` (sans watch), frontends **construits** et servis par `vite preview` sur `127.0.0.1`, infra Docker, pare-feu + fail2ban. Détail §2.4 et §9.2                                                    |
+| **Staging**                    | VPS ou second Compose isolé                            | Même topologie que prod, données anonymisées, recette avant chaque mise en production                                                                                                                       |
+| **Production**                 | Serveur on-premise Antananarivo                        | `infra/docker-compose.prod.yml` — nginx, cloudflared, postgres, redis, minio, pgBackRest, uptime-kuma, netdata                                                                                              |
 
 ### 2.4 Vue de l'environnement de démonstration (VPS partagé)
 
@@ -172,26 +172,26 @@ Le tunnel se connecte en **loopback** : rien n'a besoin d'être joignable depuis
 
 ## 3. Stack technique
 
-| Couche | Technologie | Notes |
-| --- | --- | --- |
-| Langage | TypeScript strict (backend, admin, pwa) | `tsconfig.json` strict activé partout |
-| API | Node.js 22 LTS, Express 4, Prisma 5 | Monolithe modulaire, ESM (`type: module`) |
-| Validation | Zod | Schémas par route, middleware `validate.ts` |
-| Auth | JWT (access court + refresh en cookie httpOnly, rotation atomique + liste noire Redis), argon2, TOTP (`otplib`), verrouillage par e-mail | TOTP demandé à la connexion dès qu'un ADMIN est enrôlé ; l'enrôlement n'est pas imposé (écart avec la cible « MFA obligatoire », voir §11) |
-| Base de données | PostgreSQL 16 | Enums natifs, `jsonb`, index composites |
-| Cache / files | Redis 7 + BullMQ + ioredis | Jobs async (PDF), liste noire des refresh tokens, compteurs de verrouillage de connexion ; mot de passe obligatoire hors poste local |
-| Stockage objet | MinIO (S3-compatible) | Photos MOC, rapports générés, icône de l'application, dépôt temporaire des fichiers de restauration ; buckets privés, URLs pré-signées |
-| Génération documents | ExcelJS, Handlebars + Puppeteer (PDF) | `services/reports/`, job `pdf.worker.ts` |
-| Logs | pino / pino-http | JSON structuré, requestId de corrélation |
-| Front Admin | React 18 + Vite, Radix UI + Tailwind | Design system dans `components/ui/` |
-| Front PWA | React 18 + Vite PWA, Dexie (IndexedDB) | Offline-first, Service Worker (Workbox) |
-| Tests | Vitest + Supertest (backend), Playwright (e2e) | `e2e/` workspace dédié |
-| Reverse proxy | Nginx 1.26 | TLS 1.3, HTTP/2, sert les fronts statiques |
-| Exposition | Cloudflare Tunnel (`cloudflared`) | Aucun port entrant ouvert côté ALTERRA |
-| Conteneurisation | Docker Compose (dev, staging, prod) | Images buildées via `backend/Dockerfile` (inclut `postgresql16-client` pour la sauvegarde applicative), `admin/Dockerfile` |
-| CI/CD | GitHub Actions | Lint + tests + build image ; déploiement à approbation manuelle |
-| Sauvegarde | pgBackRest (PITR) + rclone crypt → Backblaze B2 | Stratégie 3-2-1. S'y ajoute un instantané à la demande depuis l'Admin (`pg_dump -Fc` / `pg_restore`, §7.3) |
-| Supervision | Uptime Kuma + Netdata + sonde externe | RPO 15 min / RTO 4h visés |
+| Couche               | Technologie                                                                                                                              | Notes                                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Langage              | TypeScript strict (backend, admin, pwa)                                                                                                  | `tsconfig.json` strict activé partout                                                                                                      |
+| API                  | Node.js 22 LTS, Express 4, Prisma 5                                                                                                      | Monolithe modulaire, ESM (`type: module`)                                                                                                  |
+| Validation           | Zod                                                                                                                                      | Schémas par route, middleware `validate.ts`                                                                                                |
+| Auth                 | JWT (access court + refresh en cookie httpOnly, rotation atomique + liste noire Redis), argon2, TOTP (`otplib`), verrouillage par e-mail | TOTP demandé à la connexion dès qu'un ADMIN est enrôlé ; l'enrôlement n'est pas imposé (écart avec la cible « MFA obligatoire », voir §11) |
+| Base de données      | PostgreSQL 16                                                                                                                            | Enums natifs, `jsonb`, index composites                                                                                                    |
+| Cache / files        | Redis 7 + BullMQ + ioredis                                                                                                               | Jobs async (PDF), liste noire des refresh tokens, compteurs de verrouillage de connexion ; mot de passe obligatoire hors poste local       |
+| Stockage objet       | MinIO (S3-compatible)                                                                                                                    | Photos MOC, rapports générés, icône de l'application, dépôt temporaire des fichiers de restauration ; buckets privés, URLs pré-signées     |
+| Génération documents | ExcelJS, Handlebars + Puppeteer (PDF)                                                                                                    | `services/reports/`, job `pdf.worker.ts`                                                                                                   |
+| Logs                 | pino / pino-http                                                                                                                         | JSON structuré, requestId de corrélation                                                                                                   |
+| Front Admin          | React 18 + Vite, Radix UI + Tailwind                                                                                                     | Design system dans `components/ui/`                                                                                                        |
+| Front PWA            | React 18 + Vite PWA, Dexie (IndexedDB)                                                                                                   | Offline-first, Service Worker (Workbox)                                                                                                    |
+| Tests                | Vitest + Supertest (backend), Playwright (e2e)                                                                                           | `e2e/` workspace dédié                                                                                                                     |
+| Reverse proxy        | Nginx 1.26                                                                                                                               | TLS 1.3, HTTP/2, sert les fronts statiques                                                                                                 |
+| Exposition           | Cloudflare Tunnel (`cloudflared`)                                                                                                        | Aucun port entrant ouvert côté ALTERRA                                                                                                     |
+| Conteneurisation     | Docker Compose (dev, staging, prod)                                                                                                      | Images buildées via `backend/Dockerfile` (inclut `postgresql16-client` pour la sauvegarde applicative), `admin/Dockerfile`                 |
+| CI/CD                | GitHub Actions                                                                                                                           | Lint + tests + build image ; déploiement à approbation manuelle                                                                            |
+| Sauvegarde           | pgBackRest (PITR) + rclone crypt → Backblaze B2                                                                                          | Stratégie 3-2-1. S'y ajoute un instantané à la demande depuis l'Admin (`pg_dump -Fc` / `pg_restore`, §7.3)                                 |
+| Supervision          | Uptime Kuma + Netdata + sonde externe                                                                                                    | RPO 15 min / RTO 4h visés                                                                                                                  |
 
 ---
 
@@ -277,6 +277,7 @@ Chaque route délègue à un service (`services/<domaine>/`) — les routes rest
 `app.ts` compose, dans l'ordre : `trust proxy` (nombre de sauts = `TRUST_PROXY_HOPS`) → `helmet` → `cors` (origines `ADMIN_ORIGIN`/`PWA_ORIGIN`) → `express.json` (limite 2 Mo) → `cookie-parser` → `requestContext` (AsyncLocalStorage, alimente le RLS applicatif) → `pino-http` (en-têtes `Authorization`, cookies et `set-cookie` masqués) → rate limiting différencié par route → `auditSensitiveRoutes` → routeur API → `notFoundHandler` → `errorHandler` (les détails d'erreur ne sont renvoyés au client que pour les 4xx).
 
 Rate limiting à trois profils :
+
 - `/api/v1/auth` : strict (10 req / 5 min en prod, 100 hors prod) — anti-bruteforce, complété par un verrouillage par e-mail (§7)
 - `/api/v1/pointages/sync` : large (60 req / min) — ne jamais pénaliser une resynchronisation massive après coupure terrain
 - `/api/v1` (défaut) : 1000 req / min
@@ -293,7 +294,7 @@ Rate limiting à trois profils :
 
 Schéma Prisma (`backend/prisma/schema.prisma`) — entités principales et relations :
 
-```mermaid
+````mermaid
 erDiagram
     SITE ||--o{ ZONE : "contient"
     SITE ||--o{ TEAM : "a"
@@ -415,16 +416,16 @@ sequenceDiagram
     SM->>SM: ConflictResolver\n(résout ou marque pour revue)
     SM-->>PWA: Marque les pointages synchronisés
     PWA-->>U: Statut de sync visible (badge)
-```
+````
 
 Modules PWA impliqués (`pwa/src/sync/`) :
 
-| Fichier | Rôle |
-| --- | --- |
-| `SyncManager.ts` | Orchestration des lots, détection réseau, retry |
-| `ReferentialSync.ts` | Descente des référentiels (sites, activités, workers) vers Dexie |
-| `PresenceSync.ts` | Synchronisation des pointages de présence NFC |
-| `ConflictResolver.ts` | Résolution des conflits (doublon, rejet serveur) |
+| Fichier               | Rôle                                                             |
+| --------------------- | ---------------------------------------------------------------- |
+| `SyncManager.ts`      | Orchestration des lots, détection réseau, retry                  |
+| `ReferentialSync.ts`  | Descente des référentiels (sites, activités, workers) vers Dexie |
+| `PresenceSync.ts`     | Synchronisation des pointages de présence NFC                    |
+| `ConflictResolver.ts` | Résolution des conflits (doublon, rejet serveur)                 |
 
 Côté serveur, la route `pointages/sync` a un rate limit large dédié (§5.2) précisément pour absorber une resynchronisation massive après une coupure prolongée — un incident métier attendu, pas une exception.
 
@@ -436,26 +437,26 @@ Côté serveur, la route `pointages/sync` a un rate limit large dédié (§5.2) 
 
 Voir schéma §2.2. Résumé des choix :
 
-| Sujet | Choix | Raison |
-| --- | --- | --- |
-| Hébergement | Serveur on-premise, Antananarivo | Souveraineté des données, conformité loi 2014-038 |
-| Exposition | Cloudflare Tunnel (sortant uniquement) | Pas d'IP fixe nécessaire, pas de port entrant, TLS + anti-DDoS inclus |
-| Conteneurisation | Docker Compose | Reconstructible depuis Git seul ; chaque service remplaçable indépendamment |
-| Base de données | PostgreSQL 16, volume dédié | WAL archivé pour PITR |
-| Fichiers | MinIO + URLs pré-signées (15 min) | Pas de fichiers servis directement par Express ; contrôle d'accès par rôle |
-| Résilience élec./réseau | Onduleur en ligne + bascule 4G | Le délestage est un évènement normal à Antananarivo — le mode offline de la PWA absorbe l'indisponibilité |
+| Sujet                   | Choix                                  | Raison                                                                                                    |
+| ----------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Hébergement             | Serveur on-premise, Antananarivo       | Souveraineté des données, conformité loi 2014-038                                                         |
+| Exposition              | Cloudflare Tunnel (sortant uniquement) | Pas d'IP fixe nécessaire, pas de port entrant, TLS + anti-DDoS inclus                                     |
+| Conteneurisation        | Docker Compose                         | Reconstructible depuis Git seul ; chaque service remplaçable indépendamment                               |
+| Base de données         | PostgreSQL 16, volume dédié            | WAL archivé pour PITR                                                                                     |
+| Fichiers                | MinIO + URLs pré-signées (15 min)      | Pas de fichiers servis directement par Express ; contrôle d'accès par rôle                                |
+| Résilience élec./réseau | Onduleur en ligne + bascule 4G         | Le délestage est un évènement normal à Antananarivo — le mode offline de la PWA absorbe l'indisponibilité |
 
 ### 9.2 Environnement de démonstration (VPS partagé)
 
 Voir le schéma §2.4 et les règles §7.3.
 
-| Sujet | Choix |
-| --- | --- |
-| Service applicatif | `alterra-dev.service` (systemd) → `npm run serve` : API `tsx` sur 3010 + `vite preview` Admin (5173) et PWA (5174), journal dans `/home/debian/alterra-dev.log` |
-| Tunnel | `cloudflared.service` — `infra/cloudflared/config.dev.yml` : `alterra-admin`, `alterra-pwa`, `alterra-backend` sous `boss-etech.net`, cibles en loopback |
-| Infra de données | Conteneurs Docker du projet `alterra-dev` (`docker-compose.yml` racine) : PostgreSQL 16, Redis 7, MinIO |
-| Mise à jour | `git pull` puis `infra/scripts/deploy-dev.sh` (dépendances, migrations, build Admin + PWA avec les URL publiques, redémarrage) |
-| Cohabitation | Le VPS héberge d'autres stacks Docker sans lien avec ALTERRA : leurs ports (80, 443, 3001, 9000-9001, 3020…) et conteneurs ne doivent pas être modifiés. ALTERRA n'utilise que 3010, 5173, 5174, 5433, 6380, 9002 et 9003 |
+| Sujet              | Choix                                                                                                                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service applicatif | `alterra-dev.service` (systemd) → `npm run serve` : API `tsx` sur 3010 + `vite preview` Admin (5173) et PWA (5174), journal dans `/home/debian/alterra-dev.log`                                                           |
+| Tunnel             | `cloudflared.service` — `infra/cloudflared/config.dev.yml` : `alterra-admin`, `alterra-pwa`, `alterra-backend` sous `boss-etech.net`, cibles en loopback                                                                  |
+| Infra de données   | Conteneurs Docker du projet `alterra-dev` (`docker-compose.yml` racine) : PostgreSQL 16, Redis 7, MinIO                                                                                                                   |
+| Mise à jour        | `git pull` puis `infra/scripts/deploy-dev.sh` (dépendances, migrations, build Admin + PWA avec les URL publiques, redémarrage)                                                                                            |
+| Cohabitation       | Le VPS héberge d'autres stacks Docker sans lien avec ALTERRA : leurs ports (80, 443, 3001, 9000-9001, 3020…) et conteneurs ne doivent pas être modifiés. ALTERRA n'utilise que 3010, 5173, 5174, 5433, 6380, 9002 et 9003 |
 
 Le dimensionnement, les coûts indicatifs, le plan de mise en production (phases, ~20 j-h) et l'analyse de risques détaillée figurent dans `basedocs/ALTERRA - Architecture de production (on-premise).md` (§8, §11–13) — ce document technique n'en duplique que la substance architecturale.
 
@@ -473,19 +474,19 @@ Le dimensionnement, les coûts indicatifs, le plan de mise en production (phases
 
 ## 11. Risques et limites connues
 
-| Risque | Mitigation en place |
-| --- | --- |
-| Coupures électriques/réseau fréquentes (Antananarivo) | Onduleur, bascule 4G, mode offline PWA absorbe l'indisponibilité |
-| Sinistre serveur (panne/vol/incendie) | Sauvegardes 3-2-1 chiffrées, restauration testée mensuellement sur VPS de secours |
-| Conflit de sync après longue coupure terrain | Idempotence par `clientUuid`, rate limit dédié, `ConflictResolver` |
-| Croissance au-delà du périmètre actuel (5 sites) | Postgres/MinIO scalent verticalement ; architecture conteneurisée portable vers VPS/serveur plus gros sans réécriture |
-| Dépendance à un provider biométrique externe (YAS) | Fallback `MANUAL` / `MOCK` / `LOCAL_OFFLINE` dans l'enum `BioProvider` |
-| Comptes de démonstration (`*@alterra.test`) aux mots de passe connus, joignables sur l'URL publique du VPS | Acceptée par l'exploitation ; ne pas les créer en production. Le mot de passe admin du VPS est distinct et renouvelé |
-| MFA non imposée aux ADMIN (seul l'ADMIN déjà enrôlé est interrogé) | Le verrouillage par e-mail et le rate limit réduisent le risque ; à durcir avant la production (enrôlement obligatoire) |
-| PIN de la PWA à 4 chiffres (déverrouillage local) | Écart accepté à ce stade ; un vol de terminal permet un déchiffrement hors ligne du jeton et des gabarits — passer à 6 chiffres avec effacement après échecs |
-| Restauration Admin jamais rejouée de bout en bout sur des données réelles | Mécanisme validé (format, en-tête, transaction) mais à rejouer sur un environnement jetable avant de s'y fier |
-| VPS de démonstration partagé avec d'autres stacks | Pare-feu ciblé sur les ports d'ALTERRA, redémarrage vérifié conteneur par conteneur ; aucune modification des autres projets sans accord de leur responsable |
+| Risque                                                                                                     | Mitigation en place                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Coupures électriques/réseau fréquentes (Antananarivo)                                                      | Onduleur, bascule 4G, mode offline PWA absorbe l'indisponibilité                                                                                             |
+| Sinistre serveur (panne/vol/incendie)                                                                      | Sauvegardes 3-2-1 chiffrées, restauration testée mensuellement sur VPS de secours                                                                            |
+| Conflit de sync après longue coupure terrain                                                               | Idempotence par `clientUuid`, rate limit dédié, `ConflictResolver`                                                                                           |
+| Croissance au-delà du périmètre actuel (5 sites)                                                           | Postgres/MinIO scalent verticalement ; architecture conteneurisée portable vers VPS/serveur plus gros sans réécriture                                        |
+| Dépendance à un provider biométrique externe (YAS)                                                         | Fallback `MANUAL` / `MOCK` / `LOCAL_OFFLINE` dans l'enum `BioProvider`                                                                                       |
+| Comptes de démonstration (`*@alterra.test`) aux mots de passe connus, joignables sur l'URL publique du VPS | Acceptée par l'exploitation ; ne pas les créer en production. Le mot de passe admin du VPS est distinct et renouvelé                                         |
+| MFA non imposée aux ADMIN (seul l'ADMIN déjà enrôlé est interrogé)                                         | Le verrouillage par e-mail et le rate limit réduisent le risque ; à durcir avant la production (enrôlement obligatoire)                                      |
+| PIN de la PWA à 4 chiffres (déverrouillage local)                                                          | Écart accepté à ce stade ; un vol de terminal permet un déchiffrement hors ligne du jeton et des gabarits — passer à 6 chiffres avec effacement après échecs |
+| Restauration Admin jamais rejouée de bout en bout sur des données réelles                                  | Mécanisme validé (format, en-tête, transaction) mais à rejouer sur un environnement jetable avant de s'y fier                                                |
+| VPS de démonstration partagé avec d'autres stacks                                                          | Pare-feu ciblé sur les ports d'ALTERRA, redémarrage vérifié conteneur par conteneur ; aucune modification des autres projets sans accord de leur responsable |
 
 ---
 
-*Document vivant — à maintenir en synchronisation avec le code (`backend/prisma/schema.prisma`, `infra/*.yml`, `infra/scripts/`, `infra/systemd/`) à chaque évolution structurante.*
+_Document vivant — à maintenir en synchronisation avec le code (`backend/prisma/schema.prisma`, `infra/*.yml`, `infra/scripts/`, `infra/systemd/`) à chaque évolution structurante._

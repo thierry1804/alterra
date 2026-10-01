@@ -7,26 +7,26 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Templates Excel sites, activités, MOC | ✅ |
-| 2 | Script import avec validation métier | ✅ |
-| 3 | Rapport d'import archivé (local + MinIO) | ✅ |
+| Step | Item                                     | Status |
+| ---- | ---------------------------------------- | ------ |
+| 1    | Templates Excel sites, activités, MOC    | ✅     |
+| 2    | Script import avec validation métier     | ✅     |
+| 3    | Rapport d'import archivé (local + MinIO) | ✅     |
 
 ---
 
 ## Fichiers
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `scripts/import-initial-data.ts` | CLI import campagne |
-| `scripts/generate-import-templates.ts` | Génère les templates Excel |
-| `docs/import/templates/*.xlsx` | Fichiers modèles ALTERRA |
-| `services/import/sites-import.service.ts` | Parse + upsert sites |
-| `services/import/activities-import.service.ts` | Parse + create activités |
+| Fichier                                             | Rôle                             |
+| --------------------------------------------------- | -------------------------------- |
+| `scripts/import-initial-data.ts`                    | CLI import campagne              |
+| `scripts/generate-import-templates.ts`              | Génère les templates Excel       |
+| `docs/import/templates/*.xlsx`                      | Fichiers modèles ALTERRA         |
+| `services/import/sites-import.service.ts`           | Parse + upsert sites             |
+| `services/import/activities-import.service.ts`      | Parse + create activités         |
 | `services/import/workers-initial-import.service.ts` | Parse MOC par shortCode/teamName |
-| `services/import/initial-import.service.ts` | Orchestration atomique |
-| `services/import/import-report.service.ts` | Archive JSON |
+| `services/import/initial-import.service.ts`         | Orchestration atomique           |
+| `services/import/import-report.service.ts`          | Archive JSON                     |
 
 ## Usage
 

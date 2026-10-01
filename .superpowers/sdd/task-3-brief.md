@@ -4,6 +4,7 @@
 **Estimation:** 1.50 j-h (BE)
 
 **Files:**
+
 - Modifier : `backend/prisma/schema.prisma`
 - Modifier : `backend/prisma/seed.ts`
 - Créer : migrations Prisma versionnées

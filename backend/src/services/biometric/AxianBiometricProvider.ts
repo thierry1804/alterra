@@ -72,11 +72,7 @@ export class AxianBiometricProvider implements BiometricProvider {
       const formData = new FormData();
       formData.append("reference_number", input.mvolaNumber);
       const photoBuffer = Buffer.from(input.photoBase64, "base64");
-      formData.append(
-        "photo",
-        new Blob([photoBuffer], { type: "image/jpeg" }),
-        "capture.jpg",
-      );
+      formData.append("photo", new Blob([photoBuffer], { type: "image/jpeg" }), "capture.jpg");
 
       const response = await this.fetchFn(this.apiUrl, {
         method: "POST",

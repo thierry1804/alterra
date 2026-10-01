@@ -5,7 +5,10 @@ import { cn } from "../../lib/utils";
 
 type IconButtonVariant = "default" | "brand" | "destructive";
 
-interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
+interface IconButtonProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "aria-label"
+> {
   icon: LucideIcon;
   /** Nom accessible + infobulle native (obligatoire : bouton sans texte visible). */
   label: string;
@@ -22,7 +25,19 @@ const variants: Record<IconButtonVariant, string> = {
 
 /** Action plate en icône seule — pour les listes et tableaux denses. */
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ icon: Icon, label, variant = "default", size = "sm", loading = false, disabled, className, ...props }, ref) => (
+  (
+    {
+      icon: Icon,
+      label,
+      variant = "default",
+      size = "sm",
+      loading = false,
+      disabled,
+      className,
+      ...props
+    },
+    ref,
+  ) => (
     <button
       ref={ref}
       type="button"
@@ -51,8 +66,12 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 IconButton.displayName = "IconButton";
 
 /** Conteneur d'actions de ligne : aligne les IconButton à droite, sans déclencher le clic de ligne. */
-export function RowActions({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn("flex items-center justify-end gap-0.5", className)}>{children}</div>
-  );
+export function RowActions({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={cn("flex items-center justify-end gap-0.5", className)}>{children}</div>;
 }

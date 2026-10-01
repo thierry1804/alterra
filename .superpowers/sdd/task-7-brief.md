@@ -4,6 +4,7 @@
 **Estimation:** 2.25 j-h (BE)
 
 **Files:**
+
 - Existant partiel : `backend/src/routes/pointages.routes.ts`
 - Créer : `backend/src/services/pointages/sync.service.ts`
 - Créer : `backend/src/services/pointages/validation.service.ts`

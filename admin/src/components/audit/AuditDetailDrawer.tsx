@@ -1,12 +1,6 @@
 import type { AuditLogEntry } from "../../lib/audit";
 import { auditActorLabel, formatAuditDate } from "../../lib/audit";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface AuditDetailDrawerProps {
   entry: AuditLogEntry | null;
@@ -120,9 +114,7 @@ function DiffTree({
   if (typeof own !== "object") {
     const changed = !deepEqual(own, counterpart);
     return (
-      <span className={changed ? diffClass(side, "changed") : "text-zinc-900"}>
-        {String(own)}
-      </span>
+      <span className={changed ? diffClass(side, "changed") : "text-zinc-900"}>{String(own)}</span>
     );
   }
 
@@ -191,11 +183,7 @@ function DiffTree({
   );
 }
 
-export default function AuditDetailDrawer({
-  entry,
-  open,
-  onOpenChange,
-}: AuditDetailDrawerProps) {
+export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDetailDrawerProps) {
   if (!entry) return null;
 
   return (

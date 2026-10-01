@@ -23,7 +23,8 @@ async function withNetworkRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<
     } catch (err) {
       lastErr = err;
       const msg = String((err as Error)?.message ?? err);
-      if (!/ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|read ECONN|Timeout/i.test(msg)) throw err;
+      if (!/ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|read ECONN|Timeout/i.test(msg))
+        throw err;
       await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
     }
   }
@@ -41,7 +42,13 @@ const MAX_FAILED_PER_ACCOUNT = 2;
 export class ApiClient {
   private ctx?: APIRequestContext;
   private token?: string;
-  user?: { id: string; role: string; siteId: string | null; teamId: string | null; email: string | null };
+  user?: {
+    id: string;
+    role: string;
+    siteId: string | null;
+    teamId: string | null;
+    email: string | null;
+  };
 
   constructor(
     private readonly email: string,
@@ -55,10 +62,18 @@ export class ApiClient {
   }
 
   async login(): Promise<void> {
-    const res = await ApiClient.rawLogin(this.email, this.password, this.baseURL, await this.context());
-    if (res.status === 401 && res.body?.code === "MFA_REQUIRED") throw new MfaRequiredError(this.email);
+    const res = await ApiClient.rawLogin(
+      this.email,
+      this.password,
+      this.baseURL,
+      await this.context(),
+    );
+    if (res.status === 401 && res.body?.code === "MFA_REQUIRED")
+      throw new MfaRequiredError(this.email);
     if (!res.ok) {
-      throw new Error(`Login refusé pour ${this.email} : HTTP ${res.status} ${res.body?.code ?? ""}`);
+      throw new Error(
+        `Login refusé pour ${this.email} : HTTP ${res.status} ${res.body?.code ?? ""}`,
+      );
     }
     this.token = res.body.accessToken;
     this.user = res.body.user;
@@ -73,11 +88,15 @@ export class ApiClient {
   ): Promise<ApiResult> {
     const key = email.toLowerCase();
     if ((failedLogins.get(key) ?? 0) >= MAX_FAILED_PER_ACCOUNT) {
-      throw new Error(`Garde-fou : ${MAX_FAILED_PER_ACCOUNT} échecs de connexion déjà atteints pour ${email}.`);
+      throw new Error(
+        `Garde-fou : ${MAX_FAILED_PER_ACCOUNT} échecs de connexion déjà atteints pour ${email}.`,
+      );
     }
     const own = ctx ?? (await request.newContext({ baseURL }));
     // Retry uniquement sur erreur réseau (aucune réponse reçue) : ne compte pas comme un échec de connexion.
-    const res = await withNetworkRetry(() => own.post("/api/v1/auth/login", { data: { email, password } }));
+    const res = await withNetworkRetry(() =>
+      own.post("/api/v1/auth/login", { data: { email, password } }),
+    );
     const body = await res.json().catch(() => ({}));
     if (!ctx) await own.dispose();
     if (res.status() === 401 || res.status() === 429) {
@@ -91,7 +110,12 @@ export class ApiClient {
     failedLogins.set(key, (failedLogins.get(key) ?? 0) + 1);
   }
 
-  private async send(method: string, url: string, data?: unknown, retry = true): Promise<ApiResult> {
+  private async send(
+    method: string,
+    url: string,
+    data?: unknown,
+    retry = true,
+  ): Promise<ApiResult> {
     const ctx = await this.context();
     if (!this.token) await this.login();
     const res = await withNetworkRetry(() =>

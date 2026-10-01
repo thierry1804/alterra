@@ -21,10 +21,14 @@ test.describe(`${UC} (parcours CRUD)`, () => {
   test.describe.configure({ mode: "serial" });
   const created: { id?: string; name?: string; code?: string } = {};
 
-  test(`${UC} › liste paginée, cohérente avec la réponse API (lecture seule)`, async ({ openAdmin }) => {
+  test(`${UC} › liste paginée, cohérente avec la réponse API (lecture seule)`, async ({
+    openAdmin,
+  }) => {
     const page = await openAdmin("admin");
     const [resp] = await Promise.all([
-      page.waitForResponse((r) => /\/api\/v1\/sites$/.test(r.url()) && r.request().method() === "GET"),
+      page.waitForResponse(
+        (r) => /\/api\/v1\/sites$/.test(r.url()) && r.request().method() === "GET",
+      ),
       page.goto("/sites"),
     ]);
     expect(resp.status()).toBe(200);
@@ -39,7 +43,11 @@ test.describe(`${UC} (parcours CRUD)`, () => {
     }
   });
 
-  test(`${UC} › création via le formulaire (écriture E2E-S3-)`, async ({ openAdmin, admin, world }) => {
+  test(`${UC} › création via le formulaire (écriture E2E-S3-)`, async ({
+    openAdmin,
+    admin,
+    world,
+  }) => {
     const page = await openAdmin("admin");
     await page.goto("/sites");
     await waitTableReady(page);
@@ -52,7 +60,9 @@ test.describe(`${UC} (parcours CRUD)`, () => {
     await dialog.locator("#site-code").fill(created.code);
     await dialog.locator("#site-location").fill("E2E-S3 lieu initial");
     const [resp] = await Promise.all([
-      page.waitForResponse((r) => /\/api\/v1\/sites$/.test(r.url()) && r.request().method() === "POST"),
+      page.waitForResponse(
+        (r) => /\/api\/v1\/sites$/.test(r.url()) && r.request().method() === "POST",
+      ),
       dialog.getByRole("button", { name: "Enregistrer" }).click(),
     ]);
     expect(resp.status()).toBe(201);
@@ -76,25 +86,42 @@ test.describe(`${UC} (parcours CRUD)`, () => {
     const dialog = page.getByRole("dialog");
     // Champs obligatoires
     await dialog.getByRole("button", { name: "Enregistrer" }).click();
-    expect(await dialog.locator("#site-name").evaluate((el: HTMLInputElement) => el.validity.valueMissing)).toBe(true);
+    expect(
+      await dialog
+        .locator("#site-name")
+        .evaluate((el: HTMLInputElement) => el.validity.valueMissing),
+    ).toBe(true);
     // Code invalide (chiffre) : bloqué côté navigateur, aucune requête envoyée
     await dialog.locator("#site-name").fill(`${E2E_PREFIX}VALID-${world.runId}`);
     await dialog.locator("#site-code").fill("AB1");
     await dialog.getByRole("button", { name: "Enregistrer" }).click();
-    expect(await dialog.locator("#site-code").evaluate((el: HTMLInputElement) => el.validity.patternMismatch)).toBe(true);
+    expect(
+      await dialog
+        .locator("#site-code")
+        .evaluate((el: HTMLInputElement) => el.validity.patternMismatch),
+    ).toBe(true);
     await expect(dialog).toBeVisible();
     expect(posts.count()).toBe(0);
     await dialog.getByRole("button", { name: "Annuler" }).click();
 
     // Validation serveur (contournement de l'UI) : code invalide => 4xx ; doublon de code => 409
-    const invalid = await admin.post("/sites", { name: `${E2E_PREFIX}INVALID-${world.runId}`, shortCode: "ab1" });
+    const invalid = await admin.post("/sites", {
+      name: `${E2E_PREFIX}INVALID-${world.runId}`,
+      shortCode: "ab1",
+    });
     expectStatus(invalid, 400, 422);
-    const duplicate = await admin.post("/sites", { name: `${E2E_PREFIX}DUP-${world.runId}`, shortCode: world.site.code });
+    const duplicate = await admin.post("/sites", {
+      name: `${E2E_PREFIX}DUP-${world.runId}`,
+      shortCode: world.site.code,
+    });
     expectStatus(duplicate, 409);
     expect(duplicate.body.code).toBe("DUPLICATE");
   });
 
-  test(`${UC} › édition : le code est immuable, la localisation modifiable`, async ({ openAdmin, admin }) => {
+  test(`${UC} › édition : le code est immuable, la localisation modifiable`, async ({
+    openAdmin,
+    admin,
+  }) => {
     test.skip(!created.id, "site UI non créé");
     const page = await openAdmin("admin");
     await page.goto("/sites");
@@ -105,13 +132,19 @@ test.describe(`${UC} (parcours CRUD)`, () => {
     await expect(dialog.locator("#site-code")).toBeDisabled();
     await dialog.locator("#site-location").fill("E2E-S3 lieu modifié");
     const [resp] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes(`/api/v1/sites/${created.id}`) && r.request().method() === "PATCH"),
+      page.waitForResponse(
+        (r) => r.url().includes(`/api/v1/sites/${created.id}`) && r.request().method() === "PATCH",
+      ),
       dialog.getByRole("button", { name: "Enregistrer" }).click(),
     ]);
     expect(resp.status()).toBe(200);
     await expectToast(page, "Site mis à jour");
     await expect(await findRow(page, created.name!)).toContainText("E2E-S3 lieu modifié");
-    const audit = await expectAudit(admin, { entityType: "Site", entityId: created.id!, action: "UPDATE" });
+    const audit = await expectAudit(admin, {
+      entityType: "Site",
+      entityId: created.id!,
+      action: "UPDATE",
+    });
     const upd = audit.find((a) => a.action === "UPDATE");
     expect(JSON.stringify(upd?.before)).toContain("lieu initial");
     expect(JSON.stringify(upd?.after)).toContain("lieu modifié");
@@ -123,7 +156,9 @@ test.describe(`${UC} (parcours CRUD)`, () => {
     await page.goto("/sites");
     const row = await findRow(page, created.name!);
     const [resp] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes(`/api/v1/sites/${created.id}`) && r.request().method() === "DELETE"),
+      page.waitForResponse(
+        (r) => r.url().includes(`/api/v1/sites/${created.id}`) && r.request().method() === "DELETE",
+      ),
       row.getByRole("button", { name: "Désactiver" }).click(),
     ]);
     expect(resp.status()).toBe(200);
@@ -138,21 +173,31 @@ test.describe(`${UC} (parcours CRUD)`, () => {
 test.describe(`${UC} (états vide et erreur)`, () => {
   test(`${UC} › état vide : message explicite attendu`, async ({ openAdmin }) => {
     const page = await openAdmin("admin");
-    await page.route("**/api/v1/sites", (route) => route.fulfill({ status: 200, json: { data: [] } }));
+    await page.route("**/api/v1/sites", (route) =>
+      route.fulfill({ status: 200, json: { data: [] } }),
+    );
     await page.goto("/sites");
     await expect(heading(page, "Sites")).toBeVisible();
-    await expect.soft(page.getByText(/aucun site/i), "Aucun message d'état vide sur l'écran Sites").toBeVisible();
+    await expect
+      .soft(page.getByText(/aucun site/i), "Aucun message d'état vide sur l'écran Sites")
+      .toBeVisible();
   });
 
   test(`${UC} › état d'erreur : message explicite attendu`, async ({ openAdmin }) => {
     const page = await openAdmin("admin");
     await page.route("**/api/v1/sites", (route) =>
-      route.fulfill({ status: 500, json: { code: "INTERNAL_ERROR", message: "Unexpected server error" } }),
+      route.fulfill({
+        status: 500,
+        json: { code: "INTERNAL_ERROR", message: "Unexpected server error" },
+      }),
     );
     await page.goto("/sites");
     await expect(heading(page, "Sites")).toBeVisible();
     await expect
-      .soft(page.getByText(/erreur|échec|impossible|réessayer/i), "Aucun message d'erreur sur l'écran Sites si l'API échoue")
+      .soft(
+        page.getByText(/erreur|échec|impossible|réessayer/i),
+        "Aucun message d'erreur sur l'écran Sites si l'API échoue",
+      )
       .toBeVisible();
   });
 });

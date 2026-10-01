@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-react";
 import { api } from "../lib/api";
+import { cn } from "../lib/utils";
 import type { Site, Worker } from "../lib/referentials";
 import { WORKER_STATUS_LABELS } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
@@ -57,6 +58,10 @@ const emptyForm: WorkerForm = {
   status: "ACTIVE",
 };
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
 export default function WorkersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -68,6 +73,14 @@ export default function WorkersPage() {
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
   const [form, setForm] = useState<WorkerForm>(emptyForm);
+  const [matriculeGenerating, setMatriculeGenerating] = useState(false);
+  const [matriculeLocked, setMatriculeLocked] = useState(true);
+  const [matriculeSeq, setMatriculeSeq] = useState<number | null>(null);
+  // Ref plutôt que state : autofillMatricule est appelé juste après openCreate()/le
+  // changement de site, dans le même tick — un state ne serait pas encore à jour
+  // (closure figée sur l'ancienne valeur) au moment où autofillMatricule le lit.
+  const matriculeEditedRef = useRef(false);
+  const matriculeInputRef = useRef<HTMLInputElement>(null);
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -192,6 +205,7 @@ export default function WorkersPage() {
         siteId: form.siteId,
         hiredAt: form.hiredAt,
         status: form.status,
+        ...(!editing && matriculeSeq !== null ? { legacyMocId: matriculeSeq } : {}),
       };
       if (editing) {
         return api.patch<Worker>(`/workers/${editing.id}`, payload);
@@ -249,10 +263,44 @@ export default function WorkersPage() {
     },
   });
 
+  async function autofillMatricule(siteId: string) {
+    const site = sites.find((s) => s.id === siteId);
+    if (!site) return;
+
+    setMatriculeGenerating(true);
+    try {
+      const siteWorkers = await fetchAllCursorPages<Worker>((cursor) =>
+        api
+          .get<{ data: Worker[]; nextCursor: string | null; hasMore: boolean }>("/workers", {
+            params: { siteId, cursor, take: 100 },
+          })
+          .then((r) => r.data),
+      );
+      const prefix = `MOC-${site.shortCode}-`;
+      const lastSeq = siteWorkers.reduce((max, w) => {
+        if (!w.matricule.startsWith(prefix)) return max;
+        const seq = Number(w.matricule.slice(prefix.length));
+        return Number.isFinite(seq) ? Math.max(max, seq) : max;
+      }, 0);
+      const nextMatricule = `${prefix}${pad2(lastSeq + 1)}`;
+      setMatriculeSeq(lastSeq + 1);
+      // Ne pas écraser une saisie manuelle du matricule (mais un changement de site doit
+      // pouvoir régénérer un matricule qui n'a encore jamais été touché à la main).
+      setForm((f) => (matriculeEditedRef.current ? f : { ...f, matricule: nextMatricule }));
+    } finally {
+      setMatriculeGenerating(false);
+    }
+  }
+
   function openCreate() {
     setEditing(null);
-    setForm({ ...emptyForm, siteId: sites[0]?.id ?? "" });
+    const defaultSiteId = sites[0]?.id ?? "";
+    setForm({ ...emptyForm, siteId: defaultSiteId });
+    matriculeEditedRef.current = false;
+    setMatriculeLocked(true);
+    setMatriculeSeq(null);
     setDialogOpen(true);
+    if (defaultSiteId) void autofillMatricule(defaultSiteId);
   }
 
   function openEdit(worker: Worker) {
@@ -266,6 +314,9 @@ export default function WorkersPage() {
       hiredAt: worker.hiredAt.slice(0, 10),
       status: worker.status,
     });
+    matriculeEditedRef.current = true;
+    setMatriculeLocked(true);
+    setMatriculeSeq(null);
     setDialogOpen(true);
   }
 
@@ -429,7 +480,11 @@ export default function WorkersPage() {
               </TableRow>
             )}
             {workersQuery.isError && (
-              <TableQueryError colSpan={8} what="les MOC" onRetry={() => void workersQuery.refetch()} />
+              <TableQueryError
+                colSpan={8}
+                what="les MOC"
+                onRetry={() => void workersQuery.refetch()}
+              />
             )}
             {!workersQuery.isLoading &&
               workers.map((worker) => (
@@ -515,7 +570,7 @@ export default function WorkersPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</DialogTitle>
             <DialogDescription>
-              Numéro MVola au format 034XXXXXXXX ou 038XXXXXXXX.
+              Numéro MVola au format 034XXXXXXXX, 036XXXXXXXX ou 038XXXXXXXX.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -527,13 +582,35 @@ export default function WorkersPage() {
           >
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="w-matricule">Matricule</Label>
-                <Input
-                  id="w-matricule"
-                  value={form.matricule}
-                  onChange={(e) => setForm((f) => ({ ...f, matricule: e.target.value }))}
-                  required
-                />
+                <Label htmlFor="w-matricule">
+                  Matricule{" "}
+                  {matriculeGenerating && <span className="text-zinc-400">(génération…)</span>}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="w-matricule"
+                    ref={matriculeInputRef}
+                    value={form.matricule}
+                    onChange={(e) => {
+                      matriculeEditedRef.current = true;
+                      setForm((f) => ({ ...f, matricule: e.target.value }));
+                    }}
+                    readOnly={matriculeLocked}
+                    className={cn("pr-9", matriculeLocked && "bg-zinc-50 text-zinc-600")}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                    onClick={() => {
+                      setMatriculeLocked(false);
+                      requestAnimationFrame(() => matriculeInputRef.current?.focus());
+                    }}
+                    aria-label="Modifier le matricule"
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="w-mvola">MVola</Label>
@@ -572,7 +649,11 @@ export default function WorkersPage() {
                   id="w-site"
                   className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
                   value={form.siteId}
-                  onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
+                  onChange={(e) => {
+                    const siteId = e.target.value;
+                    setForm((f) => ({ ...f, siteId }));
+                    if (!editing) void autofillMatricule(siteId);
+                  }}
                   required
                 >
                   {sites.map((site) => (

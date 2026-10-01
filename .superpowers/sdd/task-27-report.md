@@ -6,11 +6,11 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Ateliers UX 2 × ½j | ✅ | Trame `docs/cadrage/v2/atelier-v2-compte-rendu.md` |
-| 2 — Maquettes NFC/WF/carto | ✅ | `docs/cadrage/v2/maquettes-v2-wireframes.md` |
-| 3 — Flotte Android NFC | ✅ | `docs/cadrage/v2/nfc-flotte-checklist.md` |
+| Step                       | Statut | Détail                                             |
+| -------------------------- | ------ | -------------------------------------------------- |
+| 1 — Ateliers UX 2 × ½j     | ✅     | Trame `docs/cadrage/v2/atelier-v2-compte-rendu.md` |
+| 2 — Maquettes NFC/WF/carto | ✅     | `docs/cadrage/v2/maquettes-v2-wireframes.md`       |
+| 3 — Flotte Android NFC     | ✅     | `docs/cadrage/v2/nfc-flotte-checklist.md`          |
 
 ## Fichiers
 

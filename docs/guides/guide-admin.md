@@ -34,17 +34,17 @@ Ce guide décrit l'utilisation de l'interface d'administration ALTERRA pour pilo
 
 Après connexion, la barre latérale gauche donne accès aux modules :
 
-| Menu | Chemin | Usage |
-|------|--------|-------|
-| Tableau de bord | `/` | KPIs campagne |
-| Sites | `/sites` | Référentiel sites |
-| Activités | `/activities` | Tâches et tarifs |
-| MOC | `/workers` | Main-d'œuvre |
-| Utilisateurs | `/users` | Comptes CDE/CDS/Admin |
-| Pointages | `/pointages` | Suivi et correction |
-| Paiements | `/payments` | Bordereau MVola |
-| Rapports | `/reports` | Exports mensuels |
-| Audit | `/audit` | Journal des actions |
+| Menu            | Chemin        | Usage                 |
+| --------------- | ------------- | --------------------- |
+| Tableau de bord | `/`           | KPIs campagne         |
+| Sites           | `/sites`      | Référentiel sites     |
+| Activités       | `/activities` | Tâches et tarifs      |
+| MOC             | `/workers`    | Main-d'œuvre          |
+| Utilisateurs    | `/users`      | Comptes CDE/CDS/Admin |
+| Pointages       | `/pointages`  | Suivi et correction   |
+| Paiements       | `/payments`   | Bordereau MVola       |
+| Rapports        | `/reports`    | Exports mensuels      |
+| Audit           | `/audit`      | Journal des actions   |
 
 `[Capture : sidebar avec les 9 entrées]`
 
@@ -138,11 +138,11 @@ Uploader une photo de référence via **Photo** sur la ligne MOC. Elle sert au c
 
 ### 7.2 Rôles
 
-| Rôle | Accès admin | Accès PWA |
-|------|-------------|-----------|
-| Administrateur | Complet | Validation + sync |
-| Chef de service | Dashboard, Pointages | Validation CDS |
-| Chef d'équipe | — | Saisie lot CDE |
+| Rôle            | Accès admin          | Accès PWA         |
+| --------------- | -------------------- | ----------------- |
+| Administrateur  | Complet              | Validation + sync |
+| Chef de service | Dashboard, Pointages | Validation CDS    |
+| Chef d'équipe   | —                    | Saisie lot CDE    |
 
 ### 7.3 Reset mot de passe
 
@@ -183,11 +183,11 @@ Clic sur une ligne → drawer **Détail pointage** :
 
 ### 9.2 Blocages fréquents
 
-| Symptôme | Cause probable | Action |
-|----------|----------------|--------|
-| Ligne bloquée bio | Contrôle CDS non OK | Relancer validation CDS |
-| Montant 0 | Quantité nulle ou tarif manquant | Corriger pointage |
-| Conflit période | Bordereau déjà généré | Vérifier statut EXPORTED |
+| Symptôme          | Cause probable                   | Action                   |
+| ----------------- | -------------------------------- | ------------------------ |
+| Ligne bloquée bio | Contrôle CDS non OK              | Relancer validation CDS  |
+| Montant 0         | Quantité nulle ou tarif manquant | Corriger pointage        |
+| Conflit période   | Bordereau déjà généré            | Vérifier statut EXPORTED |
 
 `[Capture : page Paiements avec période et boutons bordereau]`
 
@@ -221,12 +221,12 @@ Chaque entrée détaille : utilisateur, IP, diff avant/après pour les modificat
 
 ## 12. Dépannage admin
 
-| Problème | Vérification |
-|----------|--------------|
-| Connexion refusée | MFA, mot de passe expiré, compte désactivé |
-| Liste vide | Filtres actifs, site incorrect |
-| Export MVola incomplet | MOC sans numéro MVola valide |
-| KPI incohérent | Attendre refresh 60 s ou forcer Rafraîchir |
+| Problème               | Vérification                               |
+| ---------------------- | ------------------------------------------ |
+| Connexion refusée      | MFA, mot de passe expiré, compte désactivé |
+| Liste vide             | Filtres actifs, site incorrect             |
+| Export MVola incomplet | MOC sans numéro MVola valide               |
+| KPI incohérent         | Attendre refresh 60 s ou forcer Rafraîchir |
 
 **Support :** consulter `docs/runbook.md` pour incidents infrastructure.
 
@@ -242,4 +242,4 @@ Chaque entrée détaille : utilisateur, IP, diff avant/après pour les modificat
 
 ---
 
-*Document généré pour ALTERRA V1 — Task 24 DOC*
+_Document généré pour ALTERRA V1 — Task 24 DOC_

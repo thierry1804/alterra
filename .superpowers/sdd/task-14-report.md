@@ -7,23 +7,23 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | 3 rapports prédéfinis, filtres période, exports CSV/Excel/PDF | ✅ |
-| 2 | Journal audit paginé, drawer diff avant/après JSON tree | ✅ |
-| 3 | Backend `GET /audit-log`, `GET /reports/preview`, `GET /reports/export` | ✅ |
-| 4 | lint + build admin, tests backend | ✅ PASS |
+| Step | Item                                                                    | Status  |
+| ---- | ----------------------------------------------------------------------- | ------- |
+| 1    | 3 rapports prédéfinis, filtres période, exports CSV/Excel/PDF           | ✅      |
+| 2    | Journal audit paginé, drawer diff avant/après JSON tree                 | ✅      |
+| 3    | Backend `GET /audit-log`, `GET /reports/preview`, `GET /reports/export` | ✅      |
+| 4    | lint + build admin, tests backend                                       | ✅ PASS |
 
 ---
 
 ## Frontend
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `pages/Reports.tsx` | Sélection rapport, filtre mois/site, exports |
-| `pages/AuditLog.tsx` | Table paginée + filtres |
-| `components/reports/ReportPreviewTable.tsx` | Aperçu 50 lignes max |
-| `components/audit/AuditDetailDrawer.tsx` | Diff JSON tree avant/après |
+| Fichier                                     | Rôle                                         |
+| ------------------------------------------- | -------------------------------------------- |
+| `pages/Reports.tsx`                         | Sélection rapport, filtre mois/site, exports |
+| `pages/AuditLog.tsx`                        | Table paginée + filtres                      |
+| `components/reports/ReportPreviewTable.tsx` | Aperçu 50 lignes max                         |
+| `components/audit/AuditDetailDrawer.tsx`    | Diff JSON tree avant/après                   |
 
 ## Rapports prédéfinis
 
@@ -33,11 +33,11 @@
 
 ## Backend (support Task 14)
 
-| Endpoint | Description |
-| -------- | ----------- |
-| `GET /audit-log` | Liste paginée avec filtres |
-| `GET /reports/preview` | Aperçu JSON rapport |
-| `GET /reports/export` | Export CSV / XLSX / HTML (PDF imprimable) |
+| Endpoint               | Description                               |
+| ---------------------- | ----------------------------------------- |
+| `GET /audit-log`       | Liste paginée avec filtres                |
+| `GET /reports/preview` | Aperçu JSON rapport                       |
+| `GET /reports/export`  | Export CSV / XLSX / HTML (PDF imprimable) |
 
 ---
 

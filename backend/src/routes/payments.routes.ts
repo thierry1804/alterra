@@ -109,7 +109,8 @@ paymentsRouter.patch(
         failureReason: body.failureReason,
         userId: req.user!.sub,
         ip: req.ip,
-        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
       });
       res.json(payment);
     } catch (err) {
@@ -118,13 +119,18 @@ paymentsRouter.patch(
   },
 );
 
-paymentsRouter.get("/payments/exports", requireAuth, requireRole(Role.ADMIN), async (_req, res, next) => {
-  try {
-    res.json({ data: await listMvolaExports() });
-  } catch (err) {
-    next(err);
-  }
-});
+paymentsRouter.get(
+  "/payments/exports",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  async (_req, res, next) => {
+    try {
+      res.json({ data: await listMvolaExports() });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 paymentsRouter.post(
   "/payments/generate",
@@ -201,9 +207,8 @@ paymentsRouter.post(
   validate(importStatusSchema),
   async (req, res, next) => {
     try {
-      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping, dryRun } = req.body as z.infer<
-        typeof importStatusSchema
-      >;
+      const { contentBase64, hasHeaderRow, referenceRowNumber, mapping, dryRun } =
+        req.body as z.infer<typeof importStatusSchema>;
       const buffer = Buffer.from(contentBase64, "base64");
       const result = await reconcileMvolaReleve(buffer, {
         hasHeaderRow,

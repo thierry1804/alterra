@@ -3,7 +3,10 @@ import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
 
-export async function assertBioOkForValidation(workerId: string, pointageDate: Date): Promise<void> {
+export async function assertBioOkForValidation(
+  workerId: string,
+  pointageDate: Date,
+): Promise<void> {
   const weekIso = getIsoWeekString(pointageDate);
 
   const latestBioCheck = await prisma.biometricCheck.findFirst({
@@ -38,13 +41,13 @@ export async function validatePointage(id: string, validatedById: string) {
   });
 }
 
-export async function rejectPointage(
-  id: string,
-  validatedById: string,
-  rejectionReason: string,
-) {
+export async function rejectPointage(id: string, validatedById: string, rejectionReason: string) {
   if (rejectionReason.trim().length < 3) {
-    throw new ApiError(422, "REJECTION_REASON_REQUIRED", "Rejection reason must be at least 3 characters");
+    throw new ApiError(
+      422,
+      "REJECTION_REASON_REQUIRED",
+      "Rejection reason must be at least 3 characters",
+    );
   }
 
   return prisma.pointage.update({

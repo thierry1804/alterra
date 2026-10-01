@@ -1,6 +1,11 @@
 import { test, expect } from "./support/fixtures.js";
 import { ApiClient } from "./support/api.js";
-import { ADMIN_URL, INACTIVE_ACCOUNT_EMAIL, realCredentials, usersPassword } from "./support/env.js";
+import {
+  ADMIN_URL,
+  INACTIVE_ACCOUNT_EMAIL,
+  realCredentials,
+  usersPassword,
+} from "./support/env.js";
 import { expectStatus } from "./support/helpers.js";
 import { newUuid, track } from "./support/state.js";
 import { heading } from "./support/ui.js";
@@ -10,7 +15,22 @@ import { heading } from "./support/ui.js";
  * Aucune écriture réelle : les appels d'écriture d'un rôle non autorisé utilisent des identifiants
  * aléatoires ou des corps invalides, de sorte qu'une éventuelle faille RBAC ne modifie aucune donnée.
  */
-const ROUTES = ["/", "/pointages", "/sites", "/zones", "/activities", "/units", "/workers", "/requests", "/map", "/users", "/payments", "/reports", "/audit", "/settings"];
+const ROUTES = [
+  "/",
+  "/pointages",
+  "/sites",
+  "/zones",
+  "/activities",
+  "/units",
+  "/workers",
+  "/requests",
+  "/map",
+  "/users",
+  "/payments",
+  "/reports",
+  "/audit",
+  "/settings",
+];
 const CDS_ROUTES = ["/", "/pointages"];
 
 /**
@@ -18,9 +38,15 @@ const CDS_ROUTES = ["/", "/pointages"];
  * (sans rechargement). GET /me renvoie HTTP 500 pour ces rôles : un rechargement ferait perdre la session
  * (voir le test « survit à un rechargement »), ce qui empêcherait de vérifier la matrice de routes.
  */
-async function loginInPage(browser: import("@playwright/test").Browser, role: "cds_amb" | "cde_amb2") {
+async function loginInPage(
+  browser: import("@playwright/test").Browser,
+  role: "cds_amb" | "cde_amb2",
+) {
   const { email, password } = realCredentials(role);
-  const ctx = await browser.newContext({ baseURL: ADMIN_URL, viewport: { width: 1440, height: 900 } });
+  const ctx = await browser.newContext({
+    baseURL: ADMIN_URL,
+    viewport: { width: 1440, height: 900 },
+  });
   const page = await ctx.newPage();
   await page.goto("/login");
   await page.locator("#email").fill(email);
@@ -67,7 +93,8 @@ test.describe("RBAC — écrans Admin", () => {
     try {
       for (const route of ROUTES) {
         const path = await spaVisit(page, route);
-        if (CDS_ROUTES.includes(route)) expect(path, `${route} doit être accessible au chef de service`).toBe(route);
+        if (CDS_ROUTES.includes(route))
+          expect(path, `${route} doit être accessible au chef de service`).toBe(route);
         else expect(path, `${route} doit être refusé au chef de service`).toBe("/forbidden");
       }
       await spaVisit(page, "/");
@@ -91,7 +118,9 @@ test.describe("RBAC — écrans Admin", () => {
     }
   });
 
-  test("chef de service : la session Admin survit à un rechargement de page (F5)", async ({ browser }) => {
+  test("chef de service : la session Admin survit à un rechargement de page (F5)", async ({
+    browser,
+  }) => {
     const { ctx, page } = await loginInPage(browser, "cds_amb");
     try {
       const me = page.waitForResponse((r) => r.url().includes("/api/v1/me"));
@@ -107,7 +136,9 @@ test.describe("RBAC — écrans Admin", () => {
     }
   });
 
-  test("écran de connexion Admin : aucun panneau de comptes de démonstration", async ({ browser }) => {
+  test("écran de connexion Admin : aucun panneau de comptes de démonstration", async ({
+    browser,
+  }) => {
     const ctx = await browser.newContext({ baseURL: ADMIN_URL });
     const page = await ctx.newPage();
     await page.goto("/login");
@@ -123,7 +154,13 @@ test.describe("RBAC — API", () => {
   test("sans jeton ou avec un jeton falsifié : 401", async () => {
     const { request } = await import("@playwright/test");
     const ctx = await request.newContext({ baseURL: ADMIN_URL });
-    for (const path of ["/api/v1/users", "/api/v1/audit-log", "/api/v1/workers", "/api/v1/pointages", "/api/v1/me"]) {
+    for (const path of [
+      "/api/v1/users",
+      "/api/v1/audit-log",
+      "/api/v1/workers",
+      "/api/v1/pointages",
+      "/api/v1/me",
+    ]) {
       const anon = await ctx.get(path);
       expect(anon.status(), `GET ${path} sans jeton`).toBe(401);
       const forged = await ctx.get(path, { headers: { Authorization: "Bearer abc.def.ghi" } });
@@ -132,22 +169,37 @@ test.describe("RBAC — API", () => {
     await ctx.dispose();
   });
 
-  test("chef de service : 403 sur les routes Admin, lectures limitées à son site", async ({ apiOf }) => {
+  test("chef de service : 403 sur les routes Admin, lectures limitées à son site", async ({
+    apiOf,
+  }) => {
     const cds = await apiOf("cds_amb");
     const id = newUuid();
     const denied: Array<[string, () => Promise<{ status: number }>]> = [
       ["GET /users", () => cds.get("/users")],
       ["GET /audit-log", () => cds.get("/audit-log")],
       ["GET /payments", () => cds.get("/payments?periodIso=S1")],
-      ["POST /payments/generate (période invalide)", () => cds.post("/payments/generate", { periodIso: "BAD" })],
+      [
+        "POST /payments/generate (période invalide)",
+        () => cds.post("/payments/generate", { periodIso: "BAD" }),
+      ],
       ["POST /sites (corps invalide)", () => cds.post("/sites", { name: "x" })],
       ["PATCH /sites/:id (inexistant)", () => cds.patch(`/sites/${id}`, { name: "xx" })],
       ["POST /workers (corps invalide)", () => cds.post("/workers", { firstName: "x" })],
       ["DELETE /workers/:id (inexistant)", () => cds.delete(`/workers/${id}`)],
       ["POST /users (corps invalide)", () => cds.post("/users", { role: "ADMIN" })],
-      ["PATCH /pointages/:id (correction, inexistant)", () => cds.patch(`/pointages/${id}`, { quantity: 1, correctionReason: "recette E2E-S3 rbac" })],
-      ["POST /activity-categories (corps invalide)", () => cds.post("/activity-categories", { label: "x" })],
-      ["GET /reports/export", () => cds.get("/reports/export?type=pointages&month=2020-01&format=csv")],
+      [
+        "PATCH /pointages/:id (correction, inexistant)",
+        () =>
+          cds.patch(`/pointages/${id}`, { quantity: 1, correctionReason: "recette E2E-S3 rbac" }),
+      ],
+      [
+        "POST /activity-categories (corps invalide)",
+        () => cds.post("/activity-categories", { label: "x" }),
+      ],
+      [
+        "GET /reports/export",
+        () => cds.get("/reports/export?type=pointages&month=2020-01&format=csv"),
+      ],
     ];
     const wrong: string[] = [];
     for (const [label, call] of denied) {
@@ -163,7 +215,10 @@ test.describe("RBAC — API", () => {
     expect(sites.body.data[0].id).toBe(ownSiteId);
     const workers = await cds.getAllCursor<any>("/workers?take=100");
     expect(workers.length).toBeGreaterThan(0);
-    expect(workers.every((w) => w.siteId === ownSiteId), "MOC hors site visibles").toBe(true);
+    expect(
+      workers.every((w) => w.siteId === ownSiteId),
+      "MOC hors site visibles",
+    ).toBe(true);
   });
 
   test("chef d'équipe : 403 sur les routes Admin et de validation", async ({ apiOf }) => {
@@ -174,9 +229,19 @@ test.describe("RBAC — API", () => {
       ["GET /audit-log", () => cde.get("/audit-log")],
       ["GET /payments", () => cde.get("/payments?periodIso=S1")],
       ["PATCH /pointages/:id/validate (inexistant)", () => cde.patch(`/pointages/${id}/validate`)],
-      ["PATCH /pointages/:id/reject (inexistant)", () => cde.patch(`/pointages/${id}/reject`, { rejectionReason: "recette" })],
-      ["PATCH /pointages/:id (correction, inexistant)", () => cde.patch(`/pointages/${id}`, { quantity: 1, correctionReason: "recette E2E-S3 rbac" })],
-      ["POST /biometric/check (MOC inexistant)", () => cde.post("/biometric/check", { workerId: id })],
+      [
+        "PATCH /pointages/:id/reject (inexistant)",
+        () => cde.patch(`/pointages/${id}/reject`, { rejectionReason: "recette" }),
+      ],
+      [
+        "PATCH /pointages/:id (correction, inexistant)",
+        () =>
+          cde.patch(`/pointages/${id}`, { quantity: 1, correctionReason: "recette E2E-S3 rbac" }),
+      ],
+      [
+        "POST /biometric/check (MOC inexistant)",
+        () => cde.post("/biometric/check", { workerId: id }),
+      ],
       ["POST /teams (corps invalide)", () => cde.post("/teams", { name: "" })],
       ["POST /workers (corps invalide)", () => cde.post("/workers", { firstName: "x" })],
       ["GET /reports/preview", () => cde.get("/reports/preview?type=pointages&month=2020-01")],
@@ -197,27 +262,42 @@ test.describe("RBAC — API", () => {
     const ambWorkers = await amb.getAllCursor<any>("/workers?take=100");
     const anjWorkers = await anj.getAllCursor<any>("/workers?take=100");
     const ambIds = new Set(ambWorkers.map((w) => w.id));
-    expect(anjWorkers.some((w) => ambIds.has(w.id)), "MOC partagés entre sites").toBe(false);
+    expect(
+      anjWorkers.some((w) => ambIds.has(w.id)),
+      "MOC partagés entre sites",
+    ).toBe(false);
 
     // Lecture directe d'un MOC de l'autre site : refusée ou introuvable
     const foreign = await amb.get(`/workers/${anjWorkers[0].id}`);
     expect(foreign.status, "un CDS lit un MOC d'un autre site").toBeGreaterThanOrEqual(400);
     // Pointages : uniquement ceux du site
     const ambPointages = await amb.getAllCursor<any>("/pointages", 4);
-    expect(ambPointages.every((p) => ambIds.has(p.workerId)), "pointages hors site visibles").toBe(true);
+    expect(
+      ambPointages.every((p) => ambIds.has(p.workerId)),
+      "pointages hors site visibles",
+    ).toBe(true);
     const cross = await amb.get(`/pointages?workerId=${anjWorkers[0].id}`);
     expect(cross.body.data).toHaveLength(0);
   });
 
-  test("isolation UI : l'écran Pointages du chef de service n'affiche que son site", async ({ browser, apiOf }) => {
+  test("isolation UI : l'écran Pointages du chef de service n'affiche que son site", async ({
+    browser,
+    apiOf,
+  }) => {
     const amb = await apiOf("cds_amb");
     const ambIds = new Set((await amb.getAllCursor<any>("/workers?take=100")).map((w) => w.id));
     const { ctx, page } = await loginInPage(browser, "cds_amb");
     try {
-      const respPromise = page.waitForResponse((r) => /\/api\/v1\/pointages(\?|$)/.test(r.url()) && r.request().method() === "GET", { timeout: 30_000 });
+      const respPromise = page.waitForResponse(
+        (r) => /\/api\/v1\/pointages(\?|$)/.test(r.url()) && r.request().method() === "GET",
+        { timeout: 30_000 },
+      );
       await spaVisit(page, "/pointages");
       const body = await (await respPromise).json();
-      expect(body.data.every((p: any) => ambIds.has(p.workerId)), "pointages hors site affichés").toBe(true);
+      expect(
+        body.data.every((p: any) => ambIds.has(p.workerId)),
+        "pointages hors site affichés",
+      ).toBe(true);
       await expect(heading(page, "Pointages")).toBeVisible();
     } finally {
       await ctx.close();
@@ -226,7 +306,11 @@ test.describe("RBAC — API", () => {
 });
 
 test.describe("Comptes inactifs et échecs de connexion (comptes E2E, 2 tentatives max)", () => {
-  test("compte inactif : connexion refusée (API + écran de connexion)", async ({ admin, world, browser }) => {
+  test("compte inactif : connexion refusée (API + écran de connexion)", async ({
+    admin,
+    world,
+    browser,
+  }) => {
     const email = `e2e-s3-inactive-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
@@ -261,9 +345,19 @@ test.describe("Comptes inactifs et échecs de connexion (comptes E2E, 2 tentativ
     expect(res.status, "BLOQUANT : le compte inactif auditeur.sprint2 peut se connecter").toBe(401);
   });
 
-  test("mauvais mot de passe : message générique, puis connexion normale", async ({ admin, world, browser }) => {
+  test("mauvais mot de passe : message générique, puis connexion normale", async ({
+    admin,
+    world,
+    browser,
+  }) => {
     const email = `e2e-s3-wrongpw-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
-    const created = await admin.post("/users", { email, role: "CHEF_EQUIPE", firstName: "E2E-S3-BADPW", lastName: world.runId, siteId: world.site.id });
+    const created = await admin.post("/users", {
+      email,
+      role: "CHEF_EQUIPE",
+      firstName: "E2E-S3-BADPW",
+      lastName: world.runId,
+      siteId: world.site.id,
+    });
     expectStatus(created, 201);
     track("user", created.body.user.id, email);
     const good = created.body.temporaryPassword as string;
@@ -279,7 +373,9 @@ test.describe("Comptes inactifs et échecs de connexion (comptes E2E, 2 tentativ
 
     const api = await ApiClient.rawLogin(email, "Encore-faux-2!"); // tentative n°2
     expect(api.status).toBe(401);
-    expect(api.body.code, "message identique pour compte inconnu et mot de passe faux").toBe("INVALID_CREDENTIALS");
+    expect(api.body.code, "message identique pour compte inconnu et mot de passe faux").toBe(
+      "INVALID_CREDENTIALS",
+    );
     const ok = await ApiClient.rawLogin(email, good);
     expect(ok.status, "la connexion correcte reste possible après 2 échecs").toBe(200);
   });

@@ -17,7 +17,13 @@ const styles: Record<BadgeVariant, { chip: string; dot: string }> = {
   brand: { chip: "bg-brand-tint text-brand ring-brand-ring/40", dot: "bg-brand" },
 };
 
-export function Badge({ className, variant = "default", dot = false, children, ...props }: BadgeProps) {
+export function Badge({
+  className,
+  variant = "default",
+  dot = false,
+  children,
+  ...props
+}: BadgeProps) {
   const s = styles[variant];
   return (
     <span

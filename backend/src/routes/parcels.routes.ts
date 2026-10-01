@@ -21,7 +21,13 @@ const listParcelsQuery = z.object({
   siteId: z.string().uuid().optional(),
 });
 
-const parcelCodeSchema = z.string().trim().min(1).max(20).transform((v) => v.toUpperCase()).nullable();
+const parcelCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(20)
+  .transform((v) => v.toUpperCase())
+  .nullable();
 
 const createParcelSchema = z.object({
   zoneId: z.string().uuid(),
@@ -214,7 +220,11 @@ parcelsRouter.post(
         });
         if (!parcelle) throw new ApiError(404, "NOT_FOUND", "Parcelle introuvable");
         if (parcelle._count.pointages > 0) {
-          throw new ApiError(409, "PARCELLE_HAS_POINTAGES", "Parcelle référencée par des pointages");
+          throw new ApiError(
+            409,
+            "PARCELLE_HAS_POINTAGES",
+            "Parcelle référencée par des pointages",
+          );
         }
         await prisma.parcelle.delete({ where: { id: parcelle.id } });
         await writeAuditLog({

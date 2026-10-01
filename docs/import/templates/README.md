@@ -2,11 +2,11 @@
 
 Fichiers générés par `npm run import:templates -w backend`.
 
-| Fichier | Contenu |
-| ------- | ------- |
-| `sites.xlsx` | Sites (shortCode, name, location) |
-| `activities.xlsx` | Activités et tarifs |
-| `workers.xlsx` | MOC (matricule, MVola, site, équipe) |
+| Fichier           | Contenu                              |
+| ----------------- | ------------------------------------ |
+| `sites.xlsx`      | Sites (shortCode, name, location)    |
+| `activities.xlsx` | Activités et tarifs                  |
+| `workers.xlsx`    | MOC (matricule, MVola, site, équipe) |
 
 ## Import
 

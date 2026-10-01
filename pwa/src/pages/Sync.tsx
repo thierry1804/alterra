@@ -22,10 +22,8 @@ function logLevelClass(level: string): string {
 
 export default function Sync() {
   const state = useSyncState();
-  const rejected = useLiveQuery(
-    () => db.pointages.where("status").equals("rejected").toArray(),
-    [],
-  ) ?? [];
+  const rejected =
+    useLiveQuery(() => db.pointages.where("status").equals("rejected").toArray(), []) ?? [];
   const [busy, setBusy] = useState(false);
 
   async function handleForceSync() {
@@ -47,15 +45,15 @@ export default function Sync() {
         <GlossaryTerm term="En attente">
           Données saisies sur le terrain pas encore confirmées par le serveur.
         </GlossaryTerm>
-        <GlossaryTerm term="MVola">
-          Mobile money — canal de paiement des travailleurs.
-        </GlossaryTerm>
+        <GlossaryTerm term="MVola">Mobile money — canal de paiement des travailleurs.</GlossaryTerm>
       </ContextHelp>
 
       <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-4 sm:grid-cols-2">
         <div>
           <p className="text-xs text-zinc-500">Connexion</p>
-          <p className={`text-sm font-medium ${state.online ? "text-emerald-800" : "text-red-700"}`}>
+          <p
+            className={`text-sm font-medium ${state.online ? "text-emerald-800" : "text-red-700"}`}
+          >
             {state.online ? "En ligne" : "Hors ligne"}
           </p>
         </div>
@@ -69,9 +67,7 @@ export default function Sync() {
         <div>
           <p className="text-xs text-zinc-500">Dernière sync</p>
           <p className="text-sm font-medium text-zinc-900">
-            {state.lastSyncAt
-              ? new Date(state.lastSyncAt).toLocaleString("fr-FR")
-              : "Jamais"}
+            {state.lastSyncAt ? new Date(state.lastSyncAt).toLocaleString("fr-FR") : "Jamais"}
           </p>
         </div>
         <div>
@@ -127,7 +123,14 @@ export default function Sync() {
         {state.recentLog.length === 0 && (
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
             <p>Aucune entrée pour le moment.</p>
-            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void handleForceSync()} disabled={!state.online}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void handleForceSync()}
+              disabled={!state.online}
+            >
               Lancer une sync
             </Button>
           </div>

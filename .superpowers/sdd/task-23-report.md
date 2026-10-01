@@ -6,12 +6,12 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — E2E Playwright | ✅ | `e2e/` workspace, 4 specs (admin MVola, CDE pointage, CDS validation, offline simulé) |
-| 2 — Offline terrain | ✅ | Spec `offline-day.spec.ts` + procédure `docs/qa/offline-pilot.md` |
-| 3 — Recette V1 2 jours | ✅ | Checklist `docs/qa/recette-v1.md` |
-| 4 — Corrections J+1 à J+5 | 📋 | Process documenté dans recette (grille P1–P3), exécution post-recette |
+| Step                      | Statut | Détail                                                                                |
+| ------------------------- | ------ | ------------------------------------------------------------------------------------- |
+| 1 — E2E Playwright        | ✅     | `e2e/` workspace, 4 specs (admin MVola, CDE pointage, CDS validation, offline simulé) |
+| 2 — Offline terrain       | ✅     | Spec `offline-day.spec.ts` + procédure `docs/qa/offline-pilot.md`                     |
+| 3 — Recette V1 2 jours    | ✅     | Checklist `docs/qa/recette-v1.md`                                                     |
+| 4 — Corrections J+1 à J+5 | 📋     | Process documenté dans recette (grille P1–P3), exécution post-recette                 |
 
 ## Structure E2E
 
@@ -40,12 +40,12 @@ Variables optionnelles : `E2E_ADMIN_EMAIL`, `E2E_CDE_EMAIL`, `E2E_CDS_EMAIL`, `E
 
 ## Comptes seed
 
-| Rôle | Email | Mot de passe |
-|------|-------|--------------|
-| Admin | admin@alterra.mg | <mot de passe du seed> |
-| CDE | cde.mnk1@alterra.test | <mot de passe du seed> |
-| CDS | cds.mnk@alterra.test | <mot de passe du seed> |
-| PIN PWA | — | 1234 |
+| Rôle    | Email                 | Mot de passe           |
+| ------- | --------------------- | ---------------------- |
+| Admin   | admin@alterra.mg      | <mot de passe du seed> |
+| CDE     | cde.mnk1@alterra.test | <mot de passe du seed> |
+| CDS     | cds.mnk@alterra.test  | <mot de passe du seed> |
+| PIN PWA | —                     | 1234                   |
 
 ## CI
 
@@ -58,12 +58,12 @@ Job `e2e` ajouté dans `.github/workflows/ci.yml` (Postgres + migrate + seed + P
 
 ## Correctifs découverts pendant la QA
 
-| Fichier | Problème | Correction |
-|---------|----------|------------|
-| `backend/src/middleware/prisma-rls.ts` | RLS bloquait `findUnique` User sans contexte auth | Lecture sans filtre si `!ctx?.role` |
-| `backend/src/routes/auth.routes.ts` | `lastLoginAt` bloqué par RLS | `basePrisma` pour login |
-| `backend/src/app.ts` | Rate limit auth (10/5min) casse les E2E | Limite 1000 hors production |
-| `pwa/src/pages/BatchEntry.tsx` | `enqueuePointageSync` dans transaction Dexie partielle | Enqueue après commit transaction |
-| `e2e/playwright.config.ts` | webServers lancés depuis `e2e/` | `cwd: repoRoot` |
+| Fichier                                | Problème                                               | Correction                          |
+| -------------------------------------- | ------------------------------------------------------ | ----------------------------------- |
+| `backend/src/middleware/prisma-rls.ts` | RLS bloquait `findUnique` User sans contexte auth      | Lecture sans filtre si `!ctx?.role` |
+| `backend/src/routes/auth.routes.ts`    | `lastLoginAt` bloqué par RLS                           | `basePrisma` pour login             |
+| `backend/src/app.ts`                   | Rate limit auth (10/5min) casse les E2E                | Limite 1000 hors production         |
+| `pwa/src/pages/BatchEntry.tsx`         | `enqueuePointageSync` dans transaction Dexie partielle | Enqueue après commit transaction    |
+| `e2e/playwright.config.ts`             | webServers lancés depuis `e2e/`                        | `cwd: repoRoot`                     |
 
 **Résultat local :** 4/4 tests Playwright passés (`npm run test:e2e`).

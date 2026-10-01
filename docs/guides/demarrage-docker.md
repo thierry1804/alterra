@@ -19,11 +19,11 @@ cp .env.example backend/.env   # variables backend (si backend/.env absent)
 
 ## Les trois modes
 
-| Mode | Commande | API | Frontends | Hot-reload | Cas d'usage |
-| --- | --- | --- | --- | --- | --- |
-| **Dev hybride** | `docker compose up -d postgres redis minio` puis `npm run dev` | Node local | Node local (Vite) | ✅ | Développement quotidien |
-| **Stack complète** | `docker compose up -d` | conteneur `api` | — | ❌ | Smoke test API sans Node |
-| **App complète** | `docker compose --profile full up -d --build` | conteneur `api` | conteneurs nginx | ❌ | Démo / QA de bout en bout |
+| Mode               | Commande                                                       | API             | Frontends         | Hot-reload | Cas d'usage               |
+| ------------------ | -------------------------------------------------------------- | --------------- | ----------------- | ---------- | ------------------------- |
+| **Dev hybride**    | `docker compose up -d postgres redis minio` puis `npm run dev` | Node local      | Node local (Vite) | ✅         | Développement quotidien   |
+| **Stack complète** | `docker compose up -d`                                         | conteneur `api` | —                 | ❌         | Smoke test API sans Node  |
+| **App complète**   | `docker compose --profile full up -d --build`                  | conteneur `api` | conteneurs nginx  | ❌         | Démo / QA de bout en bout |
 
 > Le profil `full` est **opt-in** : sans `--profile full`, `admin` et `pwa` ne démarrent pas. Le comportement par défaut reste identique.
 
@@ -75,24 +75,24 @@ curl http://localhost:3001/health
 
 ## URLs
 
-| Service | URL | Notes |
-| --- | --- | --- |
-| **Admin** (back-office) | http://localhost:5173 | Interface de gestion |
-| **PWA** (app terrain) | http://localhost:5174 | Pointage, offline-first |
-| **API** | http://localhost:3001 | Base `/api/v1` |
-| **API — health** | http://localhost:3001/health | Sonde de santé |
-| **MinIO — console** | http://localhost:9001 | Stockage objets |
-| **MinIO — API S3** | http://localhost:9000 | — |
-| PostgreSQL | `localhost:5433` | Accès direct (psql) |
-| Redis | `localhost:6380` | Accès direct |
+| Service                 | URL                          | Notes                   |
+| ----------------------- | ---------------------------- | ----------------------- |
+| **Admin** (back-office) | http://localhost:5173        | Interface de gestion    |
+| **PWA** (app terrain)   | http://localhost:5174        | Pointage, offline-first |
+| **API**                 | http://localhost:3001        | Base `/api/v1`          |
+| **API — health**        | http://localhost:3001/health | Sonde de santé          |
+| **MinIO — console**     | http://localhost:9001        | Stockage objets         |
+| **MinIO — API S3**      | http://localhost:9000        | —                       |
+| PostgreSQL              | `localhost:5433`             | Accès direct (psql)     |
+| Redis                   | `localhost:6380`             | Accès direct            |
 
 ## Identifiants (seed de développement)
 
-| Rôle | Email | Mot de passe |
-| --- | --- | --- |
-| Admin | `admin@alterra.mg` | défini par `SEED_ADMIN_PASSWORD`, sinon généré et affiché **une seule fois** par `npm run db:setup` |
-| CDS / CDE | `*@alterra.test` | défini par `SEED_USER_PASSWORD`, sinon généré et affiché une seule fois |
-| MinIO console | `alterra_admin` | `alterra_dev_secret` |
+| Rôle          | Email              | Mot de passe                                                                                        |
+| ------------- | ------------------ | --------------------------------------------------------------------------------------------------- |
+| Admin         | `admin@alterra.mg` | défini par `SEED_ADMIN_PASSWORD`, sinon généré et affiché **une seule fois** par `npm run db:setup` |
+| CDS / CDE     | `*@alterra.test`   | défini par `SEED_USER_PASSWORD`, sinon généré et affiché une seule fois                             |
+| MinIO console | `alterra_admin`    | `alterra_dev_secret`                                                                                |
 
 > Les mots de passe des comptes ne sont écrits nulle part dans le code : ils vivent en base (hachés). Un compte déjà créé garde son mot de passe quand on relance le seed. Comptes de **développement uniquement**. Jamais en staging/prod (voir `infra/` + `.env.prod`).
 
@@ -110,22 +110,26 @@ curl http://localhost:3001/health
 ## Opérations courantes
 
 **Logs en direct :**
+
 ```bash
 docker compose --profile full logs -f
 docker compose --profile full logs -f api   # un seul service
 ```
 
 **Rebuild après modification du code d'un frontend ou de l'API :**
+
 ```bash
 docker compose --profile full up -d --build admin pwa api
 ```
 
 **Arrêter (les volumes de données sont conservés) :**
+
 ```bash
 docker compose --profile full down
 ```
 
 **Repartir de zéro (⚠️ supprime les données Postgres/MinIO) :**
+
 ```bash
 docker compose --profile full down -v
 docker compose --profile full up -d --build
@@ -136,13 +140,13 @@ npm run db:setup -w backend
 
 ## Dépannage
 
-| Symptôme | Cause probable | Solution |
-| --- | --- | --- |
-| `api` reste `unhealthy` | Migrations non appliquées / base injoignable | Lancer `npm run db:setup -w backend` ; vérifier `docker compose logs api` |
-| Login renvoie 401 sur des comptes du seed | Base non seedée | `npm run db:setup -w backend` |
-| `admin`/`pwa` ne démarrent pas | Profil oublié | Toujours passer `--profile full` |
-| `/api/...` renvoie 404 HTML depuis le front | Front lancé sans le proxy `/api` | Utiliser le mode `full` (conf `nginx.dev.conf`), pas les images prod |
-| Port déjà utilisé (5173/5174/3001/5433…) | Autre process ou mode dev hybride actif | Arrêter l'autre process ou changer le mapping de port |
+| Symptôme                                    | Cause probable                               | Solution                                                                  |
+| ------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------- |
+| `api` reste `unhealthy`                     | Migrations non appliquées / base injoignable | Lancer `npm run db:setup -w backend` ; vérifier `docker compose logs api` |
+| Login renvoie 401 sur des comptes du seed   | Base non seedée                              | `npm run db:setup -w backend`                                             |
+| `admin`/`pwa` ne démarrent pas              | Profil oublié                                | Toujours passer `--profile full`                                          |
+| `/api/...` renvoie 404 HTML depuis le front | Front lancé sans le proxy `/api`             | Utiliser le mode `full` (conf `nginx.dev.conf`), pas les images prod      |
+| Port déjà utilisé (5173/5174/3001/5433…)    | Autre process ou mode dev hybride actif      | Arrêter l'autre process ou changer le mapping de port                     |
 
 ### Notes de build (bugs corrigés)
 

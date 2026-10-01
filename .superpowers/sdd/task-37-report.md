@@ -6,19 +6,19 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — POST /reports/daily | ✅ | Agrégation jour, PDF Puppeteer, MinIO |
-| 2 — UI clôture CDS | ✅ | `DailyClose.tsx`, preview, signature, confirmation |
-| 3 — Envoi Admin | ✅ | Email `notifyAdminsDailyReportReady` |
+| Step                    | Statut | Détail                                             |
+| ----------------------- | ------ | -------------------------------------------------- |
+| 1 — POST /reports/daily | ✅     | Agrégation jour, PDF Puppeteer, MinIO              |
+| 2 — UI clôture CDS      | ✅     | `DailyClose.tsx`, preview, signature, confirmation |
+| 3 — Envoi Admin         | ✅     | Email `notifyAdminsDailyReportReady`               |
 
 ## API
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| GET | `/reports/daily/preview?date=` | CDS, ADMIN |
-| POST | `/reports/daily` | CDS, ADMIN |
-| GET | `/reports/daily/jobs/:jobId` | CDS, ADMIN |
+| Méthode | Route                          | Rôle       |
+| ------- | ------------------------------ | ---------- |
+| GET     | `/reports/daily/preview?date=` | CDS, ADMIN |
+| POST    | `/reports/daily`               | CDS, ADMIN |
+| GET     | `/reports/daily/jobs/:jobId`   | CDS, ADMIN |
 
 ## Fichiers backend
 

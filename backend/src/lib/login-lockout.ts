@@ -11,7 +11,11 @@ export async function assertLoginNotLocked(email: string): Promise<void> {
   const redis = await getRedis();
   const failures = Number((await redis.get(key(email))) ?? 0);
   if (failures >= MAX_FAILURES) {
-    throw new ApiError(429, "TOO_MANY_ATTEMPTS", "Trop de tentatives — réessayez dans quelques minutes");
+    throw new ApiError(
+      429,
+      "TOO_MANY_ATTEMPTS",
+      "Trop de tentatives — réessayez dans quelques minutes",
+    );
   }
 }
 

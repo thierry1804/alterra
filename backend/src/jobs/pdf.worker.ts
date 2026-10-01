@@ -67,16 +67,19 @@ export function getWeeklyPdfQueue(): Queue<WeeklyPdfJobPayload, WeeklyPdfJobResu
   return queue;
 }
 
-export async function enqueueWeeklyPdfJob(
-  input: WeeklyPdfJobInput,
-): Promise<{ jobId: string }> {
+export async function enqueueWeeklyPdfJob(input: WeeklyPdfJobInput): Promise<{ jobId: string }> {
   if (useSyncJobs()) {
     const jobId = `sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     syncWeeklyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "active" });
 
     void processWeeklyPdfJob(input)
       .then((result) => {
-        syncWeeklyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "completed", result });
+        syncWeeklyJobStore.set(jobId, {
+          id: jobId,
+          siteId: input.siteId,
+          state: "completed",
+          result,
+        });
       })
       .catch((error: unknown) => {
         syncWeeklyJobStore.set(jobId, {
@@ -148,16 +151,19 @@ export function getDailyPdfQueue(): Queue<DailyPdfJobInput, DailyPdfJobResult> |
   return dailyQueue;
 }
 
-export async function enqueueDailyPdfJob(
-  input: DailyPdfJobInput,
-): Promise<{ jobId: string }> {
+export async function enqueueDailyPdfJob(input: DailyPdfJobInput): Promise<{ jobId: string }> {
   if (useSyncJobs()) {
     const jobId = `sync-daily-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     syncDailyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "active" });
 
     void processDailyPdfJob(input)
       .then((result) => {
-        syncDailyJobStore.set(jobId, { id: jobId, siteId: input.siteId, state: "completed", result });
+        syncDailyJobStore.set(jobId, {
+          id: jobId,
+          siteId: input.siteId,
+          state: "completed",
+          result,
+        });
       })
       .catch((error: unknown) => {
         syncDailyJobStore.set(jobId, {

@@ -6,19 +6,19 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Précisions CDS→CDE | ✅ | Formulaire, liste, réponse CDE (texte + photo), clôture CDS |
-| 2 — Demande activité | ✅ | Formulaire libellé/unité/tarif/justification, suivi + annulation |
-| 3 — Demande MOC | ✅ | Formulaire complet + photo MinIO, suivi + annulation |
+| Step                   | Statut | Détail                                                           |
+| ---------------------- | ------ | ---------------------------------------------------------------- |
+| 1 — Précisions CDS→CDE | ✅     | Formulaire, liste, réponse CDE (texte + photo), clôture CDS      |
+| 2 — Demande activité   | ✅     | Formulaire libellé/unité/tarif/justification, suivi + annulation |
+| 3 — Demande MOC        | ✅     | Formulaire complet + photo MinIO, suivi + annulation             |
 
 ## Pages PWA
 
-| Route | Rôle | Fichier |
-|-------|------|---------|
-| `/clarifications` | CDS, CDE, ADMIN | `ClarificationRequest.tsx` |
-| `/activity-requests` | CDS, ADMIN | `ActivityRequest.tsx` |
-| `/worker-requests` | CDS, ADMIN | `WorkerRequest.tsx` |
+| Route                | Rôle            | Fichier                    |
+| -------------------- | --------------- | -------------------------- |
+| `/clarifications`    | CDS, CDE, ADMIN | `ClarificationRequest.tsx` |
+| `/activity-requests` | CDS, ADMIN      | `ActivityRequest.tsx`      |
+| `/worker-requests`   | CDS, ADMIN      | `WorkerRequest.tsx`        |
 
 ## Intégration
 

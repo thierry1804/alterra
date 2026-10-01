@@ -7,26 +7,26 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Adapter pattern, choix runtime `BIOMETRIC_PROVIDER` | ✅ |
-| 2 | Mock + Manual providers | ✅ |
-| 3 | AxianBiometricProvider (API Key, 5xx → UNAVAILABLE, logs rawResponse) | ✅ |
-| 4 | Mode manuel documenté si AXIAN absent (`.env.example`) | ✅ |
+| Step | Item                                                                  | Status |
+| ---- | --------------------------------------------------------------------- | ------ |
+| 1    | Adapter pattern, choix runtime `BIOMETRIC_PROVIDER`                   | ✅     |
+| 2    | Mock + Manual providers                                               | ✅     |
+| 3    | AxianBiometricProvider (API Key, 5xx → UNAVAILABLE, logs rawResponse) | ✅     |
+| 4    | Mode manuel documenté si AXIAN absent (`.env.example`)                | ✅     |
 
 ---
 
 ## Fichiers
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `services/biometric/BiometricProvider.interface.ts` | Interface + `mvolaNumber` pour AXIAN |
-| `services/biometric/MockBiometricProvider.ts` | Dev — OK si photo |
-| `services/biometric/ManualBiometricProvider.ts` | Dégradé — DOUBT systématique |
-| `services/biometric/AxianBiometricProvider.ts` | API multipart, timeout 8s |
-| `services/biometric/score-mapping.ts` | Seuil OK / plancher DOUBT 0.5 |
-| `services/biometric/index.ts` | Factory `getBiometricProvider()` |
-| `services/biometric/check.service.ts` | Passe `mvolaNumber`, persiste `rawResponse` |
+| Fichier                                             | Rôle                                        |
+| --------------------------------------------------- | ------------------------------------------- |
+| `services/biometric/BiometricProvider.interface.ts` | Interface + `mvolaNumber` pour AXIAN        |
+| `services/biometric/MockBiometricProvider.ts`       | Dev — OK si photo                           |
+| `services/biometric/ManualBiometricProvider.ts`     | Dégradé — DOUBT systématique                |
+| `services/biometric/AxianBiometricProvider.ts`      | API multipart, timeout 8s                   |
+| `services/biometric/score-mapping.ts`               | Seuil OK / plancher DOUBT 0.5               |
+| `services/biometric/index.ts`                       | Factory `getBiometricProvider()`            |
+| `services/biometric/check.service.ts`               | Passe `mvolaNumber`, persiste `rawResponse` |
 
 ## Décision AXIAN (Step 4)
 
@@ -38,9 +38,9 @@ Engagement contractuel AXIAN reste une action métier PO ; le code bascule sans 
 
 ## Variables env
 
-| Variable | Défaut | Description |
-| -------- | ------ | ----------- |
-| `BIOMETRIC_PROVIDER` | `MOCK` | `MOCK` \| `MANUAL` \| `AXIAN` |
-| `AXIAN_API_URL` | `https://biometric.axian.mg/api/v1/kyc/compare` | Endpoint compare |
-| `AXIAN_API_KEY` | — | Clé API (obligatoire si AXIAN) |
-| `AXIAN_MATCH_THRESHOLD` | `0.85` | Seuil OK |
+| Variable                | Défaut                                          | Description                    |
+| ----------------------- | ----------------------------------------------- | ------------------------------ |
+| `BIOMETRIC_PROVIDER`    | `MOCK`                                          | `MOCK` \| `MANUAL` \| `AXIAN`  |
+| `AXIAN_API_URL`         | `https://biometric.axian.mg/api/v1/kyc/compare` | Endpoint compare               |
+| `AXIAN_API_KEY`         | —                                               | Clé API (obligatoire si AXIAN) |
+| `AXIAN_MATCH_THRESHOLD` | `0.85`                                          | Seuil OK                       |

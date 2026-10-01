@@ -24,9 +24,7 @@ export default function PhotoCapture({
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<string | null>(null);
 
-  const altText = workerName
-    ? `Photo de pointage — ${workerName}`
-    : "Photo de pointage";
+  const altText = workerName ? `Photo de pointage — ${workerName}` : "Photo de pointage";
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -82,7 +80,13 @@ export default function PhotoCapture({
             {loading ? "…" : label}
           </Button>
           {previewUrl && onClear && (
-            <Button type="button" variant="ghost" size="sm" disabled={disabled || loading} onClick={onClear}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled || loading}
+              onClick={onClear}
+            >
               Retirer
             </Button>
           )}

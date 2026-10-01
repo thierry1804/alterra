@@ -1,11 +1,7 @@
 import { Link } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../../lib/pointages";
-import {
-  bioResultClass,
-  bioResultLabel,
-  formatPointageAmount,
-} from "../../lib/pointages";
+import { bioResultClass, bioResultLabel, formatPointageAmount } from "../../lib/pointages";
 import Button from "../ui/Button";
 import { IconBio, IconPrecisions, IconCheck, IconClose } from "../icons";
 
@@ -73,10 +69,7 @@ export default function TeamGroup({
         {items.map(({ pointage, worker, activity }) => {
           const busy = busyId === pointage.id || bulkBusy;
           return (
-            <article
-              key={pointage.id}
-              className="rounded-md border border-zinc-200 bg-white p-3"
-            >
+            <article key={pointage.id} className="rounded-md border border-zinc-200 bg-white p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-zinc-900">

@@ -8,10 +8,10 @@
 
 ## Matériel
 
-| Session | Participants | Matériel |
-|---------|--------------|----------|
-| Matin | Admin, CDS, référent | PC + vidéoprojecteur, 1 smartphone CDS |
-| Après-midi | CDE, référent | 1–2 smartphones Android, zone sans réseau simulée |
+| Session    | Participants         | Matériel                                          |
+| ---------- | -------------------- | ------------------------------------------------- |
+| Matin      | Admin, CDS, référent | PC + vidéoprojecteur, 1 smartphone CDS            |
+| Après-midi | CDE, référent        | 1–2 smartphones Android, zone sans réseau simulée |
 
 **Documents distribués :**
 
@@ -120,12 +120,12 @@ Suivre `docs/qa/offline-pilot.md` (version accélérée) :
 
 ### 16:30 — Clôture et évaluation (30 min)
 
-| Critère | OK / KO |
-|---------|---------|
-| CDE autonome saisie lot | |
-| CDS autonome validation + bio | |
-| Admin autonome bordereau | |
-| Offline → sync sans perte | |
+| Critère                       | OK / KO |
+| ----------------------------- | ------- |
+| CDE autonome saisie lot       |         |
+| CDS autonome validation + bio |         |
+| Admin autonome bordereau      |         |
+| Offline → sync sans perte     |         |
 
 Remplir PV recette (`docs/qa/recette-v1.md` Jour 1).
 
@@ -141,13 +141,13 @@ Remplir PV recette (`docs/qa/recette-v1.md` Jour 1).
 
 ## Annexes — comptes seed (formation)
 
-| Rôle | Email | Mot de passe |
-|------|-------|--------------|
-| Admin | admin@alterra.mg | communiqué par l'administrateur |
-| CDS MNK | cds.mnk@alterra.test | communiqué par l'administrateur |
+| Rôle      | Email                 | Mot de passe                    |
+| --------- | --------------------- | ------------------------------- |
+| Admin     | admin@alterra.mg      | communiqué par l'administrateur |
+| CDS MNK   | cds.mnk@alterra.test  | communiqué par l'administrateur |
 | CDE MNK-1 | cde.mnk1@alterra.test | communiqué par l'administrateur |
-| PIN PWA | — | 1234 (formation uniquement) |
+| PIN PWA   | —                     | 1234 (formation uniquement)     |
 
 ---
 
-*Task 24 DOC — UC-DOC-TRAIN*
+_Task 24 DOC — UC-DOC-TRAIN_

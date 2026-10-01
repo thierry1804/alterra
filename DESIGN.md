@@ -8,30 +8,30 @@ Identité : dérivée du **logo ALTERRA** (vert reforestation, arbre corail, poi
 
 ## Color Palette
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--color-background` | `#ffffff` | Page background |
-| `--color-surface` | `#fafafa` (zinc-50) | Sidebar, nav, panels |
-| `--color-foreground` | `#18181b` (zinc-900) | Primary text |
-| `--color-muted` | `#52525b` (zinc-600) | Secondary text |
-| `--color-border` | `#e4e4e7` (zinc-200) | Borders |
-| `--color-primary` | `#18181b` (zinc-900) | Primary actions |
-| `--color-focus-ring` | `#a1a1aa` (zinc-400) | Focus indicators |
+| Token                | Value                | Usage                |
+| -------------------- | -------------------- | -------------------- |
+| `--color-background` | `#ffffff`            | Page background      |
+| `--color-surface`    | `#fafafa` (zinc-50)  | Sidebar, nav, panels |
+| `--color-foreground` | `#18181b` (zinc-900) | Primary text         |
+| `--color-muted`      | `#52525b` (zinc-600) | Secondary text       |
+| `--color-border`     | `#e4e4e7` (zinc-200) | Borders              |
+| `--color-primary`    | `#18181b` (zinc-900) | Primary actions      |
+| `--color-focus-ring` | `#a1a1aa` (zinc-400) | Focus indicators     |
 
 Semantic: emerald (OK/bio/en ligne), red (KO/erreur/hors ligne), amber (alerte/en attente).
 
 ### Marque ALTERRA (dérivée du logo)
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--color-brand` | `#0e6f48` | Vert de marque (foncé, AA) : boutons primaires, onglet actif, montants Ariary |
-| `--color-brand-hover` | `#0a5638` | Hover bouton primaire |
-| `--color-brand-vivid` | `#189060` | Vert vif du logo — décoratif (icônes, `theme_color`, aplats sans texte) |
-| `--color-brand-tint` | `#e7f3ec` | Fond sélection |
-| `--color-brand-ring` | `#7cb79b` | Focus ring de marque |
-| `--color-earth` | `#e45430` | Corail (l'arbre du logo) — filet 2px sous le bandeau. **Usage hairline uniquement.** |
-| `--color-people-bg` / `-fg` | `#e7eff9` / `#2f6199` | Bleu « communauté » (les points du logo = personnes) : avatars travailleurs |
-| `--font-mono` | `ui-monospace, …` | Données de registre : matricules, quantités, montants |
+| Token                       | Value                 | Usage                                                                                |
+| --------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| `--color-brand`             | `#0e6f48`             | Vert de marque (foncé, AA) : boutons primaires, onglet actif, montants Ariary        |
+| `--color-brand-hover`       | `#0a5638`             | Hover bouton primaire                                                                |
+| `--color-brand-vivid`       | `#189060`             | Vert vif du logo — décoratif (icônes, `theme_color`, aplats sans texte)              |
+| `--color-brand-tint`        | `#e7f3ec`             | Fond sélection                                                                       |
+| `--color-brand-ring`        | `#7cb79b`             | Focus ring de marque                                                                 |
+| `--color-earth`             | `#e45430`             | Corail (l'arbre du logo) — filet 2px sous le bandeau. **Usage hairline uniquement.** |
+| `--color-people-bg` / `-fg` | `#e7eff9` / `#2f6199` | Bleu « communauté » (les points du logo = personnes) : avatars travailleurs          |
+| `--font-mono`               | `ui-monospace, …`     | Données de registre : matricules, quantités, montants                                |
 
 Le vert de marque (`#0e6f48`) est volontairement plus foncé que le vert vif du logo pour garantir le contraste AA sur texte/boutons ; le vert vif reste réservé au décor. Corail : accent arbre/reforestation, jamais en aplat ni en fond.
 
@@ -51,19 +51,23 @@ Utilitaires PWA : `.alterra-eyebrow` (micro-libellé de section), `.alterra-num`
 ## Components
 
 ### Button
+
 - Variants: `default` (zinc-900 fill), `outline`, `ghost`, `destructive`
 - PWA min height: `min-h-11` (44px touch target)
 - Admin: shadcn Button (`h-8` sm, `h-9` default)
 
 ### Badge
+
 - Semantic variants: success, warning, danger, default
 - Status pointage, bio, demandes
 
 ### Card
+
 - Simple border `border-zinc-200`, radius `rounded-lg`, no heavy shadow
 - KPI highlight: `border-amber-300` when alert threshold
 
 ### Navigation
+
 - Admin: sidebar 248px, grouped sections, collapse to icons
 - PWA : **mobile-first, barre d'onglets en bas** (thumb zone). 4 destinations primaires par rôle + onglet « Plus » ; icônes + libellés, `min-h-touch`, `env(safe-area-inset-bottom)`.
   - Destinations secondaires + identité utilisateur + **Déconnexion** dans une **bottom-sheet** (« Plus »), jamais dans le bandeau.

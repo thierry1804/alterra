@@ -2,10 +2,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./hooks/AuthProvider";
 import { GuestRoute, ProtectedRoute } from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
-import InactivityGuard from "./components/InactivityGuard";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
-import UnlockPin from "./pages/UnlockPin";
 import ActivitySelect from "./pages/ActivitySelect";
 import BatchEntry from "./pages/BatchEntry";
 import Validation from "./pages/Validation";
@@ -22,13 +20,10 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <InactivityGuard />
         <Routes>
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<Login />} />
           </Route>
-
-          <Route path="/unlock" element={<UnlockPin />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>

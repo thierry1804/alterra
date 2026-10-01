@@ -46,7 +46,9 @@ export async function expectAudit(
   q: { entityType: string; entityId: string; action?: string | string[] },
 ): Promise<AuditRow[]> {
   const rows = await findAudit(admin, q);
-  expect(rows.length, `Aucune entrée d'audit pour ${q.entityType} ${q.entityId}`).toBeGreaterThan(0);
+  expect(rows.length, `Aucune entrée d'audit pour ${q.entityType} ${q.entityId}`).toBeGreaterThan(
+    0,
+  );
   if (q.action) {
     const accepted = Array.isArray(q.action) ? q.action : [q.action];
     expect(
@@ -62,10 +64,9 @@ export async function expectAudit(
 /* ------------------------------------------------------------------ */
 
 export function expectStatus(res: ApiResult, ...statuses: number[]): void {
-  expect(
-    statuses,
-    `HTTP ${res.status} ${JSON.stringify(res.body)?.slice(0, 300)}`,
-  ).toContain(res.status);
+  expect(statuses, `HTTP ${res.status} ${JSON.stringify(res.body)?.slice(0, 300)}`).toContain(
+    res.status,
+  );
 }
 
 /** Années « réelles » à protéger : l'export et le rapprochement MVola raisonnent (encore) sur le numéro de semaine seul. */
@@ -75,12 +76,18 @@ export const REAL_YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
  * Nombre de paiements NON `E2E-S3-` portant ce numéro de semaine, toutes années réelles confondues.
  * Un serveur qui ignore `referenceYear` renvoie toutes les années à chaque appel : le résultat est alors plus prudent.
  */
-export async function foreignPaymentsForWeek(admin: ApiClient, week: number, years: number[] = REAL_YEARS): Promise<number> {
+export async function foreignPaymentsForWeek(
+  admin: ApiClient,
+  week: number,
+  years: number[] = REAL_YEARS,
+): Promise<number> {
   let foreign = 0;
   for (const year of years) {
     const res = await admin.get(`/payments?periodIso=S${week}&referenceYear=${year}`);
     expectStatus(res, 200);
-    foreign += (res.body.data as any[]).filter((p) => !String(p.worker?.matricule ?? "").startsWith("E2E-S3-")).length;
+    foreign += (res.body.data as any[]).filter(
+      (p) => !String(p.worker?.matricule ?? "").startsWith("E2E-S3-"),
+    ).length;
   }
   return foreign;
 }
@@ -101,7 +108,12 @@ export async function createPointages(
   }));
   const res = await cde.post("/pointages/sync", { batch });
   expectStatus(res, 200);
-  const results = res.body.results as Array<{ clientUuid: string; status: string; id?: string; reason?: string }>;
+  const results = res.body.results as Array<{
+    clientUuid: string;
+    status: string;
+    id?: string;
+    reason?: string;
+  }>;
   results.forEach((r, i) => {
     if (r.id) track("pointage", r.id, `${items[i].workerId}@${items[i].date}`);
   });
@@ -149,7 +161,9 @@ export async function readXlsx(buffer: Buffer): Promise<string[][]> {
   const ws = wb.worksheets[0];
   const rows: string[][] = [];
   ws.eachRow({ includeEmpty: false }, (row) => {
-    const values = (row.values as any[]).slice(1).map((v) => (v == null ? "" : String(v?.text ?? v)));
+    const values = (row.values as any[])
+      .slice(1)
+      .map((v) => (v == null ? "" : String(v?.text ?? v)));
     rows.push(values);
   });
   return rows;

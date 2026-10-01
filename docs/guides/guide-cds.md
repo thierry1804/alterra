@@ -50,10 +50,10 @@ Après déverrouillage, redirection automatique vers **Validation hebdomadaire**
 
 Barre de navigation :
 
-| Onglet | Chemin | Rôle |
-|--------|--------|------|
-| Validation | `/validation` | Travail principal |
-| Sync | `/sync` | État synchronisation |
+| Onglet     | Chemin        | Rôle                 |
+| ---------- | ------------- | -------------------- |
+| Validation | `/validation` | Travail principal    |
+| Sync       | `/sync`       | État synchronisation |
 
 Bandeau permanent en haut : **En ligne** / **Hors ligne**, file d'attente, **Forcer** sync.
 
@@ -102,12 +102,12 @@ Pour chaque MOC :
 
 Écran **Synchronisation** (`/sync`) :
 
-| Indicateur | Signification |
-|------------|---------------|
-| En ligne | Réseau disponible |
-| N en attente | Pointages ou médias non encore envoyés |
-| Dernière sync | Horodatage dernière réussite |
-| Sync auto | Toutes les 60 secondes si en ligne |
+| Indicateur    | Signification                          |
+| ------------- | -------------------------------------- |
+| En ligne      | Réseau disponible                      |
+| N en attente  | Pointages ou médias non encore envoyés |
+| Dernière sync | Horodatage dernière réussite           |
+| Sync auto     | Toutes les 60 secondes si en ligne     |
 
 **Forcer la synchronisation** : à utiliser après retour réseau ou fin de journée.
 
@@ -125,12 +125,12 @@ Historique des dernières opérations sync (succès, erreurs, passage offline).
 
 ## 6. Semaine de travail type
 
-| Jour | Action CDS |
-|------|------------|
-| Lundi–vendredi | Contrôle spot bio + validation progressive |
-| Vendredi 16h | **Actualiser** → traiter les PENDING restants |
-| Vendredi 17h | Vérifier sync OK (0 en attente) |
-| Lundi admin | Bordereau MVola généré après validation complète |
+| Jour           | Action CDS                                       |
+| -------------- | ------------------------------------------------ |
+| Lundi–vendredi | Contrôle spot bio + validation progressive       |
+| Vendredi 16h   | **Actualiser** → traiter les PENDING restants    |
+| Vendredi 17h   | Vérifier sync OK (0 en attente)                  |
+| Lundi admin    | Bordereau MVola généré après validation complète |
 
 ---
 
@@ -150,13 +150,13 @@ La PWA conserve la session PIN locale ; seules les actions métier serveur sont 
 
 ## 8. Dépannage CDS
 
-| Symptôme | Action |
-|----------|--------|
-| Bouton Valider grisé | Bio KO ou DOUBT — refaire contrôle bio |
-| Liste vide | Semaine déjà validée ou pas de saisie CDE |
-| Sync bloquée | Onglet Sync → Forcer ; vérifier 4G |
-| PIN oublié | Admin reset + reconfiguration PIN |
-| Caméra refusée | Paramètres Android → autorisations Chrome |
+| Symptôme             | Action                                    |
+| -------------------- | ----------------------------------------- |
+| Bouton Valider grisé | Bio KO ou DOUBT — refaire contrôle bio    |
+| Liste vide           | Semaine déjà validée ou pas de saisie CDE |
+| Sync bloquée         | Onglet Sync → Forcer ; vérifier 4G        |
+| PIN oublié           | Admin reset + reconfiguration PIN         |
+| Caméra refusée       | Paramètres Android → autorisations Chrome |
 
 ---
 
@@ -175,4 +175,4 @@ La PWA conserve la session PIN locale ; seules les actions métier serveur sont 
 
 ---
 
-*Document généré pour ALTERRA V1 — Task 24 DOC*
+_Document généré pour ALTERRA V1 — Task 24 DOC_

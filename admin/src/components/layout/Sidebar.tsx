@@ -51,7 +51,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={onToggle}
           aria-label={collapsed ? "Déplier le menu" : "Replier le menu"}
         >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
@@ -104,9 +108,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {!collapsed && (
         <div className="border-t border-zinc-200 px-3 py-2.5">
           <div className="h-0.5 w-8 rounded-full bg-earth" aria-hidden />
-          <p className="mt-2 text-[11px] leading-tight text-subtle">
-            Suivi terrain · Madagascar
-          </p>
+          <p className="mt-2 text-[11px] leading-tight text-subtle">Suivi terrain · Madagascar</p>
         </div>
       )}
     </aside>

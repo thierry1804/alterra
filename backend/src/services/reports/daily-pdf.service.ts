@@ -1,10 +1,7 @@
 import { BUCKETS, minioClient, presignedDownloadUrl } from "../storage/minio.js";
 import { notifyAdminsDailyReportReady } from "../notifications/email.service.js";
 import { htmlToPdfBuffer, renderDailyReportHtml } from "./pdf-render.service.js";
-import {
-  buildDailyReportViewModel,
-  type DailyPdfJobInput,
-} from "./daily-data.service.js";
+import { buildDailyReportViewModel, type DailyPdfJobInput } from "./daily-data.service.js";
 
 export interface DailyPdfJobResult {
   siteId: string;

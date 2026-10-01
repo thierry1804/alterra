@@ -16,29 +16,29 @@
 
 ### Ordre du jour (3h30)
 
-| Heure | Sujet |
-|-------|-------|
-| 0:00 | Rappel périmètre V2 vs V1 |
-| 0:30 | Parcours demande nouvelle activité (CDE/CDS → Admin) |
-| 1:15 | Parcours demande nouveau MOC |
-| 2:00 | Clarification pointage (photo, question CDS) |
-| 2:45 | Arbitrage MoSCoW + estimation |
-| 3:15 | Prochaines étapes maquettes |
+| Heure | Sujet                                                |
+| ----- | ---------------------------------------------------- |
+| 0:00  | Rappel périmètre V2 vs V1                            |
+| 0:30  | Parcours demande nouvelle activité (CDE/CDS → Admin) |
+| 1:15  | Parcours demande nouveau MOC                         |
+| 2:00  | Clarification pointage (photo, question CDS)         |
+| 2:45  | Arbitrage MoSCoW + estimation                        |
+| 3:15  | Prochaines étapes maquettes                          |
 
 ### Décisions à documenter
 
-| # | Sujet | Décision | Statut |
-|---|-------|----------|--------|
-| D1 | Qui crée une activité en V2 ? | | ☐ |
-| D2 | Délai max réponse Admin demande | | ☐ |
-| D3 | Clarification : blocage validation ? | | ☐ |
-| D4 | Notifications push / SMS ? | | ☐ |
+| #   | Sujet                                | Décision | Statut |
+| --- | ------------------------------------ | -------- | ------ |
+| D1  | Qui crée une activité en V2 ?        |          | ☐      |
+| D2  | Délai max réponse Admin demande      |          | ☐      |
+| D3  | Clarification : blocage validation ? |          | ☐      |
+| D4  | Notifications push / SMS ?           |          | ☐      |
 
 ### Actions
 
 | Action | Owner | Échéance |
-|--------|-------|----------|
-| | | |
+| ------ | ----- | -------- |
+|        |       |          |
 
 ---
 
@@ -52,22 +52,22 @@
 
 ### Ordre du jour (3h30)
 
-| Heure | Sujet |
-|-------|-------|
-| 0:00 | Contraintes Web NFC Chrome Android |
-| 0:30 | Wireframe écran scan + feedback |
-| 1:15 | Gestion badge inconnu / révoqué |
-| 2:00 | Hiérarchie Site → Zone → Parcelle |
-| 2:45 | Carte Admin : couches, filtres |
-| 3:15 | Plan test flotte NFC |
+| Heure | Sujet                              |
+| ----- | ---------------------------------- |
+| 0:00  | Contraintes Web NFC Chrome Android |
+| 0:30  | Wireframe écran scan + feedback    |
+| 1:15  | Gestion badge inconnu / révoqué    |
+| 2:00  | Hiérarchie Site → Zone → Parcelle  |
+| 2:45  | Carte Admin : couches, filtres     |
+| 3:15  | Plan test flotte NFC               |
 
 ### Décisions
 
-| # | Sujet | Décision | Statut |
-|---|-------|----------|--------|
-| D5 | Obligation scan avant saisie lot ? | | ☐ |
-| D6 | Parcelle obligatoire sur pointage ? | | ☐ |
-| D7 | Source tuiles carte (OSM / MapTiler) | | ☐ |
+| #   | Sujet                                | Décision | Statut |
+| --- | ------------------------------------ | -------- | ------ |
+| D5  | Obligation scan avant saisie lot ?   |          | ☐      |
+| D6  | Parcelle obligatoire sur pointage ?  |          | ☐      |
+| D7  | Source tuiles carte (OSM / MapTiler) |          | ☐      |
 
 ---
 
@@ -77,9 +77,9 @@
 - [ ] Flotte NFC checklist lancée
 - [ ] Go Sprint 7 (Tasks 28–30)
 
-**Date validation :** ___/___/2026  
+**Date validation :** _**/**_/2026  
 **Signataire PO :**
 
 ---
 
-*Task 27 — template à compléter en atelier réel*
+_Task 27 — template à compléter en atelier réel_

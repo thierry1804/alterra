@@ -2,11 +2,11 @@
 
 Copier les lignes du tableau au fil des incidents. Une ligne = un ticket.
 
-| ID | Date/heure | Site | Sévérité | Rôle | Symptôme | Contournement | Correctif | Statut | Clôture |
-|----|------------|------|----------|------|----------|---------------|-----------|--------|---------|
-| HC-001 | | | P1/P2/P3 | CDE/CDS/Admin | | | | Ouvert / En cours / Résolu | |
-| HC-002 | | | | | | | | | |
-| HC-003 | | | | | | | | | |
+| ID     | Date/heure | Site | Sévérité | Rôle          | Symptôme | Contournement | Correctif | Statut                     | Clôture |
+| ------ | ---------- | ---- | -------- | ------------- | -------- | ------------- | --------- | -------------------------- | ------- |
+| HC-001 |            |      | P1/P2/P3 | CDE/CDS/Admin |          |               |           | Ouvert / En cours / Résolu |         |
+| HC-002 |            |      |          |               |          |               |           |                            |         |
+| HC-003 |            |      |          |               |          |               |           |                            |         |
 
 ## Légende statuts
 
@@ -24,4 +24,4 @@ Copier les lignes du tableau au fil des incidents. Une ligne = un ticket.
 
 ---
 
-*Template Task 25 — à archiver en fin hypercare dans `docs/retrospective-v1.md`*
+_Template Task 25 — à archiver en fin hypercare dans `docs/retrospective-v1.md`_

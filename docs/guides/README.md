@@ -4,17 +4,17 @@ Sources Markdown versionnées dans ce dossier. Les PDF sont générés pour diff
 
 ## Fichiers
 
-| Rôle | Source | PDF |
-|------|--------|-----|
-| Administrateur | `guide-admin.md` | `guide-admin.pdf` |
-| Chef de service | `guide-cds.md` | `guide-cds.pdf` |
-| Chef d'équipe | `guide-cde.md` | `guide-cde.pdf` |
-| Formation pilote | `formation-pilote.md` | — (facultatif) |
+| Rôle             | Source                | PDF               |
+| ---------------- | --------------------- | ----------------- |
+| Administrateur   | `guide-admin.md`      | `guide-admin.pdf` |
+| Chef de service  | `guide-cds.md`        | `guide-cds.pdf`   |
+| Chef d'équipe    | `guide-cde.md`        | `guide-cde.pdf`   |
+| Formation pilote | `formation-pilote.md` | — (facultatif)    |
 
 ## Guides techniques
 
-| Sujet | Source |
-|-------|--------|
+| Sujet                                                  | Source                |
+| ------------------------------------------------------ | --------------------- |
 | Démarrage Docker (dev / stack complète / app complète) | `demarrage-docker.md` |
 
 ## Régénérer les PDF

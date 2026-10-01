@@ -3,24 +3,15 @@ import { useCallback, useState } from "react";
 import { isAxiosError } from "axios";
 import { Upload } from "lucide-react";
 import { api } from "../../lib/api";
-import type { ImportColumnsResult, ImportCommitResult, ImportPreview } from "../../lib/referentials";
+import type {
+  ImportColumnsResult,
+  ImportCommitResult,
+  ImportPreview,
+} from "../../lib/referentials";
 import { Button } from "../ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Select } from "../ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { toast } from "../../hooks/use-toast";
 
 interface ImportDialogProps {
@@ -89,7 +80,11 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Lecture du fichier impossible", description: String(message), variant: "destructive" });
+      toast({
+        title: "Lecture du fichier impossible",
+        description: String(message),
+        variant: "destructive",
+      });
     },
   });
 
@@ -125,8 +120,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
     },
     onSuccess: (data) => {
       const skippedCount = data.skippedErrors ?? 0;
-      const skipped =
-        skippedCount > 0 ? `, ${skippedCount} ligne(s) en erreur ignorée(s)` : "";
+      const skipped = skippedCount > 0 ? `, ${skippedCount} ligne(s) en erreur ignorée(s)` : "";
       toast({
         title: "Import terminé",
         description: `${data.created} créé(s), ${data.updated} mis à jour${skipped}`,
@@ -148,7 +142,11 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
 
   async function handleFile(file: File) {
     if (!file.name.endsWith(".xlsx")) {
-      toast({ title: "Format invalide", description: "Fichier .xlsx requis", variant: "destructive" });
+      toast({
+        title: "Format invalide",
+        description: "Fichier .xlsx requis",
+        variant: "destructive",
+      });
       return;
     }
     const base64 = await fileToBase64(file);
@@ -185,7 +183,8 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
         <DialogHeader>
           <DialogTitle>Import Excel MOC</DialogTitle>
           <DialogDescription>
-            {step === "upload" && "Choisissez un fichier .xlsx, puis associez ses colonnes aux champs ALTERRA."}
+            {step === "upload" &&
+              "Choisissez un fichier .xlsx, puis associez ses colonnes aux champs ALTERRA."}
             {step === "mapping" && "Associez chaque champ requis à une colonne de votre fichier."}
             {step === "preview" && "Vérifiez les lignes avant import."}
           </DialogDescription>
@@ -329,9 +328,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
               {preview.valid.filter((r) => r.existingWorkerId).length} à mettre à jour (MVola déjà
               en base), {preview.errors.length} erreur(s).
             </p>
-            {importMutation.isPending && (
-              <p className="text-sm text-zinc-500">Import en cours…</p>
-            )}
+            {importMutation.isPending && <p className="text-sm text-zinc-500">Import en cours…</p>}
             {preview.errors.length > 0 && (
               <div className="max-h-80 overflow-y-auto rounded-md border border-zinc-200">
                 <Table>

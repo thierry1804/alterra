@@ -8,24 +8,24 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Vite + React + Tailwind + shadcn/ui (Button, Input, Table, Dialog, Toast) | ✅ |
-| 2 | Router + guards vues par rôle (`RoleGuard`, `GuestRoute`) | ✅ |
-| 3 | Layout sidebar rétractable 248px + header | ✅ |
-| 4 | Login MFA + intercepteur axios refresh token | ✅ |
-| 5 | `npm run lint -w admin && npm run build -w admin` | ✅ PASS |
+| Step | Item                                                                      | Status  |
+| ---- | ------------------------------------------------------------------------- | ------- |
+| 1    | Vite + React + Tailwind + shadcn/ui (Button, Input, Table, Dialog, Toast) | ✅      |
+| 2    | Router + guards vues par rôle (`RoleGuard`, `GuestRoute`)                 | ✅      |
+| 3    | Layout sidebar rétractable 248px + header                                 | ✅      |
+| 4    | Login MFA + intercepteur axios refresh token                              | ✅      |
+| 5    | `npm run lint -w admin && npm run build -w admin`                         | ✅ PASS |
 
 ---
 
 ## Composants UI (shadcn-style)
 
-| Composant | Fichier |
-| --------- | ------- |
-| Button | `components/ui/button.tsx` |
-| Input | `components/ui/input.tsx` |
-| Table | `components/ui/table.tsx` |
-| Dialog | `components/ui/dialog.tsx` |
+| Composant       | Fichier                                           |
+| --------------- | ------------------------------------------------- |
+| Button          | `components/ui/button.tsx`                        |
+| Input           | `components/ui/input.tsx`                         |
+| Table           | `components/ui/table.tsx`                         |
+| Dialog          | `components/ui/dialog.tsx`                        |
 | Toast / Toaster | `hooks/use-toast.ts`, `components/ui/toaster.tsx` |
 
 Dépendances ajoutées : `clsx`, `tailwind-merge`, `class-variance-authority`, `@radix-ui/react-dialog`, `@radix-ui/react-slot`, `@radix-ui/react-toast`, `lucide-react`.
@@ -34,25 +34,25 @@ Dépendances ajoutées : `clsx`, `tailwind-merge`, `class-variance-authority`, `
 
 ## Layout & navigation
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `AppLayout.tsx` | Shell principal (sidebar + header + outlet) |
-| `Sidebar.tsx` | Navigation filtrée par rôle, repli 248px → 56px |
-| `RoleGuard.tsx` | Restriction routes par rôle |
-| `ProtectedRoute.tsx` | Auth guard + `GuestRoute` pour `/login` |
-| `navigation.ts` | Items nav ADMIN / CHEF_SERVICE |
+| Fichier              | Rôle                                            |
+| -------------------- | ----------------------------------------------- |
+| `AppLayout.tsx`      | Shell principal (sidebar + header + outlet)     |
+| `Sidebar.tsx`        | Navigation filtrée par rôle, repli 248px → 56px |
+| `RoleGuard.tsx`      | Restriction routes par rôle                     |
+| `ProtectedRoute.tsx` | Auth guard + `GuestRoute` pour `/login`         |
+| `navigation.ts`      | Items nav ADMIN / CHEF_SERVICE                  |
 
 ---
 
 ## Routes
 
-| Path | Rôles | Page |
-| ---- | ----- | ---- |
-| `/login` | invité | Login (+ MFA) |
-| `/` | ADMIN, CHEF_SERVICE | Dashboard |
-| `/pointages` | ADMIN, CHEF_SERVICE | Placeholder |
-| `/sites`, `/activities`, `/workers`, `/users`, `/payments`, `/reports`, `/audit` | ADMIN | Placeholder |
-| `/forbidden` | — | Accès refusé |
+| Path                                                                             | Rôles               | Page          |
+| -------------------------------------------------------------------------------- | ------------------- | ------------- |
+| `/login`                                                                         | invité              | Login (+ MFA) |
+| `/`                                                                              | ADMIN, CHEF_SERVICE | Dashboard     |
+| `/pointages`                                                                     | ADMIN, CHEF_SERVICE | Placeholder   |
+| `/sites`, `/activities`, `/workers`, `/users`, `/payments`, `/reports`, `/audit` | ADMIN               | Placeholder   |
+| `/forbidden`                                                                     | —                   | Accès refusé  |
 
 ---
 

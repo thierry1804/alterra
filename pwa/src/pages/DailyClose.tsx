@@ -144,7 +144,10 @@ export default function DailyClose() {
       </header>
 
       <ContextHelp id="daily-close" title="Clôture journalière">
-        <p>Vérifiez les compteurs avant signature. Si des pointages restent en attente, une confirmation explicite est requise.</p>
+        <p>
+          Vérifiez les compteurs avant signature. Si des pointages restent en attente, une
+          confirmation explicite est requise.
+        </p>
         <GlossaryTerm term="Semaine ISO">Période de paie associée à la date clôturée.</GlossaryTerm>
       </ContextHelp>
 
@@ -196,9 +199,21 @@ export default function DailyClose() {
             {[
               { label: "Validés", value: preview.validatedCount, tone: "text-brand" },
               { label: "Travailleurs", value: preview.workerCount, tone: "text-zinc-900" },
-              { label: "En attente", value: preview.pendingCount, tone: preview.pendingCount > 0 ? "text-amber-600" : "text-zinc-400" },
-              { label: "Précisions", value: preview.needsClarificationCount, tone: preview.needsClarificationCount > 0 ? "text-people-fg" : "text-zinc-400" },
-              { label: "Rejetés", value: preview.rejectedCount, tone: preview.rejectedCount > 0 ? "text-red-600" : "text-zinc-400" },
+              {
+                label: "En attente",
+                value: preview.pendingCount,
+                tone: preview.pendingCount > 0 ? "text-amber-600" : "text-zinc-400",
+              },
+              {
+                label: "Précisions",
+                value: preview.needsClarificationCount,
+                tone: preview.needsClarificationCount > 0 ? "text-people-fg" : "text-zinc-400",
+              },
+              {
+                label: "Rejetés",
+                value: preview.rejectedCount,
+                tone: preview.rejectedCount > 0 ? "text-red-600" : "text-zinc-400",
+              },
             ].map((stat) => (
               <div key={stat.label} className="rounded-md border border-zinc-200 py-2">
                 <dd className={cn("alterra-num text-lg font-semibold", stat.tone)}>{stat.value}</dd>
@@ -258,9 +273,7 @@ export default function DailyClose() {
       </section>
 
       {jobStatus?.state === "completed" && jobStatus.result?.reportUrl && (
-        <p className="text-xs text-zinc-500">
-          Rapport archivé ({jobStatus.result.reportKey}).
-        </p>
+        <p className="text-xs text-zinc-500">Rapport archivé ({jobStatus.result.reportKey}).</p>
       )}
     </div>
   );

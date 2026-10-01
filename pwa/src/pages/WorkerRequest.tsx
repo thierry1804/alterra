@@ -188,7 +188,7 @@ export default function WorkerRequest() {
               id="wkr-mvola"
               value={mvolaNumber}
               onChange={(event) => setMvolaNumber(event.target.value)}
-              placeholder="034…"
+              placeholder="034…, 036…, 038…"
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
@@ -270,7 +270,9 @@ export default function WorkerRequest() {
         {requests.length === 0 && (
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
             <p>Aucune demande enregistrée.</p>
-            <p className="mt-1 text-zinc-600">Utilisez le formulaire ci-dessus pour proposer un nouveau travailleur.</p>
+            <p className="mt-1 text-zinc-600">
+              Utilisez le formulaire ci-dessus pour proposer un nouveau travailleur.
+            </p>
           </div>
         )}
         {requests.map((request) => (
@@ -293,9 +295,7 @@ export default function WorkerRequest() {
               </span>
             </div>
             <p className="mt-3 text-sm text-zinc-700">{request.justification}</p>
-            {request.proposedPhotoKey && (
-              <p className="mt-1 text-xs text-zinc-500">Photo jointe</p>
-            )}
+            {request.proposedPhotoKey && <p className="mt-1 text-xs text-zinc-500">Photo jointe</p>}
             {request.decisionReason && (
               <p className="mt-2 text-xs text-zinc-500">Décision : {request.decisionReason}</p>
             )}

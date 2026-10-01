@@ -6,23 +6,23 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — CDS CRUD équipes | ✅ | Nom, chef, membres (autocomplétion MOC) |
-| 2 — CDE membres locaux | ✅ | Ajout/retrait MOC, pas de CRUD structure |
+| Step                   | Statut | Détail                                   |
+| ---------------------- | ------ | ---------------------------------------- |
+| 1 — CDS CRUD équipes   | ✅     | Nom, chef, membres (autocomplétion MOC)  |
+| 2 — CDE membres locaux | ✅     | Ajout/retrait MOC, pas de CRUD structure |
 
 ## API
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| GET | `/teams?active=` | CDS, CDE, ADMIN |
-| GET | `/teams/:id` | CDS, CDE (own), ADMIN |
-| GET | `/teams/chef-candidates` | CDS, ADMIN |
-| POST | `/teams` | CDS, ADMIN |
-| PATCH | `/teams/:id` | CDS, ADMIN |
-| DELETE | `/teams/:id` | CDS, ADMIN (désactive si MOC présents) |
-| POST | `/teams/:id/members` | CDS, CDE (own team) |
-| DELETE | `/teams/:id/members/:workerId` | CDS, CDE (own team) |
+| Méthode | Route                          | Rôle                                   |
+| ------- | ------------------------------ | -------------------------------------- |
+| GET     | `/teams?active=`               | CDS, CDE, ADMIN                        |
+| GET     | `/teams/:id`                   | CDS, CDE (own), ADMIN                  |
+| GET     | `/teams/chef-candidates`       | CDS, ADMIN                             |
+| POST    | `/teams`                       | CDS, ADMIN                             |
+| PATCH   | `/teams/:id`                   | CDS, ADMIN                             |
+| DELETE  | `/teams/:id`                   | CDS, ADMIN (désactive si MOC présents) |
+| POST    | `/teams/:id/members`           | CDS, CDE (own team)                    |
+| DELETE  | `/teams/:id/members/:workerId` | CDS, CDE (own team)                    |
 
 ## Fichiers
 

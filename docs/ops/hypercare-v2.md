@@ -14,21 +14,21 @@ Documents liés :
 
 ## 1. Périmètre
 
-| Inclus | Exclus |
-|--------|--------|
+| Inclus                                                        | Exclus                                    |
+| ------------------------------------------------------------- | ----------------------------------------- |
 | Bugs P1/P2 modules V2 (NFC, bio cache, workflows, map, daily) | Nouvelles fonctionnalités hors backlog V2 |
-| Hotfix staging/prod pilote | Déploiement sites non pilotes |
-| Ajustements UX mineurs workflows | Refonte complète PWA |
-| 2 bilans hebdomadaires (fin S1, fin S2) | Formation multi-sites |
+| Hotfix staging/prod pilote                                    | Déploiement sites non pilotes             |
+| Ajustements UX mineurs workflows                              | Refonte complète PWA                      |
+| 2 bilans hebdomadaires (fin S1, fin S2)                       | Formation multi-sites                     |
 
 ---
 
 ## 2. Astreinte
 
-| Semaine | Focus |
-|---------|-------|
-| S1 | NFC compatibilité appareils, sync présence, bio offline |
-| S2 | Workflows demandes bout-en-bout, clôture journalière, carto admin |
+| Semaine | Focus                                                             |
+| ------- | ----------------------------------------------------------------- |
+| S1      | NFC compatibilité appareils, sync présence, bio offline           |
+| S2      | Workflows demandes bout-en-bout, clôture journalière, carto admin |
 
 Canaux identiques à l'hypercare V1 (téléphone astreinte, email support, canal projet).
 

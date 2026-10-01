@@ -32,11 +32,11 @@ Identique au CDS : Chrome → `app.alterra.mg` → **Ajouter à l'écran d'accue
 
 ## 3. Navigation CDE
 
-| Onglet | Chemin | Usage |
-|--------|--------|-------|
-| Activité | `/` | Choisir jour + tâche |
-| Saisie lot | `/batch` | Quantités par MOC |
-| Sync | `/sync` | État file d'attente |
+| Onglet     | Chemin   | Usage                |
+| ---------- | -------- | -------------------- |
+| Activité   | `/`      | Choisir jour + tâche |
+| Saisie lot | `/batch` | Quantités par MOC    |
+| Sync       | `/sync`  | État file d'attente  |
 
 `[Capture : navigation CDE trois onglets]`
 
@@ -146,26 +146,26 @@ Si le CDS ou l'admin rejette un pointage :
 
 ## 9. Journée type CDE
 
-| Heure | Action |
-|-------|--------|
-| 07:00 | Ouvrir PWA → vérifier En ligne |
-| 07:15 | Activité du jour → choix tâche |
-| 07:30–11:30 | Saisie lot matin → Enregistrer |
-| 14:00 | Nouvelle activité si changement tâche |
-| 16:30 | Dernier lot + Sync forcée |
-| 16:45 | Confirmer 0 en attente |
+| Heure       | Action                                |
+| ----------- | ------------------------------------- |
+| 07:00       | Ouvrir PWA → vérifier En ligne        |
+| 07:15       | Activité du jour → choix tâche        |
+| 07:30–11:30 | Saisie lot matin → Enregistrer        |
+| 14:00       | Nouvelle activité si changement tâche |
+| 16:30       | Dernier lot + Sync forcée             |
+| 16:45       | Confirmer 0 en attente                |
 
 ---
 
 ## 10. Dépannage CDE
 
-| Problème | Solution |
-|----------|----------|
-| Aucune activité en cache | Se connecter en ligne une fois |
-| Enregistrement impossible | Quantité > 0 sur au moins un MOC |
-| Sync échoue | Vérifier réseau ; réessayer Forcer |
-| Mauvaise activité | **Changer** depuis saisie lot |
-| PIN bloqué | Contacter admin reset |
+| Problème                  | Solution                           |
+| ------------------------- | ---------------------------------- |
+| Aucune activité en cache  | Se connecter en ligne une fois     |
+| Enregistrement impossible | Quantité > 0 sur au moins un MOC   |
+| Sync échoue               | Vérifier réseau ; réessayer Forcer |
+| Mauvaise activité         | **Changer** depuis saisie lot      |
+| PIN bloqué                | Contacter admin reset              |
 
 ---
 
@@ -185,4 +185,4 @@ Si le CDS ou l'admin rejette un pointage :
 
 ---
 
-*Document généré pour ALTERRA V1 — Task 24 DOC*
+_Document généré pour ALTERRA V1 — Task 24 DOC_

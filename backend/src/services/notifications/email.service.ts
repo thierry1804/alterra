@@ -56,9 +56,7 @@ async function sendViaMailgun(to: string[], subject: string, text: string): Prom
   }
 }
 
-export async function notifyAdminsWeeklyReportsReady(
-  input: WeeklyReportEmailInput,
-): Promise<void> {
+export async function notifyAdminsWeeklyReportsReady(input: WeeklyReportEmailInput): Promise<void> {
   const recipients = await listAdminEmails();
   if (recipients.length === 0) {
     logger.warn("No admin email configured for weekly report notification");
@@ -87,9 +85,7 @@ export interface DailyReportEmailInput {
   reportUrl?: string;
 }
 
-export async function notifyAdminsDailyReportReady(
-  input: DailyReportEmailInput,
-): Promise<void> {
+export async function notifyAdminsDailyReportReady(input: DailyReportEmailInput): Promise<void> {
   const recipients = await listAdminEmails();
   if (recipients.length === 0) {
     logger.warn("No admin email configured for daily report notification");

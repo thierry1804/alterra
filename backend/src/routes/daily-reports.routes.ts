@@ -1,19 +1,13 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 import { z } from "zod";
-import {
-  enqueueDailyPdfJob,
-  getDailyPdfJobStatus,
-} from "../jobs/pdf.worker.js";
+import { enqueueDailyPdfJob, getDailyPdfJobStatus } from "../jobs/pdf.worker.js";
 import { requireAuth } from "../middleware/auth.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
-import {
-  getDailyClosePreview,
-  parseDailyDate,
-} from "../services/reports/daily-data.service.js";
+import { getDailyClosePreview, parseDailyDate } from "../services/reports/daily-data.service.js";
 
 export const dailyReportsRouter = Router();
 

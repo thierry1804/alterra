@@ -9,14 +9,14 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Login Argon2id + JWT HS256 (access 15 min) | ✅ |
-| 2 | Refresh token HttpOnly 7j avec rotation + blacklist Redis | ✅ |
-| 3 | Logout révocation DB + blacklist + clear cookie | ✅ |
-| 4 | MFA TOTP Admin (secret chiffré AES-256-GCM) | ✅ |
-| 5 | Tests unitaires auth (vitest + supertest, mocks Prisma) | ✅ |
-| 6 | `npm run lint -w backend && npm run test -w backend` | ✅ PASS |
+| Step | Item                                                      | Status  |
+| ---- | --------------------------------------------------------- | ------- |
+| 1    | Login Argon2id + JWT HS256 (access 15 min)                | ✅      |
+| 2    | Refresh token HttpOnly 7j avec rotation + blacklist Redis | ✅      |
+| 3    | Logout révocation DB + blacklist + clear cookie           | ✅      |
+| 4    | MFA TOTP Admin (secret chiffré AES-256-GCM)               | ✅      |
+| 5    | Tests unitaires auth (vitest + supertest, mocks Prisma)   | ✅      |
+| 6    | `npm run lint -w backend && npm run test -w backend`      | ✅ PASS |
 
 ---
 
@@ -92,12 +92,12 @@ npm run test -w backend  → PASS
 
 ## Review fixes (2026-07-21)
 
-| Fix | Détail | Status |
-| --- | ------ | ------ |
-| Rotation atomique | `$transaction` + `updateMany` où `revokedAt: null` ; count=0 → 401 | ✅ |
-| MFA QR code | `qrcode` → `qrCodeDataUrl` dans `POST /auth/mfa/setup` | ✅ |
-| Pending MFA Redis | `storePendingMfaSecret` / `getPendingMfaSecret` / `deletePendingMfaSecret` | ✅ |
-| Tests auth | refresh OK, token réutilisé → 401, logout, MFA setup QR | ✅ |
+| Fix               | Détail                                                                     | Status |
+| ----------------- | -------------------------------------------------------------------------- | ------ |
+| Rotation atomique | `$transaction` + `updateMany` où `revokedAt: null` ; count=0 → 401         | ✅     |
+| MFA QR code       | `qrcode` → `qrCodeDataUrl` dans `POST /auth/mfa/setup`                     | ✅     |
+| Pending MFA Redis | `storePendingMfaSecret` / `getPendingMfaSecret` / `deletePendingMfaSecret` | ✅     |
+| Tests auth        | refresh OK, token réutilisé → 401, logout, MFA setup QR                    | ✅     |
 
 ### Tests & lint (post-review)
 
@@ -114,14 +114,14 @@ npm run test -w backend  → PASS
 
 ## Fichiers touchés
 
-| Fichier | Action |
-| ------- | ------ |
-| `backend/src/lib/redis.ts` | Créé |
-| `backend/src/services/auth/refresh.service.ts` | Créé |
-| `backend/src/services/auth/mfa.service.ts` | Créé |
-| `backend/src/lib/jwt.ts` | Modifié |
-| `backend/src/routes/auth.routes.ts` | Modifié |
-| `backend/src/__tests__/auth.test.ts` | Créé |
-| `backend/vitest.config.ts` | Modifié |
-| `backend/package.json` | +otplib, +qrcode |
-| `.env.example` | +MFA_ENCRYPTION_KEY |
+| Fichier                                        | Action              |
+| ---------------------------------------------- | ------------------- |
+| `backend/src/lib/redis.ts`                     | Créé                |
+| `backend/src/services/auth/refresh.service.ts` | Créé                |
+| `backend/src/services/auth/mfa.service.ts`     | Créé                |
+| `backend/src/lib/jwt.ts`                       | Modifié             |
+| `backend/src/routes/auth.routes.ts`            | Modifié             |
+| `backend/src/__tests__/auth.test.ts`           | Créé                |
+| `backend/vitest.config.ts`                     | Modifié             |
+| `backend/package.json`                         | +otplib, +qrcode    |
+| `.env.example`                                 | +MFA_ENCRYPTION_KEY |

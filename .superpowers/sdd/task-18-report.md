@@ -7,26 +7,26 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | Queue idempotente clientUuid, ping 60s, batch ≤100 | ✅ |
-| 2 | Retry backoff exponentiel, serveur autoritaire (ConflictResolver) | ✅ |
-| 3 | Indicateur permanent SyncStatusBar | ✅ |
-| 4 | Forcer sync + journal récent (page Sync) | ✅ |
-| 5 | build PWA | ✅ PASS |
+| Step | Item                                                              | Status  |
+| ---- | ----------------------------------------------------------------- | ------- |
+| 1    | Queue idempotente clientUuid, ping 60s, batch ≤100                | ✅      |
+| 2    | Retry backoff exponentiel, serveur autoritaire (ConflictResolver) | ✅      |
+| 3    | Indicateur permanent SyncStatusBar                                | ✅      |
+| 4    | Forcer sync + journal récent (page Sync)                          | ✅      |
+| 5    | build PWA                                                         | ✅ PASS |
 
 ---
 
 ## Fichiers
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `sync/SyncManager.ts` | Orchestration, état, log persisté, forceSync |
-| `sync/ConflictResolver.ts` | Application résultats serveur, recovery |
-| `sync/sync-types.ts` | Types partagés |
-| `components/sync/SyncStatusBar.tsx` | Barre statut globale |
-| `hooks/useSyncState.ts` | Abonnement React à l'état sync |
-| `pages/Sync.tsx` | Détail, rejetés, journal |
+| Fichier                             | Rôle                                         |
+| ----------------------------------- | -------------------------------------------- |
+| `sync/SyncManager.ts`               | Orchestration, état, log persisté, forceSync |
+| `sync/ConflictResolver.ts`          | Application résultats serveur, recovery      |
+| `sync/sync-types.ts`                | Types partagés                               |
+| `components/sync/SyncStatusBar.tsx` | Barre statut globale                         |
+| `hooks/useSyncState.ts`             | Abonnement React à l'état sync               |
+| `pages/Sync.tsx`                    | Détail, rejetés, journal                     |
 
 ## Comportement
 

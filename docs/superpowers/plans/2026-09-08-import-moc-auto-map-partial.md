@@ -23,27 +23,29 @@
 
 ## File Structure
 
-| Fichier | Rôle |
-|---|---|
-| `backend/src/services/import/suggest-column-mapping.ts` | Normalize, alias, fuzzy score, `suggestColumnMapping` |
-| `backend/src/services/import/worker-import-fields.ts` | Alias par champ (`WORKER_IMPORT_FIELD_ALIASES`) |
+| Fichier                                                 | Rôle                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| `backend/src/services/import/suggest-column-mapping.ts` | Normalize, alias, fuzzy score, `suggestColumnMapping`        |
+| `backend/src/services/import/worker-import-fields.ts`   | Alias par champ (`WORKER_IMPORT_FIELD_ALIASES`)              |
 | `backend/src/services/import/workers-import.service.ts` | Branche `suggestedMapping` dans `detectWorkersImportColumns` |
-| `backend/src/routes/workers.routes.ts` | Import partiel + réponse `skippedErrors` |
-| `backend/src/__tests__/suggest-column-mapping.test.ts` | Tests unitaires scoring |
-| `backend/src/__tests__/referentials.test.ts` | Tests route import partiel / columns |
-| `admin/src/lib/referentials.ts` | Types `suggestedMapping`, réponse import |
-| `admin/src/components/workers/ImportDialog.tsx` | Prefill mapping, bouton partiel, pending UI |
+| `backend/src/routes/workers.routes.ts`                  | Import partiel + réponse `skippedErrors`                     |
+| `backend/src/__tests__/suggest-column-mapping.test.ts`  | Tests unitaires scoring                                      |
+| `backend/src/__tests__/referentials.test.ts`            | Tests route import partiel / columns                         |
+| `admin/src/lib/referentials.ts`                         | Types `suggestedMapping`, réponse import                     |
+| `admin/src/components/workers/ImportDialog.tsx`         | Prefill mapping, bouton partiel, pending UI                  |
 
 ---
 
 ### Task 1: Helper suggestColumnMapping (TDD)
 
 **Files:**
+
 - Create: `backend/src/services/import/suggest-column-mapping.ts`
 - Modify: `backend/src/services/import/worker-import-fields.ts`
 - Test: `backend/src/__tests__/suggest-column-mapping.test.ts`
 
 **Interfaces:**
+
 - Consumes: `WORKER_IMPORT_FIELDS`, `WorkerImportFieldKey` from `worker-import-fields.ts`
 - Produces:
   - `WORKER_IMPORT_FIELD_ALIASES: Record<WorkerImportFieldKey, string[]>`
@@ -172,11 +174,7 @@ function levenshtein(a: string, b: string): number {
   for (let i = 1; i < rows; i++) {
     for (let j = 1; j < cols; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i]![j] = Math.min(
-        dp[i - 1]![j]! + 1,
-        dp[i]![j - 1]! + 1,
-        dp[i - 1]![j - 1]! + cost,
-      );
+      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost);
     }
   }
   return dp[a.length]![b.length]!;
@@ -196,11 +194,9 @@ function similarity(a: string, b: string): number {
 
 function bestScoreForField(fieldKey: WorkerImportFieldKey, columnLabelNorm: string): number {
   const field = WORKER_IMPORT_FIELDS.find((f) => f.key === fieldKey)!;
-  const candidates = [
-    field.key,
-    field.label,
-    ...(WORKER_IMPORT_FIELD_ALIASES[fieldKey] ?? []),
-  ].map(normalizeImportLabel);
+  const candidates = [field.key, field.label, ...(WORKER_IMPORT_FIELD_ALIASES[fieldKey] ?? [])].map(
+    normalizeImportLabel,
+  );
 
   let best = 0;
   for (const candidate of candidates) {
@@ -269,10 +265,12 @@ EOF
 ### Task 2: Brancher suggestedMapping sur /workers/import/columns
 
 **Files:**
+
 - Modify: `backend/src/services/import/workers-import.service.ts` (`DetectWorkersColumnsResult`, `detectWorkersImportColumns`)
 - Modify: `backend/src/__tests__/referentials.test.ts` (ajouter un test columns)
 
 **Interfaces:**
+
 - Consumes: `suggestColumnMapping` from Task 1
 - Produces: `DetectWorkersColumnsResult.suggestedMapping: Partial<Record<WorkerImportFieldKey, string>>`
 
@@ -366,10 +364,12 @@ EOF
 ### Task 3: Import partiel côté API
 
 **Files:**
+
 - Modify: `backend/src/routes/workers.routes.ts` (bloc `POST /workers/import` commit)
 - Modify: `backend/src/__tests__/referentials.test.ts`
 
 **Interfaces:**
+
 - Consumes: `parseWorkersWorkbook`, `importWorkersRows` (existants)
 - Produces: réponse 201 `{ imported, created, updated, skippedErrors, data }` ; 422 si `valid.length === 0`
 
@@ -382,10 +382,13 @@ it("POST /workers/import?dryRun=false imports valid rows and reports skippedErro
   vi.mocked(prisma.site.findMany).mockResolvedValue([
     { id: MOCK_SITE_ID, shortCode: "MNK" },
   ] as never);
-  vi.mocked(prisma.worker.create).mockImplementation(async ({ data }) => ({
-    id: "00000000-0000-4000-8000-000000000111",
-    ...data,
-  }) as never);
+  vi.mocked(prisma.worker.create).mockImplementation(
+    async ({ data }) =>
+      ({
+        id: "00000000-0000-4000-8000-000000000111",
+        ...data,
+      }) as never,
+  );
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("workers");
@@ -530,10 +533,12 @@ EOF
 ### Task 4: Types + UI ImportDialog
 
 **Files:**
+
 - Modify: `admin/src/lib/referentials.ts`
 - Modify: `admin/src/components/workers/ImportDialog.tsx`
 
 **Interfaces:**
+
 - Consumes: `ImportColumnsResult.suggestedMapping`, import response `skippedErrors`
 - Produces: mapping prérempli, bouton partiel, UI « Import en cours… »
 
@@ -586,10 +591,12 @@ Remplacer le bloc `step === "preview"` actions / importMutation :
 ```ts
 const importMutation = useMutation({
   mutationFn: async () => {
-    const res = await api.post<ImportCommitResult>(
-      "/workers/import?dryRun=false",
-      { contentBase64, hasHeaderRow, referenceRowNumber, mapping },
-    );
+    const res = await api.post<ImportCommitResult>("/workers/import?dryRun=false", {
+      contentBase64,
+      hasHeaderRow,
+      referenceRowNumber,
+      mapping,
+    });
     return res.data;
   },
   onSuccess: (data) => {
@@ -612,38 +619,36 @@ Importer `ImportCommitResult` depuis `../../lib/referentials`.
 2. Dans le JSX preview :
 
 ```tsx
-{step === "preview" && preview && (
-  <div className="space-y-4">
-    <p className="text-sm text-zinc-700">
-      {preview.valid.filter((r) => !r.existingWorkerId).length} à créer,{" "}
-      {preview.valid.filter((r) => r.existingWorkerId).length} à mettre à jour (MVola déjà
-      en base), {preview.errors.length} erreur(s).
-    </p>
-    {importMutation.isPending && (
-      <p className="text-sm text-zinc-500">Import en cours…</p>
-    )}
-    {preview.errors.length > 0 && (
-      {/* table erreurs inchangée */}
-    )}
-    <div className="flex justify-end gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={importMutation.isPending}
-        onClick={() => setStep("mapping")}
-      >
-        Retour au mapping
-      </Button>
-      <Button
-        type="button"
-        disabled={!contentBase64 || preview.valid.length === 0 || importMutation.isPending}
-        onClick={() => importMutation.mutate()}
-      >
-        Importer les {preview.valid.length} ligne(s) valide(s)
-      </Button>
+{
+  step === "preview" && preview && (
+    <div className="space-y-4">
+      <p className="text-sm text-zinc-700">
+        {preview.valid.filter((r) => !r.existingWorkerId).length} à créer,{" "}
+        {preview.valid.filter((r) => r.existingWorkerId).length} à mettre à jour (MVola déjà en
+        base), {preview.errors.length} erreur(s).
+      </p>
+      {importMutation.isPending && <p className="text-sm text-zinc-500">Import en cours…</p>}
+      {preview.errors.length > 0 && {/* table erreurs inchangée */}}
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={importMutation.isPending}
+          onClick={() => setStep("mapping")}
+        >
+          Retour au mapping
+        </Button>
+        <Button
+          type="button"
+          disabled={!contentBase64 || preview.valid.length === 0 || importMutation.isPending}
+          onClick={() => importMutation.mutate()}
+        >
+          Importer les {preview.valid.length} ligne(s) valide(s)
+        </Button>
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 - [ ] **Step 4: Vérifier manuellement / typecheck**
@@ -687,18 +692,18 @@ Expected: PASS.
 
 ## Spec coverage (self-review)
 
-| Exigence spec | Task |
-|---|---|
-| Fuzzy + alias suggestedMapping | 1, 2 |
-| Pas d’auto-map sans header | 2 |
-| Une colonne / un champ | 1 |
-| Import `valid` malgré errors | 3 |
-| 422 si zéro valid | 3 |
-| `skippedErrors` réponse + audit | 3 |
-| Prefill selects éditable | 4 |
-| Bouton « Importer les X… » | 4 |
-| « Import en cours… » + récap | 4 |
-| Hors scope CLI / job async | respecté |
+| Exigence spec                   | Task     |
+| ------------------------------- | -------- |
+| Fuzzy + alias suggestedMapping  | 1, 2     |
+| Pas d’auto-map sans header      | 2        |
+| Une colonne / un champ          | 1        |
+| Import `valid` malgré errors    | 3        |
+| 422 si zéro valid               | 3        |
+| `skippedErrors` réponse + audit | 3        |
+| Prefill selects éditable        | 4        |
+| Bouton « Importer les X… »      | 4        |
+| « Import en cours… » + récap    | 4        |
+| Hors scope CLI / job async      | respecté |
 
 **Placeholder scan:** aucun TBD.  
 **Type consistency:** `suggestedMapping`, `skippedErrors`, `ImportCommitResult` alignés front/back.

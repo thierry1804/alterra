@@ -35,9 +35,20 @@ function Branch({ style }: { style: CSSProperties }) {
         opacity="0.55"
       />
       {LEAVES.map((leaf, i) => (
-        <g key={i} transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.r}) scale(${leaf.s})`} opacity="0.9">
+        <g
+          key={i}
+          transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.r}) scale(${leaf.s})`}
+          opacity="0.9"
+        >
           <path d={LEAF} fill={FILL[leaf.tone]} />
-          <path d={RIB} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+          <path
+            d={RIB}
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            opacity="0.45"
+          />
         </g>
       ))}
     </svg>
@@ -50,7 +61,15 @@ export default function LoginLeaves() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <Branch style={{ width: size, height: size, left: "-1.5rem", top: "-1.5rem" }} />
-      <Branch style={{ width: size, height: size, right: "-1.5rem", bottom: "-1.5rem", transform: "rotate(180deg)" }} />
+      <Branch
+        style={{
+          width: size,
+          height: size,
+          right: "-1.5rem",
+          bottom: "-1.5rem",
+          transform: "rotate(180deg)",
+        }}
+      />
     </div>
   );
 }

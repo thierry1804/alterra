@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import Button from "../components/ui/Button";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
@@ -15,6 +16,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,55 +58,69 @@ export default function Login() {
           onSubmit={onSubmit}
           className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
         >
-        <div>
-          <img src={iconUrl} alt={appName} className="h-14 w-auto" />
-          <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
-            Terrain · Registre de suivi
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Connexion chef d&apos;équipe / chef de service
-          </p>
-        </div>
+          <div>
+            <img src={iconUrl} alt={appName} className="h-14 w-auto" />
+            <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
+              Terrain · Registre de suivi
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Connexion chef d&apos;équipe / chef de service
+            </p>
+          </div>
 
-        {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
 
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium text-zinc-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1">
+            <label htmlFor="email" className="text-sm font-medium text-zinc-700">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            />
+          </div>
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium text-zinc-700">
-            Mot de passe
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1">
+            <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+              Mot de passe
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                className="w-full rounded-md border border-zinc-300 px-3 py-2 pr-9 text-sm"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden />
+                )}
+              </button>
+            </div>
+          </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Connexion…" : "Se connecter"}
-        </Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Connexion…" : "Se connecter"}
+          </Button>
         </form>
 
         <LoginAccessPanel

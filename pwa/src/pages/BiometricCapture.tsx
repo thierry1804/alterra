@@ -188,14 +188,17 @@ export default function BiometricCapture() {
         </div>
 
         {result && (
-          <div className={`w-full max-w-md rounded-md border px-4 py-3 text-sm ${resultBannerClass(result.result)}`}>
+          <div
+            className={`w-full max-w-md rounded-md border px-4 py-3 text-sm ${resultBannerClass(result.result)}`}
+          >
             <p className="font-medium">{bioResultLabel(result.result)}</p>
             {result.score !== null && (
               <p className="mt-1 text-xs opacity-80">Score {Math.round(result.score * 100)} %</p>
             )}
             {(result.result === "KO" || result.result === "DOUBT") && (
               <p className="mt-2 text-xs opacity-90">
-                Retournez à la validation pour corriger ou demander une précision au chef d&apos;équipe.
+                Retournez à la validation pour corriger ou demander une précision au chef
+                d&apos;équipe.
               </p>
             )}
           </div>

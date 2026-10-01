@@ -8,36 +8,36 @@
 
 ## Checklist
 
-| Step | Item | Status |
-| ---- | ---- | ------ |
-| 1 | `POST /payments/generate` — agrégation VALIDATED, bioValid, PENDING | ✅ |
-| 2 | `GET /payments/:period/export` — xlsx 5 colonnes MVola, EXPORTED + MinIO | ✅ |
-| 3 | `POST /payments/import-status` — match numéro+montant, PAID/FAILED | ✅ |
-| 4 | Helpers `period-iso`, `mvola-description` (RG-09) | ✅ |
-| 5 | Tests `payments.test.ts` | ✅ |
-| 6 | `npm run lint -w backend && npm run test -w backend` | ✅ PASS |
+| Step | Item                                                                     | Status  |
+| ---- | ------------------------------------------------------------------------ | ------- |
+| 1    | `POST /payments/generate` — agrégation VALIDATED, bioValid, PENDING      | ✅      |
+| 2    | `GET /payments/:period/export` — xlsx 5 colonnes MVola, EXPORTED + MinIO | ✅      |
+| 3    | `POST /payments/import-status` — match numéro+montant, PAID/FAILED       | ✅      |
+| 4    | Helpers `period-iso`, `mvola-description` (RG-09)                        | ✅      |
+| 5    | Tests `payments.test.ts`                                                 | ✅      |
+| 6    | `npm run lint -w backend && npm run test -w backend`                     | ✅ PASS |
 
 ---
 
 ## Endpoints
 
-| Method | Path | Auth | Description |
-| ------ | ---- | ---- | ----------- |
-| POST | `/payments/generate` | ADMIN | Agrège pointages VALIDATED par MOC/période |
-| GET | `/payments/:period/export` | ADMIN | Export Excel MVola (bio OK uniquement) |
-| POST | `/payments/import-status` | ADMIN | Import retour MVola (base64) |
+| Method | Path                       | Auth  | Description                                |
+| ------ | -------------------------- | ----- | ------------------------------------------ |
+| POST   | `/payments/generate`       | ADMIN | Agrège pointages VALIDATED par MOC/période |
+| GET    | `/payments/:period/export` | ADMIN | Export Excel MVola (bio OK uniquement)     |
+| POST   | `/payments/import-status`  | ADMIN | Import retour MVola (base64)               |
 
 ---
 
 ## Services créés
 
-| Fichier | Rôle |
-| ------- | ---- |
-| `generate.service.ts` | Agrégation par worker, bioValid, PAY_CONFLICT si EXPORTED/PAID |
-| `mvola-export.service.ts` | ExcelJS 5 colonnes, archivage MinIO, audit EXPORT |
-| `mvola-import.service.ts` | Parse retour flexible, match phone+amount, idempotent |
-| `mvola-description.ts` | RG-09 troncature description MVola |
-| `period-iso.ts` | Résolution 2026-W29 / S29 / D138 → bornes dates |
+| Fichier                   | Rôle                                                           |
+| ------------------------- | -------------------------------------------------------------- |
+| `generate.service.ts`     | Agrégation par worker, bioValid, PAY_CONFLICT si EXPORTED/PAID |
+| `mvola-export.service.ts` | ExcelJS 5 colonnes, archivage MinIO, audit EXPORT              |
+| `mvola-import.service.ts` | Parse retour flexible, match phone+amount, idempotent          |
+| `mvola-description.ts`    | RG-09 troncature description MVola                             |
+| `period-iso.ts`           | Résolution 2026-W29 / S29 / D138 → bornes dates                |
 
 ---
 
@@ -56,15 +56,15 @@
 
 Fichier : `backend/src/__tests__/payments.test.ts` — **8 tests PASS**
 
-| Test | Résultat |
-| ---- | -------- |
-| resolvePeriod 2026-W29 / S29 | ✅ |
-| buildMvolaDescription troncature RG-09 | ✅ |
-| generate agrège pointages VALIDATED | ✅ |
-| generate PAY_CONFLICT si exporté | ✅ |
-| export xlsx + EXPORTED + MinIO + audit | ✅ |
-| export rejette sans lignes exportables | ✅ |
-| import-status PAID + unmatched | ✅ |
-| import-status idempotent | ✅ |
+| Test                                   | Résultat |
+| -------------------------------------- | -------- |
+| resolvePeriod 2026-W29 / S29           | ✅       |
+| buildMvolaDescription troncature RG-09 | ✅       |
+| generate agrège pointages VALIDATED    | ✅       |
+| generate PAY_CONFLICT si exporté       | ✅       |
+| export xlsx + EXPORTED + MinIO + audit | ✅       |
+| export rejette sans lignes exportables | ✅       |
+| import-status PAID + unmatched         | ✅       |
+| import-status idempotent               | ✅       |
 
 Suite backend : **59 passed, 1 skipped** (lint + vitest)

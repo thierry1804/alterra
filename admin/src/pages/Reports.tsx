@@ -65,9 +65,7 @@ export default function ReportsPage() {
 
       const disposition = response.headers["content-disposition"] as string | undefined;
       const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename =
-        filenameMatch?.[1] ??
-        `ALTERRA_${reportType}_${month}.${format}`;
+      const filename = filenameMatch?.[1] ?? `ALTERRA_${reportType}_${month}.${format}`;
 
       const url = URL.createObjectURL(response.data);
       const link = document.createElement("a");

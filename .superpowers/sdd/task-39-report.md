@@ -6,10 +6,10 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Buffer consommé | ✅ | Grille suivi j-h par catégorie risque V2 |
-| 2 — Documenter retrospective | ✅ | `docs/retrospective-v2.md` |
+| Step                         | Statut | Détail                                   |
+| ---------------------------- | ------ | ---------------------------------------- |
+| 1 — Buffer consommé          | ✅     | Grille suivi j-h par catégorie risque V2 |
+| 2 — Documenter retrospective | ✅     | `docs/retrospective-v2.md`               |
 
 ## Fichier
 

@@ -33,6 +33,7 @@ vi.mock("../lib/prisma.js", () => ({
     },
     worker: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
     },
   },
@@ -181,6 +182,79 @@ describe("teams routes", () => {
 
     expect(res.status).toBe(201);
     expect(basePrisma.worker.update).toHaveBeenCalled();
+  });
+
+  it("GET /teams/:id/eligible-workers returns site workers outside the RLS team scope (CDE)", async () => {
+    vi.mocked(prisma.team.findFirst).mockResolvedValue(mockTeam as never);
+    const unassignedWorker = {
+      id: "00000000-0000-4000-8000-000000000062",
+      matricule: "MOC-MNK-02",
+      firstName: "Nouveau",
+      lastName: "Moc",
+      teamId: null,
+    };
+    vi.mocked(basePrisma.worker.findMany).mockResolvedValue([unassignedWorker] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/teams/${MOCK_TEAM_ID}/eligible-workers`)
+      .set("Authorization", `Bearer ${cdeToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([unassignedWorker]);
+    // Doit interroger basePrisma (hors RLS) : le prisma scopé filtrerait déjà sur teamId=équipe
+    // de l'appelant, ce qui masquerait justement les travailleurs libres qu'on veut faire remonter.
+    expect(basePrisma.worker.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ siteId: MOCK_SITE_ID }) }),
+    );
+  });
+
+  it("GET /teams/:id/eligible-workers excludes workers already on another team for CDE", async () => {
+    vi.mocked(prisma.team.findFirst).mockResolvedValue(mockTeam as never);
+    vi.mocked(basePrisma.worker.findMany).mockResolvedValue([] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/teams/${MOCK_TEAM_ID}/eligible-workers`)
+      .set("Authorization", `Bearer ${cdeToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(basePrisma.worker.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ teamId: null }, { teamId: MOCK_TEAM_ID }],
+        }),
+      }),
+    );
+  });
+
+  it("GET /teams/:id/eligible-workers keeps site-wide visibility for CDS (transfer between teams)", async () => {
+    vi.mocked(prisma.team.findFirst).mockResolvedValue(mockTeam as never);
+    vi.mocked(basePrisma.worker.findMany).mockResolvedValue([] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/teams/${MOCK_TEAM_ID}/eligible-workers`)
+      .set("Authorization", `Bearer ${cdsToken()}`);
+
+    expect(res.status).toBe(200);
+    const where = vi.mocked(basePrisma.worker.findMany).mock.calls[0]![0]!.where as Record<
+      string,
+      unknown
+    >;
+    expect(where.OR).toBeUndefined();
+  });
+
+  it("GET /teams/:id/eligible-workers rejects CDE for another team", async () => {
+    vi.mocked(prisma.team.findFirst).mockResolvedValue(mockTeam as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/teams/${MOCK_TEAM_ID}/eligible-workers`)
+      .set("Authorization", `Bearer ${cdeToken("00000000-0000-4000-8000-000000000099")}`);
+
+    expect(res.status).toBe(403);
+    expect(basePrisma.worker.findMany).not.toHaveBeenCalled();
   });
 
   it("DELETE /teams/:id/members/:workerId removes worker", async () => {

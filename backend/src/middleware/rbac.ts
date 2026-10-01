@@ -26,8 +26,7 @@ export function requireRole(...roles: Role[]) {
  * Prisma RLS extension applies the same filter automatically on reads.
  */
 export function siteScope(req: Request, _res: Response, next: NextFunction) {
-  req.siteScope =
-    req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
+  req.siteScope = req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
   next();
 }
 
@@ -36,8 +35,7 @@ export function siteScope(req: Request, _res: Response, next: NextFunction) {
  * ADMIN sees everything. Attaches `req.teamScope` for explicit where clauses.
  */
 export function teamScope(req: Request, _res: Response, next: NextFunction) {
-  req.teamScope =
-    req.user?.role === Role.CHEF_EQUIPE ? (req.user?.teamId ?? undefined) : undefined;
+  req.teamScope = req.user?.role === Role.CHEF_EQUIPE ? (req.user?.teamId ?? undefined) : undefined;
   next();
 }
 

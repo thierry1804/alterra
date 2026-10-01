@@ -20,7 +20,10 @@ export default function BottomNav({ items, currentPath, moreActive, onOpenMore }
     <nav
       aria-label="Navigation principale"
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-zinc-200 bg-white"
-      style={{ paddingBottom: "var(--safe-area-bottom)", height: "calc(var(--bottom-nav-h) + var(--safe-area-bottom))" }}
+      style={{
+        paddingBottom: "var(--safe-area-bottom)",
+        height: "calc(var(--bottom-nav-h) + var(--safe-area-bottom))",
+      }}
     >
       {items.map(({ to, label, Icon }) => {
         const active = isActivePath(currentPath, to);

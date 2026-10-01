@@ -33,7 +33,9 @@ export function assertSecureConfig() {
   const examples = exampleValues();
   const weak = GUARDED_KEYS.filter((key) => {
     const value = process.env[key] ?? "";
-    return value.length === 0 || value === examples[key] || (key.startsWith("JWT") && value.length < 32);
+    return (
+      value.length === 0 || value === examples[key] || (key.startsWith("JWT") && value.length < 32)
+    );
   });
   if (weak.length === 0) return;
 

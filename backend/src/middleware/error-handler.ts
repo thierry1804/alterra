@@ -36,7 +36,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2002") {
       const target = err.meta?.target;
-      const fields = Array.isArray(target) ? target.map(String) : typeof target === "string" ? [target] : [];
+      const fields = Array.isArray(target)
+        ? target.map(String)
+        : typeof target === "string"
+          ? [target]
+          : [];
       return res.status(409).json({
         code: "DUPLICATE",
         message: fields.length
@@ -47,7 +51,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       });
     }
     if (err.code === "P2025") {
-      return res.status(404).json({ code: "NOT_FOUND", message: "Ressource introuvable", traceId: req.id });
+      return res
+        .status(404)
+        .json({ code: "NOT_FOUND", message: "Ressource introuvable", traceId: req.id });
     }
   }
 

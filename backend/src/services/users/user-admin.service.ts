@@ -35,7 +35,10 @@ export async function resetUserPassword(userId: string, passwordHash: string) {
   await invalidateTokensIssuedBefore(userId);
 }
 
-export async function deactivateUser(userId: string, auditMeta?: { ip?: string; userAgent?: string }) {
+export async function deactivateUser(
+  userId: string,
+  auditMeta?: { ip?: string; userAgent?: string },
+) {
   const ctx = getRequestContext();
 
   const user = await prisma.user.update({

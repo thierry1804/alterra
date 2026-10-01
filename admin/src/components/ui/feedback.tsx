@@ -8,7 +8,10 @@ export function Spinner({ className }: { className?: string }) {
 /** Ligne de chargement centrée pour un conteneur (registre, panneau). */
 export function LoadingRow({ label = "Chargement…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-muted" role="status">
+    <div
+      className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-muted"
+      role="status"
+    >
       <Spinner />
       <span>{label}</span>
     </div>
@@ -26,7 +29,10 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center" role="alert">
+    <div
+      className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
+      role="alert"
+    >
       <span className="flex h-11 w-11 items-center justify-center rounded-full bg-danger-bg text-danger">
         <AlertTriangle className="h-5 w-5" aria-hidden />
       </span>

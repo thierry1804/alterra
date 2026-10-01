@@ -95,19 +95,26 @@ async function markQueueProcessing(clientUuids: string[]): Promise<void> {
 }
 
 async function buildSyncState(): Promise<SyncState> {
-  const [pendingCount, syncingCount, rejectedCount, mediaPendingCount, queuePendingCount, lastSyncAt] =
-    await Promise.all([
-      db.pointages.where("status").equals("local").count(),
-      db.pointages.where("status").equals("syncing").count(),
-      db.pointages.where("status").equals("rejected").count(),
-      db.media.filter((media) => !media.uploaded).count(),
-      db.syncQueue.where("status").equals("pending").count(),
-      getSetting(SETTING_LAST_SYNC_AT),
-    ]);
+  const [
+    pendingCount,
+    syncingCount,
+    rejectedCount,
+    mediaPendingCount,
+    queuePendingCount,
+    lastSyncAt,
+  ] = await Promise.all([
+    db.pointages.where("status").equals("local").count(),
+    db.pointages.where("status").equals("syncing").count(),
+    db.pointages.where("status").equals("rejected").count(),
+    db.media.filter((media) => !media.uploaded).count(),
+    db.syncQueue.where("status").equals("pending").count(),
+    getSetting(SETTING_LAST_SYNC_AT),
+  ]);
 
   const lastSummary =
     lastSyncAt && cachedLog.length > 0
-      ? cachedLog.find((entry) => entry.level === "success" || entry.level === "info")?.message ?? null
+      ? (cachedLog.find((entry) => entry.level === "success" || entry.level === "info")?.message ??
+        null)
       : null;
 
   return {
@@ -171,7 +178,9 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
       const chunk = pending.slice(index, index + BATCH_SIZE);
       const clientUuids = chunk.map((pointage) => pointage.clientUuid);
 
-      await db.pointages.bulkPut(chunk.map((pointage) => ({ ...pointage, status: "syncing" as const })));
+      await db.pointages.bulkPut(
+        chunk.map((pointage) => ({ ...pointage, status: "syncing" as const })),
+      );
       await markQueueProcessing(clientUuids);
 
       try {

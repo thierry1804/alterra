@@ -16,7 +16,9 @@ const ENTITY: Record<RegistryKind, string> = {
   payment: "Payment",
 };
 
-test("Transverse › toutes les entités créées par la recette sont tracées dans l'audit (API = source de l'écran Audit)", async ({ admin }) => {
+test("Transverse › toutes les entités créées par la recette sont tracées dans l'audit (API = source de l'écran Audit)", async ({
+  admin,
+}) => {
   test.setTimeout(300_000);
   const registry = loadRegistry();
   expect(registry.length, "registre vide : aucune donnée créée ?").toBeGreaterThan(0);

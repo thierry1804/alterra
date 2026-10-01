@@ -4,6 +4,7 @@
 **Estimation:** 3.50 j-h (BE)
 
 **Files:**
+
 - Existant partiel : `backend/src/routes/sites.routes.ts`, `workers.routes.ts`
 - Créer : `backend/src/routes/activities.routes.ts`
 - Créer : `backend/src/routes/users.routes.ts`

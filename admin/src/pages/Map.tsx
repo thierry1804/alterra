@@ -13,9 +13,15 @@ export default function MapPage() {
   const [showZones, setShowZones] = useState(true);
   const [showParcels, setShowParcels] = useState(true);
 
-  const { data: sites = [], isLoading, refetch, isFetching } = useQuery({
+  const {
+    data: sites = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ["sites-geo"],
-    queryFn: () => api.get<{ data: SiteGeo[] }>("/sites/geo").then((response) => response.data.data),
+    queryFn: () =>
+      api.get<{ data: SiteGeo[] }>("/sites/geo").then((response) => response.data.data),
   });
 
   const selectedSite = useMemo(
@@ -23,9 +29,7 @@ export default function MapPage() {
     [sites, selectedSiteId],
   );
 
-  const sitesWithCoords = sites.filter(
-    (site) => site.geoLat != null && site.geoLng != null,
-  );
+  const sitesWithCoords = sites.filter((site) => site.geoLat != null && site.geoLng != null);
 
   return (
     <div className="space-y-6">
@@ -33,7 +37,12 @@ export default function MapPage() {
         title="Cartographie"
         description="Sites ALTERRA, zones et parcelles sur fond OSM."
         action={
-          <Button type="button" variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
             {isFetching ? "Actualisation…" : "Actualiser"}
           </Button>
         }

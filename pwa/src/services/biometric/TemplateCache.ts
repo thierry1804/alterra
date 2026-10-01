@@ -1,11 +1,7 @@
 import { api } from "../../lib/api";
-import {
-  decryptString,
-  encryptString,
-  type EncryptedPayload,
-} from "../../lib/crypto";
+import { decryptString, encryptString, type EncryptedPayload } from "../../lib/crypto";
 import { db } from "../../db/db";
-import { getMemorySessionKey } from "../../lib/session";
+import { getDeviceKey } from "../../lib/session";
 
 export interface DecryptedTemplate {
   workerId: string;
@@ -14,9 +10,9 @@ export interface DecryptedTemplate {
 }
 
 export async function syncBiometricTemplatesFromServer(): Promise<number> {
-  const key = getMemorySessionKey();
+  const key = getDeviceKey();
   if (!key) {
-    throw new Error("NOT_UNLOCKED");
+    throw new Error("DEVICE_KEY_UNAVAILABLE");
   }
 
   if (!navigator.onLine) {
@@ -52,7 +48,7 @@ export async function syncBiometricTemplatesFromServer(): Promise<number> {
 export async function getCachedBiometricTemplate(
   workerId: string,
 ): Promise<DecryptedTemplate | null> {
-  const key = getMemorySessionKey();
+  const key = getDeviceKey();
   if (!key) return null;
 
   const row = await db.biometricTemplates.get(workerId);

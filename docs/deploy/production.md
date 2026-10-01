@@ -4,15 +4,15 @@ Checklist Task 22 (UC-OPS-VPS). Condition Sprint 5 : VPS ou serveur on-premise p
 
 ## Prérequis
 
-| Élément | Statut |
-| ------- | ------ |
-| Serveur Debian 12+ avec Docker | ☐ |
-| Domaines `app.alterra.mg`, `admin.alterra.mg` | ☐ |
-| Tunnel Cloudflare ou IP fixe + ports 443 | ☐ |
-| Secrets `infra/secrets/` remplis | ☐ |
-| Fichier `.env.prod` à la racine du dépôt | ☐ |
-| Compte Backblaze B2 + rclone crypt configuré | ☐ |
-| URL Healthchecks.io pour backup | ☐ |
+| Élément                                       | Statut |
+| --------------------------------------------- | ------ |
+| Serveur Debian 12+ avec Docker                | ☐      |
+| Domaines `app.alterra.mg`, `admin.alterra.mg` | ☐      |
+| Tunnel Cloudflare ou IP fixe + ports 443      | ☐      |
+| Secrets `infra/secrets/` remplis              | ☐      |
+| Fichier `.env.prod` à la racine du dépôt      | ☐      |
+| Compte Backblaze B2 + rclone crypt configuré  | ☐      |
+| URL Healthchecks.io pour backup               | ☐      |
 
 ## Installation initiale
 
@@ -42,10 +42,10 @@ export TAG=<git-sha>
 
 Variables compose :
 
-| Variable | Défaut | Description |
-| -------- | ------ | ----------- |
-| `GHCR_IMAGE_PREFIX` | `ghcr.io/alterra` | Préfixe images GHCR |
-| `TAG` | `latest` | Tag d'image (git SHA en prod) |
+| Variable            | Défaut            | Description                   |
+| ------------------- | ----------------- | ----------------------------- |
+| `GHCR_IMAGE_PREFIX` | `ghcr.io/alterra` | Préfixe images GHCR           |
+| `TAG`               | `latest`          | Tag d'image (git SHA en prod) |
 
 ### Backup + monitoring
 

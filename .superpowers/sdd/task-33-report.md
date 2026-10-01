@@ -6,40 +6,40 @@
 
 ## Livrables
 
-| Step | Statut | Détail |
-|------|--------|--------|
-| 1 — Modèles + state machine | ✅ | RequestStatus, ClarificationStatus, transitions validées |
-| 2 — 5 endpoints / entité | ✅ | list, get, create, action, cancel/answer/close |
+| Step                        | Statut | Détail                                                   |
+| --------------------------- | ------ | -------------------------------------------------------- |
+| 1 — Modèles + state machine | ✅     | RequestStatus, ClarificationStatus, transitions validées |
+| 2 — 5 endpoints / entité    | ✅     | list, get, create, action, cancel/answer/close           |
 
 ## API — ActivityRequest
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| GET | `/activity-requests` | CDS, ADMIN |
-| GET | `/activity-requests/:id` | CDS, ADMIN |
-| POST | `/activity-requests` | CDS, ADMIN |
-| PATCH | `/activity-requests/:id/decision` | ADMIN |
-| PATCH | `/activity-requests/:id/cancel` | CDS, ADMIN |
+| Méthode | Route                             | Rôle       |
+| ------- | --------------------------------- | ---------- |
+| GET     | `/activity-requests`              | CDS, ADMIN |
+| GET     | `/activity-requests/:id`          | CDS, ADMIN |
+| POST    | `/activity-requests`              | CDS, ADMIN |
+| PATCH   | `/activity-requests/:id/decision` | ADMIN      |
+| PATCH   | `/activity-requests/:id/cancel`   | CDS, ADMIN |
 
 ## API — WorkerRequest
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| GET | `/worker-requests` | CDS, ADMIN |
-| GET | `/worker-requests/:id` | CDS, ADMIN |
-| POST | `/worker-requests` | CDS, ADMIN |
-| PATCH | `/worker-requests/:id/decision` | ADMIN (crée Worker si APPROVED) |
-| PATCH | `/worker-requests/:id/cancel` | CDS, ADMIN |
+| Méthode | Route                           | Rôle                            |
+| ------- | ------------------------------- | ------------------------------- |
+| GET     | `/worker-requests`              | CDS, ADMIN                      |
+| GET     | `/worker-requests/:id`          | CDS, ADMIN                      |
+| POST    | `/worker-requests`              | CDS, ADMIN                      |
+| PATCH   | `/worker-requests/:id/decision` | ADMIN (crée Worker si APPROVED) |
+| PATCH   | `/worker-requests/:id/cancel`   | CDS, ADMIN                      |
 
 ## API — ClarificationRequest
 
-| Méthode | Route | Rôle |
-|---------|-------|------|
-| GET | `/clarification-requests` | CDS, CDE, ADMIN |
-| GET | `/clarification-requests/:id` | CDS, CDE, ADMIN |
-| POST | `/clarification-requests` | CDS, ADMIN |
-| PATCH | `/clarification-requests/:id/answer` | CDE, ADMIN |
-| PATCH | `/clarification-requests/:id/close` | CDS, ADMIN |
+| Méthode | Route                                | Rôle            |
+| ------- | ------------------------------------ | --------------- |
+| GET     | `/clarification-requests`            | CDS, CDE, ADMIN |
+| GET     | `/clarification-requests/:id`        | CDS, CDE, ADMIN |
+| POST    | `/clarification-requests`            | CDS, ADMIN      |
+| PATCH   | `/clarification-requests/:id/answer` | CDE, ADMIN      |
+| PATCH   | `/clarification-requests/:id/close`  | CDS, ADMIN      |
 
 ## State machine
 

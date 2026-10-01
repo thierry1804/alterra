@@ -4,6 +4,7 @@
 **Estimation:** 1.50 j-h (BE)
 
 **Files:**
+
 - Modifier : `backend/src/routes/auth.routes.ts`
 - Modifier : `backend/src/lib/jwt.ts`
 - Modifier : `backend/src/middleware/auth.ts`
@@ -11,6 +12,7 @@
 - Créer : `backend/src/services/auth/mfa.service.ts`
 
 **Interfaces:**
+
 - `POST /auth/login` → `{ accessToken, user }`
 - `POST /auth/refresh` → rotation refresh, blacklist Redis
 - `POST /auth/logout` → révocation + suppression cookie

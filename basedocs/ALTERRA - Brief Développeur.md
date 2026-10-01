@@ -5,7 +5,7 @@
 Version 2.0 — 27 août 2026 (corrige la v1.0 du 28 avril 2026, qui décrivait une stack NestJS/pnpm envisagée en phase de cadrage et jamais implémentée — voir le correctif ci-dessous)
 Destinataire : Développeur fullstack rejoignant l'équipe
 
-> **Ce qui a changé depuis la v1.0** : la v1.0 de ce document décrivait l'architecture *cible de cadrage* (NestJS, Fastify, pnpm + Turborepo, structure `apps/`). Le code réellement livré a divergé sur l'implémentation technique (stack Express, npm workspaces, structure `backend/`/`admin/`/`pwa/`) tout en respectant les mêmes principes directeurs (RBAC double niveau, idempotence, adapter pattern, offline-first). Cette version 2.0 documente **le code tel qu'il existe aujourd'hui**, vérifié directement contre le repo. Les sections 2 à 10 et 12 ont été réécrites ; les sections 1, 11, 13 et 14 (contexte métier, onboarding, contact) restent globalement valables et n'ont été qu'ajustées.
+> **Ce qui a changé depuis la v1.0** : la v1.0 de ce document décrivait l'architecture _cible de cadrage_ (NestJS, Fastify, pnpm + Turborepo, structure `apps/`). Le code réellement livré a divergé sur l'implémentation technique (stack Express, npm workspaces, structure `backend/`/`admin/`/`pwa/`) tout en respectant les mêmes principes directeurs (RBAC double niveau, idempotence, adapter pattern, offline-first). Cette version 2.0 documente **le code tel qu'il existe aujourd'hui**, vérifié directement contre le repo. Les sections 2 à 10 et 12 ont été réécrites ; les sections 1, 11, 13 et 14 (contexte métier, onboarding, contact) restent globalement valables et n'ont été qu'ajustées.
 >
 > Pour la source de vérité détaillée et tenue à jour, voir aussi [`docs/architecture-technique.md`](../docs/architecture-technique.md) et [`docs/conformite-architecture-cible.md`](../docs/conformite-architecture-cible.md).
 
@@ -116,29 +116,29 @@ Voir [`docs/architecture-technique.md`](../docs/architecture-technique.md) pour 
 
 Vérifié directement dans les `package.json` du repo (`backend/`, `admin/`, `pwa/`) — voir aussi [`docs/architecture-technique.md`](../docs/architecture-technique.md) §3.
 
-| Composant       | Version               | Pourquoi ce choix                                                  |
-| --------------- | ---------------------- | ------------------------------------------------------------------- |
-| Node.js         | 22 (`.nvmrc` = 22.12)  | Aligné image Docker prod ; `engines` du repo exige ≥ 20.19          |
-| Express         | 4.21                    | Minimal, sans magie, écosystème mature                              |
-| Prisma          | 5.20                    | Type-safe, migrations, extension client pour la RLS applicative    |
-| PostgreSQL      | 16 (Docker)             | Standard éprouvé, JSON, contraintes fortes                          |
-| Redis           | 7 (Docker, `ioredis`)   | Backend BullMQ, blocklist tokens, rate-limit (`rate-limit-redis`)   |
-| BullMQ          | 5.x                     | Jobs async robustes (génération PDF hebdo)                          |
-| MinIO           | image `minio/minio`     | S3-compatible, containerisable, buckets photos/rapports              |
-| Puppeteer       | 24.x                    | Rendu PDF (Chromium embarqué dans l'image `api`)                     |
-| Handlebars      | 4.7                     | Templates HTML pour les rapports avant rendu PDF                     |
-| React           | 18.x                    | Standard, hooks stables                                              |
-| Vite            | 5.x                     | Build ultra-rapide, HMR excellent                                    |
-| TypeScript      | 5.6                     | Strict mode activé dans les 3 workspaces frontend/backend            |
-| Tailwind CSS    | 3.x                     | Utility-first, tokens de design partagés (`design/tokens.css`)       |
-| Radix UI        | dernière                | Primitives accessibles (admin)                                       |
-| Dexie.js        | 4.x                     | Wrapper IndexedDB avec promises (PWA offline)                        |
-| vite-plugin-pwa | dernière                | Service Worker (Workbox) pour la PWA                                 |
-| Zod             | 3.23                    | Validation runtime des routes Express + inférence types              |
-| Pino            | 9.x                     | Logs JSON structurés (`pino-http`)                                   |
-| argon2          | 0.41                    | Hash des mots de passe                                               |
-| Playwright      | 1.49                    | Tests E2E, workspace dédié `e2e/`                                    |
-| Vitest          | 2.x                     | Tests unitaires/intégration backend (`backend/src/__tests__/`)       |
+| Composant       | Version               | Pourquoi ce choix                                                 |
+| --------------- | --------------------- | ----------------------------------------------------------------- |
+| Node.js         | 22 (`.nvmrc` = 22.12) | Aligné image Docker prod ; `engines` du repo exige ≥ 20.19        |
+| Express         | 4.21                  | Minimal, sans magie, écosystème mature                            |
+| Prisma          | 5.20                  | Type-safe, migrations, extension client pour la RLS applicative   |
+| PostgreSQL      | 16 (Docker)           | Standard éprouvé, JSON, contraintes fortes                        |
+| Redis           | 7 (Docker, `ioredis`) | Backend BullMQ, blocklist tokens, rate-limit (`rate-limit-redis`) |
+| BullMQ          | 5.x                   | Jobs async robustes (génération PDF hebdo)                        |
+| MinIO           | image `minio/minio`   | S3-compatible, containerisable, buckets photos/rapports           |
+| Puppeteer       | 24.x                  | Rendu PDF (Chromium embarqué dans l'image `api`)                  |
+| Handlebars      | 4.7                   | Templates HTML pour les rapports avant rendu PDF                  |
+| React           | 18.x                  | Standard, hooks stables                                           |
+| Vite            | 5.x                   | Build ultra-rapide, HMR excellent                                 |
+| TypeScript      | 5.6                   | Strict mode activé dans les 3 workspaces frontend/backend         |
+| Tailwind CSS    | 3.x                   | Utility-first, tokens de design partagés (`design/tokens.css`)    |
+| Radix UI        | dernière              | Primitives accessibles (admin)                                    |
+| Dexie.js        | 4.x                   | Wrapper IndexedDB avec promises (PWA offline)                     |
+| vite-plugin-pwa | dernière              | Service Worker (Workbox) pour la PWA                              |
+| Zod             | 3.23                  | Validation runtime des routes Express + inférence types           |
+| Pino            | 9.x                   | Logs JSON structurés (`pino-http`)                                |
+| argon2          | 0.41                  | Hash des mots de passe                                            |
+| Playwright      | 1.49                  | Tests E2E, workspace dédié `e2e/`                                 |
+| Vitest          | 2.x                   | Tests unitaires/intégration backend (`backend/src/__tests__/`)    |
 
 ### 3.2 Choix qui pourraient te surprendre
 
@@ -232,11 +232,11 @@ Il existe aussi un mode « stack complète » (`docker compose up -d`, API conte
 
 ### 5.3 Comptes de test (créés par le seed)
 
-| Rôle       | Email                          | Mot de passe   |
-| ---------- | ------------------------------- | --------------- |
-| Admin      | `admin@alterra.mg`              | `SEED_ADMIN_PASSWORD` (sinon généré, affiché une fois par le seed) |
-| Chef de Service / Chef d'Équipe | `*@alterra.test` (ex. `cds.<code-site>@alterra.test`) | `SEED_USER_PASSWORD` (sinon généré, affiché une fois par le seed) |
-| MinIO console | `alterra_admin` | `alterra_dev_secret` (console sur `:9001`) |
+| Rôle                            | Email                                                 | Mot de passe                                                       |
+| ------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Admin                           | `admin@alterra.mg`                                    | `SEED_ADMIN_PASSWORD` (sinon généré, affiché une fois par le seed) |
+| Chef de Service / Chef d'Équipe | `*@alterra.test` (ex. `cds.<code-site>@alterra.test`) | `SEED_USER_PASSWORD` (sinon généré, affiché une fois par le seed)  |
+| MinIO console                   | `alterra_admin`                                       | `alterra_dev_secret` (console sur `:9001`)                         |
 
 Le seed crée 5 sites, 21 utilisateurs (1 admin + 5 CDS + 15 CDE), 10 activités et 50 MOC — un jeu de données de développement réduit, pas la volumétrie de production (~600 MOC, 40/équipe) décrite au §1.
 
@@ -339,16 +339,19 @@ import { syncPointageBatch } from "../services/pointages/sync.service.js";
 export const pointagesRouter = Router();
 
 const syncBatchSchema = z.object({
-  batch: z.array(
-    z.object({
-      clientUuid: z.string().uuid(),
-      workerId: z.string().uuid(),
-      activityId: z.string().uuid(),
-      quantity: z.number().positive(),
-      date: z.coerce.date(),
-      createdByClientAt: z.coerce.date(),
-    }),
-  ).min(1).max(100),
+  batch: z
+    .array(
+      z.object({
+        clientUuid: z.string().uuid(),
+        workerId: z.string().uuid(),
+        activityId: z.string().uuid(),
+        quantity: z.number().positive(),
+        date: z.coerce.date(),
+        createdByClientAt: z.coerce.date(),
+      }),
+    )
+    .min(1)
+    .max(100),
 });
 
 pointagesRouter.post(
@@ -489,19 +492,19 @@ Vérifie l'état d'avancement réel de ce chantier avec le Tech Lead avant de t'
 
 ## 8. Où trouver quoi
 
-| Besoin                             | Endroit                                                            |
-| ----------------------------------- | -------------------------------------------------------------------- |
-| Ce que doit faire le système        | Spec fonctionnelle (`basedocs/`)                                   |
-| Architecture réelle et à jour       | [`docs/architecture-technique.md`](../docs/architecture-technique.md) |
-| Écarts entre cible et code          | [`docs/conformite-architecture-cible.md`](../docs/conformite-architecture-cible.md) |
-| Sur quoi je bosse ce sprint         | Backlog (`basedocs/ALTERRA - Backlog détaillé.md`) + outil de suivi de l'équipe |
-| Comment appeler l'API X             | Lire directement `backend/src/routes/<domaine>.routes.ts` (pas de Swagger) |
-| Modèle de données                   | `backend/prisma/schema.prisma`                                    |
-| Comment déployer                    | [`docs/runbook.md`](../docs/runbook.md), [`docs/deploy/production.md`](../docs/deploy/production.md) |
-| Comment démarrer en local           | [`docs/guides/demarrage-docker.md`](../docs/guides/demarrage-docker.md), README racine |
-| Comment lancer un test              | §5.4 de ce document                                                |
-| Guides utilisateurs métier          | `docs/guides/guide-admin.md`, `guide-cde.md`, `guide-cds.md`       |
-| Contact                             | Voir §13 de ce document                                            |
+| Besoin                        | Endroit                                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Ce que doit faire le système  | Spec fonctionnelle (`basedocs/`)                                                                     |
+| Architecture réelle et à jour | [`docs/architecture-technique.md`](../docs/architecture-technique.md)                                |
+| Écarts entre cible et code    | [`docs/conformite-architecture-cible.md`](../docs/conformite-architecture-cible.md)                  |
+| Sur quoi je bosse ce sprint   | Backlog (`basedocs/ALTERRA - Backlog détaillé.md`) + outil de suivi de l'équipe                      |
+| Comment appeler l'API X       | Lire directement `backend/src/routes/<domaine>.routes.ts` (pas de Swagger)                           |
+| Modèle de données             | `backend/prisma/schema.prisma`                                                                       |
+| Comment déployer              | [`docs/runbook.md`](../docs/runbook.md), [`docs/deploy/production.md`](../docs/deploy/production.md) |
+| Comment démarrer en local     | [`docs/guides/demarrage-docker.md`](../docs/guides/demarrage-docker.md), README racine               |
+| Comment lancer un test        | §5.4 de ce document                                                                                  |
+| Guides utilisateurs métier    | `docs/guides/guide-admin.md`, `guide-cde.md`, `guide-cds.md`                                         |
+| Contact                       | Voir §13 de ce document                                                                              |
 
 ---
 

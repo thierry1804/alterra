@@ -29,10 +29,7 @@ function listScopeWhere(user: AccessTokenPayload): Prisma.ClarificationRequestWh
 
   if (user.role === Role.CHEF_SERVICE && user.siteId) {
     return {
-      OR: [
-        { requestedById: user.sub },
-        { pointage: { worker: { siteId: user.siteId } } },
-      ],
+      OR: [{ requestedById: user.sub }, { pointage: { worker: { siteId: user.siteId } } }],
     };
   }
 
