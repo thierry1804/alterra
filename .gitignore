@@ -41,3 +41,4 @@ e2e/.auth-remote/
 e2e/.remote-tmp/
 e2e/test-results-remote*/
 e2e/playwright-report-remote/
+cleanup-demo-backup-*.json
