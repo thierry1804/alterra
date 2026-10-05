@@ -15,7 +15,7 @@ export function Toaster() {
             if (!open) dismiss(item.id);
           }}
           className={cn(
-            "fixed bottom-4 right-4 z-50 w-80 rounded-md border bg-white p-4 shadow-sm",
+            "fixed bottom-4 right-4 z-toast w-80 rounded-md border bg-white p-4 shadow-sm",
             item.variant === "destructive" && "border-red-300 bg-red-50",
           )}
         >
