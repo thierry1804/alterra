@@ -4,13 +4,29 @@ import { api } from "../lib/api";
 export interface AppSettings {
   appName: string;
   iconUpdatedAt: string | null;
+  loginBackgroundUpdatedAt: string | null;
+  loginBranchUpdatedAt: string | null;
+  loginLeafUpdatedAt: string | null;
 }
 
-const DEFAULT_APP_SETTINGS: AppSettings = { appName: "ALTERRA", iconUpdatedAt: null };
+const DEFAULT_APP_SETTINGS: AppSettings = {
+  appName: "ALTERRA",
+  iconUpdatedAt: null,
+  loginBackgroundUpdatedAt: null,
+  loginBranchUpdatedAt: null,
+  loginLeafUpdatedAt: null,
+};
 
 export const APP_ICON_URL = "/api/v1/app-settings/icon";
+export const LOGIN_BACKGROUND_URL = "/api/v1/app-settings/login-background";
+export const LOGIN_BRANCH_URL = "/api/v1/app-settings/login-branch";
+export const LOGIN_LEAF_URL = "/api/v1/app-settings/login-leaf";
 
-/** Nom/icône de l'application, modifiables depuis l'Admin — route publique, utilisable avant connexion. */
+function withCacheBust(url: string, updatedAt: string | null): string {
+  return updatedAt ? `${url}?v=${encodeURIComponent(updatedAt)}` : url;
+}
+
+/** Nom/icône/visuels de login de l'application, modifiables depuis l'Admin — route publique, utilisable avant connexion. */
 export function useAppSettings() {
   const { data } = useQuery({
     queryKey: ["app-settings"],
@@ -19,9 +35,12 @@ export function useAppSettings() {
   });
 
   const settings = data ?? DEFAULT_APP_SETTINGS;
-  const iconUrl = settings.iconUpdatedAt
-    ? `${APP_ICON_URL}?v=${encodeURIComponent(settings.iconUpdatedAt)}`
-    : APP_ICON_URL;
 
-  return { ...settings, iconUrl };
+  return {
+    ...settings,
+    iconUrl: withCacheBust(APP_ICON_URL, settings.iconUpdatedAt),
+    loginBackgroundUrl: withCacheBust(LOGIN_BACKGROUND_URL, settings.loginBackgroundUpdatedAt),
+    loginBranchUrl: withCacheBust(LOGIN_BRANCH_URL, settings.loginBranchUpdatedAt),
+    loginLeafUrl: withCacheBust(LOGIN_LEAF_URL, settings.loginLeafUpdatedAt),
+  };
 }

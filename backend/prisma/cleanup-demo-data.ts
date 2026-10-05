@@ -24,28 +24,60 @@ if (!sinceArg || Number.isNaN(Date.parse(sinceArg))) {
 const since = new Date(sinceArg);
 
 async function main() {
-  const cde = await prisma.user.findFirst({ where: { email: "cde.amb2@alterra.test" }, select: { id: true } });
-  const users = await prisma.user.findMany({ where: { email: { startsWith: "demo." } }, select: { id: true } });
-  const workers = await prisma.worker.findMany({ where: { matricule: { startsWith: "DEMO-" } }, select: { id: true } });
+  const cde = await prisma.user.findFirst({
+    where: { email: "cde.amb2@alterra.test" },
+    select: { id: true },
+  });
+  const users = await prisma.user.findMany({
+    where: { email: { startsWith: "demo." } },
+    select: { id: true },
+  });
+  const workers = await prisma.worker.findMany({
+    where: { matricule: { startsWith: "DEMO-" } },
+    select: { id: true },
+  });
   const workerIds = workers.map((w) => w.id);
   const pointages = await prisma.pointage.findMany({
-    where: { OR: [...(cde ? [{ enteredById: cde.id, createdAt: { gte: since } }] : []), { workerId: { in: workerIds } }] },
+    where: {
+      OR: [
+        ...(cde ? [{ enteredById: cde.id, createdAt: { gte: since } }] : []),
+        { workerId: { in: workerIds } },
+      ],
+    },
     select: { id: true },
   });
   const payments = await prisma.payment.findMany({
-    where: { OR: [{ createdAt: { gte: since }, worker: { matricule: { startsWith: "MOC-AMB-" } } }, { workerId: { in: workerIds } }] },
+    where: {
+      OR: [
+        { createdAt: { gte: since }, worker: { matricule: { startsWith: "MOC-AMB-" } } },
+        { workerId: { in: workerIds } },
+      ],
+    },
     select: { id: true },
   });
   const bios = await prisma.biometricCheck.findMany({
-    where: { OR: [{ performedAt: { gte: since }, worker: { matricule: { startsWith: "MOC-AMB-" } } }, { workerId: { in: workerIds } }] },
+    where: {
+      OR: [
+        { performedAt: { gte: since }, worker: { matricule: { startsWith: "MOC-AMB-" } } },
+        { workerId: { in: workerIds } },
+      ],
+    },
     select: { id: true },
   });
-  const categories = await prisma.activityCategory.findMany({ where: { label: { startsWith: "DEMO-" } }, select: { id: true } });
+  const categories = await prisma.activityCategory.findMany({
+    where: { label: { startsWith: "DEMO-" } },
+    select: { id: true },
+  });
   const subActivities = await prisma.activitySubActivity.findMany({
-    where: { OR: [{ categoryId: { in: categories.map((c) => c.id) } }, { label: { startsWith: "DEMO-" } }] },
+    where: {
+      OR: [{ categoryId: { in: categories.map((c) => c.id) } }, { label: { startsWith: "DEMO-" } }],
+    },
     select: { id: true },
   });
-  const sites = await prisma.site.findMany({ where: { name: { startsWith: "DEMO-" } }, select: { id: true } });
+  const sites = await prisma.site.findMany({
+    where: { name: { startsWith: "DEMO-" } },
+    select: { id: true },
+  });
 
   console.log(doIt ? "SUPPRESSION" : "APERÇU (ajouter --do pour supprimer)", {
     depuis: since.toISOString(),
@@ -61,7 +93,14 @@ async function main() {
   if (!doIt) return;
 
   const backup = `cleanup-demo-backup-${Date.now()}.json`;
-  writeFileSync(backup, JSON.stringify({ users, workerIds, pointages, payments, bios, categories, subActivities, sites }, (_k, v) => (typeof v === "bigint" ? v.toString() : v)), { mode: 0o600 });
+  writeFileSync(
+    backup,
+    JSON.stringify(
+      { users, workerIds, pointages, payments, bios, categories, subActivities, sites },
+      (_k, v) => (typeof v === "bigint" ? v.toString() : v),
+    ),
+    { mode: 0o600 },
+  );
 
   await prisma.$transaction(async (tx) => {
     const pointageIds = pointages.map((p) => p.id);
@@ -77,7 +116,9 @@ async function main() {
     await tx.refreshToken.deleteMany({ where: { userId: { in: userIds } } });
     await tx.passwordReset.deleteMany({ where: { userId: { in: userIds } } });
     await tx.user.deleteMany({ where: { id: { in: userIds } } });
-    await tx.activitySubActivity.deleteMany({ where: { id: { in: subActivities.map((s) => s.id) } } });
+    await tx.activitySubActivity.deleteMany({
+      where: { id: { in: subActivities.map((s) => s.id) } },
+    });
     await tx.activityCategory.deleteMany({ where: { id: { in: categories.map((c) => c.id) } } });
     await tx.team.deleteMany({ where: { siteId: { in: sites.map((s) => s.id) } } });
     await tx.site.deleteMany({ where: { id: { in: sites.map((s) => s.id) } } });

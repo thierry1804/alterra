@@ -8,8 +8,13 @@ import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { BUCKETS, minioClient } from "../services/storage/minio.js";
-import { iconUploadUrl } from "../services/storage/presigned-url.service.js";
+import {
+  iconUploadUrl,
+  loginAssetUploadUrl,
+  type LoginAssetSlot,
+} from "../services/storage/presigned-url.service.js";
 import { DEFAULT_ICON_BASE64, DEFAULT_ICON_CONTENT_TYPE } from "../assets/default-icon.js";
+import { readDefaultLoginImage, DEFAULT_LOGIN_IMAGES } from "../assets/default-login-images.js";
 
 export const appSettingsRouter = Router();
 
@@ -23,6 +28,22 @@ const CONTENT_TYPE_BY_EXT: Record<(typeof ICON_EXTENSIONS)[number], string> = {
   jpg: "image/jpeg",
   svg: "image/svg+xml",
   webp: "image/webp",
+};
+
+const LOGIN_ASSET_MAX_BYTES = 5 * 1024 * 1024;
+const LOGIN_ASSET_EXTENSIONS = ["png", "jpg", "webp"] as const;
+
+const LOGIN_ASSET_CONTENT_TYPE_BY_EXT: Record<(typeof LOGIN_ASSET_EXTENSIONS)[number], string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+};
+
+/** Un slot = un champ en base + un préfixe de clé MinIO + une image par défaut. */
+const LOGIN_ASSET_SLOTS: Record<LoginAssetSlot, { field: string; urlSegment: string }> = {
+  loginBackground: { field: "loginBackgroundKey", urlSegment: "login-background" },
+  loginBranch: { field: "loginBranchKey", urlSegment: "login-branch" },
+  loginLeaf: { field: "loginLeafKey", urlSegment: "login-leaf" },
 };
 
 const updateAppSettingSchema = z.object({
@@ -48,14 +69,28 @@ async function getAppSetting() {
   return {
     appName: row?.appName ?? DEFAULT_APP_NAME,
     iconKey: row?.iconKey ?? null,
+    loginBackgroundKey: row?.loginBackgroundKey ?? null,
+    loginBranchKey: row?.loginBranchKey ?? null,
+    loginLeafKey: row?.loginLeafKey ?? null,
     updatedAt: row?.updatedAt ?? null,
+  };
+}
+
+/** Un seul horodatage de ligne sert de version de cache pour les 4 images (icône + 3 visuels de login). */
+function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
+  return {
+    appName: settings.appName,
+    iconUpdatedAt: settings.updatedAt,
+    loginBackgroundUpdatedAt: settings.updatedAt,
+    loginBranchUpdatedAt: settings.updatedAt,
+    loginLeafUpdatedAt: settings.updatedAt,
   };
 }
 
 appSettingsRouter.get("/app-settings", async (_req, res, next) => {
   try {
     const settings = await getAppSetting();
-    res.json({ appName: settings.appName, iconUpdatedAt: settings.updatedAt });
+    res.json(settingsResponse(settings));
   } catch (err) {
     next(err);
   }
@@ -88,7 +123,9 @@ appSettingsRouter.patch(
         userAgent: req.headers["user-agent"],
       });
 
-      res.json({ appName: updated.appName, iconUpdatedAt: updated.updatedAt });
+      res.json(
+        settingsResponse({ ...before, appName: updated.appName, updatedAt: updated.updatedAt }),
+      );
     } catch (err) {
       next(err);
     }
@@ -147,7 +184,9 @@ appSettingsRouter.post(
         userAgent: req.headers["user-agent"],
       });
 
-      res.json({ appName: updated.appName, iconUpdatedAt: updated.updatedAt });
+      res.json(
+        settingsResponse({ ...before, iconKey: updated.iconKey, updatedAt: updated.updatedAt }),
+      );
     } catch (err) {
       next(err);
     }
@@ -183,6 +222,111 @@ appSettingsRouter.get("/app-settings/icon", async (_req, res, next) => {
     next(err);
   }
 });
+
+const loginAssetUploadUrlSchema = z.object({
+  ext: z.enum(LOGIN_ASSET_EXTENSIONS),
+});
+
+const confirmLoginAssetSchema = z.object({
+  key: z.string().min(1),
+});
+
+/** Enregistre le trio upload-url / confirmation / service pour un slot d'image de login donné. */
+function registerLoginAssetRoutes(slot: LoginAssetSlot) {
+  const { field, urlSegment } = LOGIN_ASSET_SLOTS[slot];
+  const keyPrefix = `app-settings/${slot}/`;
+
+  appSettingsRouter.post(
+    `/app-settings/${urlSegment}/upload-url`,
+    requireAuth,
+    requireRole(Role.ADMIN),
+    validate(loginAssetUploadUrlSchema),
+    async (req, res, next) => {
+      try {
+        const { ext } = req.body as z.infer<typeof loginAssetUploadUrlSchema>;
+        const result = await loginAssetUploadUrl(slot, ext);
+        res.json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  appSettingsRouter.post(
+    `/app-settings/${urlSegment}`,
+    requireAuth,
+    requireRole(Role.ADMIN),
+    validate(confirmLoginAssetSchema),
+    async (req, res, next) => {
+      try {
+        const { key } = req.body as z.infer<typeof confirmLoginAssetSchema>;
+        if (!key.startsWith(keyPrefix)) {
+          throw new ApiError(422, "INVALID_ASSET_KEY", "Clé de visuel invalide");
+        }
+
+        const stat = await minioClient.statObject(BUCKETS.assets, key).catch(() => null);
+        if (!stat) throw new ApiError(422, "ASSET_NOT_UPLOADED", "Fichier introuvable");
+        if (stat.size > LOGIN_ASSET_MAX_BYTES) {
+          await minioClient.removeObject(BUCKETS.assets, key).catch(() => undefined);
+          throw new ApiError(413, "ASSET_TOO_LARGE", "Fichier trop volumineux (5 Mo maximum)");
+        }
+
+        const before = await getAppSetting();
+
+        const updated = await prisma.appSetting.upsert({
+          where: { id: SETTINGS_ID },
+          create: { id: SETTINGS_ID, [field]: key },
+          update: { [field]: key },
+        });
+
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "UPDATE",
+          entityType: "AppSetting",
+          entityId: SETTINGS_ID,
+          before: { [field]: (before as Record<string, unknown>)[field] },
+          after: { [field]: (updated as Record<string, unknown>)[field] },
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+
+        res.json(settingsResponse({ ...before, updatedAt: updated.updatedAt }));
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  appSettingsRouter.get(`/app-settings/${urlSegment}`, async (_req, res, next) => {
+    try {
+      const settings = await getAppSetting();
+      const key = (settings as Record<string, unknown>)[field] as string | null;
+
+      if (!key) {
+        const { contentType } = DEFAULT_LOGIN_IMAGES[slot];
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.send(readDefaultLoginImage(slot));
+        return;
+      }
+
+      const ext = key.split(".").pop() as (typeof LOGIN_ASSET_EXTENSIONS)[number] | undefined;
+      const contentType =
+        (ext && LOGIN_ASSET_CONTENT_TYPE_BY_EXT[ext]) || "application/octet-stream";
+
+      const stream = await minioClient.getObject(BUCKETS.assets, key);
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      stream.on("error", next);
+      stream.pipe(res);
+    } catch (err) {
+      next(err);
+    }
+  });
+}
+
+(Object.keys(LOGIN_ASSET_SLOTS) as LoginAssetSlot[]).forEach(registerLoginAssetRoutes);
 
 appSettingsRouter.get("/manifest.webmanifest", async (_req, res, next) => {
   try {

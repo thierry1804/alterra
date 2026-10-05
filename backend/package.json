@@ -7,6 +7,7 @@
     "postinstall": "prisma generate",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "postbuild": "mkdir -p dist/templates dist/assets/login && cp -r src/templates/. dist/templates/ && cp -r src/assets/login/. dist/assets/login/",
     "start": "node dist/index.js",
     "lint": "eslint src",
     "test": "vitest run",

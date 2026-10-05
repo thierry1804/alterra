@@ -7,12 +7,10 @@ import Button from "../components/ui/Button";
 import LoginAccessPanel from "../components/auth/LoginAccessPanel";
 import { ADMIN_APP, DEMO_ACCOUNTS, TERRAIN_APP_ROLES } from "../lib/access-info";
 import { useAppSettings } from "../hooks/useAppSettings";
-import LoginLandscape from "../components/auth/LoginLandscape";
-import LoginLeaves from "../components/auth/LoginLeaves";
 
 export default function Login() {
   const { login } = useAuth();
-  const { appName, iconUrl } = useAppSettings();
+  const { appName, iconUrl, loginBackgroundUrl, loginBranchUrl, loginLeafUrl } = useAppSettings();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,16 +41,23 @@ export default function Login() {
     <div
       className="relative flex min-h-full items-center justify-center overflow-hidden p-4"
       style={{
-        background:
-          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.48), transparent 55%)," +
-          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.40), transparent 52%)," +
-          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.42), transparent 58%)," +
-          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.46), transparent 55%)," +
-          "#fafafa",
+        backgroundImage: `url('${loginBackgroundUrl}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      <LoginLandscape />
-      <LoginLeaves />
+      <img
+        src={loginBranchUrl}
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 w-40 sm:w-56"
+      />
+      <img
+        src={loginLeafUrl}
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-0 w-32 sm:w-48"
+      />
       <div className="relative z-10 grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
         <form
           onSubmit={onSubmit}

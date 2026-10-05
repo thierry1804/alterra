@@ -12,7 +12,10 @@ vi.mock("../lib/prisma.js", () => ({
 }));
 
 import { prisma } from "../lib/prisma.js";
-import { reconcileMvolaReleve, weekKey } from "../services/payments/mvola-reconciliation.service.js";
+import {
+  reconcileMvolaReleve,
+  weekKey,
+} from "../services/payments/mvola-reconciliation.service.js";
 
 const SITE_MNK = { id: "site-mnk", shortCode: "MNK" };
 
@@ -294,14 +297,21 @@ describe("reconcileMvolaReleve", () => {
 
     // Relevé de juillet 2026 : ne confirme que le paiement 2026 n° 93
     const buffer = buildReleve([
-      salaryRow("3117400010", "0341234567", "ramaharavo jean b fauchage s26 93 mnk act07 84", "- 698800.00"),
+      salaryRow(
+        "3117400010",
+        "0341234567",
+        "ramaharavo jean b fauchage s26 93 mnk act07 84",
+        "- 698800.00",
+      ),
     ]);
 
     const result = await reconcileMvolaReleve(buffer);
 
     expect(result.confirme).toBe(1);
     expect(result.nonConfirmes.map((n) => n.paymentId)).toEqual(["payment-2026-b"]);
-    expect(prisma.payment.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: "payment-2027" } }));
+    expect(prisma.payment.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "payment-2027" } }),
+    );
   });
 
   it("n'écrit rien en mode aperçu (dryRun)", async () => {
@@ -310,7 +320,12 @@ describe("reconcileMvolaReleve", () => {
       return Promise.resolve((w.status === PaymentStatus.EXPORTED ? [payment({})] : []) as never);
     });
     const buffer = buildReleve([
-      salaryRow("3117400011", "0341234567", "ramaharavo jean b fauchage s26 93 mnk act07 84", "- 698800.00"),
+      salaryRow(
+        "3117400011",
+        "0341234567",
+        "ramaharavo jean b fauchage s26 93 mnk act07 84",
+        "- 698800.00",
+      ),
     ]);
 
     const result = await reconcileMvolaReleve(buffer, { dryRun: true });

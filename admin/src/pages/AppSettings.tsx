@@ -3,7 +3,12 @@ import { useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import { Download, TriangleAlert } from "lucide-react";
 import { api } from "../lib/api";
-import { APP_ICON_URL } from "../hooks/useAppSettings";
+import {
+  APP_ICON_URL,
+  LOGIN_BACKGROUND_URL,
+  LOGIN_BRANCH_URL,
+  LOGIN_LEAF_URL,
+} from "../hooks/useAppSettings";
 import PageHeader from "../components/shared/PageHeader";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -13,6 +18,9 @@ import { toast } from "../hooks/use-toast";
 interface AppSettingsResponse {
   appName: string;
   iconUpdatedAt: string | null;
+  loginBackgroundUpdatedAt: string | null;
+  loginBranchUpdatedAt: string | null;
+  loginLeafUpdatedAt: string | null;
 }
 
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
@@ -23,14 +31,64 @@ const ICON_MIME_TO_EXT: Record<string, "png" | "jpg" | "svg" | "webp"> = {
   "image/webp": "webp",
 };
 
+const LOGIN_ASSET_MAX_BYTES = 5 * 1024 * 1024;
+const LOGIN_ASSET_MIME_TO_EXT: Record<string, "png" | "jpg" | "webp"> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+type LoginAssetSlot = "loginBackground" | "loginBranch" | "loginLeaf";
+
+interface LoginAssetConfig {
+  slot: LoginAssetSlot;
+  urlSegment: string;
+  label: string;
+  description: string;
+  previewClassName: string;
+}
+
+const LOGIN_ASSET_CONFIGS: LoginAssetConfig[] = [
+  {
+    slot: "loginBackground",
+    urlSegment: "login-background",
+    label: "Fond de l'écran de connexion",
+    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    previewClassName: "h-16 w-28 object-cover",
+  },
+  {
+    slot: "loginBranch",
+    urlSegment: "login-branch",
+    label: "Décor coin supérieur droit",
+    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    previewClassName: "h-16 w-16 object-contain",
+  },
+  {
+    slot: "loginLeaf",
+    urlSegment: "login-leaf",
+    label: "Décor coin inférieur gauche",
+    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    previewClassName: "h-16 w-16 object-contain",
+  },
+];
+
 const RESTORE_CONFIRM_PHRASE = "RESTAURER";
 
 export default function AppSettingsPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const loginBackgroundInputRef = useRef<HTMLInputElement>(null);
+  const loginBranchInputRef = useRef<HTMLInputElement>(null);
+  const loginLeafInputRef = useRef<HTMLInputElement>(null);
+  const loginAssetInputRefs: Record<LoginAssetSlot, React.RefObject<HTMLInputElement>> = {
+    loginBackground: loginBackgroundInputRef,
+    loginBranch: loginBranchInputRef,
+    loginLeaf: loginLeafInputRef,
+  };
   const [appName, setAppName] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<LoginAssetSlot | null>(null);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [pendingBackupKey, setPendingBackupKey] = useState<string | null>(null);
   const [pendingBackupName, setPendingBackupName] = useState<string | null>(null);
@@ -46,6 +104,22 @@ export default function AppSettingsPage() {
   const iconUrl = data?.iconUpdatedAt
     ? `${APP_ICON_URL}?v=${encodeURIComponent(data.iconUpdatedAt)}`
     : APP_ICON_URL;
+
+  const LOGIN_ASSET_BASE_URL: Record<LoginAssetSlot, string> = {
+    loginBackground: LOGIN_BACKGROUND_URL,
+    loginBranch: LOGIN_BRANCH_URL,
+    loginLeaf: LOGIN_LEAF_URL,
+  };
+  const LOGIN_ASSET_UPDATED_AT: Record<LoginAssetSlot, string | null | undefined> = {
+    loginBackground: data?.loginBackgroundUpdatedAt,
+    loginBranch: data?.loginBranchUpdatedAt,
+    loginLeaf: data?.loginLeafUpdatedAt,
+  };
+  function loginAssetUrl(slot: LoginAssetSlot): string {
+    const base = LOGIN_ASSET_BASE_URL[slot];
+    const updatedAt = LOGIN_ASSET_UPDATED_AT[slot];
+    return updatedAt ? `${base}?v=${encodeURIComponent(updatedAt)}` : base;
+  }
 
   const savedAppName = data?.appName ?? "";
   const editedAppName = appName || savedAppName;
@@ -106,6 +180,54 @@ export default function AppSettingsPage() {
       toast({ title: "Échec de l'upload", description: String(message), variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleLoginAssetChange(
+    config: LoginAssetConfig,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const ext = LOGIN_ASSET_MIME_TO_EXT[file.type];
+    if (!ext) {
+      toast({
+        title: "Format non supporté",
+        description: "PNG, JPG ou WebP uniquement.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > LOGIN_ASSET_MAX_BYTES) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "5 Mo maximum.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingSlot(config.slot);
+    try {
+      const { data: presign } = await api.post<{ uploadUrl: string; key: string }>(
+        `/app-settings/${config.urlSegment}/upload-url`,
+        { ext },
+      );
+      await fetch(presign.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      await api.post(`/app-settings/${config.urlSegment}`, { key: presign.key });
+      toast({ title: `${config.label} mis à jour` });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec de l'upload", description: String(message), variant: "destructive" });
+    } finally {
+      setUploadingSlot(null);
     }
   }
 
@@ -250,6 +372,46 @@ export default function AppSettingsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900">Écran de connexion</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Fond et décors affichés sur l'écran de connexion de l'Admin et de la PWA terrain.
+          </p>
+        </div>
+
+        {LOGIN_ASSET_CONFIGS.map((config) => (
+          <div key={config.slot} className="space-y-2">
+            <Label>{config.label}</Label>
+            <div className="flex items-center gap-4">
+              <img
+                src={loginAssetUrl(config.slot)}
+                alt=""
+                className={`rounded border border-zinc-200 ${config.previewClassName}`}
+              />
+              <div className="space-y-1">
+                <input
+                  ref={loginAssetInputRefs[config.slot]}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => void handleLoginAssetChange(config, e)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingSlot === config.slot}
+                  onClick={() => loginAssetInputRefs[config.slot].current?.click()}
+                >
+                  {uploadingSlot === config.slot ? "Envoi…" : "Changer"}
+                </Button>
+                <p className="text-xs text-zinc-500">{config.description}</p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">

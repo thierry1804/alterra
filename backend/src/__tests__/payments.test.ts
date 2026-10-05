@@ -312,7 +312,11 @@ describe("Payments API", () => {
 
     expect(prisma.payment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ periodIso: "S29", referenceYear: 2091, status: "PENDING" }),
+        where: expect.objectContaining({
+          periodIso: "S29",
+          referenceYear: 2091,
+          status: "PENDING",
+        }),
       }),
     );
   });

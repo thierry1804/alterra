@@ -493,10 +493,13 @@ model PasswordReset {
   @@index([expiresAt])
 }
 
-/// Ligne unique (id fixe "singleton") — nom et icône de l'application, modifiables depuis l'Admin.
+/// Ligne unique (id fixe "singleton") — nom, icône et habillage de l'écran de connexion, modifiables depuis l'Admin.
 model AppSetting {
-  id        String   @id @default("singleton")
-  appName   String   @default("ALTERRA")
-  iconKey   String?
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default("singleton")
+  appName            String   @default("ALTERRA")
+  iconKey            String?
+  loginBackgroundKey String?
+  loginBranchKey     String?
+  loginLeafKey       String?
+  updatedAt          DateTime @updatedAt
 }

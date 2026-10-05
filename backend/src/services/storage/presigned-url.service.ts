@@ -24,6 +24,15 @@ export async function iconUploadUrl(ext: "png" | "jpg" | "svg" | "webp") {
   return { uploadUrl, iconKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
 }
 
+export type LoginAssetSlot = "loginBackground" | "loginBranch" | "loginLeaf";
+
+/** Presigned MinIO PUT URL for the login screen's background/corner images. */
+export async function loginAssetUploadUrl(slot: LoginAssetSlot, ext: "png" | "jpg" | "webp") {
+  const key = `app-settings/${slot}/${randomUUID()}.${ext}`;
+  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, key);
+  return { uploadUrl, key, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+}
+
 /** Presigned MinIO PUT URL for a database backup upload (restauration) — objet éphémère, supprimé après usage. */
 export async function backupUploadUrl() {
   const backupKey = `backups/${randomUUID()}.dump`;
