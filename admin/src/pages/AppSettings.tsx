@@ -13,6 +13,7 @@ import PageHeader from "../components/shared/PageHeader";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 
 interface AppSettingsResponse {
@@ -313,199 +314,210 @@ export default function AppSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Paramètres de l'application"
-        description="Nom et icône portés par l'Admin et la PWA terrain."
+        description="Identité, écran de connexion et données portés par l'Admin et la PWA terrain."
       />
 
-      <div className="max-w-lg space-y-6 rounded-md border border-zinc-200 bg-white p-6">
-        <div className="space-y-2">
-          <Label htmlFor="app-name">Nom de l'application</Label>
-          <div className="flex gap-2">
-            <Input
-              id="app-name"
-              value={editedAppName}
-              disabled={isLoading}
-              onChange={(e) => setAppName(e.target.value)}
-              maxLength={60}
-            />
-            <Button
-              type="button"
-              disabled={
-                saveNameMutation.isPending ||
-                !editedAppName.trim() ||
-                editedAppName === savedAppName
-              }
-              onClick={() => saveNameMutation.mutate(editedAppName.trim())}
-            >
-              {saveNameMutation.isPending ? "Enregistrement…" : "Enregistrer"}
-            </Button>
-          </div>
-          <p className="text-xs text-zinc-500">
-            Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet — jusqu'à 60 caractères.
-          </p>
-        </div>
+      <Tabs defaultValue="general">
+        <TabsList>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="login">Écran de connexion</TabsTrigger>
+          <TabsTrigger value="database">Base de données</TabsTrigger>
+        </TabsList>
 
-        <div className="space-y-2">
-          <Label>Icône</Label>
-          <div className="flex items-center gap-4">
-            <img
-              src={iconUrl}
-              alt=""
-              className="h-16 w-16 rounded border border-zinc-200 object-cover"
-            />
-            <div className="space-y-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                className="hidden"
-                onChange={(e) => void handleIconChange(e)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploading ? "Envoi…" : "Changer l'icône"}
-              </Button>
-              <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-900">Écran de connexion</h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            Fond et décors affichés sur l'écran de connexion de l'Admin et de la PWA terrain.
-          </p>
-        </div>
-
-        {LOGIN_ASSET_CONFIGS.map((config) => (
-          <div key={config.slot} className="space-y-2">
-            <Label>{config.label}</Label>
-            <div className="flex items-center gap-4">
-              <img
-                src={loginAssetUrl(config.slot)}
-                alt=""
-                className={`rounded border border-zinc-200 ${config.previewClassName}`}
-              />
-              <div className="space-y-1">
-                <input
-                  ref={loginAssetInputRefs[config.slot]}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => void handleLoginAssetChange(config, e)}
+        <TabsContent value="general">
+          <div className="max-w-lg space-y-6 rounded-md border border-zinc-200 bg-white p-6">
+            <div className="space-y-2">
+              <Label htmlFor="app-name">Nom de l'application</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="app-name"
+                  value={editedAppName}
+                  disabled={isLoading}
+                  onChange={(e) => setAppName(e.target.value)}
+                  maxLength={60}
                 />
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={uploadingSlot === config.slot}
-                  onClick={() => loginAssetInputRefs[config.slot].current?.click()}
+                  disabled={
+                    saveNameMutation.isPending ||
+                    !editedAppName.trim() ||
+                    editedAppName === savedAppName
+                  }
+                  onClick={() => saveNameMutation.mutate(editedAppName.trim())}
                 >
-                  {uploadingSlot === config.slot ? "Envoi…" : "Changer"}
+                  {saveNameMutation.isPending ? "Enregistrement…" : "Enregistrer"}
                 </Button>
-                <p className="text-xs text-zinc-500">{config.description}</p>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-900">Base de données</h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            Instantané complet de la base — indépendant des sauvegardes automatiques nocturnes.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Sauvegarde</Label>
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={downloadingBackup}
-              onClick={() => void handleDownloadBackup()}
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              {downloadingBackup ? "Génération…" : "Télécharger une sauvegarde"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2 border-t border-zinc-200 pt-5">
-          <Label>Restauration</Label>
-          {!pendingBackupKey ? (
-            <div>
-              <input
-                ref={backupFileInputRef}
-                type="file"
-                accept=".dump"
-                className="hidden"
-                onChange={(e) => void handleBackupFileChange(e)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={uploadingBackup}
-                onClick={() => backupFileInputRef.current?.click()}
-              >
-                {uploadingBackup ? "Envoi…" : "Choisir un fichier .dump"}
-              </Button>
-              <p className="mt-1 text-xs text-zinc-500">
-                Remplace intégralement les données actuelles — à utiliser avec précaution.
+              <p className="text-xs text-zinc-500">
+                Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet — jusqu'à 60
+                caractères.
               </p>
             </div>
-          ) : (
-            <div className="space-y-3 rounded-md border border-danger/40 bg-danger-bg p-4">
-              <div className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden />
-                <div className="space-y-1 text-sm text-danger">
-                  <p className="font-semibold">Zone dangereuse</p>
-                  <p>
-                    Restaurer <span className="font-mono text-xs">{pendingBackupName}</span> va{" "}
-                    <strong>remplacer toutes les données actuelles</strong> (sites, travailleurs,
-                    pointages, paiements…). Cette action est irréversible.
-                  </p>
+
+            <div className="space-y-2">
+              <Label>Icône</Label>
+              <div className="flex items-center gap-4">
+                <img
+                  src={iconUrl}
+                  alt=""
+                  className="h-16 w-16 rounded border border-zinc-200 object-cover"
+                />
+                <div className="space-y-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => void handleIconChange(e)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? "Envoi…" : "Changer l'icône"}
+                  </Button>
+                  <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="restore-confirm" className="text-danger">
-                  Tapez {RESTORE_CONFIRM_PHRASE} pour confirmer
-                </Label>
-                <Input
-                  id="restore-confirm"
-                  value={restoreConfirmText}
-                  onChange={(e) => setRestoreConfirmText(e.target.value)}
-                  autoComplete="off"
-                />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="login">
+          <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
+            <p className="text-xs text-zinc-500">
+              Fond et décors affichés sur l'écran de connexion de l'Admin et de la PWA terrain.
+            </p>
+
+            {LOGIN_ASSET_CONFIGS.map((config) => (
+              <div key={config.slot} className="space-y-2">
+                <Label>{config.label}</Label>
+                <div className="flex items-center gap-4">
+                  <img
+                    src={loginAssetUrl(config.slot)}
+                    alt=""
+                    className={`rounded border border-zinc-200 ${config.previewClassName}`}
+                  />
+                  <div className="space-y-1">
+                    <input
+                      ref={loginAssetInputRefs[config.slot]}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => void handleLoginAssetChange(config, e)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={uploadingSlot === config.slot}
+                      onClick={() => loginAssetInputRefs[config.slot].current?.click()}
+                    >
+                      {uploadingSlot === config.slot ? "Envoi…" : "Changer"}
+                    </Button>
+                    <p className="text-xs text-zinc-500">{config.description}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="database">
+          <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
+            <div>
+              <p className="text-xs text-zinc-500">
+                Instantané complet de la base — indépendant des sauvegardes automatiques nocturnes.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sauvegarde</Label>
+              <div>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={restoring}
-                  onClick={cancelPendingRestore}
+                  disabled={downloadingBackup}
+                  onClick={() => void handleDownloadBackup()}
                 >
-                  Annuler
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={restoring || restoreConfirmText !== RESTORE_CONFIRM_PHRASE}
-                  onClick={() => void handleRestore()}
-                >
-                  {restoring ? "Restauration…" : "Restaurer maintenant"}
+                  <Download className="h-4 w-4" aria-hidden />
+                  {downloadingBackup ? "Génération…" : "Télécharger une sauvegarde"}
                 </Button>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+
+            <div className="space-y-2 border-t border-zinc-200 pt-5">
+              <Label>Restauration</Label>
+              {!pendingBackupKey ? (
+                <div>
+                  <input
+                    ref={backupFileInputRef}
+                    type="file"
+                    accept=".dump"
+                    className="hidden"
+                    onChange={(e) => void handleBackupFileChange(e)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingBackup}
+                    onClick={() => backupFileInputRef.current?.click()}
+                  >
+                    {uploadingBackup ? "Envoi…" : "Choisir un fichier .dump"}
+                  </Button>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Remplace intégralement les données actuelles — à utiliser avec précaution.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-md border border-danger/40 bg-danger-bg p-4">
+                  <div className="flex items-start gap-2">
+                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden />
+                    <div className="space-y-1 text-sm text-danger">
+                      <p className="font-semibold">Zone dangereuse</p>
+                      <p>
+                        Restaurer <span className="font-mono text-xs">{pendingBackupName}</span> va{" "}
+                        <strong>remplacer toutes les données actuelles</strong> (sites,
+                        travailleurs, pointages, paiements…). Cette action est irréversible.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="restore-confirm" className="text-danger">
+                      Tapez {RESTORE_CONFIRM_PHRASE} pour confirmer
+                    </Label>
+                    <Input
+                      id="restore-confirm"
+                      value={restoreConfirmText}
+                      onChange={(e) => setRestoreConfirmText(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={restoring}
+                      onClick={cancelPendingRestore}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={restoring || restoreConfirmText !== RESTORE_CONFIRM_PHRASE}
+                      onClick={() => void handleRestore()}
+                    >
+                      {restoring ? "Restauration…" : "Restaurer maintenant"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
