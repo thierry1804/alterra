@@ -1,4 +1,4 @@
-import { WorkerStatus } from "@prisma/client";
+import { Sexe, WorkerStatus } from "@prisma/client";
 import type ExcelJS from "exceljs";
 import { prisma } from "../../lib/prisma.js";
 import { loadXlsxWorkbook } from "./excel-workbook.js";
@@ -42,6 +42,7 @@ export interface ValidImportRow {
   address?: string;
   hiredAt: Date;
   status: WorkerStatus;
+  sexe?: Sexe;
   existingWorkerId?: string;
 }
 
@@ -75,6 +76,17 @@ function normalizeHeader(value: string): string {
 function parseStatus(raw: string): WorkerStatus | null {
   const upper = raw.toUpperCase();
   if (upper in WorkerStatus) return upper as WorkerStatus;
+  return null;
+}
+
+function parseSexe(raw: string): Sexe | null {
+  const normalized = raw
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toUpperCase();
+  if (["M", "H", "MASCULIN", "HOMME"].includes(normalized)) return Sexe.MASCULIN;
+  if (["F", "FEMININ", "FEMME"].includes(normalized)) return Sexe.FEMININ;
   return null;
 }
 
@@ -369,6 +381,12 @@ export async function parseWorkersWorkbook(
       rowErrors.push({ row: rowNumber, field: "status", message: "Statut invalide" });
     }
 
+    const sexeRaw = values.sexe?.trim();
+    const sexe = sexeRaw ? parseSexe(sexeRaw) : undefined;
+    if (sexeRaw && !sexe) {
+      rowErrors.push({ row: rowNumber, field: "sexe", message: "Sexe invalide" });
+    }
+
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
       continue;
@@ -393,6 +411,7 @@ export async function parseWorkersWorkbook(
       address: values.address || undefined,
       hiredAt: hiredAt!,
       status: status ?? WorkerStatus.ACTIVE,
+      sexe: sexe ?? undefined,
     });
   }
 
@@ -492,6 +511,7 @@ export async function importWorkersRows(rows: ValidImportRow[]) {
         address: row.address,
         hiredAt: row.hiredAt,
         status: row.status,
+        sexe: row.sexe,
       };
 
       if (row.existingWorkerId) {

@@ -50,6 +50,7 @@ export interface Worker {
   siteId: string;
   teamId: string | null;
   status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  sexe: "MASCULIN" | "FEMININ" | null;
   hiredAt: string;
   photoKey: string | null;
 }
@@ -117,6 +118,11 @@ export const WORKER_STATUS_LABELS: Record<Worker["status"], string> = {
   ACTIVE: "Actif",
   INACTIVE: "Inactif",
   SUSPENDED: "Suspendu",
+};
+
+export const WORKER_SEXE_LABELS: Record<NonNullable<Worker["sexe"]>, string> = {
+  MASCULIN: "Masculin",
+  FEMININ: "Féminin",
 };
 
 export const USER_ROLE_LABELS: Record<AppUser["role"], string> = {

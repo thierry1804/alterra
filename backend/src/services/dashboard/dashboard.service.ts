@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role, Sexe } from "@prisma/client";
 import type { AppPrisma } from "../../lib/prisma.js";
 
 function startOfUtcDay(date: Date): Date {
@@ -34,6 +34,29 @@ export interface DashboardAlert {
   link?: string;
 }
 
+export interface GenderBreakdown {
+  masculin: number;
+  feminin: number;
+  nonRenseigne: number;
+  total: number;
+}
+
+export interface GenderByGroup extends GenderBreakdown {
+  id: string;
+  name: string;
+}
+
+function emptyGenderBreakdown(): GenderBreakdown {
+  return { masculin: 0, feminin: 0, nonRenseigne: 0, total: 0 };
+}
+
+function addGenderCount(breakdown: GenderBreakdown, sexe: Sexe | null, count: number): void {
+  if (sexe === Sexe.MASCULIN) breakdown.masculin += count;
+  else if (sexe === Sexe.FEMININ) breakdown.feminin += count;
+  else breakdown.nonRenseigne += count;
+  breakdown.total += count;
+}
+
 export interface DashboardSummary {
   kpis: {
     activeWorkers: number;
@@ -52,10 +75,13 @@ export interface DashboardSummary {
     activeWorkers: number;
   }>;
   alerts: DashboardAlert[];
+  genderBreakdown: GenderBreakdown;
+  genderByTeam: GenderByGroup[];
+  genderBySite: GenderByGroup[];
 }
 
 export async function getDashboardSummary(
-  db: Pick<AppPrisma, "worker" | "pointage" | "payment" | "user">,
+  db: Pick<AppPrisma, "worker" | "pointage" | "payment" | "user" | "team" | "site">,
   siteId?: string,
 ): Promise<DashboardSummary> {
   const workerWhere = {
@@ -201,6 +227,55 @@ export async function getDashboardSummary(
     });
   }
 
+  const sexeGroups = await db.worker.groupBy({ by: ["sexe"], where: workerWhere, _count: true });
+  const genderBreakdown = emptyGenderBreakdown();
+  for (const group of sexeGroups) addGenderCount(genderBreakdown, group.sexe, group._count);
+
+  const teamSexeGroups = await db.worker.groupBy({
+    by: ["teamId", "sexe"],
+    where: workerWhere,
+    _count: true,
+  });
+  const teamIds = [...new Set(teamSexeGroups.map((g) => g.teamId).filter((id) => id !== null))];
+  const teams = await db.team.findMany({
+    where: { id: { in: teamIds } },
+    select: { id: true, name: true },
+  });
+  const teamNameById = new Map(teams.map((t) => [t.id, t.name]));
+  const teamBreakdowns = new Map<string, GenderBreakdown>();
+  for (const group of teamSexeGroups) {
+    const key = group.teamId ?? "__sans_equipe__";
+    if (!teamBreakdowns.has(key)) teamBreakdowns.set(key, emptyGenderBreakdown());
+    addGenderCount(teamBreakdowns.get(key)!, group.sexe, group._count);
+  }
+  const genderByTeam: GenderByGroup[] = [...teamBreakdowns.entries()]
+    .map(([id, breakdown]) => ({
+      id,
+      name: id === "__sans_equipe__" ? "Sans équipe" : (teamNameById.get(id) ?? id),
+      ...breakdown,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const siteSexeGroups = await db.worker.groupBy({
+    by: ["siteId", "sexe"],
+    where: workerWhere,
+    _count: true,
+  });
+  const siteIds = [...new Set(siteSexeGroups.map((g) => g.siteId))];
+  const sites = await db.site.findMany({
+    where: { id: { in: siteIds } },
+    select: { id: true, name: true, shortCode: true },
+  });
+  const siteNameById = new Map(sites.map((s) => [s.id, `${s.shortCode} — ${s.name}`]));
+  const siteBreakdowns = new Map<string, GenderBreakdown>();
+  for (const group of siteSexeGroups) {
+    if (!siteBreakdowns.has(group.siteId)) siteBreakdowns.set(group.siteId, emptyGenderBreakdown());
+    addGenderCount(siteBreakdowns.get(group.siteId)!, group.sexe, group._count);
+  }
+  const genderBySite: GenderByGroup[] = [...siteBreakdowns.entries()]
+    .map(([id, breakdown]) => ({ id, name: siteNameById.get(id) ?? id, ...breakdown }))
+    .sort((a, b) => b.total - a.total);
+
   return {
     kpis: {
       activeWorkers,
@@ -212,6 +287,9 @@ export async function getDashboardSummary(
     presenceLast7Days,
     workforceTrend,
     alerts,
+    genderBreakdown,
+    genderByTeam,
+    genderBySite,
   };
 }
 

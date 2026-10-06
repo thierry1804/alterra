@@ -9,6 +9,7 @@ export interface WorkerRecord {
   teamId: string | null;
   matricule: string;
   siteId?: string;
+  sexe?: "MASCULIN" | "FEMININ" | null;
 }
 
 /** Sous-activité (unité réellement facturée) — la catégorie officielle (ACT01..ACT07) est portée par categoryCode. */

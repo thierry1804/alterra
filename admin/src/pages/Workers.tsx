@@ -5,7 +5,7 @@ import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-rea
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 import type { Site, Worker } from "../lib/referentials";
-import { WORKER_STATUS_LABELS } from "../lib/referentials";
+import { WORKER_SEXE_LABELS, WORKER_STATUS_LABELS } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import ImportDialog from "../components/workers/ImportDialog";
 import { Button } from "../components/ui/button";
@@ -46,6 +46,7 @@ interface WorkerForm {
   siteId: string;
   hiredAt: string;
   status: Worker["status"];
+  sexe: NonNullable<Worker["sexe"]> | "";
 }
 
 const emptyForm: WorkerForm = {
@@ -56,6 +57,7 @@ const emptyForm: WorkerForm = {
   siteId: "",
   hiredAt: new Date().toISOString().slice(0, 10),
   status: "ACTIVE",
+  sexe: "",
 };
 
 function pad2(n: number): string {
@@ -67,6 +69,7 @@ export default function WorkersPage() {
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<Worker["status"] | "">("");
+  const [sexeFilter, setSexeFilter] = useState<NonNullable<Worker["sexe"]> | "">("");
   const [importOpen, setImportOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Worker | null>(null);
@@ -90,7 +93,7 @@ export default function WorkersPage() {
   const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
 
   const workersQuery = useInfiniteQuery({
-    queryKey: ["workers", search, siteFilter, statusFilter, sortKey, sortDir],
+    queryKey: ["workers", search, siteFilter, statusFilter, sexeFilter, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -99,6 +102,7 @@ export default function WorkersPage() {
             q: search || undefined,
             siteId: siteFilter || undefined,
             status: statusFilter || undefined,
+            sexe: sexeFilter || undefined,
             cursor: pageParam,
             take: 50,
             orderBy: sortKey ?? undefined,
@@ -172,6 +176,7 @@ export default function WorkersPage() {
                     q: search || undefined,
                     siteId: siteFilter || undefined,
                     status: statusFilter || undefined,
+                    sexe: sexeFilter || undefined,
                     cursor,
                     take: 100,
                   },
@@ -187,6 +192,7 @@ export default function WorkersPage() {
           { header: "MVola", accessor: (w) => w.mvolaNumber },
           { header: "Site", accessor: (w) => siteName(w.siteId) },
           { header: "Statut", accessor: (w) => WORKER_STATUS_LABELS[w.status] },
+          { header: "Sexe", accessor: (w) => (w.sexe ? WORKER_SEXE_LABELS[w.sexe] : "") },
         ],
         "travailleurs",
       );
@@ -205,6 +211,7 @@ export default function WorkersPage() {
         siteId: form.siteId,
         hiredAt: form.hiredAt,
         status: form.status,
+        sexe: form.sexe || null,
         ...(!editing && matriculeSeq !== null ? { legacyMocId: matriculeSeq } : {}),
       };
       if (editing) {
@@ -313,6 +320,7 @@ export default function WorkersPage() {
       siteId: worker.siteId,
       hiredAt: worker.hiredAt.slice(0, 10),
       status: worker.status,
+      sexe: worker.sexe ?? "",
     });
     matriculeEditedRef.current = true;
     setMatriculeLocked(true);
@@ -377,6 +385,18 @@ export default function WorkersPage() {
           {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
             <option key={status} value={status}>
               {WORKER_STATUS_LABELS[status]}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={sexeFilter}
+          onChange={(e) => setSexeFilter(e.target.value as NonNullable<Worker["sexe"]> | "")}
+        >
+          <option value="">Tous sexes</option>
+          {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map((sexe) => (
+            <option key={sexe} value={sexe}>
+              {WORKER_SEXE_LABELS[sexe]}
             </option>
           ))}
         </select>
@@ -468,20 +488,27 @@ export default function WorkersPage() {
                 currentDir={sortDir}
                 onSort={toggleSort}
               />
+              <SortableHead
+                sortKey="sexe"
+                label="Sexe"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <TableHead className="w-48">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {workersQuery.isLoading && (
               <TableRow>
-                <TableCell colSpan={8} className="text-zinc-500">
+                <TableCell colSpan={9} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {workersQuery.isError && (
               <TableQueryError
-                colSpan={8}
+                colSpan={9}
                 what="les MOC"
                 onRetry={() => void workersQuery.refetch()}
               />
@@ -524,6 +551,7 @@ export default function WorkersPage() {
                       {WORKER_STATUS_LABELS[worker.status]}
                     </Badge>
                   </TableCell>
+                  <TableCell>{worker.sexe ? WORKER_SEXE_LABELS[worker.sexe] : "—"}</TableCell>
                   <TableCell>
                     <RowActions>
                       <IconButton
@@ -544,7 +572,7 @@ export default function WorkersPage() {
               ))}
             {!workersQuery.isLoading && workers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-zinc-500">
+                <TableCell colSpan={9} className="text-zinc-500">
                   Aucun MOC trouvé.
                 </TableCell>
               </TableRow>
@@ -687,6 +715,27 @@ export default function WorkersPage() {
                 {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
                   <option key={status} value={status}>
                     {WORKER_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="w-sexe">Sexe</Label>
+              <select
+                id="w-sexe"
+                className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                value={form.sexe}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    sexe: e.target.value as NonNullable<Worker["sexe"]> | "",
+                  }))
+                }
+              >
+                <option value="">Non renseigné</option>
+                {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map((sexe) => (
+                  <option key={sexe} value={sexe}>
+                    {WORKER_SEXE_LABELS[sexe]}
                   </option>
                 ))}
               </select>

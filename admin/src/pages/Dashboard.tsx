@@ -5,6 +5,8 @@ import type { DashboardSummary } from "../lib/dashboard";
 import KpiCards from "../components/dashboard/KpiCards";
 import PresenceChart from "../components/dashboard/PresenceChart";
 import WorkforceChart from "../components/dashboard/WorkforceChart";
+import GenderBreakdownChart from "../components/dashboard/GenderBreakdownChart";
+import GenderRatioBarChart from "../components/dashboard/GenderRatioBarChart";
 import AlertsBlock from "../components/dashboard/AlertsBlock";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { Button } from "../components/ui/button";
@@ -48,6 +50,9 @@ export default function Dashboard() {
         <GlossaryTerm term="Paiements en attente">
           Montant MVola non encore exporté pour la campagne active.
         </GlossaryTerm>
+        <GlossaryTerm term="Non renseigné">
+          MOC dont le sexe n'a pas été saisi dans la fiche travailleur.
+        </GlossaryTerm>
       </ContextHelp>
 
       {isLoading && (
@@ -57,6 +62,7 @@ export default function Dashboard() {
               <Skeleton key={index} className="h-24" />
             ))}
           </div>
+          <Skeleton className="h-72" />
           <Skeleton className="h-72" />
           <Skeleton className="h-72" />
           <Skeleton className="h-40" />
@@ -76,6 +82,19 @@ export default function Dashboard() {
             <PresenceChart data={data.presenceLast7Days} />
             <WorkforceChart data={data.workforceTrend} />
           </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <GenderBreakdownChart data={data.genderBreakdown} />
+            <GenderRatioBarChart
+              title="Ratio hommes-femmes par site"
+              data={data.genderBySite}
+              emptyLabel="Aucune donnée de site."
+            />
+          </div>
+          <GenderRatioBarChart
+            title="Ratio hommes-femmes par équipe"
+            data={data.genderByTeam}
+            emptyLabel="Aucune donnée d'équipe."
+          />
           <AlertsBlock alerts={data.alerts} />
         </>
       )}

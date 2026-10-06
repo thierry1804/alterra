@@ -1,4 +1,4 @@
-import { Prisma, RequestStatus, Role, WorkerStatus } from "@prisma/client";
+import { Prisma, RequestStatus, Role, Sexe, WorkerStatus } from "@prisma/client";
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
@@ -15,6 +15,7 @@ export interface CreateWorkerRequestInput {
   lastName: string;
   mvolaNumber: string;
   cinNumber?: string;
+  sexe?: Sexe;
   proposedPhotoKey?: string;
   targetTeamId?: string;
   justification: string;
@@ -102,6 +103,7 @@ export async function createWorkerRequest(
       lastName: input.lastName.trim(),
       mvolaNumber: input.mvolaNumber.trim(),
       cinNumber: input.cinNumber?.trim(),
+      sexe: input.sexe,
       proposedPhotoKey: input.proposedPhotoKey,
       targetTeamId: input.targetTeamId,
       justification: input.justification.trim(),
@@ -164,6 +166,7 @@ export async function decideWorkerRequest(
         lastName: request.lastName,
         mvolaNumber: request.mvolaNumber,
         cinNumber: request.cinNumber,
+        sexe: request.sexe,
         photoKey: request.proposedPhotoKey,
         siteId: site.id,
         teamId: request.targetTeamId,

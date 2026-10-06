@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ClarificationStatus, RequestStatus, Role } from "@prisma/client";
+import { ClarificationStatus, RequestStatus, Role, Sexe } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
@@ -60,6 +60,7 @@ const createWorkerSchema = z.object({
   lastName: z.string().min(1),
   mvolaNumber: z.string().min(9),
   cinNumber: z.string().optional(),
+  sexe: z.nativeEnum(Sexe).optional(),
   proposedPhotoKey: z.string().optional(),
   targetTeamId: z.string().uuid().optional(),
   justification: z.string().min(10),

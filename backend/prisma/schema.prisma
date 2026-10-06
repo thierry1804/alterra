@@ -23,6 +23,11 @@ enum WorkerStatus {
   SUSPENDED
 }
 
+enum Sexe {
+  MASCULIN
+  FEMININ
+}
+
 enum PointageStatus {
   PENDING
   VALIDATED
@@ -237,6 +242,7 @@ model Worker {
   firstName     String
   lastName      String
   birthDate     DateTime?        @db.Date
+  sexe          Sexe?
   maritalStatus String?
   childrenCount Int?
   mvolaNumber   String           @unique
@@ -415,6 +421,7 @@ model WorkerRequest {
   lastName         String
   cinNumber        String?
   mvolaNumber      String
+  sexe             Sexe?
   proposedPhotoKey String?
   targetTeamId     String?       @db.Uuid
   justification    String        @db.Text

@@ -5,6 +5,18 @@ export interface DashboardAlert {
   link?: string;
 }
 
+export interface GenderBreakdown {
+  masculin: number;
+  feminin: number;
+  nonRenseigne: number;
+  total: number;
+}
+
+export interface GenderByGroup extends GenderBreakdown {
+  id: string;
+  name: string;
+}
+
 export interface DashboardSummary {
   kpis: {
     activeWorkers: number;
@@ -23,6 +35,9 @@ export interface DashboardSummary {
     activeWorkers: number;
   }>;
   alerts: DashboardAlert[];
+  genderBreakdown: GenderBreakdown;
+  genderByTeam: GenderByGroup[];
+  genderBySite: GenderByGroup[];
 }
 
 export function formatMga(amount: number): string {

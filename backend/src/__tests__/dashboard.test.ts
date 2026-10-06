@@ -5,6 +5,7 @@ function createMockPrisma(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     worker: {
       count: vi.fn().mockResolvedValue(50),
+      groupBy: vi.fn().mockResolvedValue([]),
     },
     pointage: {
       count: vi.fn().mockResolvedValue(5),
@@ -19,6 +20,12 @@ function createMockPrisma(overrides: Partial<Record<string, unknown>> = {}) {
     },
     user: {
       count: vi.fn().mockResolvedValue(0),
+    },
+    team: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    site: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
     ...overrides,
   };

@@ -9,7 +9,8 @@ export type WorkerImportFieldKey =
   | "teamId"
   | "cinNumber"
   | "address"
-  | "status";
+  | "status"
+  | "sexe";
 
 export interface WorkerImportField {
   key: WorkerImportFieldKey;
@@ -29,6 +30,7 @@ export const WORKER_IMPORT_FIELDS: WorkerImportField[] = [
   { key: "cinNumber", label: "Numéro CIN", required: false },
   { key: "address", label: "Adresse", required: false },
   { key: "status", label: "Statut (ACTIVE/INACTIVE)", required: false },
+  { key: "sexe", label: "Sexe (Masculin/Féminin)", required: false },
 ];
 
 export const WORKER_IMPORT_REQUIRED_FIELDS: WorkerImportFieldKey[] = WORKER_IMPORT_FIELDS.filter(
@@ -63,6 +65,7 @@ export const WORKER_IMPORT_FIELD_ALIASES: Record<WorkerImportFieldKey, string[]>
   cinNumber: ["cin", "numéro cin", "numero cin", "cin number"],
   address: ["adresse", "address"],
   status: ["statut", "status"],
+  sexe: ["sexe", "genre", "gender"],
 };
 
 export type WorkerImportColumnMapping = Partial<Record<WorkerImportFieldKey, string>>;

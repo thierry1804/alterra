@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Prisma, Role, WorkerStatus } from "@prisma/client";
+import { Prisma, Role, Sexe, WorkerStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
@@ -27,12 +27,14 @@ const WORKER_SORT_FIELDS = [
   "hiredAt",
   "siteId",
   "status",
+  "sexe",
 ] as const;
 
 const listWorkersQuery = z.object({
   siteId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
   status: z.nativeEnum(WorkerStatus).optional(),
+  sexe: z.nativeEnum(Sexe).optional(),
   q: z.string().min(1).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
@@ -63,6 +65,7 @@ const createWorkerSchema = z.object({
   hiredAt: z.coerce.date(),
   status: z.nativeEnum(WorkerStatus).default(WorkerStatus.ACTIVE),
   birthDate: z.coerce.date().optional(),
+  sexe: z.nativeEnum(Sexe).nullable().optional(),
   maritalStatus: z.string().optional(),
   childrenCount: z.coerce.number().int().min(0).optional(),
   legacyMocId: z.coerce.number().int().optional(),
@@ -121,7 +124,7 @@ workersRouter.get(
   validate(listWorkersQuery, "query"),
   async (req, res, next) => {
     try {
-      const { siteId, teamId, status, q, cursor, take, orderBy, dir } = req.query as z.infer<
+      const { siteId, teamId, status, sexe, q, cursor, take, orderBy, dir } = req.query as z.infer<
         typeof listWorkersQuery
       >;
 
@@ -129,6 +132,7 @@ workersRouter.get(
       if (siteId) where.siteId = siteId;
       if (teamId) where.teamId = teamId;
       if (status) where.status = status;
+      if (sexe) where.sexe = sexe;
       if (q) Object.assign(where, buildSearchFilter(q));
 
       const pageSize = take ?? 50;

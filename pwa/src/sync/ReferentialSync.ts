@@ -11,6 +11,7 @@ interface ApiWorker {
   siteId: string;
   teamId: string | null;
   status: string;
+  sexe: "MASCULIN" | "FEMININ" | null;
 }
 
 interface ApiSubActivity {
@@ -70,6 +71,7 @@ export async function syncReferentials(options: {
         matricule: worker.matricule,
         teamId: worker.teamId,
         siteId: worker.siteId,
+        sexe: worker.sexe,
       })),
     );
 

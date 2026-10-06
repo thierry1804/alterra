@@ -36,6 +36,7 @@ export default function WorkerRequest() {
   const [lastName, setLastName] = useState("");
   const [mvolaNumber, setMvolaNumber] = useState("");
   const [cinNumber, setCinNumber] = useState("");
+  const [sexe, setSexe] = useState<"" | "MASCULIN" | "FEMININ">("");
   const [targetTeamId, setTargetTeamId] = useState("");
   const [justification, setJustification] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export default function WorkerRequest() {
         lastName: lastName.trim(),
         mvolaNumber: mvolaNumber.trim(),
         cinNumber: cinNumber.trim() || undefined,
+        sexe: sexe || undefined,
         targetTeamId: targetTeamId || undefined,
         justification: justification.trim(),
         proposedPhotoKey,
@@ -97,6 +99,7 @@ export default function WorkerRequest() {
       setLastName("");
       setMvolaNumber("");
       setCinNumber("");
+      setSexe("");
       setTargetTeamId("");
       setJustification("");
       clearPhoto();
@@ -202,6 +205,21 @@ export default function WorkerRequest() {
               onChange={(event) => setCinNumber(event.target.value)}
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600" htmlFor="wkr-sexe">
+              Sexe (optionnel)
+            </label>
+            <select
+              id="wkr-sexe"
+              value={sexe}
+              onChange={(event) => setSexe(event.target.value as "" | "MASCULIN" | "FEMININ")}
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">Non renseigné</option>
+              <option value="MASCULIN">Masculin</option>
+              <option value="FEMININ">Féminin</option>
+            </select>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-zinc-600" htmlFor="wkr-team">
