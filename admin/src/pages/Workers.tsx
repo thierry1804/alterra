@@ -702,43 +702,47 @@ export default function WorkersPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="w-status">Statut</Label>
-              <select
-                id="w-status"
-                className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as Worker["status"] }))
-                }
-              >
-                {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
-                  <option key={status} value={status}>
-                    {WORKER_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="w-sexe">Sexe</Label>
-              <select
-                id="w-sexe"
-                className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
-                value={form.sexe}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    sexe: e.target.value as NonNullable<Worker["sexe"]> | "",
-                  }))
-                }
-              >
-                <option value="">Non renseigné</option>
-                {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map((sexe) => (
-                  <option key={sexe} value={sexe}>
-                    {WORKER_SEXE_LABELS[sexe]}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="w-sexe">Sexe</Label>
+                <select
+                  id="w-sexe"
+                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  value={form.sexe}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      sexe: e.target.value as NonNullable<Worker["sexe"]> | "",
+                    }))
+                  }
+                >
+                  <option value="">Non renseigné</option>
+                  {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map(
+                    (sexe) => (
+                      <option key={sexe} value={sexe}>
+                        {WORKER_SEXE_LABELS[sexe]}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="w-status">Statut</Label>
+                <select
+                  id="w-status"
+                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  value={form.status}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, status: e.target.value as Worker["status"] }))
+                  }
+                >
+                  {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
+                    <option key={status} value={status}>
+                      {WORKER_STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
