@@ -22,6 +22,7 @@ interface AppSettingsResponse {
   loginBackgroundUpdatedAt: string | null;
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
+  mapTilerKeyConfigured: boolean;
 }
 
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
@@ -96,6 +97,7 @@ export default function AppSettingsPage() {
   const [uploadingBackup, setUploadingBackup] = useState(false);
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
   const [restoring, setRestoring] = useState(false);
+  const [mapApiKeyInput, setMapApiKeyInput] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["app-settings"],
@@ -132,6 +134,31 @@ export default function AppSettingsPage() {
       toast({ title: "Nom de l'application mis à jour" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
       setAppName("");
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  const setMapKeyMutation = useMutation({
+    mutationFn: (apiKey: string) => api.post("/app-settings/map-key", { apiKey }),
+    onSuccess: () => {
+      toast({ title: "Clé MapTiler enregistrée" });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+      setMapApiKeyInput("");
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  const deleteMapKeyMutation = useMutation({
+    mutationFn: () => api.delete("/app-settings/map-key"),
+    onSuccess: () => {
+      toast({ title: "Clé MapTiler supprimée" });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : err;
@@ -321,6 +348,7 @@ export default function AppSettingsPage() {
         <TabsList>
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="login">Écran de connexion</TabsTrigger>
+          <TabsTrigger value="map">Carte</TabsTrigger>
           <TabsTrigger value="database">Base de données</TabsTrigger>
         </TabsList>
 
@@ -421,6 +449,61 @@ export default function AppSettingsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="map">
+          <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
+            <p className="text-xs text-zinc-500">
+              Clé API MapTiler utilisée pour les fonds de carte de l'Admin (sites, zones,
+              parcelles). Sans clé, l'application bascule sur OpenStreetMap.
+            </p>
+
+            <div className="space-y-2">
+              <Label>Statut</Label>
+              <p className="text-sm text-zinc-700">
+                {data?.mapTilerKeyConfigured
+                  ? "Clé configurée en base de données."
+                  : "Aucune clé en base."}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="map-api-key">Nouvelle clé MapTiler</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="map-api-key"
+                  type="password"
+                  autoComplete="off"
+                  value={mapApiKeyInput}
+                  onChange={(e) => setMapApiKeyInput(e.target.value)}
+                  placeholder="Coller la clé MapTiler"
+                />
+                <Button
+                  type="button"
+                  disabled={setMapKeyMutation.isPending || !mapApiKeyInput.trim()}
+                  onClick={() => setMapKeyMutation.mutate(mapApiKeyInput.trim())}
+                >
+                  {setMapKeyMutation.isPending ? "Enregistrement…" : "Enregistrer"}
+                </Button>
+              </div>
+              <p className="text-xs text-zinc-500">
+                La valeur n'est jamais réaffichée une fois enregistrée.
+              </p>
+            </div>
+
+            {data?.mapTilerKeyConfigured && (
+              <div className="border-t border-zinc-200 pt-5">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={deleteMapKeyMutation.isPending}
+                  onClick={() => deleteMapKeyMutation.mutate()}
+                >
+                  {deleteMapKeyMutation.isPending ? "Suppression…" : "Supprimer la clé de la base"}
+                </Button>
+              </div>
+            )}
           </div>
         </TabsContent>
 

@@ -7,6 +7,7 @@ export interface AppSettings {
   loginBackgroundUpdatedAt: string | null;
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
+  mapTilerKeyConfigured: boolean;
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   loginBackgroundUpdatedAt: null,
   loginBranchUpdatedAt: null,
   loginLeafUpdatedAt: null,
+  mapTilerKeyConfigured: false,
 };
 
 export const APP_ICON_URL = "/api/v1/app-settings/icon";
@@ -43,4 +45,20 @@ export function useAppSettings() {
     loginBranchUrl: withCacheBust(LOGIN_BRANCH_URL, settings.loginBranchUpdatedAt),
     loginLeafUrl: withCacheBust(LOGIN_LEAF_URL, settings.loginLeafUpdatedAt),
   };
+}
+
+export interface MapTilerKeyResponse {
+  apiKey: string | null;
+  source: "database" | "env" | "none";
+}
+
+/** Clé MapTiler résolue (base > .env > aucune) — route authentifiée, jamais exposée publiquement. */
+export function useMapTilerKey() {
+  const { data } = useQuery({
+    queryKey: ["app-settings", "map-key"],
+    queryFn: () => api.get<MapTilerKeyResponse>("/app-settings/map-key").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return data ?? { apiKey: null, source: "none" as const };
 }

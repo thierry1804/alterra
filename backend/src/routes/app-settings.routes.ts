@@ -72,6 +72,7 @@ async function getAppSetting() {
     loginBackgroundKey: row?.loginBackgroundKey ?? null,
     loginBranchKey: row?.loginBranchKey ?? null,
     loginLeafKey: row?.loginLeafKey ?? null,
+    mapTilerKey: row?.mapTilerKey ?? null,
     updatedAt: row?.updatedAt ?? null,
   };
 }
@@ -84,6 +85,7 @@ function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
     loginBackgroundUpdatedAt: settings.updatedAt,
     loginBranchUpdatedAt: settings.updatedAt,
     loginLeafUpdatedAt: settings.updatedAt,
+    mapTilerKeyConfigured: Boolean(settings.mapTilerKey),
   };
 }
 
@@ -327,6 +329,94 @@ function registerLoginAssetRoutes(slot: LoginAssetSlot) {
 }
 
 (Object.keys(LOGIN_ASSET_SLOTS) as LoginAssetSlot[]).forEach(registerLoginAssetRoutes);
+
+const setMapKeySchema = z.object({
+  apiKey: z.string().min(1).max(200),
+});
+
+appSettingsRouter.post(
+  "/app-settings/map-key",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(setMapKeySchema),
+  async (req, res, next) => {
+    try {
+      const { apiKey } = req.body as z.infer<typeof setMapKeySchema>;
+      const before = await getAppSetting();
+
+      const updated = await prisma.appSetting.upsert({
+        where: { id: SETTINGS_ID },
+        create: { id: SETTINGS_ID, mapTilerKey: apiKey },
+        update: { mapTilerKey: apiKey },
+      });
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "AppSetting",
+        entityId: SETTINGS_ID,
+        before: { mapTilerKeyConfigured: Boolean(before.mapTilerKey) },
+        after: { mapTilerKeyConfigured: true },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json(settingsResponse({ ...before, mapTilerKey: updated.mapTilerKey }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+appSettingsRouter.delete(
+  "/app-settings/map-key",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  async (req, res, next) => {
+    try {
+      const before = await getAppSetting();
+
+      const updated = await prisma.appSetting.upsert({
+        where: { id: SETTINGS_ID },
+        create: { id: SETTINGS_ID, mapTilerKey: null },
+        update: { mapTilerKey: null },
+      });
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "AppSetting",
+        entityId: SETTINGS_ID,
+        before: { mapTilerKeyConfigured: Boolean(before.mapTilerKey) },
+        after: { mapTilerKeyConfigured: false },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json(settingsResponse({ ...before, mapTilerKey: updated.mapTilerKey }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+appSettingsRouter.get("/app-settings/map-key", requireAuth, async (_req, res, next) => {
+  try {
+    const settings = await getAppSetting();
+    if (settings.mapTilerKey) {
+      res.json({ apiKey: settings.mapTilerKey, source: "database" });
+      return;
+    }
+    const envKey = process.env.VITE_MAPTILER_KEY;
+    if (envKey) {
+      res.json({ apiKey: envKey, source: "env" });
+      return;
+    }
+    res.json({ apiKey: null, source: "none" });
+  } catch (err) {
+    next(err);
+  }
+});
 
 appSettingsRouter.get("/manifest.webmanifest", async (_req, res, next) => {
   try {

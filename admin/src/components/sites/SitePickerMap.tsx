@@ -3,6 +3,7 @@ import "leaflet/dist/leaflet.css";
 import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { tileConfig } from "../../lib/map-tiles";
 import { cn } from "../../lib/utils";
+import { useMapTilerKey } from "../../hooks/useAppSettings";
 
 const MADAGASCAR_CENTER: [number, number] = [-18.9, 46.8];
 const MADAGASCAR_ZOOM = 6;
@@ -45,7 +46,8 @@ export interface SitePickerMapProps {
 
 /** Carte de Madagascar : cliquer pose un repère et renvoie les coordonnées choisies. */
 export default function SitePickerMap({ value, onPick, className }: SitePickerMapProps) {
-  const tiles = tileConfig();
+  const { apiKey } = useMapTilerKey();
+  const tiles = tileConfig(apiKey);
   return (
     <div className={cn("h-64 w-full overflow-hidden rounded-md border border-zinc-300", className)}>
       <MapContainer

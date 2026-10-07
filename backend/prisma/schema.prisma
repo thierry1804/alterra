@@ -508,5 +508,6 @@ model AppSetting {
   loginBackgroundKey String?
   loginBranchKey     String?
   loginLeafKey       String?
+  mapTilerKey        String?
   updatedAt          DateTime @updatedAt
 }

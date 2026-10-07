@@ -1,5 +1,4 @@
-export function tileConfig() {
-  const mapTilerKey = import.meta.env.VITE_MAPTILER_KEY as string | undefined;
+export function tileConfig(mapTilerKey?: string | null) {
   if (mapTilerKey) {
     return {
       url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`,

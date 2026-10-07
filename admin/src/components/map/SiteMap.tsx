@@ -4,6 +4,7 @@ import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { collectGeoBounds, geoPolygonToLatLngs, type SiteGeo } from "../../lib/geo";
 import { tileConfig } from "../../lib/map-tiles";
+import { useMapTilerKey } from "../../hooks/useAppSettings";
 
 const DEFAULT_CENTER: [number, number] = [-18.91, 47.52];
 const DEFAULT_ZOOM = 6;
@@ -62,7 +63,8 @@ export default function SiteMap({
   showParcels,
   onSiteSelect,
 }: SiteMapProps) {
-  const tiles = tileConfig();
+  const { apiKey } = useMapTilerKey();
+  const tiles = tileConfig(apiKey);
   const visibleSites = selectedSiteId ? sites.filter((site) => site.id === selectedSiteId) : sites;
 
   return (
