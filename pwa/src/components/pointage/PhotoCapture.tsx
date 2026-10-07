@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../ui/Button";
 import { compressPhoto, formatBytes } from "../../lib/image";
 
@@ -25,6 +25,10 @@ export default function PhotoCapture({
   const [meta, setMeta] = useState<string | null>(null);
 
   const altText = workerName ? `Photo de pointage — ${workerName}` : "Photo de pointage";
+
+  useEffect(() => {
+    if (!previewUrl) setMeta(null);
+  }, [previewUrl]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
