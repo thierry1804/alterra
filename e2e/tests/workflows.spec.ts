@@ -7,11 +7,15 @@ test.describe("Workflows V2 — demandes terrain", () => {
     const label = `Activité E2E ${Date.now()}`;
 
     await loginPwa(page, CDS_EMAIL, USER_PASSWORD);
-    await page.getByRole("link", { name: "Activités" }).click();
+    await page.getByRole("button", { name: "Plus d'options" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Activités" }).click();
     await expect(page.getByRole("heading", { name: "Demande d'activité" })).toBeVisible();
 
+    for (const selectId of ["#act-category", "#act-unit"]) {
+      await expect(page.locator(`${selectId} option`).nth(1)).toBeAttached();
+      await page.locator(selectId).selectOption({ index: 1 });
+    }
     await page.locator("#act-label").fill(label);
-    await page.locator("#act-unit").fill("plant");
     await page.locator("#act-rate").fill("150");
     await page.locator("#act-justification").fill("Couverture E2E des workflows terrain V2.");
     await page.getByRole("button", { name: "Envoyer à l'administrateur" }).click();
