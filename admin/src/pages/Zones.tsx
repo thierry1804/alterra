@@ -395,14 +395,14 @@ export default function ZonesPage() {
         </BulkActionBar>
       )}
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
-        <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-6 rounded-lg border border-zinc-200 p-4">
+        <div className="flex items-center gap-3">
           <Label htmlFor="zone-site">Site</Label>
           <select
             id="zone-site"
             value={effectiveSiteId}
             onChange={(e) => setSiteId(e.target.value)}
-            className="w-48 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="h-9 w-48 rounded-md border border-zinc-300 bg-white px-3 text-sm"
           >
             {sites.map((site) => (
               <option key={site.id} value={site.id}>

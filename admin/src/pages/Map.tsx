@@ -48,14 +48,14 @@ export default function MapPage() {
         }
       />
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
-        <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-6 rounded-lg border border-zinc-200 p-4">
+        <div className="flex items-center gap-3">
           <Label htmlFor="map-site">Site</Label>
           <select
             id="map-site"
             value={selectedSiteId}
             onChange={(event) => setSelectedSiteId(event.target.value)}
-            className="w-56 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+            className="h-9 w-56 rounded-md border border-zinc-300 bg-white px-3 text-sm"
           >
             <option value="">Tous les sites</option>
             {sites.map((site) => (
@@ -66,7 +66,7 @@ export default function MapPage() {
           </select>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-zinc-700">
+        <label className="flex h-9 items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
             checked={showZones}
@@ -75,7 +75,7 @@ export default function MapPage() {
           Zones
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-zinc-700">
+        <label className="flex h-9 items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
             checked={showParcels}
