@@ -6,9 +6,8 @@ export interface WeeklyReportEmailInput {
   siteName: string;
   weekIso: string;
   reportKey: string;
-  invoiceKey: string;
+  invoices: Array<{ code: string; label: string; amount: string; key: string; url?: string }>;
   reportUrl?: string;
-  invoiceUrl?: string;
 }
 
 async function listAdminEmails(): Promise<string[]> {
@@ -65,14 +64,22 @@ export async function notifyAdminsWeeklyReportsReady(input: WeeklyReportEmailInp
 
   const subject = `ALTERRA — Rapport hebdo ${input.weekIso} · ${input.siteName}`;
   const lines = [
-    `Le rapport et la facture hebdomadaires pour ${input.siteName} (${input.weekIso}) sont disponibles.`,
+    `Le rapport et les factures hebdomadaires pour ${input.siteName} (${input.weekIso}) sont disponibles.`,
     "",
     `Rapport : ${input.reportKey}`,
-    `Facture : ${input.invoiceKey}`,
   ];
-
   if (input.reportUrl) lines.push(`Lien rapport : ${input.reportUrl}`);
-  if (input.invoiceUrl) lines.push(`Lien facture : ${input.invoiceUrl}`);
+
+  if (input.invoices.length === 0) {
+    lines.push("", "Aucune facture : pas de pointage validé sur la période.");
+  }
+  for (const invoice of input.invoices) {
+    lines.push(
+      "",
+      `Facture ${invoice.code} ${invoice.label} — ${invoice.amount} Ar : ${invoice.key}`,
+    );
+    if (invoice.url) lines.push(`Lien facture ${invoice.code} : ${invoice.url}`);
+  }
 
   await sendViaMailgun(recipients, subject, lines.join("\n"));
 }
