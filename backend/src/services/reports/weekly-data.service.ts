@@ -35,6 +35,23 @@ export interface WeeklyPaymentRow {
   description: string;
 }
 
+export interface WeeklyInvoiceLine {
+  workerName: string;
+  subActivityLabel: string;
+  quantity: string;
+  unit: string;
+  unitRate: string;
+  amount: string;
+}
+
+export interface WeeklyInvoiceActivity {
+  code: string;
+  label: string;
+  workerCount: number;
+  lines: WeeklyInvoiceLine[];
+  subtotal: string;
+}
+
 export interface WeeklyReportViewModel {
   generatedAt: string;
   weekIso: string;
@@ -52,6 +69,7 @@ export interface WeeklyReportViewModel {
     paymentCount: number;
   };
   byDay: WeeklyReportDay[];
+  invoiceActivities: WeeklyInvoiceActivity[];
   payments: WeeklyPaymentRow[];
 }
 
@@ -79,6 +97,95 @@ function bioStatusLabel(result: BioResult | null | undefined): string {
   }
 }
 
+interface InvoicePointage {
+  workerId: string;
+  subActivityId: string;
+  quantity: { toString(): string };
+  unitRateSnapshot: { toString(): string };
+  amount: { toString(): string };
+  worker: { firstName: string; lastName: string };
+  subActivity: {
+    label: string;
+    unit: { label: string };
+    category: { code: string; label: string };
+  };
+}
+
+export function buildInvoiceActivities(pointages: InvoicePointage[]): WeeklyInvoiceActivity[] {
+  const categories = new Map<
+    string,
+    {
+      label: string;
+      workerIds: Set<string>;
+      subtotal: number;
+      lines: Map<
+        string,
+        {
+          workerName: string;
+          subActivityLabel: string;
+          unit: string;
+          unitRate: number;
+          quantity: number;
+          amount: number;
+        }
+      >;
+    }
+  >();
+
+  for (const pointage of pointages) {
+    const { code, label } = pointage.subActivity.category;
+    if (!categories.has(code)) {
+      categories.set(code, { label, workerIds: new Set(), subtotal: 0, lines: new Map() });
+    }
+    const category = categories.get(code)!;
+    const unitRate = Number(pointage.unitRateSnapshot.toString());
+    const quantity = Number(pointage.quantity.toString());
+    const amount = Number(pointage.amount.toString());
+    const lineKey = `${pointage.workerId}|${pointage.subActivityId}|${unitRate}`;
+
+    category.workerIds.add(pointage.workerId);
+    category.subtotal += amount;
+
+    const line = category.lines.get(lineKey);
+    if (line) {
+      line.quantity += quantity;
+      line.amount += amount;
+    } else {
+      category.lines.set(lineKey, {
+        workerName: `${pointage.worker.lastName} ${pointage.worker.firstName}`,
+        subActivityLabel: pointage.subActivity.label,
+        unit: pointage.subActivity.unit.label,
+        unitRate,
+        quantity,
+        amount,
+      });
+    }
+  }
+
+  return [...categories.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([code, category]) => ({
+      code,
+      label: category.label,
+      workerCount: category.workerIds.size,
+      subtotal: formatAmount({ toString: () => String(category.subtotal) }),
+      lines: [...category.lines.values()]
+        .sort(
+          (a, b) =>
+            a.subActivityLabel.localeCompare(b.subActivityLabel) ||
+            a.workerName.localeCompare(b.workerName),
+        )
+        .map((line) => ({
+          workerName: line.workerName,
+          subActivityLabel: line.subActivityLabel,
+          quantity: line.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 }),
+          unit: line.unit,
+          unitRate: formatAmount({ toString: () => String(line.unitRate) }),
+          amount: formatAmount({ toString: () => String(line.amount) }),
+        })),
+    }));
+}
+
 export async function buildWeeklyReportViewModel(
   input: WeeklyPdfJobInput,
 ): Promise<WeeklyReportViewModel> {
@@ -104,7 +211,7 @@ export async function buildWeeklyReportViewModel(
     },
     include: {
       worker: true,
-      subActivity: { include: { unit: true } },
+      subActivity: { include: { unit: true, category: true } },
     },
     orderBy: [{ date: "asc" }, { worker: { lastName: "asc" } }],
   });
@@ -127,6 +234,7 @@ export async function buildWeeklyReportViewModel(
   const payments = await prisma.payment.findMany({
     where: {
       periodIso: period.shortPeriod,
+      OR: [{ referenceYear: period.referenceYear }, { referenceYear: null }],
       worker: { siteId: input.siteId },
     },
     include: { worker: true },
@@ -156,6 +264,8 @@ export async function buildWeeklyReportViewModel(
     });
   }
 
+  const invoiceActivities = buildInvoiceActivities(pointages);
+
   const byDay: WeeklyReportDay[] = [...dayMap.entries()].map(([date, activitiesMap]) => ({
     date,
     activities: [...activitiesMap.entries()].map(([label, rows]) => ({ label, rows })),
@@ -177,11 +287,6 @@ export async function buildWeeklyReportViewModel(
     description: payment.description,
   }));
 
-  const paymentTotal = payments.reduce(
-    (sum, payment) => sum + Number(payment.amount.toString()),
-    0,
-  );
-
   const signedAt = new Date().toISOString();
 
   return {
@@ -198,12 +303,13 @@ export async function buildWeeklyReportViewModel(
     summary: {
       workerCount: workerIds.size,
       pointageCount: pointages.length,
-      totalAmount: formatAmount({ toString: () => String(totalAmount || paymentTotal) }),
+      totalAmount: formatAmount({ toString: () => String(totalAmount) }),
       bioOkCount,
       bioPendingCount,
       paymentCount: payments.length,
     },
     byDay,
+    invoiceActivities,
     payments: paymentRows,
   };
 }

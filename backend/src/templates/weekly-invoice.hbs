@@ -1,7 +1,7 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>Facture hebdomadaire — {{site.name}}</title>
+    <title>Facture hebdomadaire {{activity.code}} — {{site.name}}</title>
     <style>
       body {
         font-family: Georgia, "Times New Roman", serif;
@@ -37,6 +37,15 @@
         text-align: right;
         margin-top: 16px;
       }
+      .num {
+        text-align: right;
+      }
+      table {
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+      }
       .signature {
         margin-top: 32px;
         font-size: 10px;
@@ -45,9 +54,10 @@
     </style>
   </head>
   <body>
-    <h1>Facture hebdomadaire — {{site.name}} ({{site.shortCode}})</h1>
+    <h1>Facture hebdomadaire — {{activity.code}} {{activity.label}}</h1>
     <p class="meta">
-      Période
+      {{site.name}}
+      ({{site.shortCode}}) · Période
       {{periodLabel}}
       · Semaine
       {{weekIso}}
@@ -56,32 +66,39 @@
       →
       {{dateTo}}
     </p>
-
     <table>
       <thead>
         <tr>
           <th>MOC</th>
-          <th>MVola</th>
-          <th>Description</th>
-          <th>Bio validée</th>
-          <th>Montant (Ar)</th>
+          <th>Tâche</th>
+          <th class="num">Quantité</th>
+          <th>Unité</th>
+          <th class="num">Tarif (Ar)</th>
+          <th class="num">Montant (Ar)</th>
         </tr>
       </thead>
       <tbody>
-        {{#each payments}}
+        {{#each activity.lines}}
           <tr>
             <td>{{workerName}}</td>
-            <td>{{mvolaNumber}}</td>
-            <td>{{description}}</td>
-            <td>{{bioValid}}</td>
-            <td>{{amount}}</td>
+            <td>{{subActivityLabel}}</td>
+            <td class="num">{{quantity}}</td>
+            <td>{{unit}}</td>
+            <td class="num">{{unitRate}}</td>
+            <td class="num">{{amount}}</td>
           </tr>
         {{/each}}
       </tbody>
     </table>
-
-    <p class="total">Total : {{summary.totalAmount}} Ar · {{summary.paymentCount}} ligne(s)</p>
-
+    <p class="total">
+      Total
+      {{activity.code}}
+      :
+      {{activity.subtotal}}
+      Ar ·
+      {{activity.workerCount}}
+      MOC
+    </p>
     <p class="signature">
       Émis pour clôture semaine · Signé électroniquement par
       {{cds.fullName}}

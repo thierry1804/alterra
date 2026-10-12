@@ -8,7 +8,10 @@ import {
   renderWeeklyInvoiceHtml,
   renderWeeklyReportHtml,
 } from "../services/reports/pdf-render.service.js";
-import { buildWeeklyReportViewModel } from "../services/reports/weekly-data.service.js";
+import {
+  buildInvoiceActivities,
+  buildWeeklyReportViewModel,
+} from "../services/reports/weekly-data.service.js";
 
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
@@ -78,6 +81,24 @@ const sampleViewModel = {
       ],
     },
   ],
+  invoiceActivities: [
+    {
+      code: "ACT02",
+      label: "Plantation",
+      workerCount: 1,
+      subtotal: "12 500",
+      lines: [
+        {
+          workerName: "Rakoto Jean",
+          subActivityLabel: "Mise en terre",
+          quantity: "50",
+          unit: "plant",
+          unitRate: "250",
+          amount: "12 500",
+        },
+      ],
+    },
+  ],
   payments: [
     {
       workerName: "Rakoto Jean",
@@ -88,6 +109,29 @@ const sampleViewModel = {
     },
   ],
 };
+
+function invoicePointage(
+  workerId: string,
+  lastName: string,
+  subActivityId: string,
+  categoryCode: string,
+  quantity: number,
+  unitRate: number,
+) {
+  return {
+    workerId,
+    subActivityId,
+    quantity: { toString: () => String(quantity) },
+    unitRateSnapshot: { toString: () => String(unitRate) },
+    amount: { toString: () => String(quantity * unitRate) },
+    worker: { firstName: "Jean", lastName },
+    subActivity: {
+      label: `Tâche ${subActivityId}`,
+      unit: { label: "trou" },
+      category: { code: categoryCode, label: `Catégorie ${categoryCode}` },
+    },
+  };
+}
 
 function cdsAuthHeader() {
   return `Bearer ${signAccessToken({
@@ -123,7 +167,13 @@ describe("weekly PDF generation", () => {
         amount: { toString: () => "12500" },
         date: new Date("2026-07-15"),
         worker: { firstName: "Jean", lastName: "Rakoto", siteId: MOCK_SITE_ID },
-        subActivity: { label: "Plantation", unit: "plant" },
+        unitRateSnapshot: { toString: () => "250" },
+        subActivityId: "sub-1",
+        subActivity: {
+          label: "Plantation",
+          unit: { label: "plant" },
+          category: { code: "ACT02", label: "Plantation" },
+        },
       },
     ] as never);
 
@@ -155,16 +205,41 @@ describe("weekly PDF generation", () => {
     expect(viewModel.site.shortCode).toBe("MNK");
     expect(viewModel.summary.pointageCount).toBe(1);
     expect(viewModel.byDay[0]?.activities[0]?.rows[0]?.bioStatus).toBe("OK");
+    expect(viewModel.invoiceActivities[0]?.code).toBe("ACT02");
+    expect(viewModel.invoiceActivities[0]?.subtotal).toBe("12\u202f500");
+  });
+
+  it("buildInvoiceActivities groups by category and sums each MOC task over the week", () => {
+    const activities = buildInvoiceActivities([
+      invoicePointage("w1", "Rakoto", "trou", "ACT02", 10, 100),
+      invoicePointage("w1", "Rakoto", "trou", "ACT02", 5, 100),
+      invoicePointage("w2", "Rabe", "trou", "ACT02", 3, 100),
+      invoicePointage("w1", "Rakoto", "sol", "ACT01", 2, 1000),
+    ]);
+
+    expect(activities.map((activity) => activity.code)).toEqual(["ACT01", "ACT02"]);
+    expect(activities[0]?.subtotal).toBe((2000).toLocaleString("fr-FR"));
+    const act02 = activities[1]!;
+    expect(act02.workerCount).toBe(2);
+    expect(act02.lines).toHaveLength(2);
+    expect(act02.lines.find((line) => line.workerName === "Rakoto Jean")?.quantity).toBe("15");
+    expect(act02.subtotal).toBe((1800).toLocaleString("fr-FR"));
   });
 
   it("renders handlebars templates with report data", () => {
     const reportHtml = renderWeeklyReportHtml(sampleViewModel);
-    const invoiceHtml = renderWeeklyInvoiceHtml(sampleViewModel);
+    const invoiceHtml = renderWeeklyInvoiceHtml(
+      sampleViewModel,
+      sampleViewModel.invoiceActivities[0]!,
+    );
 
     expect(reportHtml).toContain("Manankazo");
     expect(reportHtml).toContain("Rakoto Jean");
     expect(invoiceHtml).toContain("Facture hebdomadaire");
     expect(invoiceHtml).toContain("12 500");
+    expect(invoiceHtml).toContain("Facture hebdomadaire — ACT02 Plantation");
+    expect(invoiceHtml).toContain("Mise en terre");
+    expect(invoiceHtml).not.toContain("Bordereau de paiement MVola");
   });
 
   it("processWeeklyPdfJob uploads PDFs and notifies admin", async () => {
@@ -175,10 +250,36 @@ describe("weekly PDF generation", () => {
     });
 
     expect(result.reportKey).toContain("reports/2026-W29/MNK/rapport");
-    expect(result.invoiceKey).toContain("facture");
+    expect(result.invoices).toHaveLength(1);
+    expect(result.invoices[0]?.code).toBe("ACT02");
+    expect(result.invoices[0]?.key).toContain("reports/2026-W29/MNK/facture_ACT02_");
     expect(minioClient.putObject).toHaveBeenCalledTimes(2);
     expect(notifyAdminsWeeklyReportsReady).toHaveBeenCalledWith(
       expect.objectContaining({ weekIso: "2026-W29", siteName: "Manankazo" }),
+    );
+  });
+
+  it("processWeeklyPdfJob produces one invoice PDF per activity", async () => {
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([
+      {
+        ...invoicePointage("w1", "Rakoto", "trou", "ACT02", 10, 400),
+        date: new Date("2026-07-15"),
+      },
+      { ...invoicePointage("w2", "Rabe", "sol", "ACT01", 5, 30), date: new Date("2026-07-16") },
+    ] as never);
+
+    const result = await processWeeklyPdfJob({
+      siteId: MOCK_SITE_ID,
+      weekIso: "2026-W29",
+      requestedById: MOCK_CDS_ID,
+    });
+
+    expect(result.invoices.map((invoice) => invoice.code)).toEqual(["ACT01", "ACT02"]);
+    expect(minioClient.putObject).toHaveBeenCalledTimes(3);
+    expect(notifyAdminsWeeklyReportsReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoices: expect.arrayContaining([expect.objectContaining({ code: "ACT01" })]),
+      }),
     );
   });
 
