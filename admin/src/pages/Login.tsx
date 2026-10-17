@@ -70,12 +70,12 @@ export default function Login() {
           onSubmit={onSubmit}
           className="space-y-5 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
         >
-          <div className="alterra-rule pb-3">
-            <span className="flex items-center gap-2.5">
-              <img src={iconUrl} alt="" className="h-8 w-8 rounded" aria-hidden />
-              <span className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</span>
-            </span>
-            <p className="mt-2 text-sm text-muted">Connexion administration</p>
+          <div className="alterra-rule space-y-2 pb-3">
+            <img src={iconUrl} alt="ALTERRA" className="h-14 w-auto" />
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</h1>
+              <p className="mt-1 text-sm text-muted">Connexion administration</p>
+            </div>
           </div>
 
           {error && (

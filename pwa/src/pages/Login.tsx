@@ -63,14 +63,14 @@ export default function Login() {
           onSubmit={onSubmit}
           className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
         >
-          <div>
-            <img src={iconUrl} alt={appName} className="h-14 w-auto" />
-            <h1 className="mt-4 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
-              Terrain · Registre de suivi
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Connexion chef d&apos;équipe / chef de service
-            </p>
+          <div className="space-y-2">
+            <img src={iconUrl} alt="ALTERRA" className="h-14 w-auto" />
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                Connexion chef d&apos;équipe / chef de service
+              </p>
+            </div>
           </div>
 
           {error && (
