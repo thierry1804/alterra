@@ -17,6 +17,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showForgotHelp, setShowForgotHelp] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -126,6 +127,22 @@ export default function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Connexion…" : "Se connecter"}
             </Button>
+
+            <div className="text-center text-sm">
+              <button
+                type="button"
+                className="font-medium text-brand hover:underline"
+                onClick={() => setShowForgotHelp((v) => !v)}
+              >
+                Mot de passe oublié ?
+              </button>
+              {showForgotHelp && (
+                <p className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-zinc-600">
+                  Contactez votre administrateur ou chef de service : il réinitialise votre mot de
+                  passe et vous communique le nouveau.
+                </p>
+              )}
+            </div>
           </form>
 
           <LoginAccessPanel

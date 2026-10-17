@@ -15,10 +15,20 @@ import { useAuthStore } from "../lib/auth-store";
  * 401 "revoked". Un singleton garantit un seul appel réseau quel que soit le
  * nombre d'exécutions de l'effet.
  */
+const PUBLIC_AUTH_PATHS = ["/login", "/forgot-password", "/reset-password"];
+
 let bootstrapPromise: Promise<void> | null = null;
 
 function runBootstrap(): Promise<void> {
   bootstrapPromise ??= (async () => {
+    // Sur une page d'auth publique, aucune session à restaurer : on évite l'appel réseau et son
+    // 401 "MISSING_REFRESH_TOKEN" systématique (pas de cookie au premier accès à /login).
+    if (PUBLIC_AUTH_PATHS.includes(window.location.pathname)) {
+      useAuthStore.getState().logout();
+      useAuthStore.getState().setReady();
+      return;
+    }
+
     try {
       const refreshRes = await api.post("/auth/refresh");
       const accessToken = refreshRes.data.accessToken as string;

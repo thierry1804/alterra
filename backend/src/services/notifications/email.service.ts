@@ -77,6 +77,19 @@ export async function notifyAdminsWeeklyReportsReady(input: WeeklyReportEmailInp
   await sendViaMailgun(recipients, subject, lines.join("\n"));
 }
 
+export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+  const subject = "ALTERRA — Réinitialisation du mot de passe";
+  const lines = [
+    "Une réinitialisation de mot de passe a été demandée pour ce compte.",
+    "",
+    `Lien de réinitialisation (valable 1 heure) : ${resetUrl}`,
+    "",
+    "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
+  ];
+
+  await sendViaMailgun([to], subject, lines.join("\n"));
+}
+
 export interface DailyReportEmailInput {
   siteName: string;
   date: string;

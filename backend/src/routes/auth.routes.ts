@@ -20,6 +20,7 @@ import {
   rotateRefreshToken,
 } from "../services/auth/refresh.service.js";
 import { activateMfa, setupMfa, verifyLoginMfa } from "../services/auth/mfa.service.js";
+import { confirmPasswordReset, requestPasswordReset } from "../services/auth/password-reset.service.js";
 
 export const authRouter = Router();
 
@@ -27,6 +28,15 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   mfaCode: z.string().length(6).optional(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordConfirmSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8),
 });
 
 const mfaVerifySchema = z.object({
@@ -112,6 +122,45 @@ authRouter.post("/auth/logout", async (req, res, next) => {
     next(err);
   }
 });
+
+authRouter.post(
+  "/auth/forgot-password",
+  validate(forgotPasswordSchema),
+  async (req, res, next) => {
+    try {
+      const allowedOrigins = (process.env.ADMIN_ORIGIN ?? "")
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+      const requestOrigin = req.headers.origin;
+      // Préfère l'origine réelle de l'appelant (celle depuis laquelle la demande a été faite) si elle
+      // est autorisée ; sinon retombe sur la première origine ADMIN_ORIGIN déclarée publique (https).
+      const adminOrigin =
+        (requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : undefined) ??
+        allowedOrigins.find((o) => o.startsWith("https://")) ??
+        allowedOrigins[0];
+      const resetUrlBase = `${adminOrigin}/reset-password`;
+      await requestPasswordReset(req.body.email, resetUrlBase);
+      // Toujours 200 — ne jamais révéler si l'adresse correspond à un compte.
+      res.json({ message: "Si ce compte existe, un email de réinitialisation a été envoyé." });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+authRouter.post(
+  "/auth/reset-password",
+  validate(resetPasswordConfirmSchema),
+  async (req, res, next) => {
+    try {
+      await confirmPasswordReset(req.body.token, req.body.password);
+      res.json({ message: "Mot de passe réinitialisé." });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 authRouter.post("/auth/mfa/setup", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
   try {
