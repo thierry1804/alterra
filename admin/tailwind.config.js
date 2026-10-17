@@ -84,12 +84,17 @@ export default {
           from: { opacity: "0", transform: "translateX(12px)" },
           to: { opacity: "1", transform: "translateX(0)" },
         },
+        "sheet-in": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 150ms ease-out",
         "overlay-in": "overlay-in 150ms ease-out",
         "content-in": "content-in 180ms cubic-bezier(0.22, 1, 0.36, 1)",
         "drawer-in": "drawer-in 200ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "sheet-in": "sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },
   },

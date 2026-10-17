@@ -1,7 +1,21 @@
-import { BioResult } from "@prisma/client";
+import { BioResult, PointageStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getIsoWeekString } from "../../lib/week-iso.js";
+
+// Seuls ces statuts peuvent encore être validés/rejetés — un VALIDATED (potentiellement déjà payé)
+// ou un REJECTED repassent par la correction admin, pas par un nouveau valider/rejeter direct.
+const ACTIONABLE_STATUSES: PointageStatus[] = ["PENDING", "NEEDS_CLARIFICATION"];
+
+function assertActionable(status: PointageStatus): void {
+  if (!ACTIONABLE_STATUSES.includes(status)) {
+    throw new ApiError(
+      409,
+      "INVALID_STATUS",
+      "Ce pointage est déjà traité (validé ou rejeté) — action impossible",
+    );
+  }
+}
 
 export async function assertBioOkForValidation(
   workerId: string,
@@ -28,6 +42,7 @@ export async function assertBioOkForValidation(
 
 export async function validatePointage(id: string, validatedById: string) {
   const existing = await prisma.pointage.findUniqueOrThrow({ where: { id } });
+  assertActionable(existing.status);
   await assertBioOkForValidation(existing.workerId, existing.date);
 
   return prisma.pointage.update({
@@ -49,6 +64,9 @@ export async function rejectPointage(id: string, validatedById: string, rejectio
       "Rejection reason must be at least 3 characters",
     );
   }
+
+  const existing = await prisma.pointage.findUniqueOrThrow({ where: { id } });
+  assertActionable(existing.status);
 
   return prisma.pointage.update({
     where: { id },

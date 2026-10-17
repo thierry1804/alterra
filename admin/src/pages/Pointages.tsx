@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useState } from "react";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
+import { cn } from "../lib/utils";
 import type { Pointage, PointageStatus } from "../lib/pointages";
 import {
   POINTAGE_STATUS_LABELS,
@@ -77,6 +78,8 @@ export default function PointagesPage() {
         })
         .then((r) => r.data),
     getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
+    // Pas de websocket/push : on repolle pour refléter vite les rejets corrigés/renvoyés par le CDE.
+    refetchInterval: 15000,
   });
 
   const pointages = useMemo(
@@ -175,6 +178,17 @@ export default function PointagesPage() {
     subActivities.forEach((subActivity) => map.set(subActivity.id, subActivity));
     return map;
   }, [subActivities]);
+
+  const selectedIndex = selected ? pointages.findIndex((p) => p.id === selected.id) : -1;
+  const hasPrev = selectedIndex > 0;
+  const hasNext = selectedIndex >= 0 && selectedIndex < pointages.length - 1;
+
+  function navigateSelected(direction: "prev" | "next") {
+    if (selectedIndex < 0) return;
+    const nextIndex = direction === "prev" ? selectedIndex - 1 : selectedIndex + 1;
+    const next = pointages[nextIndex];
+    if (next) setSelected(next);
+  }
 
   const selectedWorker = selected ? (workersMap.get(selected.workerId) ?? null) : null;
   const selectedSubActivity = selected
@@ -370,8 +384,14 @@ export default function PointagesPage() {
                 <TableRow
                   key={pointage.id}
                   data-state={selection.isSelected(pointage.id) ? "selected" : undefined}
+                  className={cn(
+                    "cursor-pointer",
+                    selected?.id === pointage.id &&
+                      "bg-brand-tint/50 ring-1 ring-inset ring-brand/50",
+                  )}
+                  onClick={() => setSelected(pointage)}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selection.isSelected(pointage.id)}
                       onChange={() => selection.toggle(pointage.id)}
@@ -464,6 +484,9 @@ export default function PointagesPage() {
           if (!open) setSelected(null);
         }}
         onUpdated={() => void queryClient.invalidateQueries({ queryKey: ["pointages"] })}
+        onNavigate={navigateSelected}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
       />
     </div>
   );

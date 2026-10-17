@@ -32,6 +32,8 @@ export default function PaymentsPage() {
         })
         .then((r) => r.data),
     enabled: !!listPeriod,
+    // Pas de websocket/push : on repolle pour refléter vite les paiements générés/exportés ailleurs.
+    refetchInterval: 15000,
   });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);

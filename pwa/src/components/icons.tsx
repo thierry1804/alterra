@@ -164,6 +164,16 @@ export function IconBio(props: IconProps) {
   );
 }
 
+export function IconRejected(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M10.3 4.3 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 16.5h.01" />
+    </Base>
+  );
+}
+
 export function IconAdd(props: IconProps) {
   return (
     <Base {...props}>

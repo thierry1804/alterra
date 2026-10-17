@@ -36,6 +36,7 @@ export interface PointagePending {
   createdByClientAt: string;
   status: PointageLocalStatus;
   reason?: string;
+  photoKey?: string;
 }
 
 export interface PointageSynced {

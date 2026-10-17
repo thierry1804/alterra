@@ -1,11 +1,30 @@
 import { randomUUID } from "node:crypto";
-import { BUCKETS, presignedUploadUrl } from "./minio.js";
+import type { Readable } from "node:stream";
+import { BUCKETS, minioClient, presignedUploadUrl } from "./minio.js";
 
 /** Presigned MinIO PUT URL for a worker KYC photo. */
 export async function workerPhotoUploadUrl(workerId: string) {
   const photoKey = `workers/${workerId}/${randomUUID()}.jpg`;
   const uploadUrl = await presignedUploadUrl(BUCKETS.photos, photoKey);
   return { uploadUrl, photoKey, bucket: BUCKETS.photos, expiresInSeconds: 15 * 60 };
+}
+
+/** Flux de lecture (MinIO → backend) d'une photo déjà stockée, pour relai direct au client. */
+export async function getPhotoStream(photoKey: string): Promise<Readable> {
+  return minioClient.getObject(BUCKETS.photos, photoKey);
+}
+
+/**
+ * Upload direct (serveur → MinIO) pour la photo d'un pointage. MinIO n'étant pas exposé
+ * publiquement (seul le backend y accède), un navigateur ne peut pas écrire via une URL présignée
+ * pointant vers son hôte interne — le fichier transite donc par cette route plutôt qu'en PUT direct.
+ */
+export async function uploadPointagePhoto(buffer: Buffer): Promise<string> {
+  const photoKey = `pointages/${randomUUID()}.jpg`;
+  await minioClient.putObject(BUCKETS.photos, photoKey, buffer, buffer.length, {
+    "Content-Type": "image/jpeg",
+  });
+  return photoKey;
 }
 
 type WorkflowPhotoPrefix = "worker-requests" | "clarifications";

@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
-import type { Site, Worker } from "../lib/referentials";
+import type { Site, Team, Worker } from "../lib/referentials";
 import { WORKER_SEXE_LABELS, WORKER_STATUS_LABELS } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import ImportDialog from "../components/workers/ImportDialog";
@@ -68,6 +68,7 @@ export default function WorkersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState("");
+  const [teamFilter, setTeamFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<Worker["status"] | "">("");
   const [sexeFilter, setSexeFilter] = useState<NonNullable<Worker["sexe"]> | "">("");
   const [importOpen, setImportOpen] = useState(false);
@@ -90,10 +91,29 @@ export default function WorkersPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams", "all"],
+    queryFn: () => api.get<{ data: Team[] }>("/teams").then((r) => r.data.data),
+  });
+
+  const teamsForSiteFilter = useMemo(
+    () => (siteFilter ? teams.filter((t) => t.siteId === siteFilter) : teams),
+    [teams, siteFilter],
+  );
+
   const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
 
   const workersQuery = useInfiniteQuery({
-    queryKey: ["workers", search, siteFilter, statusFilter, sexeFilter, sortKey, sortDir],
+    queryKey: [
+      "workers",
+      search,
+      siteFilter,
+      teamFilter,
+      statusFilter,
+      sexeFilter,
+      sortKey,
+      sortDir,
+    ],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
@@ -101,6 +121,7 @@ export default function WorkersPage() {
           params: {
             q: search || undefined,
             siteId: siteFilter || undefined,
+            teamId: teamFilter || undefined,
             status: statusFilter || undefined,
             sexe: sexeFilter || undefined,
             cursor: pageParam,
@@ -111,6 +132,8 @@ export default function WorkersPage() {
         })
         .then((r) => r.data),
     getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
+    // Pas de websocket/push : on repolle pour refléter vite les MOC créés/modifiés ailleurs.
+    refetchInterval: 15000,
   });
 
   const workers = useMemo(
@@ -195,6 +218,7 @@ export default function WorkersPage() {
                   params: {
                     q: search || undefined,
                     siteId: siteFilter || undefined,
+                    teamId: teamFilter || undefined,
                     status: statusFilter || undefined,
                     sexe: sexeFilter || undefined,
                     cursor,
@@ -211,6 +235,7 @@ export default function WorkersPage() {
           { header: "Nom", accessor: (w) => w.lastName },
           { header: "MVola", accessor: (w) => w.mvolaNumber },
           { header: "Site", accessor: (w) => siteName(w.siteId) },
+          { header: "Équipe", accessor: (w) => teamName(w.teamId) },
           { header: "Statut", accessor: (w) => WORKER_STATUS_LABELS[w.status] },
           { header: "Sexe", accessor: (w) => (w.sexe ? WORKER_SEXE_LABELS[w.sexe] : "") },
         ],
@@ -351,6 +376,9 @@ export default function WorkersPage() {
   const siteName = (siteId: string) =>
     sites.find((s) => s.id === siteId)?.shortCode ?? siteId.slice(0, 8);
 
+  const teamName = (teamId: string | null) =>
+    teamId ? (teams.find((t) => t.id === teamId)?.name ?? "—") : "—";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -387,12 +415,34 @@ export default function WorkersPage() {
         <select
           className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
           value={siteFilter}
-          onChange={(e) => setSiteFilter(e.target.value)}
+          onChange={(e) => {
+            const nextSiteId = e.target.value;
+            setSiteFilter(nextSiteId);
+            // L'équipe sélectionnée peut ne plus appartenir au site choisi — on la réinitialise.
+            if (nextSiteId && teamFilter) {
+              const stillValid = teams.some(
+                (t) => t.id === teamFilter && t.siteId === nextSiteId,
+              );
+              if (!stillValid) setTeamFilter("");
+            }
+          }}
         >
           <option value="">Tous les sites</option>
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.shortCode}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          value={teamFilter}
+          onChange={(e) => setTeamFilter(e.target.value)}
+        >
+          <option value="">Toutes les équipes</option>
+          {teamsForSiteFilter.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
             </option>
           ))}
         </select>
@@ -521,6 +571,13 @@ export default function WorkersPage() {
                 onSort={toggleSort}
               />
               <SortableHead
+                sortKey="teamId"
+                label="Équipe"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHead
                 sortKey="status"
                 label="Statut"
                 currentKey={sortKey}
@@ -540,14 +597,14 @@ export default function WorkersPage() {
           <TableBody>
             {workersQuery.isLoading && (
               <TableRow>
-                <TableCell colSpan={9} className="text-zinc-500">
+                <TableCell colSpan={10} className="text-zinc-500">
                   Chargement…
                 </TableCell>
               </TableRow>
             )}
             {workersQuery.isError && (
               <TableQueryError
-                colSpan={9}
+                colSpan={10}
                 what="les MOC"
                 onRetry={() => void workersQuery.refetch()}
               />
@@ -585,6 +642,7 @@ export default function WorkersPage() {
                   </TableCell>
                   <TableCell>{worker.mvolaNumber}</TableCell>
                   <TableCell>{siteName(worker.siteId)}</TableCell>
+                  <TableCell>{teamName(worker.teamId)}</TableCell>
                   <TableCell>
                     <Badge variant={worker.status === "ACTIVE" ? "success" : "warning"}>
                       {WORKER_STATUS_LABELS[worker.status]}
@@ -611,7 +669,7 @@ export default function WorkersPage() {
               ))}
             {!workersQuery.isLoading && workers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-zinc-500">
+                <TableCell colSpan={10} className="text-zinc-500">
                   Aucun MOC trouvé.
                 </TableCell>
               </TableRow>

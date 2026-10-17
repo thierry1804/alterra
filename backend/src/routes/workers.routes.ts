@@ -26,6 +26,7 @@ const WORKER_SORT_FIELDS = [
   "mvolaNumber",
   "hiredAt",
   "siteId",
+  "teamId",
   "status",
   "sexe",
 ] as const;
@@ -142,11 +143,16 @@ workersRouter.get(
 
       const pageSize = take ?? 50;
       const sortDir = dir ?? "asc";
+      // Trier sur le nom de l'équipe (via la relation), pas sur l'UUID teamId brut.
+      const orderByClause: Prisma.WorkerOrderByWithRelationInput[] = orderBy
+        ? [
+            orderBy === "teamId" ? { team: { name: sortDir } } : { [orderBy]: sortDir },
+            { id: "asc" },
+          ]
+        : [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }];
       const workers = await prisma.worker.findMany({
         where,
-        orderBy: orderBy
-          ? [{ [orderBy]: sortDir }, { id: "asc" }]
-          : [{ lastName: "asc" }, { firstName: "asc" }, { id: "asc" }],
+        orderBy: orderByClause,
         take: pageSize + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });

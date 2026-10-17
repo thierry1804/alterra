@@ -39,6 +39,16 @@ export interface ActivitySubActivity {
   active: boolean;
 }
 
+export interface Team {
+  id: string;
+  siteId: string;
+  name: string;
+  chefId: string | null;
+  active: boolean;
+  chef: { id: string; firstName: string; lastName: string; email: string | null } | null;
+  memberCount: number;
+}
+
 export interface Worker {
   id: string;
   matricule: string;

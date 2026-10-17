@@ -8,6 +8,7 @@ import {
 import type { PointageSyncResult, SyncLogEntry, SyncRunResult, SyncState } from "./sync-types";
 import { syncPresenceLogs } from "./PresenceSync";
 import { syncPendingOfflineBiometricChecks } from "../lib/biometric";
+import { uploadPointagePhoto } from "../lib/pointage-photo";
 
 const BATCH_SIZE = 100;
 const BACKOFF_DELAYS_MS = [1000, 2000, 5000, 15000, 60000, 300000];
@@ -28,6 +29,24 @@ let cachedLog: SyncLogEntry[] = [];
 function toSyncPayload(pointage: PointagePending) {
   const { status: _status, reason: _reason, ...payload } = pointage;
   return payload;
+}
+
+/** Envoie vers MinIO les photos encore locales (db.media) des pointages du lot, avant leur sync. */
+async function attachPendingPhotos(pointages: PointagePending[]): Promise<void> {
+  for (const pointage of pointages) {
+    if (pointage.photoKey) continue;
+    const media = await db.media.get(pointage.clientUuid);
+    if (!media || media.uploaded) continue;
+
+    try {
+      const photoKey = await uploadPointagePhoto(media.blob);
+      pointage.photoKey = photoKey;
+      await db.pointages.update(pointage.clientUuid, { photoKey });
+      await db.media.update(pointage.clientUuid, { uploaded: true });
+    } catch {
+      // Photo non envoyée (hors ligne/erreur réseau) : le pointage part sans photo, réessayé au prochain sync.
+    }
+  }
 }
 
 function createLogEntry(level: SyncLogEntry["level"], message: string): SyncLogEntry {
@@ -173,6 +192,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
     }
 
     await appendLog("info", `Début sync — ${pending.length} pointage(s) en attente`);
+    await attachPendingPhotos(pending);
 
     for (let index = 0; index < pending.length; index += BATCH_SIZE) {
       const chunk = pending.slice(index, index + BATCH_SIZE);

@@ -1,3 +1,5 @@
+import { api } from "./api";
+
 export type PointageStatus = "PENDING" | "VALIDATED" | "REJECTED" | "NEEDS_CLARIFICATION";
 
 export interface PointageBioCheck {
@@ -15,6 +17,8 @@ export interface Pointage {
   status: PointageStatus;
   rejectionReason: string | null;
   bioCheck: PointageBioCheck | null;
+  enteredById: string;
+  photoKey: string | null;
 }
 
 export interface WorkerSummary {
@@ -63,4 +67,22 @@ export function bioResultClass(result: string | null | undefined): string {
     default:
       return "border-zinc-200 bg-zinc-50 text-zinc-600";
   }
+}
+
+/** Pointages rejetés saisis par l'utilisateur courant — seuls ceux-là lui sont rectifiables. */
+export async function fetchMyRejectedPointages(userId: string): Promise<Pointage[]> {
+  const rows: Pointage[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const response = await api.get<{
+      data: Pointage[];
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>("/pointages", { params: { status: "REJECTED", cursor, take: 100 } });
+    rows.push(...response.data.data.filter((p) => p.enteredById === userId));
+    cursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
+  } while (cursor);
+
+  return rows;
 }

@@ -59,6 +59,7 @@ export default function RequestsPage() {
   const [selection, setSelection] = useState<RequestSelection | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Pas de websocket/push : on repolle pour refléter vite les demandes créées/traitées côté terrain.
   const activityQuery = useQuery({
     queryKey: ["activity-requests", statusFilter],
     enabled: tab === "activities",
@@ -66,6 +67,7 @@ export default function RequestsPage() {
       fetchActivityRequests(
         tab === "activities" && statusFilter ? (statusFilter as RequestStatus) : undefined,
       ),
+    refetchInterval: 15000,
   });
 
   const workerQuery = useQuery({
@@ -75,6 +77,7 @@ export default function RequestsPage() {
       fetchWorkerRequests(
         tab === "workers" && statusFilter ? (statusFilter as RequestStatus) : undefined,
       ),
+    refetchInterval: 15000,
   });
 
   const clarificationQuery = useQuery({
@@ -86,6 +89,7 @@ export default function RequestsPage() {
           ? (statusFilter as ClarificationStatus)
           : undefined,
       ),
+    refetchInterval: 15000,
   });
 
   const activityRows = useMemo(() => sortByOldest(activityQuery.data ?? []), [activityQuery.data]);

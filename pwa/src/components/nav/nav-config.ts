@@ -6,6 +6,7 @@ import {
   IconEquipes,
   IconPresence,
   IconPrecisions,
+  IconRejected,
   IconSaisie,
   IconSync,
   IconTravailleurs,
@@ -34,7 +35,11 @@ const CDE_NAV: RoleNav = {
     { to: "/nfc", label: "Présence", Icon: IconPresence },
     { to: "/teams", label: "Équipes", Icon: IconEquipes },
   ],
-  more: [{ to: "/clarifications", label: "Précisions", Icon: IconPrecisions }, SYNC],
+  more: [
+    { to: "/clarifications", label: "Précisions", Icon: IconPrecisions },
+    { to: "/rejected", label: "Rejetés", Icon: IconRejected },
+    SYNC,
+  ],
 };
 
 const CDS_NAV: RoleNav = {

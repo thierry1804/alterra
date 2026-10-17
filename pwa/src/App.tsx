@@ -15,6 +15,7 @@ import ClarificationRequest from "./pages/ClarificationRequest";
 import ActivityRequest from "./pages/ActivityRequest";
 import WorkerRequest from "./pages/WorkerRequest";
 import DailyClose from "./pages/DailyClose";
+import RejectedPointages from "./pages/RejectedPointages";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/" element={<ActivitySelect />} />
                 <Route path="/batch" element={<BatchEntry />} />
                 <Route path="/nfc" element={<NfcScan />} />
+                <Route path="/rejected" element={<RejectedPointages />} />
               </Route>
 
               <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>

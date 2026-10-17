@@ -12,6 +12,7 @@ export interface SyncPointageItem {
   geoLng?: number;
   notes?: string;
   createdByClientAt: Date;
+  photoKey?: string;
 }
 
 export type SyncPointageResultStatus = "created" | "already_exists" | "rejected";
@@ -51,6 +52,8 @@ export async function syncPointageBatch(
           notes: item.notes,
           enteredById,
           createdByClientAt: item.createdByClientAt,
+          // Préfixe vérifié pour empêcher qu'un client pointe vers une clé MinIO arbitraire.
+          photoKey: item.photoKey?.startsWith("pointages/") ? item.photoKey : undefined,
         },
       });
       results.push({ clientUuid: item.clientUuid, status: "created", id: created.id });
