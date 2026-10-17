@@ -51,6 +51,11 @@ const bulkDeleteSchema = z.object({
   ids: bulkIdsSchema,
 });
 
+const bulkSexeSchema = z.object({
+  ids: bulkIdsSchema,
+  sexe: z.nativeEnum(Sexe),
+});
+
 const createWorkerSchema = z.object({
   matricule: z.string().min(1),
   firstName: z.string().min(1),
@@ -277,6 +282,36 @@ workersRouter.post(
         const before = await prisma.worker.findFirst({ where: { id, deletedAt: null } });
         if (!before) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
         const worker = await prisma.worker.update({ where: { id }, data: { status } });
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "UPDATE",
+          entityType: "Worker",
+          entityId: worker.id,
+          before,
+          after: worker,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      });
+      res.json({ results });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workersRouter.post(
+  "/workers/bulk-sexe",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(bulkSexeSchema),
+  async (req, res, next) => {
+    try {
+      const { ids, sexe } = req.body as z.infer<typeof bulkSexeSchema>;
+      const results = await runBulk(ids, async (id) => {
+        const before = await prisma.worker.findFirst({ where: { id, deletedAt: null } });
+        if (!before) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+        const worker = await prisma.worker.update({ where: { id }, data: { sexe } });
         await writeAuditLog({
           userId: req.user!.sub,
           action: "UPDATE",

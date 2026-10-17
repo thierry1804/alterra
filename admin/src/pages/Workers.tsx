@@ -140,6 +140,26 @@ export default function WorkersPage() {
     },
   });
 
+  const bulkSexeMutation = useMutation({
+    mutationFn: (sexe: NonNullable<Worker["sexe"]>) =>
+      api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
+        "/workers/bulk-sexe",
+        { ids: [...selection.selectedIds], sexe },
+      ),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["workers"] });
+      const failed = res.data.results.filter((r) => r.status === "error");
+      selection.clear();
+      toast({
+        title: failed.length
+          ? `${res.data.results.length - failed.length} traité(s), ${failed.length} échec(s)`
+          : "Sexe mis à jour",
+        description: failed[0]?.error,
+        variant: failed.length ? "destructive" : undefined,
+      });
+    },
+  });
+
   const bulkDeleteMutation = useMutation({
     mutationFn: () =>
       api.post<{ results: Array<{ id: string; status: string; error?: string }> }>(
@@ -423,6 +443,25 @@ export default function WorkersPage() {
           <PowerOff className="h-3.5 w-3.5" aria-hidden />
           Désactiver
         </Button>
+        <select
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-sm"
+          disabled={bulkSexeMutation.isPending}
+          value=""
+          onChange={(e) => {
+            const sexe = e.target.value as NonNullable<Worker["sexe"]> | "";
+            if (sexe) bulkSexeMutation.mutate(sexe);
+            e.target.value = "";
+          }}
+        >
+          <option value="" disabled>
+            Modifier le sexe…
+          </option>
+          {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map((sexe) => (
+            <option key={sexe} value={sexe}>
+              {WORKER_SEXE_LABELS[sexe]}
+            </option>
+          ))}
+        </select>
         <Button
           type="button"
           size="sm"
