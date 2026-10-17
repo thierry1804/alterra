@@ -65,19 +65,20 @@ export default function Login() {
         aria-hidden
         className="pointer-events-none absolute bottom-0 left-0 w-32 sm:w-48"
       />
-      <div className="relative z-10 grid w-full max-w-md gap-4 lg:max-w-2xl lg:grid-cols-2 lg:items-start">
+      <div className="relative z-10 flex w-full max-w-md flex-col gap-4 lg:max-w-2xl">
+        <div className="space-y-2 text-center">
+          <img src={iconUrl} alt="ALTERRA" className="mx-auto h-14 w-auto" />
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</h1>
+            <p className="mt-1 text-sm text-muted">Connexion administration</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         <form
           onSubmit={onSubmit}
           className="space-y-5 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
         >
-          <div className="alterra-rule space-y-2 pb-3">
-            <img src={iconUrl} alt="ALTERRA" className="h-14 w-auto" />
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</h1>
-              <p className="mt-1 text-sm text-muted">Connexion administration</p>
-            </div>
-          </div>
-
           {error && (
             <p
               className="rounded-md border border-red-200 bg-danger-bg px-3 py-2 text-sm text-danger"
@@ -165,6 +166,7 @@ export default function Login() {
             setError(null);
           }}
         />
+        </div>
       </div>
     </div>
   );
