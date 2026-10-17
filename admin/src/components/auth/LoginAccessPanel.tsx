@@ -6,6 +6,8 @@ interface LoginAccessPanelProps {
   otherApp: AppAccessLink;
   demoAccounts?: DemoAccount[];
   onSelectDemo?: (email: string, password: string) => void;
+  /** Sans carte : intégré dans le panneau split-screen. */
+  variant?: "card" | "embedded";
 }
 
 export default function LoginAccessPanel({
@@ -13,11 +15,18 @@ export default function LoginAccessPanel({
   otherApp,
   demoAccounts,
   onSelectDemo,
+  variant = "card",
 }: LoginAccessPanelProps) {
   const showDemo = import.meta.env.DEV && demoAccounts && demoAccounts.length > 0;
 
   return (
-    <aside className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+    <aside
+      className={
+        variant === "embedded"
+          ? "space-y-4 border-t border-zinc-200 pt-6"
+          : "space-y-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+      }
+    >
       <div>
         <h2 className="text-sm font-medium text-zinc-900">Accès à cette interface</h2>
         <ul className="mt-2 space-y-1 text-sm text-zinc-600">
