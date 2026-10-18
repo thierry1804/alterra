@@ -1,0 +1,143 @@
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Facture — {{activity.label}}</title>
+    <style>
+      body {
+        /* Même pile que l'admin (admin/src/index.css) : police système, pas de serif distinctive. */
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          "Liberation Sans",
+          Arial,
+          sans-serif;
+        font-size: 11px;
+        color: #18181b;
+        margin: 32px;
+      }
+      .num {
+        font-family: ui-monospace, "SFMono-Regular", "Liberation Mono", Menlo, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      .brand-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #18181b;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      .brand-header .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand-header .brand img {
+        height: 28px;
+        width: 28px;
+        object-fit: contain;
+      }
+      .brand-header .brand span {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .brand-header .period {
+        text-align: right;
+        font-size: 12px;
+        color: #52525b;
+      }
+      .brand-header .period strong {
+        color: #18181b;
+        font-size: 13px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      .meta {
+        color: #52525b;
+        margin-bottom: 24px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+      }
+      th,
+      td {
+        border: 1px solid #d4d4d8;
+        padding: 6px 8px;
+        text-align: left;
+      }
+      th {
+        background: #f4f4f5;
+      }
+      tfoot td {
+        font-weight: 700;
+        background: #f4f4f5;
+      }
+      .signature {
+        margin-top: 32px;
+        font-size: 10px;
+        color: #52525b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand-header">
+      <div class="brand">
+        <img src="{{header.logoDataUri}}" alt="" />
+        <span>{{header.appName}}</span>
+      </div>
+      <div class="period">
+        {{site.name}}
+        ({{site.shortCode}})<br />
+        <strong>Semaine {{weekNumber}} · {{year}}</strong>
+      </div>
+    </div>
+
+    <h1>Facture — {{activity.label}}</h1>
+    <p class="meta">
+      Période
+      {{periodLabel}}
+      ·
+      {{dateFrom}}
+      →
+      {{dateTo}}
+      · Tarif
+      {{activity.unitRate}}
+      Ar / {{activity.unit}}
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Matricule</th>
+          <th>MOC</th>
+          <th>Quantité</th>
+          <th>PU (Ar)</th>
+          <th>Montant (Ar)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each lines}}
+          <tr>
+            <td class="num">{{matricule}}</td>
+            <td>{{workerName}}</td>
+            <td class="num">{{quantity}}</td>
+            <td class="num">{{unitPrice}}</td>
+            <td class="num">{{amount}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">Total · {{summary.workerCount}} travailleur(s)</td>
+          <td class="num">{{summary.totalAmount}}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <p class="signature">Généré le {{generatedAt}} · Export MVola {{periodLabel}}</p>
+  </body>
+</html>

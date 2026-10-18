@@ -14,6 +14,12 @@ export async function getPhotoStream(photoKey: string): Promise<Readable> {
   return minioClient.getObject(BUCKETS.photos, photoKey);
 }
 
+/** Flux de lecture (MinIO → backend) d'un PDF du bucket rapports (facture, rapport hebdo), pour
+ * relai direct au client — même raison que getPhotoStream : MinIO n'est pas exposé publiquement. */
+export async function getReportStream(fileKey: string): Promise<Readable> {
+  return minioClient.getObject(BUCKETS.reports, fileKey);
+}
+
 /**
  * Upload direct (serveur → MinIO) pour la photo d'un pointage. MinIO n'étant pas exposé
  * publiquement (seul le backend y accède), un navigateur ne peut pas écrire via une URL présignée

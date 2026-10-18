@@ -6,6 +6,7 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { isValidMvolaNumber } from "./mvola-description.js";
+import { generateActivityInvoices } from "./activity-invoices.service.js";
 
 /**
  * Format du fichier MVola (docs/cadrage/mvola-format.md §3.2) : `spec5` = 5 colonnes de la spécification
@@ -36,7 +37,11 @@ export async function exportMvolaPayments(
     includeHeader?: boolean;
   },
 ): Promise<ExportMvolaResult> {
-  const { shortPeriod, referenceYear } = resolvePeriod(periodIso, undefined, options.referenceYear);
+  const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo } = resolvePeriod(
+    periodIso,
+    undefined,
+    options.referenceYear,
+  );
 
   const pendingPayments = await prisma.payment.findMany({
     where: {
@@ -138,6 +143,22 @@ export async function exportMvolaPayments(
     ip: options.ip,
     userAgent: options.userAgent,
   });
+
+  // Facture par activité générée dès l'export, pour consultation immédiate dans l'admin — non
+  // bloquant : une facture ratée (rendu PDF, MinIO) ne doit jamais faire échouer l'export réel.
+  try {
+    await generateActivityInvoices({
+      shortPeriod,
+      referenceYear,
+      weekIso,
+      dateFrom,
+      dateTo,
+      workerIds: exportable.map((payment) => payment.workerId),
+      createdById: options.userId,
+    });
+  } catch (err) {
+    console.error("generateActivityInvoices failed for export", shortPeriod, referenceYear, err);
+  }
 
   return {
     filename,

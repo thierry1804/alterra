@@ -83,6 +83,9 @@ vi.mock("../lib/prisma.js", () => ({
     biometricCheck: {
       findFirst: vi.fn(),
     },
+    appSetting: {
+      findUnique: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));

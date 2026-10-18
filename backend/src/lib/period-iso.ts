@@ -62,7 +62,10 @@ export function resolvePeriod(
   const fullWeekMatch = trimmed.match(FULL_WEEK_RE);
   if (fullWeekMatch) {
     const weekIso = trimmed;
-    const shortPeriod = `S${fullWeekMatch[2]}`;
+    // Aligné sur la branche "Sxx" courte ci-dessous et sur periodToExportParam() côté admin : pas de
+    // zéro de tête, sinon une semaine 01-09 saisie en "AAAA-Wnn" génère un bordereau invisible en liste
+    // ("S01" stocké vs "S1" interrogé).
+    const shortPeriod = `S${Number(fullWeekMatch[2])}`;
     const { dateFrom, dateTo } = getIsoWeekDateRange(weekIso);
     return {
       weekIso,

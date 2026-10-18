@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { buildMvolaDescription } from "./mvola-description.js";
+import { writeAuditLog } from "../audit/audit.service.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -208,4 +209,71 @@ export async function generatePayments(
       description: payment.description,
     })),
   };
+}
+
+export interface DeletePaymentsBatchInput {
+  periodIso: string;
+  referenceYear?: number;
+  userId: string;
+  ip?: string;
+  userAgent?: string;
+}
+
+export interface DeletePaymentsBatchResult {
+  periodIso: string;
+  deleted: number;
+}
+
+/** Supprime un bordereau PENDING généré par erreur — bloqué dès qu'une ligne est exportée ou payée,
+ * pour ne jamais effacer la trace d'un paiement réellement envoyé. */
+export async function deletePaymentsBatch(
+  input: DeletePaymentsBatchInput,
+): Promise<DeletePaymentsBatchResult> {
+  const { shortPeriod, referenceYear } = resolvePeriod(
+    input.periodIso,
+    undefined,
+    input.referenceYear,
+  );
+
+  const lockedPayment = await prisma.payment.findFirst({
+    where: {
+      periodIso: shortPeriod,
+      referenceYear,
+      status: { in: [PaymentStatus.EXPORTED, PaymentStatus.PAID] },
+    },
+    select: { id: true },
+  });
+
+  if (lockedPayment) {
+    throw new ApiError(
+      409,
+      "PAY_CONFLICT",
+      "Bordereau déjà exporté ou payé — suppression impossible",
+    );
+  }
+
+  const existing = await prisma.payment.findMany({
+    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
+    select: { id: true },
+  });
+
+  if (existing.length === 0) {
+    throw new ApiError(404, "PAY_NOT_FOUND", "Aucun bordereau en attente pour cette période");
+  }
+
+  await prisma.payment.deleteMany({
+    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
+  });
+
+  await writeAuditLog({
+    userId: input.userId,
+    action: "DELETE",
+    entityType: "Payment",
+    entityId: null,
+    before: { periodIso: shortPeriod, referenceYear, count: existing.length },
+    ip: input.ip,
+    userAgent: input.userAgent,
+  });
+
+  return { periodIso: shortPeriod, deleted: existing.length };
 }

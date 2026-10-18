@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
-import { generatePayments } from "../services/payments/generate.service.js";
+import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
 import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
 import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
 import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
@@ -142,6 +142,31 @@ paymentsRouter.post(
       const body = req.body as z.infer<typeof generateSchema>;
       const result = await generatePayments(body);
       res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.delete(
+  "/payments/:period",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(periodParams, "params"),
+  validate(exportQuerySchema, "query"),
+  async (req, res, next) => {
+    try {
+      const { period } = req.params as z.infer<typeof periodParams>;
+      const query = req.query as z.infer<typeof exportQuerySchema>;
+      const result = await deletePaymentsBatch({
+        periodIso: period,
+        referenceYear: query.referenceYear,
+        userId: req.user!.sub,
+        ip: req.ip,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
+      res.json(result);
     } catch (err) {
       next(err);
     }

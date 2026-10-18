@@ -32,12 +32,16 @@ export const AUDIT_ACTIONS = [
   "VALIDATE",
   "REJECT",
   "CORRECT",
+  "GENERATE",
+  "REGENERATE",
+  "DOWNLOAD",
 ] as const;
 
 export const AUDIT_ENTITY_TYPES = [
   "Worker",
   "Pointage",
   "Payment",
+  "Invoice",
   "Site",
   "ActivityCategory",
   "ActivitySubActivity",

@@ -15,11 +15,13 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "../hooks/use-toast";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const listPeriod = useMemo(() => periodToExportParam(periodIso), [periodIso]);
 
@@ -81,6 +83,28 @@ export default function PaymentsPage() {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  const deletable = rows.length > 0 && rows.every((r) => r.status === "PENDING");
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      api.delete(`/payments/${listPeriod}`, {
+        params: { referenceYear: periodIso.match(/^(\d{4})-W/)?.[1] },
+      }),
+    onSuccess: (res) => {
+      toast({
+        title: "Bordereau supprimé",
+        description: `${res.data.deleted} ligne(s) supprimée(s)`,
+      });
+      setDeleteConfirmOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["payments"] });
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({ title: "Suppression échouée", description: String(message), variant: "destructive" });
+      setDeleteConfirmOpen(false);
     },
   });
 
@@ -157,9 +181,30 @@ export default function PaymentsPage() {
         <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
           Import retour MVola
         </Button>
+        {deletable && (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setDeleteConfirmOpen(true)}
+            disabled={deleteMutation.isPending}
+          >
+            Supprimer bordereau
+          </Button>
+        )}
       </div>
 
       <KpiCards stats={paymentStats} />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Supprimer le bordereau ?"
+        description={`${rows.length} ligne(s) en attente pour la période ${periodIso} seront définitivement supprimées. Cette action est irréversible.`}
+        confirmLabel="Supprimer"
+        destructive
+        busy={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+        onOpenChange={setDeleteConfirmOpen}
+      />
 
       <BordereauTable rows={rows} loading={isLoading} onCorrected={() => void refetch()} />
 

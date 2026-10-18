@@ -14,6 +14,7 @@ import WorkersPage from "./pages/Workers";
 import UsersPage from "./pages/Users";
 import PointagesPage from "./pages/Pointages";
 import PaymentsPage from "./pages/Payments";
+import InvoicesPage from "./pages/Invoices";
 import ReportsPage from "./pages/Reports";
 import AuditLogPage from "./pages/AuditLog";
 import RequestsPage from "./pages/Requests";
@@ -83,6 +84,7 @@ export default function App() {
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />
+                <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/audit" element={<AuditLogPage />} />
                 <Route path="/settings" element={<AppSettingsPage />} />

@@ -59,6 +59,7 @@ vi.mock("../lib/prisma.js", () => ({
     },
     pointage: {
       create: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
@@ -67,6 +68,9 @@ vi.mock("../lib/prisma.js", () => ({
     biometricCheck: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+    },
+    appSetting: {
+      findUnique: vi.fn(),
     },
     $transaction: vi.fn(),
   },

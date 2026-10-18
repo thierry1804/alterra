@@ -5,6 +5,7 @@ import Handlebars from "handlebars";
 import puppeteer from "puppeteer";
 import type { WeeklyReportViewModel } from "./weekly-data.service.js";
 import type { DailyReportViewModel } from "./daily-data.service.js";
+import type { ActivityInvoiceViewModel } from "../payments/activity-invoices.service.js";
 
 const templatesDir = join(dirname(fileURLToPath(import.meta.url)), "../../templates");
 
@@ -30,6 +31,10 @@ export function renderWeeklyInvoiceHtml(data: WeeklyReportViewModel): string {
 
 export function renderDailyReportHtml(data: DailyReportViewModel): string {
   return loadTemplate("daily-report.hbs")(data);
+}
+
+export function renderActivityInvoiceHtml(data: ActivityInvoiceViewModel): string {
+  return loadTemplate("activity-invoice.hbs")(data);
 }
 
 /** Rendu HTML → PDF via Puppeteer (mockable en test via PDF_RENDERER=mock). */

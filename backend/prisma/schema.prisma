@@ -120,19 +120,20 @@ model User {
 }
 
 model Site {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
   name      String
-  shortCode String   @unique // MNK, ANT, ANJ, MGT, AMB
+  shortCode String    @unique // MNK, ANT, ANJ, MGT, AMB
   location  String?
   geoLat    Float?
   geoLng    Float?
-  active    Boolean  @default(true)
+  active    Boolean   @default(true)
   zones     Zone[]
   teams     Team[]
   workers   Worker[]
   users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 /// V2
@@ -226,6 +227,7 @@ model ActivitySubActivity {
   groupKey   String           @db.Uuid
   active     Boolean          @default(true)
   pointages  Pointage[]
+  invoices   Invoice[]
   createdAt  DateTime         @default(now())
 
   @@index([categoryId, active])
@@ -233,6 +235,32 @@ model ActivitySubActivity {
   @@index([siteId, active])
   @@index([validFrom, validTo])
   @@index([groupKey])
+}
+
+// Facture PDF par site, par activité et par période, générée automatiquement à chaque export MVola
+// — une ligne par (site, activité) présente dans l'export (regroupe les travailleurs validés de ce
+// site pour cette activité sur la période), consultée/téléchargée depuis l'admin (menu Factures).
+model Invoice {
+  id               String              @id @default(uuid()) @db.Uuid
+  periodIso        String // Sxx ou Dxxx
+  referenceYear    Int?
+  siteId           String              @db.Uuid
+  site             Site                @relation(fields: [siteId], references: [id])
+  subActivityId    String              @db.Uuid
+  subActivity      ActivitySubActivity @relation(fields: [subActivityId], references: [id])
+  fileKey          String // clé MinIO (bucket reports)
+  workerCount      Int
+  // Tarif au moment de la génération — snapshotté comme Pointage.unitRateSnapshot : le tarif de
+  // l'activité peut changer après coup, la facture doit garder celui réellement facturé.
+  unitRateSnapshot Decimal             @db.Decimal(12, 2)
+  totalAmount      Decimal             @db.Decimal(12, 2)
+  createdById      String?             @db.Uuid
+  createdAt        DateTime            @default(now())
+  // Reste égal à createdAt tant que la facture n'a jamais été régénérée.
+  updatedAt        DateTime            @updatedAt
+
+  @@index([periodIso, referenceYear])
+  @@index([subActivityId])
 }
 
 model Worker {
@@ -502,15 +530,15 @@ model PasswordReset {
 
 /// Ligne unique (id fixe "singleton") — nom, icône et habillage de l'écran de connexion, modifiables depuis l'Admin.
 model AppSetting {
-  id                 String   @id @default("singleton")
-  appName            String   @default("ALTERRA")
-  iconKey            String?
-  loginBackgroundKey String?
-  loginBranchKey     String?
-  loginLeafKey       String?
-  mapTilerKey        String?
+  id                    String   @id @default("singleton")
+  appName               String   @default("ALTERRA")
+  iconKey               String?
+  loginBackgroundKey    String?
+  loginBranchKey        String?
+  loginLeafKey          String?
+  mapTilerKey           String?
   /// Contrôle biométrique pas encore fiable sur le terrain — permet à l'admin de désactiver
   /// temporairement son exigence pour la validation des pointages (réactiver dès que prêt).
-  bioValidationRequired Boolean @default(true)
-  updatedAt          DateTime @updatedAt
+  bioValidationRequired Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
 }
