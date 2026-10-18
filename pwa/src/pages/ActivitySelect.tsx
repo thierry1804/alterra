@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 import { LoadingScreen } from "../components/ui/feedback";
 import { IconChevronRight } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
@@ -14,6 +15,12 @@ export default function ActivitySelect() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
+  const [search, setSearch] = useState("");
+  const filteredActivities = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return activities;
+    return activities.filter((a) => a.label.toLowerCase().includes(query));
+  }, [activities, search]);
 
   // Toujours la date du jour — pas de saisie rétroactive depuis cet écran.
   const date = todayIsoDate();
@@ -159,8 +166,28 @@ export default function ActivitySelect() {
             <p>Aucune activité en cache. Connectez-vous pour synchroniser le référentiel.</p>
           </div>
         )}
+        {activities.length > 0 && (
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              placeholder="Chercher une activité…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full rounded-md border border-zinc-300 py-2 pl-9 pr-3 text-sm"
+            />
+          </div>
+        )}
+        {activities.length > 0 && filteredActivities.length === 0 && (
+          <p className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500">
+            Aucune activité ne correspond.
+          </p>
+        )}
         <div className="space-y-2">
-          {activities.map((activity) => {
+          {filteredActivities.map((activity) => {
             const isSelected = subActivityId === activity.id;
             return (
               <button
