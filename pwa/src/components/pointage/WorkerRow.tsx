@@ -1,6 +1,10 @@
+import { useEffect, useRef } from "react";
 import { Check, Minus, Plus } from "lucide-react";
 import PhotoCapture from "./PhotoCapture";
 import { parseDecimal } from "../../lib/number";
+
+const HOLD_START_DELAY_MS = 450;
+const HOLD_REPEAT_INTERVAL_MS = 120;
 
 export interface WorkerRowValue {
   quantity: string;
@@ -33,9 +37,57 @@ export default function WorkerRow({
   const hasQuantity = Number.isFinite(quantityNumber) && quantityNumber > 0;
   const lineAmount = hasQuantity ? quantityNumber * unitRate : 0;
 
-  function setQuantity(next: number) {
-    const clamped = Math.max(0, Math.round(next * 100) / 100);
+  // Suit la valeur réelle indépendamment du cycle de rendu : pendant un appui long, l'intervalle
+  // doit incrémenter la dernière quantité posée, pas celle figée au moment où il a démarré.
+  const quantityRef = useRef(quantityNumber);
+  useEffect(() => {
+    quantityRef.current = quantityNumber;
+  }, [quantityNumber]);
+
+  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const suppressClickRef = useRef(false);
+
+  function clearHoldTimers() {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  }
+
+  useEffect(() => clearHoldTimers, []);
+
+  function step(delta: number) {
+    const base = Number.isFinite(quantityRef.current) ? quantityRef.current : 0;
+    const clamped = Math.max(0, Math.round((base + delta) * 100) / 100);
+    quantityRef.current = clamped;
     onChange({ ...value, quantity: String(clamped) });
+  }
+
+  function startHold(delta: number) {
+    if (disabled) return;
+    clearHoldTimers();
+    suppressClickRef.current = false;
+    holdTimeoutRef.current = setTimeout(() => {
+      suppressClickRef.current = true;
+      holdIntervalRef.current = setInterval(() => step(delta), HOLD_REPEAT_INTERVAL_MS);
+    }, HOLD_START_DELAY_MS);
+  }
+
+  function endHold() {
+    clearHoldTimers();
+  }
+
+  function handleStepClick(delta: number) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    step(delta);
   }
 
   // Saisie libre : chiffres, virgule ou point (un seul séparateur) — clavier numérique décimal,
@@ -95,8 +147,12 @@ export default function WorkerRow({
         <button
           type="button"
           disabled={disabled || quantityNumber <= 0}
-          onClick={() => setQuantity((Number.isFinite(quantityNumber) ? quantityNumber : 0) - 1)}
-          aria-label="Diminuer la quantité"
+          onPointerDown={() => startHold(-1)}
+          onPointerUp={endHold}
+          onPointerLeave={endHold}
+          onPointerCancel={endHold}
+          onClick={() => handleStepClick(-1)}
+          aria-label="Diminuer la quantité (appui long pour répéter)"
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-300 text-zinc-700 active:bg-zinc-100 disabled:opacity-30"
         >
           <Minus className="h-6 w-6" />
@@ -114,8 +170,12 @@ export default function WorkerRow({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setQuantity((Number.isFinite(quantityNumber) ? quantityNumber : 0) + 1)}
-          aria-label="Augmenter la quantité"
+          onPointerDown={() => startHold(1)}
+          onPointerUp={endHold}
+          onPointerLeave={endHold}
+          onPointerCancel={endHold}
+          onClick={() => handleStepClick(1)}
+          aria-label="Augmenter la quantité (appui long pour répéter)"
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-brand bg-brand text-white active:bg-brand-hover disabled:opacity-30"
         >
           <Plus className="h-6 w-6" />
