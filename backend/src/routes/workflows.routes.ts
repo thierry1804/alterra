@@ -28,9 +28,16 @@ import {
   getClarificationRequest,
   listClarificationRequests,
 } from "../services/workflows/clarification-request.service.js";
-import { uploadWorkflowPhotoDirect } from "../services/storage/presigned-url.service.js";
+import { getPhotoStream, uploadWorkflowPhotoDirect } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
+import {
+  notifyActivityRequestDecided,
+  notifyClarificationAnswered,
+  notifyClarificationClosed,
+  notifyClarificationOpen,
+  notifyWorkerRequestDecided,
+} from "../services/notifications/notify-helpers.js";
 
 export const workflowsRouter = Router();
 
@@ -171,6 +178,11 @@ workflowsRouter.patch(
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
+      await notifyActivityRequestDecided(row, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.json(row);
     } catch (err) {
       next(err);
@@ -198,6 +210,12 @@ workflowsRouter.post(
           after: row,
           ip: req.ip,
           userAgent: req.headers["user-agent"],
+        });
+        await notifyActivityRequestDecided(row, {
+          actorUserId: req.user!.sub,
+          ip: req.ip,
+          userAgent:
+            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
         });
       });
       res.json({ results });
@@ -354,6 +372,11 @@ workflowsRouter.patch(
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
+      await notifyWorkerRequestDecided(row, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.json(row);
     } catch (err) {
       next(err);
@@ -381,6 +404,12 @@ workflowsRouter.post(
           after: row,
           ip: req.ip,
           userAgent: req.headers["user-agent"],
+        });
+        await notifyWorkerRequestDecided(row, {
+          actorUserId: req.user!.sub,
+          ip: req.ip,
+          userAgent:
+            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
         });
       });
       res.json({ results });
@@ -510,7 +539,34 @@ workflowsRouter.post(
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
+      await notifyClarificationOpen(row, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.status(201).json(row);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+workflowsRouter.get(
+  "/clarification-requests/:id/photo",
+  requireAuth,
+  requireRole(...WF_CLAR_ROLES),
+  validate(idParams, "params"),
+  async (req, res, next) => {
+    try {
+      const request = await getClarificationRequest(req.user!, req.params.id);
+      if (!request.answerPhotoKey) {
+        throw new ApiError(404, "NO_PHOTO", "Aucune photo de réponse pour cette demande");
+      }
+      const stream = await getPhotoStream(request.answerPhotoKey);
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      stream.pipe(res);
+      stream.on("error", next);
     } catch (err) {
       next(err);
     }
@@ -537,6 +593,11 @@ workflowsRouter.patch(
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
+      await notifyClarificationAnswered(row, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.json(row);
     } catch (err) {
       next(err);
@@ -562,6 +623,11 @@ workflowsRouter.patch(
         after: row,
         ip: req.ip,
         userAgent: req.headers["user-agent"],
+      });
+      await notifyClarificationClosed(row, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
       });
       res.json(row);
     } catch (err) {

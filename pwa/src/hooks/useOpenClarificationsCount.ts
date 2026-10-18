@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
 import { fetchAllClarificationRequests } from "../lib/workflows";
+import { isSocketConnected } from "../lib/socket";
 
 const POLL_INTERVAL_MS = 60_000;
 
-/** Diffusé après qu'une demande de précision change d'état (réponse envoyée), pour que ce bandeau
- * se mette à jour tout de suite plutôt que d'attendre jusqu'à 60s. */
+/** Diffusé après qu'une demande de précision change d'état (réponse envoyée / event socket). */
 export const CLARIFICATIONS_UPDATED_EVENT = "alterra:clarifications-updated";
 
-/** Nombre de demandes de précisions ouvertes pour l'équipe du CDE courant — pas de push, donc on
- * repolle en tâche de fond (même pattern que useRejectedCount). */
+/** Compteur OPEN pour le CDE — rafraîchi via socket (+ poll fallback si déconnecté). */
 export function useOpenClarificationsCount(): number {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
@@ -29,7 +28,9 @@ export function useOpenClarificationsCount(): number {
 
   useEffect(() => {
     void refresh();
-    const interval = setInterval(() => void refresh(), POLL_INTERVAL_MS);
+    const interval = setInterval(() => {
+      if (!isSocketConnected()) void refresh();
+    }, POLL_INTERVAL_MS);
     window.addEventListener("focus", refresh);
     window.addEventListener(CLARIFICATIONS_UPDATED_EVENT, refresh);
     return () => {

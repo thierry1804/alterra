@@ -73,7 +73,22 @@ vi.mock("../services/audit/audit.service.js", () => ({
   writeAuditLog: vi.fn(),
 }));
 
+vi.mock("../services/notifications/notify-helpers.js", () => ({
+  notifyClarificationOpen: vi.fn(),
+  notifyClarificationAnswered: vi.fn(),
+  notifyClarificationClosed: vi.fn(),
+  notifyActivityRequestDecided: vi.fn(),
+  notifyWorkerRequestDecided: vi.fn(),
+}));
+
+vi.mock("../services/storage/presigned-url.service.js", () => ({
+  uploadWorkflowPhotoDirect: vi.fn(),
+  getPhotoStream: vi.fn(),
+}));
+
+import { Readable } from "node:stream";
 import { prisma } from "../lib/prisma.js";
+import { getPhotoStream } from "../services/storage/presigned-url.service.js";
 
 function cdsToken() {
   return signAccessToken({
@@ -222,6 +237,39 @@ describe("workflows routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ANSWERED");
+  });
+
+  it("GET /clarification-requests/:id/photo returns 404 without answerPhotoKey", async () => {
+    vi.mocked(prisma.clarificationRequest.findFirst).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      answerPhotoKey: null,
+      status: ClarificationStatus.ANSWERED,
+    } as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/clarification-requests/${MOCK_CLAR_ID}/photo`)
+      .set("Authorization", `Bearer ${cdsToken()}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe("NO_PHOTO");
+  });
+
+  it("GET /clarification-requests/:id/photo streams jpeg when key present", async () => {
+    vi.mocked(prisma.clarificationRequest.findFirst).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      answerPhotoKey: "workflows/clarifications/abc.jpg",
+      status: ClarificationStatus.ANSWERED,
+    } as never);
+    vi.mocked(getPhotoStream).mockResolvedValue(Readable.from([Buffer.from("fake-jpeg")]) as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get(`/api/v1/clarification-requests/${MOCK_CLAR_ID}/photo`)
+      .set("Authorization", `Bearer ${cdsToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/image\/jpeg/);
   });
 
   it("PATCH /activity-requests/:id/complement keeps request pending with comment", async () => {

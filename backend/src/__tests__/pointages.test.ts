@@ -84,6 +84,11 @@ vi.mock("../lib/prisma-base.js", () => ({
   },
 }));
 
+vi.mock("../services/notifications/notify-helpers.js", () => ({
+  notifyPointagesRejected: vi.fn(),
+  notifyPointagesValidated: vi.fn(),
+}));
+
 import { prisma } from "../lib/prisma.js";
 import { basePrisma } from "../lib/prisma-base.js";
 

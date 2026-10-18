@@ -13,6 +13,10 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 import { getPhotoStream, uploadPointagePhoto } from "../services/storage/presigned-url.service.js";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error-handler.js";
+import {
+  notifyPointagesRejected,
+  notifyPointagesValidated,
+} from "../services/notifications/notify-helpers.js";
 
 export const pointagesRouter = Router();
 
@@ -151,6 +155,11 @@ pointagesRouter.patch(
   async (req, res, next) => {
     try {
       const pointage = await validatePointage(req.params.id, req.user!.sub);
+      await notifyPointagesValidated([pointage.id], {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.json(pointage);
     } catch (err) {
       next(err);
@@ -168,6 +177,11 @@ pointagesRouter.patch(
     try {
       const { rejectionReason } = req.body as z.infer<typeof rejectSchema>;
       const pointage = await rejectPointage(req.params.id, req.user!.sub, rejectionReason);
+      await notifyPointagesRejected([pointage.id], rejectionReason, {
+        actorUserId: req.user!.sub,
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+      });
       res.json(pointage);
     } catch (err) {
       next(err);
@@ -225,9 +239,19 @@ pointagesRouter.post(
   async (req, res, next) => {
     try {
       const { ids } = req.body as z.infer<typeof bulkIdsOnlySchema>;
+      const okIds: string[] = [];
       const results = await runBulk(ids, async (id) => {
         await validatePointage(id, req.user!.sub);
+        okIds.push(id);
       });
+      if (okIds.length > 0) {
+        await notifyPointagesValidated(okIds, {
+          actorUserId: req.user!.sub,
+          ip: req.ip,
+          userAgent:
+            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+        });
+      }
       res.json({ results });
     } catch (err) {
       next(err);
@@ -243,9 +267,19 @@ pointagesRouter.post(
   async (req, res, next) => {
     try {
       const { ids, rejectionReason } = req.body as z.infer<typeof bulkRejectSchema>;
+      const okIds: string[] = [];
       const results = await runBulk(ids, async (id) => {
         await rejectPointage(id, req.user!.sub, rejectionReason);
+        okIds.push(id);
       });
+      if (okIds.length > 0) {
+        await notifyPointagesRejected(okIds, rejectionReason, {
+          actorUserId: req.user!.sub,
+          ip: req.ip,
+          userAgent:
+            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+        });
+      }
       res.json({ results });
     } catch (err) {
       next(err);

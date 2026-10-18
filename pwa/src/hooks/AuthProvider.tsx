@@ -8,6 +8,7 @@ import {
 } from "../lib/session";
 import { clearBiometricTemplates } from "../services/biometric/TemplateCache";
 import { purgeLocalData } from "../db/db";
+import { connectSocket, disconnectSocket } from "../lib/socket";
 import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -17,7 +18,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function bootstrap() {
       const restored = await restoreSession();
-      if (restored) setUser(getMemoryUser());
+      if (restored) {
+        setUser(getMemoryUser());
+        connectSocket();
+      }
       setBootstrapped(true);
     }
 
@@ -31,10 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     await persistSession(res.data.accessToken, res.data.user);
     setUser(res.data.user);
+    connectSocket();
     return "/";
   }, []);
 
   const logout = useCallback(async () => {
+    disconnectSocket();
     await api.post("/auth/logout").catch(() => undefined);
     await clearBiometricTemplates().catch(() => undefined);
     await purgeLocalData().catch(() => undefined);

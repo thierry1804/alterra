@@ -22,6 +22,7 @@ import { workflowsRouter } from "./workflows.routes.js";
 import { dailyReportsRouter } from "./daily-reports.routes.js";
 import { appSettingsRouter } from "./app-settings.routes.js";
 import { systemRouter } from "./system.routes.js";
+import { notificationsRouter } from "./notifications.routes.js";
 
 export const apiRouter = Router();
 
@@ -47,4 +48,5 @@ apiRouter.use(teamsRouter);
 apiRouter.use(presenceRouter);
 apiRouter.use(badgesRouter);
 apiRouter.use(workflowsRouter);
+apiRouter.use(notificationsRouter);
 apiRouter.use(dailyReportsRouter);

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import http from "node:http";
 import { createApp } from "./app.js";
 import {
   startDailyPdfWorker,
@@ -10,6 +11,7 @@ import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
 import { ensureBuckets } from "./services/storage/minio.js";
 import { assertSecureConfig } from "./lib/security-config.js";
+import { initSocketIo } from "./realtime/socket.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -24,7 +26,10 @@ async function main() {
   }
 
   const app = createApp();
-  const server = app.listen(PORT, "127.0.0.1", () => {
+  const server = http.createServer(app);
+  await initSocketIo(server);
+
+  server.listen(PORT, "127.0.0.1", () => {
     logger.info({ port: PORT, env: process.env.NODE_ENV }, "ALTERRA API listening");
   });
 

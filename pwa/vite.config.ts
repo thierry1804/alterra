@@ -4,15 +4,22 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const apiTarget = `http://localhost:${process.env.API_PROXY_PORT ?? 3001}`;
+
 const apiProxy = {
   "/api": {
-    target: `http://localhost:${process.env.API_PROXY_PORT ?? 3001}`,
+    target: apiTarget,
     changeOrigin: true,
     xfwd: true, // transmet X-Forwarded-For — sans ça le backend ne voit que l'IP du proxy
   },
+  "/socket.io": {
+    target: apiTarget,
+    changeOrigin: true,
+    ws: true,
+  },
 };
 
-// En-têtes de sécurité du service public (vite preview). Mêmes valeurs que nginx.static.conf, utilisé en production.
+// En-têtes de sécurité du service public (vite preview). Mêmes valeurs que nginx.static.conf, utilisés en production.
 const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -20,7 +27,7 @@ const securityHeaders = {
   "Permissions-Policy": "camera=(self), geolocation=(self), microphone=()",
   "Strict-Transport-Security": "max-age=15552000; includeSubDomains",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: ws: wss:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
 };
 
 export default defineConfig({
@@ -28,30 +35,17 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
       includeAssets: ["icons/icon-192.svg", "icons/icon-512.svg"],
       manifest: false,
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/v1\//,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 64, maxAgeSeconds: 60 * 5 },
-            },
-          },
-          {
-            urlPattern: ({ request }) => request.destination === "image",
-            handler: "CacheFirst",
-            options: {
-              cacheName: "image-cache",
-              expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-        ],
+      },
+      devOptions: {
+        enabled: false,
       },
     }),
   ],

@@ -85,6 +85,16 @@ enum ClarificationStatus {
   CLOSED
 }
 
+enum NotificationType {
+  CLARIFICATION_OPEN
+  CLARIFICATION_ANSWERED
+  CLARIFICATION_CLOSED
+  POINTAGE_REJECTED
+  POINTAGE_VALIDATED
+  ACTIVITY_REQUEST_DECIDED
+  WORKER_REQUEST_DECIDED
+}
+
 enum PresenceSource {
   NFC
   MANUAL
@@ -108,12 +118,14 @@ model User {
   site           Site?           @relation(fields: [siteId], references: [id])
   teamId         String?         @db.Uuid
   team           Team?           @relation(fields: [teamId], references: [id])
-  lastLoginAt    DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
-  refreshTokens  RefreshToken[]
-  passwordResets PasswordReset[]
+  lastLoginAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  refreshTokens      RefreshToken[]
+  passwordResets     PasswordReset[]
+  notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
 
   @@index([email])
   @@index([role, siteId])
@@ -499,6 +511,36 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model Notification {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @db.Uuid
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  body       String
+  entityType String
+  entityId   String?
+  payload    Json?
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model RefreshToken {

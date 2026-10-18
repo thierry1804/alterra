@@ -16,6 +16,7 @@ import ActivityRequest from "./pages/ActivityRequest";
 import WorkerRequest from "./pages/WorkerRequest";
 import DailyClose from "./pages/DailyClose";
 import MyPointages from "./pages/MyPointages";
+import Notifications from "./pages/Notifications";
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
               >
                 <Route path="/teams" element={<TeamManagement />} />
                 <Route path="/clarifications" element={<ClarificationRequest />} />
+                <Route path="/notifications" element={<Notifications />} />
               </Route>
 
               <Route path="/sync" element={<Sync />} />

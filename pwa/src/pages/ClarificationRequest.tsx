@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../lib/pointages";
 import PhotoCapture from "../components/pointage/PhotoCapture";
+import ClarificationAnswerPhotoViewer from "../components/clarification/ClarificationAnswerPhotoViewer";
 import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
 import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
@@ -366,9 +367,7 @@ export default function ClarificationRequest() {
                   <p className="text-xs font-medium text-zinc-600">Réponse</p>
                   <p className="mt-1 text-sm text-zinc-800">{request.answerText}</p>
                   {request.answerPhotoKey && (
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Photo jointe ({request.answerPhotoKey.slice(-12)})
-                    </p>
+                    <ClarificationAnswerPhotoViewer clarificationId={request.id} />
                   )}
                 </div>
               )}

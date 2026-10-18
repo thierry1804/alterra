@@ -35,6 +35,16 @@ export const AUDIT_ACTIONS = [
   "GENERATE",
   "REGENERATE",
   "DOWNLOAD",
+  "ANSWER",
+  "CLOSE",
+  "DECIDE",
+  "NOTIFY",
+  "NOTIFY_READ",
+  "NOTIFY_READ_ALL",
+  "PUSH_SUBSCRIBE",
+  "PUSH_UNSUBSCRIBE",
+  "PUSH_SEND",
+  "PUSH_FAIL",
 ] as const;
 
 export const AUDIT_ENTITY_TYPES = [
@@ -47,6 +57,11 @@ export const AUDIT_ENTITY_TYPES = [
   "ActivitySubActivity",
   "Unit",
   "User",
+  "ClarificationRequest",
+  "ActivityRequest",
+  "WorkerRequest",
+  "Notification",
+  "PushSubscription",
 ] as const;
 
 export function formatAuditDate(iso: string): string {
