@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { Prisma, Role, Sexe, WorkerStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -7,7 +7,7 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
-import { workerPhotoUploadUrl } from "../services/storage/presigned-url.service.js";
+import { uploadWorkerPhotoDirect } from "../services/storage/presigned-url.service.js";
 import {
   detectWorkersImportColumns,
   importWorkersRows,
@@ -407,19 +407,25 @@ workersRouter.post(
 );
 
 workersRouter.post(
-  "/workers/:id/photo-upload-url",
+  "/workers/:id/photo-upload",
   requireAuth,
   requireRole(Role.ADMIN),
   validate(workerIdParams, "params"),
+  raw({ type: "image/*", limit: "5mb" }),
   async (req, res, next) => {
     try {
       const worker = await prisma.worker.findFirst({
         where: { id: req.params.id, deletedAt: null },
       });
       if (!worker) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(400, "INVALID_PHOTO", "Corps de requête image attendu");
+      }
 
-      const result = await workerPhotoUploadUrl(worker.id);
-      res.json(result);
+      const contentType =
+        typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : undefined;
+      const photoKey = await uploadWorkerPhotoDirect(worker.id, req.body, contentType);
+      res.json({ photoKey });
     } catch (err) {
       next(err);
     }

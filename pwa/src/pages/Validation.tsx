@@ -10,6 +10,7 @@ import { IconSync } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { apiErrorMessage } from "../lib/errors";
 import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
+import { useAppSettings } from "../hooks/useAppSettings";
 
 async function fetchAllPendingPointages(): Promise<Pointage[]> {
   const rows: Pointage[] = [];
@@ -55,6 +56,7 @@ async function fetchAllActiveSubActivities(): Promise<ActivitySummary[]> {
 }
 
 export default function Validation() {
+  const { bioValidationRequired } = useAppSettings();
   const [pointages, setPointages] = useState<Pointage[]>([]);
   const [workersMap, setWorkersMap] = useState<Map<string, WorkerSummary>>(new Map());
   const [activitiesMap, setActivitiesMap] = useState<Map<string, ActivitySummary>>(new Map());
@@ -184,7 +186,11 @@ export default function Validation() {
   }
 
   async function handleValidateTeam(_teamKey: string, items: TeamGroupItem[]) {
-    const eligible = items.filter(({ pointage }) => pointage.bioCheck?.result === "OK");
+    // Bypass admin (Paramètres) : tout pointage en attente devient éligible, le serveur ne
+    // réclamera pas de contrôle bio non plus (assertBioOkForValidation côté backend).
+    const eligible = bioValidationRequired
+      ? items.filter(({ pointage }) => pointage.bioCheck?.result === "OK")
+      : items;
     if (eligible.length === 0) {
       setError("Aucun pointage bio OK dans cette équipe — lancez les contrôles bio d'abord.");
       return;
@@ -307,6 +313,7 @@ export default function Validation() {
           teamKey={group.teamKey}
           teamLabel={group.teamLabel}
           items={group.items}
+          bioValidationRequired={bioValidationRequired}
           busyId={busyId}
           bulkBusy={bulkTeamKey === group.teamKey}
           bulkProgress={bulkTeamKey === group.teamKey ? bulkProgress : null}

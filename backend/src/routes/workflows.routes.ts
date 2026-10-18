@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { ClarificationStatus, RequestStatus, Role, Sexe } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
@@ -28,7 +28,8 @@ import {
   getClarificationRequest,
   listClarificationRequests,
 } from "../services/workflows/clarification-request.service.js";
-import { workflowPhotoUploadUrl } from "../services/storage/presigned-url.service.js";
+import { uploadWorkflowPhotoDirect } from "../services/storage/presigned-url.service.js";
+import { ApiError } from "../middleware/error-handler.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const workflowsRouter = Router();
@@ -278,12 +279,17 @@ workflowsRouter.get(
 );
 
 workflowsRouter.post(
-  "/worker-requests/photo-upload-url",
+  "/worker-requests/photo",
   requireAuth,
   requireRole(...WF_CDS_ADMIN),
-  async (_req, res, next) => {
+  raw({ type: "image/jpeg", limit: "5mb" }),
+  async (req, res, next) => {
     try {
-      res.json(await workflowPhotoUploadUrl("worker-requests"));
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(400, "INVALID_PHOTO", "Corps de requête image/jpeg attendu");
+      }
+      const photoKey = await uploadWorkflowPhotoDirect("worker-requests", req.body);
+      res.json({ photoKey });
     } catch (err) {
       next(err);
     }
@@ -456,12 +462,17 @@ workflowsRouter.get(
 );
 
 workflowsRouter.post(
-  "/clarification-requests/photo-upload-url",
+  "/clarification-requests/photo",
   requireAuth,
   requireRole(Role.CHEF_EQUIPE, Role.ADMIN),
-  async (_req, res, next) => {
+  raw({ type: "image/jpeg", limit: "5mb" }),
+  async (req, res, next) => {
     try {
-      res.json(await workflowPhotoUploadUrl("clarifications"));
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(400, "INVALID_PHOTO", "Corps de requête image/jpeg attendu");
+      }
+      const photoKey = await uploadWorkflowPhotoDirect("clarifications", req.body);
+      res.json({ photoKey });
     } catch (err) {
       next(err);
     }

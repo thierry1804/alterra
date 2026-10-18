@@ -17,6 +17,7 @@ import {
   workflowErrorMessage,
   type ClarificationRequestRow,
 } from "../lib/workflows";
+import { CLARIFICATIONS_UPDATED_EVENT } from "../hooks/useOpenClarificationsCount";
 
 async function fetchPendingPointages(): Promise<Pointage[]> {
   const rows: Pointage[] = [];
@@ -189,7 +190,7 @@ export default function ClarificationRequest() {
         }
         answerPhotoKey = await uploadWorkflowPhoto(
           draft.blob,
-          "/clarification-requests/photo-upload-url",
+          "/clarification-requests/photo",
         );
       }
 
@@ -204,6 +205,7 @@ export default function ClarificationRequest() {
         return next;
       });
       await loadData();
+      window.dispatchEvent(new Event(CLARIFICATIONS_UPDATED_EVENT));
     } catch (err) {
       setError(workflowErrorMessage(err, "Envoi de la réponse échoué."));
     } finally {

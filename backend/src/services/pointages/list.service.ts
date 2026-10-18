@@ -56,6 +56,13 @@ export interface PointageListItem {
   bioCheck: PointageBioCheckSummary | null;
   /** MOC concerné : évite au client d'appeler GET /workers/:id pour chaque ligne. */
   worker: Worker;
+  /** Qui a saisi — CHEF_EQUIPE non accessible via GET /users (réservé ADMIN), donc résolu ici. */
+  enteredBy: EnteredBySummary | null;
+}
+
+export interface EnteredBySummary {
+  firstName: string;
+  lastName: string;
 }
 
 function buildWhere(filters: ListPointagesFilters): Prisma.PointageWhereInput {
@@ -94,6 +101,15 @@ async function fetchLatestBioChecksByWorkerWeek(
   return map;
 }
 
+async function fetchEnteredByUsers(ids: string[]): Promise<Map<string, EnteredBySummary>> {
+  if (ids.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  return new Map(users.map((u) => [u.id, { firstName: u.firstName, lastName: u.lastName }]));
+}
+
 function buildOrderBy(
   orderBy: PointageSortField | undefined,
   dir: "asc" | "desc",
@@ -127,11 +143,14 @@ export async function listPointages(filters: ListPointagesFilters) {
     ...new Map(workerWeekPairs.map((pair) => [`${pair.workerId}:${pair.weekIso}`, pair])).values(),
   ];
   const bioByKey = await fetchLatestBioChecksByWorkerWeek(uniquePairs);
+  const enteredByIds = [...new Set(page.map((p) => p.enteredById))];
+  const enteredByMap = await fetchEnteredByUsers(enteredByIds);
 
   const data: PointageListItem[] = page.map((pointage) => {
     const weekIso = getIsoWeekString(pointage.date);
     const bioCheck = bioByKey.get(`${pointage.workerId}:${weekIso}`) ?? null;
-    return { ...pointage, bioCheck };
+    const enteredBy = enteredByMap.get(pointage.enteredById) ?? null;
+    return { ...pointage, bioCheck, enteredBy };
   });
 
   return {

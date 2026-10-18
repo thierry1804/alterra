@@ -5,6 +5,7 @@ import { useAppSettings } from "../hooks/useAppSettings";
 import { startAutoSync, stopAutoSync } from "../sync/SyncManager";
 import SyncStatusBar from "./sync/SyncStatusBar";
 import RejectedBanner from "./sync/RejectedBanner";
+import ClarificationBanner from "./sync/ClarificationBanner";
 import BottomNav from "./nav/BottomNav";
 import MoreSheet from "./nav/MoreSheet";
 import { isActivePath, navForRole } from "./nav/nav-config";
@@ -57,6 +58,7 @@ export default function AppShell() {
         <div className="alterra-rule h-0.5" aria-hidden="true" />
         <SyncStatusBar />
         <RejectedBanner />
+        <ClarificationBanner />
       </header>
 
       <main

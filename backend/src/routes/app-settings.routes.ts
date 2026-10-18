@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -9,8 +9,8 @@ import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { BUCKETS, minioClient } from "../services/storage/minio.js";
 import {
-  iconUploadUrl,
-  loginAssetUploadUrl,
+  uploadIconDirect,
+  uploadLoginAssetDirect,
   type LoginAssetSlot,
 } from "../services/storage/presigned-url.service.js";
 import { DEFAULT_ICON_BASE64, DEFAULT_ICON_CONTENT_TYPE } from "../assets/default-icon.js";
@@ -48,10 +48,6 @@ const LOGIN_ASSET_SLOTS: Record<LoginAssetSlot, { field: string; urlSegment: str
 
 const updateAppSettingSchema = z.object({
   appName: z.string().min(1).max(60),
-});
-
-const iconUploadUrlSchema = z.object({
-  ext: z.enum(ICON_EXTENSIONS),
 });
 
 const confirmIconSchema = z.object({
@@ -136,16 +132,31 @@ appSettingsRouter.patch(
   },
 );
 
+const EXT_BY_CONTENT_TYPE: Record<string, (typeof ICON_EXTENSIONS)[number]> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/svg+xml": "svg",
+  "image/webp": "webp",
+};
+
 appSettingsRouter.post(
-  "/app-settings/icon-upload-url",
+  "/app-settings/icon-upload",
   requireAuth,
   requireRole(Role.ADMIN),
-  validate(iconUploadUrlSchema),
+  raw({ type: "image/*", limit: "2mb" }),
   async (req, res, next) => {
     try {
-      const { ext } = req.body as z.infer<typeof iconUploadUrlSchema>;
-      const result = await iconUploadUrl(ext);
-      res.json(result);
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(400, "INVALID_PHOTO", "Corps de requête image attendu");
+      }
+      const contentType =
+        typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : "";
+      const ext = EXT_BY_CONTENT_TYPE[contentType];
+      if (!ext) {
+        throw new ApiError(422, "UNSUPPORTED_FORMAT", "PNG, JPG, SVG ou WebP uniquement");
+      }
+      const iconKey = await uploadIconDirect(ext, req.body, contentType);
+      res.json({ iconKey });
     } catch (err) {
       next(err);
     }
@@ -227,29 +238,39 @@ appSettingsRouter.get("/app-settings/icon", async (_req, res, next) => {
   }
 });
 
-const loginAssetUploadUrlSchema = z.object({
-  ext: z.enum(LOGIN_ASSET_EXTENSIONS),
-});
-
 const confirmLoginAssetSchema = z.object({
   key: z.string().min(1),
 });
 
-/** Enregistre le trio upload-url / confirmation / service pour un slot d'image de login donné. */
+const LOGIN_ASSET_EXT_BY_CONTENT_TYPE: Record<string, (typeof LOGIN_ASSET_EXTENSIONS)[number]> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+/** Enregistre le trio upload / confirmation / service pour un slot d'image de login donné. */
 function registerLoginAssetRoutes(slot: LoginAssetSlot) {
   const { field, urlSegment } = LOGIN_ASSET_SLOTS[slot];
   const keyPrefix = `app-settings/${slot}/`;
 
   appSettingsRouter.post(
-    `/app-settings/${urlSegment}/upload-url`,
+    `/app-settings/${urlSegment}/upload`,
     requireAuth,
     requireRole(Role.ADMIN),
-    validate(loginAssetUploadUrlSchema),
+    raw({ type: "image/*", limit: "5mb" }),
     async (req, res, next) => {
       try {
-        const { ext } = req.body as z.infer<typeof loginAssetUploadUrlSchema>;
-        const result = await loginAssetUploadUrl(slot, ext);
-        res.json(result);
+        if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+          throw new ApiError(400, "INVALID_PHOTO", "Corps de requête image attendu");
+        }
+        const contentType =
+          typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : "";
+        const ext = LOGIN_ASSET_EXT_BY_CONTENT_TYPE[contentType];
+        if (!ext) {
+          throw new ApiError(422, "UNSUPPORTED_FORMAT", "PNG, JPG ou WebP uniquement");
+        }
+        const key = await uploadLoginAssetDirect(slot, ext, req.body, contentType);
+        res.json({ key });
       } catch (err) {
         next(err);
       }

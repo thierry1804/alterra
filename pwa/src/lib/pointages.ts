@@ -7,6 +7,11 @@ export interface PointageBioCheck {
   performedAt: string;
 }
 
+export interface EnteredBySummary {
+  firstName: string;
+  lastName: string;
+}
+
 export interface Pointage {
   id: string;
   workerId: string;
@@ -19,6 +24,8 @@ export interface Pointage {
   validatedAt: string | null;
   bioCheck: PointageBioCheck | null;
   enteredById: string;
+  enteredBy: EnteredBySummary | null;
+  createdByClientAt: string;
   photoKey: string | null;
 }
 

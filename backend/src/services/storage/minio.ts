@@ -25,10 +25,6 @@ export async function ensureBuckets() {
   }
 }
 
-export function presignedUploadUrl(bucket: string, key: string) {
-  return minioClient.presignedPutObject(bucket, key, PRESIGN_TTL_SECONDS);
-}
-
 export function presignedDownloadUrl(bucket: string, key: string) {
   return minioClient.presignedGetObject(bucket, key, PRESIGN_TTL_SECONDS);
 }

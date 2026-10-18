@@ -209,16 +209,14 @@ export default function AppSettingsPage() {
 
     setUploading(true);
     try {
-      const { data: presign } = await api.post<{ uploadUrl: string; iconKey: string }>(
-        "/app-settings/icon-upload-url",
-        { ext },
+      // Upload direct au backend : pas de presigned URL MinIO (injoignable depuis le navigateur,
+      // bloquée par la CSP) — même raison que pour les photos de pointage/workflow.
+      const { data } = await api.post<{ iconKey: string }>(
+        "/app-settings/icon-upload",
+        await file.arrayBuffer(),
+        { headers: { "Content-Type": file.type } },
       );
-      await fetch(presign.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      await api.post("/app-settings/icon", { iconKey: presign.iconKey });
+      await api.post("/app-settings/icon", { iconKey: data.iconKey });
       toast({ title: "Icône mise à jour" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     } catch (err) {
@@ -257,16 +255,12 @@ export default function AppSettingsPage() {
 
     setUploadingSlot(config.slot);
     try {
-      const { data: presign } = await api.post<{ uploadUrl: string; key: string }>(
-        `/app-settings/${config.urlSegment}/upload-url`,
-        { ext },
+      const { data } = await api.post<{ key: string }>(
+        `/app-settings/${config.urlSegment}/upload`,
+        await file.arrayBuffer(),
+        { headers: { "Content-Type": file.type } },
       );
-      await fetch(presign.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      await api.post(`/app-settings/${config.urlSegment}`, { key: presign.key });
+      await api.post(`/app-settings/${config.urlSegment}`, { key: data.key });
       toast({ title: `${config.label} mis à jour` });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     } catch (err) {
@@ -313,11 +307,12 @@ export default function AppSettingsPage() {
     setUploadingBackup(true);
     setRestoreConfirmText("");
     try {
-      const { data: presign } = await api.post<{ uploadUrl: string; backupKey: string }>(
-        "/system/backup-upload-url",
+      const { data } = await api.post<{ backupKey: string }>(
+        "/system/backup-upload",
+        await file.arrayBuffer(),
+        { headers: { "Content-Type": "application/octet-stream" } },
       );
-      await fetch(presign.uploadUrl, { method: "PUT", body: file });
-      setPendingBackupKey(presign.backupKey);
+      setPendingBackupKey(data.backupKey);
       setPendingBackupName(file.name);
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : err;

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { spawn } from "node:child_process";
 import { Transform } from "node:stream";
@@ -10,7 +10,7 @@ import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { logger } from "../lib/logger.js";
 import { BUCKETS, minioClient } from "../services/storage/minio.js";
-import { backupUploadUrl } from "../services/storage/presigned-url.service.js";
+import { uploadBackupDirect } from "../services/storage/presigned-url.service.js";
 
 export const systemRouter = Router();
 
@@ -118,13 +118,17 @@ systemRouter.get("/system/backup", requireAuth, requireRole(Role.ADMIN), async (
 });
 
 systemRouter.post(
-  "/system/backup-upload-url",
+  "/system/backup-upload",
   requireAuth,
   requireRole(Role.ADMIN),
-  async (_req, res, next) => {
+  raw({ type: "*/*", limit: "500mb" }),
+  async (req, res, next) => {
     try {
-      const result = await backupUploadUrl();
-      res.json(result);
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(400, "INVALID_BACKUP", "Corps de requête fichier attendu");
+      }
+      const backupKey = await uploadBackupDirect(req.body);
+      res.json({ backupKey });
     } catch (err) {
       next(err);
     }

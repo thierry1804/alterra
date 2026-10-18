@@ -286,9 +286,6 @@ export default function WorkersPage() {
 
   const photoMutation = useMutation({
     mutationFn: async (worker: Worker) => {
-      const { data } = await api.post<{ uploadUrl: string; photoKey: string }>(
-        `/workers/${worker.id}/photo-upload-url`,
-      );
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "image/*";
@@ -298,11 +295,13 @@ export default function WorkersPage() {
       });
       if (!file) return null;
 
-      await fetch(data.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
+      // Upload direct au backend : pas de presigned URL MinIO (injoignable depuis le navigateur,
+      // bloquée par la CSP) — même raison que pour les photos de pointage.
+      const { data } = await api.post<{ photoKey: string }>(
+        `/workers/${worker.id}/photo-upload`,
+        await file.arrayBuffer(),
+        { headers: { "Content-Type": file.type || "image/jpeg" } },
+      );
       await api.post(`/workers/${worker.id}/photo`, { photoKey: data.photoKey });
       return data.photoKey;
     },

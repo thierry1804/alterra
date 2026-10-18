@@ -80,7 +80,7 @@ export default function WorkerRequest() {
       if (photoBlob) {
         proposedPhotoKey = await uploadWorkflowPhoto(
           photoBlob,
-          "/worker-requests/photo-upload-url",
+          "/worker-requests/photo",
         );
       }
 

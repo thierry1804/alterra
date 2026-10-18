@@ -7,6 +7,7 @@ export interface AppSettings {
   loginBackgroundUpdatedAt: string | null;
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
+  bioValidationRequired: boolean;
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   loginBackgroundUpdatedAt: null,
   loginBranchUpdatedAt: null,
   loginLeafUpdatedAt: null,
+  bioValidationRequired: true,
 };
 
 let cached: AppSettings | null = null;

@@ -1,12 +1,22 @@
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
-import { BUCKETS, minioClient, presignedUploadUrl } from "./minio.js";
+import { BUCKETS, minioClient } from "./minio.js";
 
-/** Presigned MinIO PUT URL for a worker KYC photo. */
-export async function workerPhotoUploadUrl(workerId: string) {
+/**
+ * Upload direct (serveur → MinIO) pour la photo KYC d'un travailleur — même raison que
+ * uploadPointagePhoto : une URL présignée pointe vers l'hôte interne de MinIO, injoignable par un
+ * navigateur (et bloqué par la CSP connect-src en plus).
+ */
+export async function uploadWorkerPhotoDirect(
+  workerId: string,
+  buffer: Buffer,
+  contentType = "image/jpeg",
+): Promise<string> {
   const photoKey = `workers/${workerId}/${randomUUID()}.jpg`;
-  const uploadUrl = await presignedUploadUrl(BUCKETS.photos, photoKey);
-  return { uploadUrl, photoKey, bucket: BUCKETS.photos, expiresInSeconds: 15 * 60 };
+  await minioClient.putObject(BUCKETS.photos, photoKey, buffer, buffer.length, {
+    "Content-Type": contentType,
+  });
+  return photoKey;
 }
 
 /** Flux de lecture (MinIO → backend) d'une photo déjà stockée, pour relai direct au client. */
@@ -35,32 +45,55 @@ export async function uploadPointagePhoto(buffer: Buffer): Promise<string> {
 
 type WorkflowPhotoPrefix = "worker-requests" | "clarifications";
 
-/** Presigned MinIO PUT URL for workflow attachments (demandes terrain). */
-export async function workflowPhotoUploadUrl(prefix: WorkflowPhotoPrefix) {
+/** Upload direct (serveur → MinIO) pour une pièce jointe de demande terrain (même raison que
+ * uploadPointagePhoto — pas de presigned URL, injoignable/bloquée CSP depuis le navigateur). */
+export async function uploadWorkflowPhotoDirect(
+  prefix: WorkflowPhotoPrefix,
+  buffer: Buffer,
+): Promise<string> {
   const photoKey = `workflows/${prefix}/${randomUUID()}.jpg`;
-  const uploadUrl = await presignedUploadUrl(BUCKETS.photos, photoKey);
-  return { uploadUrl, photoKey, bucket: BUCKETS.photos, expiresInSeconds: 15 * 60 };
+  await minioClient.putObject(BUCKETS.photos, photoKey, buffer, buffer.length, {
+    "Content-Type": "image/jpeg",
+  });
+  return photoKey;
 }
 
-/** Presigned MinIO PUT URL for the app's custom icon/logo (bucket dédié, non partagé avec les photos). */
-export async function iconUploadUrl(ext: "png" | "jpg" | "svg" | "webp") {
+/** Upload direct (serveur → MinIO) pour l'icône/logo custom de l'app (bucket dédié, non partagé
+ * avec les photos) — même raison que les autres uploads directs de ce fichier. */
+export async function uploadIconDirect(
+  ext: "png" | "jpg" | "svg" | "webp",
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
   const iconKey = `app-settings/icon/${randomUUID()}.${ext}`;
-  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, iconKey);
-  return { uploadUrl, iconKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+  await minioClient.putObject(BUCKETS.assets, iconKey, buffer, buffer.length, {
+    "Content-Type": contentType,
+  });
+  return iconKey;
 }
 
 export type LoginAssetSlot = "loginBackground" | "loginBranch" | "loginLeaf";
 
-/** Presigned MinIO PUT URL for the login screen's background/corner images. */
-export async function loginAssetUploadUrl(slot: LoginAssetSlot, ext: "png" | "jpg" | "webp") {
+/** Upload direct (serveur → MinIO) pour les visuels de l'écran de login. */
+export async function uploadLoginAssetDirect(
+  slot: LoginAssetSlot,
+  ext: "png" | "jpg" | "webp",
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
   const key = `app-settings/${slot}/${randomUUID()}.${ext}`;
-  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, key);
-  return { uploadUrl, key, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+  await minioClient.putObject(BUCKETS.assets, key, buffer, buffer.length, {
+    "Content-Type": contentType,
+  });
+  return key;
 }
 
-/** Presigned MinIO PUT URL for a database backup upload (restauration) — objet éphémère, supprimé après usage. */
-export async function backupUploadUrl() {
+/** Upload direct (serveur → MinIO) d'une sauvegarde base pour restauration — objet éphémère,
+ * supprimé après usage côté /system/restore. */
+export async function uploadBackupDirect(buffer: Buffer): Promise<string> {
   const backupKey = `backups/${randomUUID()}.dump`;
-  const uploadUrl = await presignedUploadUrl(BUCKETS.assets, backupKey);
-  return { uploadUrl, backupKey, bucket: BUCKETS.assets, expiresInSeconds: 15 * 60 };
+  await minioClient.putObject(BUCKETS.assets, backupKey, buffer, buffer.length, {
+    "Content-Type": "application/octet-stream",
+  });
+  return backupKey;
 }

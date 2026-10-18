@@ -3,7 +3,12 @@ import { cn } from "../../lib/cn";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../../lib/pointages";
 import { bioResultClass, bioResultLabel, formatPointageAmount } from "../../lib/pointages";
 import Button from "../ui/Button";
+import PointagePhotoViewer from "../pointage/PointagePhotoViewer";
 import { IconBio, IconPrecisions, IconCheck, IconClose } from "../icons";
+
+function formatEnteredAt(iso: string): string {
+  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+}
 
 export interface TeamGroupItem {
   pointage: Pointage;
@@ -15,6 +20,7 @@ interface TeamGroupProps {
   teamLabel: string;
   teamKey: string;
   items: TeamGroupItem[];
+  bioValidationRequired: boolean;
   busyId: string | null;
   bulkBusy?: boolean;
   bulkProgress?: { done: number; total: number } | null;
@@ -31,6 +37,7 @@ export default function TeamGroup({
   teamLabel,
   teamKey,
   items,
+  bioValidationRequired,
   busyId,
   bulkBusy = false,
   bulkProgress,
@@ -38,7 +45,9 @@ export default function TeamGroup({
   onReject,
   onValidateTeam,
 }: TeamGroupProps) {
-  const eligibleCount = items.filter(({ pointage }) => isBioEligible(pointage)).length;
+  const eligibleCount = bioValidationRequired
+    ? items.filter(({ pointage }) => isBioEligible(pointage)).length
+    : items.length;
   const isBulkActive = bulkProgress !== null && bulkProgress !== undefined;
 
   return (
@@ -71,27 +80,50 @@ export default function TeamGroup({
           return (
             <article key={pointage.id} className="rounded-md border border-zinc-200 bg-white p-3">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {worker.firstName} {worker.lastName}
-                  </p>
-                  <p className="text-xs text-zinc-600">
-                    {worker.matricule} · {activity.label} · {pointage.date}
-                  </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  {pointage.photoKey && <PointagePhotoViewer pointageId={pointage.id} />}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-900">
+                      {worker.firstName} {worker.lastName}
+                    </p>
+                    <p className="text-xs text-zinc-600">
+                      {worker.matricule} · {activity.label} · {pointage.date}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Saisi par{" "}
+                      {pointage.enteredBy
+                        ? `${pointage.enteredBy.firstName} ${pointage.enteredBy.lastName}`
+                        : "inconnu"}{" "}
+                      · {formatEnteredAt(pointage.createdByClientAt)}
+                    </p>
+                  </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="alterra-num text-sm font-semibold text-zinc-900">
                     {formatPointageAmount(pointage.amount)}
                   </p>
-                  <span
-                    className={cn(
-                      "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                      bioResultClass(pointage.bioCheck?.result),
-                    )}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
-                    {bioResultLabel(pointage.bioCheck?.result)}
-                  </span>
+                  {bioValidationRequired ? (
+                    <span
+                      className={cn(
+                        "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                        bioResultClass(pointage.bioCheck?.result),
+                      )}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-current opacity-70"
+                        aria-hidden
+                      />
+                      {bioResultLabel(pointage.bioCheck?.result)}
+                    </span>
+                  ) : (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-current opacity-70"
+                        aria-hidden
+                      />
+                      Bio contournée
+                    </span>
+                  )}
                 </div>
               </div>
 

@@ -53,11 +53,6 @@ export interface ClarificationRequestRow {
   resolvedAt: string | null;
 }
 
-export interface PhotoUploadTarget {
-  uploadUrl: string;
-  photoKey: string;
-}
-
 export function workflowErrorMessage(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
     const message = err.response?.data?.message as string | undefined;
@@ -113,19 +108,18 @@ export function clarificationStatusClass(status: ClarificationStatus): string {
   }
 }
 
+/**
+ * Upload direct au backend (pas de presigned URL MinIO — injoignable depuis le navigateur et
+ * bloqué par la CSP, même raison que pour les photos de pointage).
+ */
 export async function uploadWorkflowPhoto(
   blob: Blob,
-  endpoint: "/worker-requests/photo-upload-url" | "/clarification-requests/photo-upload-url",
+  endpoint: "/worker-requests/photo" | "/clarification-requests/photo",
 ): Promise<string> {
-  const { data } = await api.post<PhotoUploadTarget>(endpoint);
-  const response = await fetch(data.uploadUrl, {
-    method: "PUT",
-    body: blob,
+  const arrayBuffer = await blob.arrayBuffer();
+  const { data } = await api.post<{ photoKey: string }>(endpoint, arrayBuffer, {
     headers: { "Content-Type": "image/jpeg" },
   });
-  if (!response.ok) {
-    throw new Error("Échec envoi photo");
-  }
   return data.photoKey;
 }
 
