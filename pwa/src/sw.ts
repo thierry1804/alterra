@@ -1,8 +1,15 @@
 /// <reference lib="webworker" />
+import { clientsClaim } from "workbox-core";
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 
 declare let self: ServiceWorkerGlobalScope;
+
+// Sans ça, un nouveau build reste bloqué en "waiting" tant qu'un onglet reste ouvert : les
+// utilisateurs ne reçoivent jamais la mise à jour (centre de notifications, photo de réponse —
+// bug observé en prod). registerType: "autoUpdate" côté client suppose ce comportement.
+self.skipWaiting();
+clientsClaim();
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
