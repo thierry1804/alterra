@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
+import { Copy, Search } from "lucide-react";
 import WorkerRow, { type WorkerRowValue } from "../components/pointage/WorkerRow";
+import { parseDecimal } from "../lib/number";
 import Button, { ButtonLink } from "../components/ui/Button";
 import { LoadingScreen, EmptyHint, Spinner } from "../components/ui/feedback";
 import { IconCheck } from "../components/icons";
@@ -84,7 +86,7 @@ export default function BatchEntry() {
     let totalAmount = 0;
     workers.forEach((worker) => {
       const value = rowValues[worker.id];
-      const quantity = Number(value?.quantity ?? 0);
+      const quantity = parseDecimal(value?.quantity ?? "0");
       if (Number.isFinite(quantity) && quantity > 0) {
         count += 1;
         totalAmount += quantity * activity.unitRate;
@@ -123,7 +125,7 @@ export default function BatchEntry() {
       const entries = workers
         .map((worker) => ({ worker, value: rowValues[worker.id] }))
         .filter(({ value }) => {
-          const quantity = Number(value?.quantity ?? 0);
+          const quantity = parseDecimal(value?.quantity ?? "0");
           return Number.isFinite(quantity) && quantity > 0;
         });
 
@@ -143,7 +145,7 @@ export default function BatchEntry() {
             clientUuid,
             workerId: worker.id,
             subActivityId: session.subActivityId,
-            quantity: Number(value.quantity),
+            quantity: parseDecimal(value.quantity),
             date: session.date,
             createdByClientAt: nowIso,
             status: "local",
@@ -189,7 +191,7 @@ export default function BatchEntry() {
   return (
     <div className="flex min-h-full flex-col">
       <div className="space-y-4 p-4 pb-32">
-        <header className="space-y-2">
+        <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="alterra-eyebrow">Étape 2 sur 2 · Saisie</p>
@@ -204,17 +206,44 @@ export default function BatchEntry() {
             </ButtonLink>
           </div>
 
-          <input
-            type="search"
-            placeholder="Rechercher un travailleur…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
+          {workers.length > 0 && (
+            <div className="space-y-1">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200">
+                <div
+                  className="h-full rounded-full bg-brand transition-all"
+                  style={{ width: `${Math.round((stats.count / workers.length) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-zinc-500">
+                <span className="alterra-num font-medium text-zinc-700">{stats.count}</span> sur{" "}
+                <span className="alterra-num">{workers.length}</span> travailleurs saisis
+              </p>
+            </div>
+          )}
 
-          <Button type="button" variant="ghost" size="sm" onClick={applyDefaultToAll}>
-            Appliquer quantité par défaut ({session.defaultQuantity}) à tous
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={applyDefaultToAll}
+          >
+            <Copy className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Mettre {session.defaultQuantity} à tout le monde
           </Button>
+
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              placeholder="Chercher un travailleur…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full rounded-md border border-zinc-300 py-2 pl-9 pr-3 text-sm"
+            />
+          </div>
         </header>
 
         {error && (

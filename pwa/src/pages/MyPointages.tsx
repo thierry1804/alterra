@@ -44,6 +44,7 @@ export default function MyPointages() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, EditDraft>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -70,6 +71,35 @@ export default function MyPointages() {
   }, [loadData]);
 
   const activitiesMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
+
+  // Dates ayant au moins un pointage, les plus récentes d'abord — la plus récente est la sélection
+  // par défaut (dernière date avec pointage), sans jamais proposer une date vide.
+  const availableDates = useMemo(
+    () =>
+      Array.from(new Set(pointages.map((p) => p.date.slice(0, 10)))).sort((a, b) =>
+        b.localeCompare(a),
+      ),
+    [pointages],
+  );
+
+  useEffect(() => {
+    if (dateFilter === null && availableDates.length > 0) {
+      setDateFilter(availableDates[0]);
+    }
+  }, [availableDates, dateFilter]);
+
+  const visiblePointages = useMemo(
+    () => (dateFilter ? pointages.filter((p) => p.date.slice(0, 10) === dateFilter) : pointages),
+    [pointages, dateFilter],
+  );
+
+  function formatDateLong(value: string): string {
+    return new Date(value).toLocaleDateString("fr-MG", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  }
 
   function draftFor(pointage: Pointage): EditDraft {
     return (
@@ -143,6 +173,28 @@ export default function MyPointages() {
         <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />
       </header>
 
+      {availableDates.length > 0 && (
+        <div className="flex items-center gap-2">
+          <select
+            value={dateFilter ?? availableDates[0]}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+          >
+            {availableDates.map((d) => (
+              <option key={d} value={d}>
+                {formatDateLong(d)}
+                {d === availableDates[0] ? " (dernière saisie)" : ""}
+              </option>
+            ))}
+          </select>
+          {dateFilter !== availableDates[0] && (
+            <Button type="button" variant="outline" onClick={() => setDateFilter(availableDates[0])}>
+              Dernière
+            </Button>
+          )}
+        </div>
+      )}
+
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -156,9 +208,11 @@ export default function MyPointages() {
 
       {pointages.length === 0 ? (
         <EmptyHint>Aucun pointage saisi pour le moment.</EmptyHint>
+      ) : visiblePointages.length === 0 ? (
+        <EmptyHint>Aucun pointage pour cette date.</EmptyHint>
       ) : (
         <ul className="space-y-3">
-          {pointages.map((pointage) => {
+          {visiblePointages.map((pointage) => {
             const worker = workersMap.get(pointage.workerId);
             const activity = activitiesMap.get(pointage.subActivityId);
             const isOpen = openId === pointage.id;

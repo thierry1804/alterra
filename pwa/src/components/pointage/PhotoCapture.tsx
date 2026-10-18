@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Camera } from "lucide-react";
 import Button from "../ui/Button";
 import { compressPhoto, formatBytes } from "../../lib/image";
 
@@ -67,8 +68,8 @@ export default function PhotoCapture({
           className="h-10 w-10 rounded-md border border-zinc-200 object-cover"
         />
       ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed border-zinc-300 text-xs text-zinc-600">
-          —
+        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-dashed border-zinc-300 text-zinc-400">
+          <Camera className="h-5 w-5" aria-hidden="true" />
         </div>
       )}
 
@@ -78,9 +79,11 @@ export default function PhotoCapture({
             type="button"
             variant="outline"
             size="sm"
+            className="gap-1.5"
             disabled={disabled || loading}
             onClick={() => inputRef.current?.click()}
           >
+            <Camera className="h-4 w-4 shrink-0" aria-hidden="true" />
             {loading ? "…" : label}
           </Button>
           {previewUrl && onClear && (

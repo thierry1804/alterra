@@ -33,11 +33,11 @@ const CDE_NAV: RoleNav = {
     { to: "/", label: "Activité", Icon: IconActivite },
     { to: "/batch", label: "Saisie", Icon: IconSaisie },
     { to: "/nfc", label: "Présence", Icon: IconPresence },
-    { to: "/teams", label: "Équipes", Icon: IconEquipes },
+    { to: "/my-pointages", label: "Mes pointages", Icon: IconMyPointages },
   ],
   more: [
     { to: "/clarifications", label: "Précisions", Icon: IconPrecisions },
-    { to: "/my-pointages", label: "Mes pointages", Icon: IconMyPointages },
+    { to: "/teams", label: "Équipes", Icon: IconEquipes },
     SYNC,
   ],
 };
