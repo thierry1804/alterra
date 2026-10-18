@@ -509,5 +509,8 @@ model AppSetting {
   loginBranchKey     String?
   loginLeafKey       String?
   mapTilerKey        String?
+  /// Contrôle biométrique pas encore fiable sur le terrain — permet à l'admin de désactiver
+  /// temporairement son exigence pour la validation des pointages (réactiver dès que prêt).
+  bioValidationRequired Boolean @default(true)
   updatedAt          DateTime @updatedAt
 }

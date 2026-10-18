@@ -21,6 +21,11 @@ export async function assertBioOkForValidation(
   workerId: string,
   pointageDate: Date,
 ): Promise<void> {
+  const setting = await prisma.appSetting.findUnique({ where: { id: "singleton" } });
+  // Le contrôle biométrique n'est pas encore fiable sur le terrain — l'admin peut désactiver
+  // temporairement cette exigence (Paramètres) le temps de sa mise au point.
+  if (setting && !setting.bioValidationRequired) return;
+
   const weekIso = getIsoWeekString(pointageDate);
 
   const latestBioCheck = await prisma.biometricCheck.findFirst({

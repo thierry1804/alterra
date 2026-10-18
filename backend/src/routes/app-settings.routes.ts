@@ -73,6 +73,7 @@ async function getAppSetting() {
     loginBranchKey: row?.loginBranchKey ?? null,
     loginLeafKey: row?.loginLeafKey ?? null,
     mapTilerKey: row?.mapTilerKey ?? null,
+    bioValidationRequired: row?.bioValidationRequired ?? true,
     updatedAt: row?.updatedAt ?? null,
   };
 }
@@ -86,6 +87,7 @@ function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
     loginBranchUpdatedAt: settings.updatedAt,
     loginLeafUpdatedAt: settings.updatedAt,
     mapTilerKeyConfigured: Boolean(settings.mapTilerKey),
+    bioValidationRequired: settings.bioValidationRequired,
   };
 }
 
@@ -394,6 +396,50 @@ appSettingsRouter.delete(
       });
 
       res.json(settingsResponse({ ...before, mapTilerKey: updated.mapTilerKey }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const setBioValidationRequiredSchema = z.object({
+  enabled: z.boolean(),
+});
+
+appSettingsRouter.patch(
+  "/app-settings/bio-validation-required",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(setBioValidationRequiredSchema),
+  async (req, res, next) => {
+    try {
+      const { enabled } = req.body as z.infer<typeof setBioValidationRequiredSchema>;
+      const before = await getAppSetting();
+
+      const updated = await prisma.appSetting.upsert({
+        where: { id: SETTINGS_ID },
+        create: { id: SETTINGS_ID, bioValidationRequired: enabled },
+        update: { bioValidationRequired: enabled },
+      });
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "AppSetting",
+        entityId: SETTINGS_ID,
+        before: { bioValidationRequired: before.bioValidationRequired },
+        after: { bioValidationRequired: updated.bioValidationRequired },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json(
+        settingsResponse({
+          ...before,
+          bioValidationRequired: updated.bioValidationRequired,
+          updatedAt: updated.updatedAt,
+        }),
+      );
     } catch (err) {
       next(err);
     }

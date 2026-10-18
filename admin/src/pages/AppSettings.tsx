@@ -23,6 +23,7 @@ interface AppSettingsResponse {
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
   mapTilerKeyConfigured: boolean;
+  bioValidationRequired: boolean;
 }
 
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
@@ -147,6 +148,23 @@ export default function AppSettingsPage() {
       toast({ title: "Clé MapTiler enregistrée" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
       setMapApiKeyInput("");
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  const setBioValidationRequiredMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      api.patch<AppSettingsResponse>("/app-settings/bio-validation-required", { enabled }),
+    onSuccess: (res) => {
+      toast({
+        title: res.data.bioValidationRequired
+          ? "Contrôle biométrique exigé pour valider"
+          : "Contrôle biométrique contourné temporairement",
+      });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : err;
@@ -409,6 +427,28 @@ export default function AppSettingsPage() {
                   <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2 border-t border-zinc-200 pt-6">
+              <Label htmlFor="bio-validation-required">Contrôle biométrique à la validation</Label>
+              <label className="flex items-start gap-2 text-sm text-zinc-700">
+                <input
+                  id="bio-validation-required"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-300"
+                  checked={data?.bioValidationRequired ?? true}
+                  disabled={isLoading || setBioValidationRequiredMutation.isPending}
+                  onChange={(e) =>
+                    setBioValidationRequiredMutation.mutate(e.target.checked)
+                  }
+                />
+                Exiger un contrôle biométrique OK avant de valider un pointage
+              </label>
+              <p className="text-xs text-zinc-500">
+                À décocher temporairement si le contrôle biométrique terrain n'est pas encore
+                opérationnel — la validation ne sera plus bloquée par son absence. À réactiver dès
+                que prêt.
+              </p>
             </div>
           </div>
         </TabsContent>
