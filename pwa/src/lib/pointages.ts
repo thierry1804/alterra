@@ -16,6 +16,7 @@ export interface Pointage {
   date: string;
   status: PointageStatus;
   rejectionReason: string | null;
+  validatedAt: string | null;
   bioCheck: PointageBioCheck | null;
   enteredById: string;
   photoKey: string | null;
@@ -69,8 +70,29 @@ export function bioResultClass(result: string | null | undefined): string {
   }
 }
 
-/** Pointages rejetés saisis par l'utilisateur courant — seuls ceux-là lui sont rectifiables. */
-export async function fetchMyRejectedPointages(userId: string): Promise<Pointage[]> {
+export const POINTAGE_STATUS_LABELS: Record<PointageStatus, string> = {
+  PENDING: "En attente",
+  VALIDATED: "Validé",
+  REJECTED: "Rejeté",
+  NEEDS_CLARIFICATION: "Précision requise",
+};
+
+export function pointageStatusClass(status: PointageStatus): string {
+  switch (status) {
+    case "VALIDATED":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "REJECTED":
+      return "border-red-200 bg-red-50 text-red-700";
+    case "NEEDS_CLARIFICATION":
+      return "border-amber-200 bg-amber-50 text-amber-900";
+    default:
+      return "border-zinc-200 bg-zinc-100 text-zinc-700";
+  }
+}
+
+/** Pointages saisis par l'utilisateur courant, tous statuts — pour qu'il puisse consulter l'état
+ * de ses saisies (validé, rejeté, en attente) sans pouvoir les modifier (sauf rejet → rectification). */
+export async function fetchMyPointages(userId: string): Promise<Pointage[]> {
   const rows: Pointage[] = [];
   let cursor: string | undefined;
 
@@ -79,10 +101,10 @@ export async function fetchMyRejectedPointages(userId: string): Promise<Pointage
       data: Pointage[];
       nextCursor: string | null;
       hasMore: boolean;
-    }>("/pointages", { params: { status: "REJECTED", cursor, take: 100 } });
+    }>("/pointages", { params: { cursor, take: 100 } });
     rows.push(...response.data.data.filter((p) => p.enteredById === userId));
     cursor = response.data.hasMore ? (response.data.nextCursor ?? undefined) : undefined;
   } while (cursor);
 
-  return rows;
+  return rows.sort((a, b) => b.date.localeCompare(a.date));
 }

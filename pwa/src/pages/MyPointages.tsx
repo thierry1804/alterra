@@ -4,8 +4,10 @@ import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import { db } from "../db/db";
 import {
-  fetchMyRejectedPointages,
+  fetchMyPointages,
   formatPointageAmount,
+  pointageStatusClass,
+  POINTAGE_STATUS_LABELS,
   type Pointage,
   type WorkerSummary,
 } from "../lib/pointages";
@@ -30,7 +32,7 @@ interface EditDraft {
   photoPreview: string | null;
 }
 
-export default function RejectedPointages() {
+export default function MyPointages() {
   const { user } = useAuth();
   const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
 
@@ -48,7 +50,7 @@ export default function RejectedPointages() {
     setLoading(true);
     setError(null);
     try {
-      const rows = await fetchMyRejectedPointages(user.id);
+      const rows = await fetchMyPointages(user.id);
       setPointages(rows);
 
       const workerIds = [...new Set(rows.map((p) => p.workerId))];
@@ -57,7 +59,7 @@ export default function RejectedPointages() {
       );
       setWorkersMap(new Map(workers.map((w) => [w.id, w])));
     } catch (err) {
-      setError(workflowErrorMessage(err, "Chargement des pointages rejetés échoué."));
+      setError(workflowErrorMessage(err, "Chargement de vos pointages échoué."));
     } finally {
       setLoading(false);
     }
@@ -126,16 +128,16 @@ export default function RejectedPointages() {
   }
 
   if (loading) {
-    return <LoadingScreen label="Chargement des pointages rejetés…" />;
+    return <LoadingScreen label="Chargement de vos pointages…" />;
   }
 
   return (
     <div className="space-y-4 p-4">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Pointages rejetés</h1>
+          <h1 className="text-lg font-semibold text-zinc-900">Mes pointages</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Corrigez vos saisies rejetées — elles repartent en validation une fois renvoyées.
+            Consultez l&apos;état de vos saisies. Un pointage rejeté peut être corrigé et renvoyé.
           </p>
         </div>
         <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />
@@ -153,17 +155,18 @@ export default function RejectedPointages() {
       )}
 
       {pointages.length === 0 ? (
-        <EmptyHint>Aucun pointage rejeté — rien à corriger.</EmptyHint>
+        <EmptyHint>Aucun pointage saisi pour le moment.</EmptyHint>
       ) : (
         <ul className="space-y-3">
           {pointages.map((pointage) => {
             const worker = workersMap.get(pointage.workerId);
             const activity = activitiesMap.get(pointage.subActivityId);
             const isOpen = openId === pointage.id;
+            const isRejected = pointage.status === "REJECTED";
             const draft = draftFor(pointage);
 
             return (
-              <li key={pointage.id} className="rounded-md border border-red-200 bg-red-50/40 p-3">
+              <li key={pointage.id} className="rounded-md border border-zinc-200 bg-white p-3">
                 <button
                   type="button"
                   className="flex w-full items-start justify-between gap-3 text-left"
@@ -177,12 +180,33 @@ export default function RejectedPointages() {
                       {activity?.label ?? pointage.subActivityId} · {formatDate(pointage.date)} ·{" "}
                       {formatPointageAmount(pointage.amount)}
                     </p>
-                    <p className="mt-1 text-xs text-red-700">Rejet : {pointage.rejectionReason}</p>
                   </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${pointageStatusClass(pointage.status)}`}
+                  >
+                    {POINTAGE_STATUS_LABELS[pointage.status]}
+                  </span>
                 </button>
 
-                {isOpen && (
+                {isOpen && !isRejected && (
+                  <div className="mt-3 space-y-1 border-t border-zinc-200 pt-3 text-sm">
+                    {pointage.status === "VALIDATED" && pointage.validatedAt && (
+                      <p className="text-zinc-600">Validé le {formatDate(pointage.validatedAt)}</p>
+                    )}
+                    {pointage.status === "PENDING" && (
+                      <p className="text-zinc-500">En attente de validation.</p>
+                    )}
+                    {pointage.status === "NEEDS_CLARIFICATION" && (
+                      <p className="text-amber-800">
+                        Une précision a été demandée — voir l&apos;onglet Précisions.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {isOpen && isRejected && (
                   <div className="mt-3 space-y-3 border-t border-red-200 pt-3">
+                    <p className="text-xs text-red-700">Rejet : {pointage.rejectionReason}</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-xs text-zinc-600">Quantité</label>

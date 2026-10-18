@@ -4,9 +4,9 @@ import {
   IconActivites,
   IconCloture,
   IconEquipes,
+  IconMyPointages,
   IconPresence,
   IconPrecisions,
-  IconRejected,
   IconSaisie,
   IconSync,
   IconTravailleurs,
@@ -37,7 +37,7 @@ const CDE_NAV: RoleNav = {
   ],
   more: [
     { to: "/clarifications", label: "Précisions", Icon: IconPrecisions },
-    { to: "/rejected", label: "Rejetés", Icon: IconRejected },
+    { to: "/my-pointages", label: "Mes pointages", Icon: IconMyPointages },
     SYNC,
   ],
 };

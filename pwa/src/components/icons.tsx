@@ -164,6 +164,15 @@ export function IconBio(props: IconProps) {
   );
 }
 
+export function IconMyPointages(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="3.5" width="16" height="17" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </Base>
+  );
+}
+
 export function IconRejected(props: IconProps) {
   return (
     <Base {...props}>

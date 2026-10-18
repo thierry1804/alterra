@@ -18,7 +18,15 @@ import { Button } from "../ui/button";
 import { IconButton } from "../ui/IconButton";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { toast } from "../../hooks/use-toast";
 
@@ -205,39 +213,14 @@ export default function PointageDetailDrawer({
         </SheetHeader>
 
         <SheetBody className="space-y-4">
-          <div className="flex items-center gap-3">
-            {pointage.photoKey ? (
-              photoQuery.data ? (
-                <button
-                  type="button"
-                  onClick={() => setPhotoOpen(true)}
-                  className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-1"
-                >
-                  <img
-                    src={photoQuery.data}
-                    alt="Photo du pointage"
-                    className="h-12 w-12 cursor-zoom-in rounded-md border border-emerald-200 object-cover"
-                  />
-                </button>
-              ) : (
-                <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-md border border-emerald-200 bg-emerald-50">
-                  <Camera className="h-5 w-5 text-emerald-700" />
-                </div>
-              )
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50">
-                <Camera className="h-5 w-5 text-zinc-400" />
-              </div>
-            )}
-            <div>
-              <Badge variant={pointageStatusVariant(pointage.status)}>
-                {POINTAGE_STATUS_LABELS[pointage.status]}
-              </Badge>
-              <p className="mt-1 text-sm text-zinc-600">
-                {subActivity?.label ?? pointage.subActivityId} · {pointage.quantity}{" "}
-                {subActivity?.unit?.label ?? ""}
-              </p>
-            </div>
+          <div>
+            <Badge variant={pointageStatusVariant(pointage.status)}>
+              {POINTAGE_STATUS_LABELS[pointage.status]}
+            </Badge>
+            <p className="mt-1 text-sm text-zinc-600">
+              {subActivity?.label ?? pointage.subActivityId} · {pointage.quantity}{" "}
+              {subActivity?.unit?.label ?? ""}
+            </p>
           </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -282,17 +265,45 @@ export default function PointageDetailDrawer({
             )}
           </div>
 
-          <div className="rounded-md border border-zinc-200 px-3 py-2 text-sm">
-            <p className="font-medium text-zinc-900">Historique validation</p>
-            {pointage.validatedAt ? (
-              <p className="text-zinc-600">Validé le {formatDate(pointage.validatedAt)}</p>
-            ) : pointage.rejectionReason ? (
-              <p className="text-red-700">Rejet : {pointage.rejectionReason}</p>
-            ) : (
-              <p className="text-zinc-500">Pas encore traité</p>
-            )}
-            {pointage.notes && <p className="mt-1 text-zinc-600">Notes : {pointage.notes}</p>}
-          </div>
+          <details className="group rounded-md border border-zinc-200 px-3 py-2 text-sm">
+            <summary className="flex cursor-pointer select-none items-center justify-between font-medium text-zinc-900">
+              Historique validation
+              <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-2">
+              {pointage.validatedAt ? (
+                <p className="text-zinc-600">Validé le {formatDate(pointage.validatedAt)}</p>
+              ) : pointage.rejectionReason ? (
+                <p className="text-red-700">Rejet : {pointage.rejectionReason}</p>
+              ) : (
+                <p className="text-zinc-500">Pas encore traité</p>
+              )}
+              {pointage.notes && <p className="mt-1 text-zinc-600">Notes : {pointage.notes}</p>}
+            </div>
+          </details>
+
+          {pointage.photoKey && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-zinc-900">Photo — preuve de réalisation</p>
+              {photoQuery.data ? (
+                <button
+                  type="button"
+                  onClick={() => setPhotoOpen(true)}
+                  className="block w-full overflow-hidden rounded-md border border-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-1"
+                >
+                  <img
+                    src={photoQuery.data}
+                    alt="Photo du pointage"
+                    className="max-h-80 w-full cursor-zoom-in object-cover"
+                  />
+                </button>
+              ) : (
+                <div className="flex h-40 w-full animate-pulse items-center justify-center rounded-md border border-zinc-200 bg-zinc-50">
+                  <Camera className="h-6 w-6 text-zinc-400" />
+                </div>
+              )}
+            </div>
+          )}
 
           {pointage.status === "VALIDATED" && (
             <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
@@ -301,44 +312,19 @@ export default function PointageDetailDrawer({
           )}
 
           {canValidate && canActOnPending && !showCorrection && (
-            <div className="space-y-3 border-t border-zinc-200 pt-4">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  onClick={() => validateMutation.mutate(pointage.id)}
-                  disabled={validateMutation.isPending}
-                >
-                  Valider <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">V</kbd>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={submitReject}
-                  disabled={rejectMutation.isPending}
-                >
-                  Rejeter <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">R</kbd>
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reject-reason">Motif de rejet</Label>
-                <Input
-                  ref={rejectReasonRef}
-                  id="reject-reason"
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitReject();
-                  }}
-                  placeholder="Motif (min. 3 caractères)"
-                />
-              </div>
+            <div className="space-y-2 border-t border-zinc-200 pt-4">
+              <Label htmlFor="reject-reason">Motif de rejet</Label>
+              <Input
+                ref={rejectReasonRef}
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitReject();
+                }}
+                placeholder="Motif (min. 3 caractères)"
+              />
             </div>
-          )}
-
-          {canCorrect && !showCorrection && (
-            <Button type="button" variant="outline" onClick={() => setShowCorrection(true)}>
-              Corriger <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">C</kbd>
-            </Button>
           )}
 
           {canCorrect && showCorrection && (
@@ -354,6 +340,51 @@ export default function PointageDetailDrawer({
             />
           )}
         </SheetBody>
+
+        {!showCorrection && ((canValidate && canActOnPending) || canCorrect) && (
+          <SheetFooter>
+            {canValidate && canActOnPending && (
+              <>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={() => validateMutation.mutate(pointage.id)}
+                  disabled={validateMutation.isPending}
+                >
+                  Valider{" "}
+                  <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">
+                    V
+                  </kbd>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={submitReject}
+                  disabled={rejectMutation.isPending}
+                >
+                  Rejeter{" "}
+                  <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">
+                    R
+                  </kbd>
+                </Button>
+              </>
+            )}
+            {canCorrect && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowCorrection(true)}
+              >
+                Corriger{" "}
+                <kbd className="ml-1.5 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70">
+                  C
+                </kbd>
+              </Button>
+            )}
+          </SheetFooter>
+        )}
       </SheetContent>
 
       {photoQuery.data && (

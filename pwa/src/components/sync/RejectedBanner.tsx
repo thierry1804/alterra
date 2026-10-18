@@ -9,7 +9,7 @@ export default function RejectedBanner() {
 
   return (
     <Link
-      to="/rejected"
+      to="/my-pointages"
       aria-label={`${count} pointage(s) rejeté(s) — voir et corriger`}
       className={cn(
         "flex items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-800 transition-colors",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
-import { fetchMyRejectedPointages } from "../lib/pointages";
+import { fetchMyPointages } from "../lib/pointages";
 
 const POLL_INTERVAL_MS = 60_000;
 
@@ -15,8 +15,8 @@ export function useRejectedCount(): number {
       return;
     }
     try {
-      const rows = await fetchMyRejectedPointages(user.id);
-      setCount(rows.length);
+      const rows = await fetchMyPointages(user.id);
+      setCount(rows.filter((p) => p.status === "REJECTED").length);
     } catch {
       // Silencieux — pas critique, le prochain poll réessaiera.
     }

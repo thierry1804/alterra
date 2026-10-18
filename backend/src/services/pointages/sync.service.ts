@@ -32,6 +32,27 @@ export async function syncPointageBatch(
 
   for (const item of batch) {
     try {
+      // Même travailleur, même activité, même jour : un seul pointage actif à la fois — sinon
+      // double comptage au paiement. Un REJECTED ne compte pas (sa réparation passe par /resubmit).
+      const duplicate = await prisma.pointage.findFirst({
+        where: {
+          workerId: item.workerId,
+          subActivityId: item.subActivityId,
+          date: item.date,
+          status: { not: "REJECTED" },
+          clientUuid: { not: item.clientUuid },
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        results.push({
+          clientUuid: item.clientUuid,
+          status: "rejected",
+          reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+        });
+        continue;
+      }
+
       const subActivity = await prisma.activitySubActivity.findUniqueOrThrow({
         where: { id: item.subActivityId },
       });

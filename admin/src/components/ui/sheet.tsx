@@ -64,7 +64,19 @@ export const SheetHeader = ({
 );
 
 export const SheetBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex-1 overflow-y-auto p-6", className)} {...props} />
+  // min-h-0 est nécessaire : sans lui, un enfant flex-1 ne se contraint pas à la hauteur du
+  // parent (fixed inset-y-0) et déborde au lieu de défiler — header et footer ne restent plus figés.
+  <div className={cn("min-h-0 flex-1 overflow-y-auto p-6", className)} {...props} />
+);
+
+export const SheetFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn("flex shrink-0 items-center gap-2 border-t border-zinc-200 p-4", className)}
+    {...props}
+  />
 );
 
 export const SheetTitle = React.forwardRef<
