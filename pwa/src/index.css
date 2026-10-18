@@ -14,10 +14,17 @@
     margin: 0;
   }
 
+  html {
+    /* Comportement natif : pas de zoom pincé, pas de rebond "pull to refresh", pas de délai au tap. */
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-white text-zinc-900 antialiased;
     font-family: ui-sans-serif, system-ui, sans-serif;
     padding-bottom: var(--safe-area-bottom);
+    overscroll-behavior: none;
   }
 
   a:focus-visible,
@@ -66,4 +73,13 @@
       var(--color-border) 100%
     );
   }
+}
+
+/* Hors @layer = priorité sur tout utilitaire Tailwind (text-sm, etc.), par les règles de cascade
+   layers. Safari iOS zoome automatiquement au focus d'un champ si sa police fait moins de 16px —
+   seul moyen fiable d'empêcher ce zoom, indépendant des réglages de viewport. */
+input,
+select,
+textarea {
+  font-size: 16px;
 }
