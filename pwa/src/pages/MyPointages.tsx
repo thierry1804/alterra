@@ -18,6 +18,7 @@ import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
 import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
 import { IconSync } from "../components/icons";
+import { POINTAGES_UPDATED_EVENT } from "../hooks/useRejectedCount";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("fr-MG", { day: "2-digit", month: "short" });
@@ -46,28 +47,47 @@ export default function MyPointages() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const rows = await fetchMyPointages(user.id);
-      setPointages(rows);
+  const loadData = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!user) return;
+      if (!opts?.silent) {
+        setLoading(true);
+        setError(null);
+      }
+      try {
+        const rows = await fetchMyPointages(user.id);
+        setPointages(rows);
 
-      const workerIds = [...new Set(rows.map((p) => p.workerId))];
-      const workers = await Promise.all(
-        workerIds.map((id) => api.get<WorkerSummary>(`/workers/${id}`).then((r) => r.data)),
-      );
-      setWorkersMap(new Map(workers.map((w) => [w.id, w])));
-    } catch (err) {
-      setError(workflowErrorMessage(err, "Chargement de vos pointages échoué."));
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+        const workerIds = [...new Set(rows.map((p) => p.workerId))];
+        const workers = await Promise.all(
+          workerIds.map((id) => api.get<WorkerSummary>(`/workers/${id}`).then((r) => r.data)),
+        );
+        setWorkersMap(new Map(workers.map((w) => [w.id, w])));
+      } catch (err) {
+        // En repoll silencieux, on n'affiche pas d'erreur — la prochaine tentative réessaiera.
+        if (!opts?.silent) {
+          setError(workflowErrorMessage(err, "Chargement de vos pointages échoué."));
+        }
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [user],
+  );
 
   useEffect(() => {
     void loadData();
+  }, [loadData]);
+
+  // Pas de push : on repolle en tâche de fond pour refléter une validation/un rejet sans recharger.
+  useEffect(() => {
+    const interval = setInterval(() => void loadData({ silent: true }), 20_000);
+    const onFocus = () => void loadData({ silent: true });
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [loadData]);
 
   const activitiesMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
@@ -150,6 +170,7 @@ export default function MyPointages() {
       });
       setOpenId(null);
       await loadData();
+      window.dispatchEvent(new Event(POINTAGES_UPDATED_EVENT));
     } catch (err) {
       setError(workflowErrorMessage(err, "Envoi de la correction échoué."));
     } finally {

@@ -75,12 +75,22 @@ export default function PointageDetailDrawer({
   // ne doit pouvoir le modifier. Un rejeté reste corrigeable : c'est le seul chemin de réparation.
   const canCorrect = user?.role === "ADMIN" && pointage?.status !== "VALIDATED";
 
+  // Après une action (valider/rejeter/corriger), on reste dans l'offcanvas et on avance au pointage
+  // suivant pour enchaîner la revue sans ressaisir — fermeture seulement s'il n'y en a plus.
+  function advanceOrClose() {
+    onUpdated();
+    if (hasNext && onNavigate) {
+      onNavigate("next");
+    } else {
+      onOpenChange(false);
+    }
+  }
+
   const validateMutation = useMutation({
     mutationFn: (id: string) => api.patch(`/pointages/${id}/validate`),
     onSuccess: () => {
       toast({ title: "Pointage validé" });
-      onUpdated();
-      onOpenChange(false);
+      advanceOrClose();
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
@@ -93,8 +103,7 @@ export default function PointageDetailDrawer({
       api.patch(`/pointages/${id}/reject`, { rejectionReason }),
     onSuccess: () => {
       toast({ title: "Pointage rejeté" });
-      onUpdated();
-      onOpenChange(false);
+      advanceOrClose();
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
@@ -271,10 +280,12 @@ export default function PointageDetailDrawer({
               <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform group-open:rotate-180" />
             </summary>
             <div className="mt-2">
-              {pointage.validatedAt ? (
-                <p className="text-zinc-600">Validé le {formatDate(pointage.validatedAt)}</p>
-              ) : pointage.rejectionReason ? (
+              {pointage.rejectionReason ? (
+                // validatedAt est renseigné aussi bien à la validation qu'au rejet (horodatage du
+                // traitement) — le motif de rejet doit primer, sinon un rejet s'affiche "Validé".
                 <p className="text-red-700">Rejet : {pointage.rejectionReason}</p>
+              ) : pointage.validatedAt ? (
+                <p className="text-zinc-600">Validé le {formatDate(pointage.validatedAt)}</p>
               ) : (
                 <p className="text-zinc-500">Pas encore traité</p>
               )}
@@ -333,8 +344,7 @@ export default function PointageDetailDrawer({
               subActivities={subActivities}
               onSuccess={() => {
                 setShowCorrection(false);
-                onUpdated();
-                onOpenChange(false);
+                advanceOrClose();
               }}
               onCancel={() => setShowCorrection(false)}
             />

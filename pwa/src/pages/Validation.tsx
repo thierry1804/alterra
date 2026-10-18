@@ -70,9 +70,11 @@ export default function Validation() {
     workerName: string;
   } | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       void syncBiometricTemplatesFromServer().catch(() => undefined);
       const [pending, teamsResponse, activities] = await Promise.all([
@@ -93,15 +95,31 @@ export default function Validation() {
       );
       setWorkersMap(new Map(workerEntries.map((worker) => [worker.id, worker])));
     } catch {
-      setError("Impossible de charger les pointages en attente.");
+      // En repoll silencieux, on n'affiche pas d'erreur — la prochaine tentative réessaiera.
+      if (!opts?.silent) setError("Impossible de charger les pointages en attente.");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  // Pas de push : on repolle pour voir sans recharger les pointages resynchronisés par le terrain.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!rejectTarget && !bulkProgress) void loadData({ silent: true });
+    }, 20_000);
+    const onFocus = () => {
+      if (!rejectTarget && !bulkProgress) void loadData({ silent: true });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadData, rejectTarget, bulkProgress]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
