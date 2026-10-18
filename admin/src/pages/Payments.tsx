@@ -136,9 +136,9 @@ export default function PaymentsPage() {
           <Label htmlFor="pay-period">Période (ISO semaine)</Label>
           <Input
             id="pay-period"
+            type="week"
             value={periodIso}
-            onChange={(e) => setPeriodIso(e.target.value)}
-            placeholder="2026-W29"
+            onChange={(e) => e.target.value && setPeriodIso(e.target.value)}
             className="w-40"
           />
         </div>

@@ -24,7 +24,15 @@ export interface GeneratePaymentsResult {
   }>;
 }
 
-async function isBioOkForWeek(workerId: string, weekIso: string): Promise<boolean> {
+async function isBioOkForWeek(
+  workerId: string,
+  weekIso: string,
+  bioValidationRequired: boolean,
+): Promise<boolean> {
+  // Même bascule que pour la validation des pointages (Paramètres) — si désactivée, tout est
+  // considéré bio OK pour ne pas bloquer la génération des paiements en son absence.
+  if (!bioValidationRequired) return true;
+
   const latestBioCheck = await prisma.biometricCheck.findFirst({
     where: { workerId, weekIso },
     orderBy: { performedAt: "desc" },
@@ -52,6 +60,9 @@ export async function generatePayments(
   const resolved = resolvePeriod(input.periodIso, input.cycle, input.referenceYear);
   const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo, cycle } = resolved;
   const semaineIso = weekIso.split("-W")[1];
+
+  const appSetting = await prisma.appSetting.findUnique({ where: { id: "singleton" } });
+  const bioValidationRequired = appSetting?.bioValidationRequired ?? true;
 
   const lockedPayment = await prisma.payment.findFirst({
     where: {
@@ -140,7 +151,7 @@ export async function generatePayments(
       continue;
     }
 
-    const bioValid = await isBioOkForWeek(workerId, weekIso);
+    const bioValid = await isBioOkForWeek(workerId, weekIso, bioValidationRequired);
     const dominantActivity = Array.from(aggregate.byActivity.values()).sort((a, b) =>
       b.amount.comparedTo(a.amount),
     )[0];

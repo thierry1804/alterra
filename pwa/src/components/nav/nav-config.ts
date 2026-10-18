@@ -33,7 +33,7 @@ const CDE_NAV: RoleNav = {
     { to: "/", label: "Activité", Icon: IconActivite },
     { to: "/batch", label: "Saisie", Icon: IconSaisie },
     { to: "/nfc", label: "Présence", Icon: IconPresence },
-    { to: "/my-pointages", label: "Mes pointages", Icon: IconMyPointages },
+    { to: "/my-pointages", label: "Pointages", Icon: IconMyPointages },
   ],
   more: [
     { to: "/clarifications", label: "Précisions", Icon: IconPrecisions },
