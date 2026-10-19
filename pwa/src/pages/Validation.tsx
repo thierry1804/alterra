@@ -8,6 +8,7 @@ import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
 import { IconSync } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
+import PageHeader from "../components/ui/PageHeader";
 import { apiErrorMessage } from "../lib/errors";
 import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
 import { useAppSettings } from "../hooks/useAppSettings";
@@ -261,25 +262,24 @@ export default function Validation() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Validation hebdomadaire</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Pointages en attente groupés par équipe — contrôle bio requis avant validation.
-          </p>
-        </div>
-        <IconButton icon={IconSync} label="Actualiser la liste" onClick={() => void loadData()} />
-      </header>
-
-      <ContextHelp id="validation" title="Comment valider ?">
-        <GlossaryTerm term="Bio OK">
-          Contrôle biométrique réussi — requis avant validation du paiement.
-        </GlossaryTerm>
-        <GlossaryTerm term="MOC">
-          Main-d&apos;œuvre communautaire — travailleur du programme.
-        </GlossaryTerm>
-        <p>Raccourci clavier : touche R pour actualiser la liste.</p>
-      </ContextHelp>
+      <PageHeader
+        title="Validation"
+        subtitle="Pointages en attente par équipe. Contrôle bio requis."
+        help={
+          <ContextHelp id="validation" title="Comment valider ?">
+            <GlossaryTerm term="Bio OK">
+              Contrôle biométrique réussi — requis avant validation du paiement.
+            </GlossaryTerm>
+            <GlossaryTerm term="MOC">
+              Main-d&apos;œuvre communautaire — travailleur du programme.
+            </GlossaryTerm>
+            <p>Raccourci clavier : touche R pour actualiser la liste.</p>
+          </ContextHelp>
+        }
+        action={
+          <IconButton icon={IconSync} label="Actualiser la liste" onClick={() => void loadData()} />
+        }
+      />
 
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

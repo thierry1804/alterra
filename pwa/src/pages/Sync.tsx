@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import Button from "../components/ui/Button";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
+import PageHeader from "../components/ui/PageHeader";
 import { db } from "../db/db";
 import { discardRejectedPointage } from "../sync/ConflictResolver";
 import { forceSync } from "../sync/SyncManager";
@@ -34,19 +35,20 @@ export default function Sync() {
 
   return (
     <div className="space-y-4 p-4">
-      <header>
-        <h1 className="text-lg font-semibold text-zinc-900">Synchronisation</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          État de la connexion et des données en attente d&apos;envoi vers le serveur.
-        </p>
-      </header>
-
-      <ContextHelp id="sync" title="Synchronisation">
-        <GlossaryTerm term="En attente">
-          Données saisies sur le terrain pas encore confirmées par le serveur.
-        </GlossaryTerm>
-        <GlossaryTerm term="MVola">Mobile money — canal de paiement des travailleurs.</GlossaryTerm>
-      </ContextHelp>
+      <PageHeader
+        title="Synchronisation"
+        subtitle="Connexion et données en attente d'envoi."
+        help={
+          <ContextHelp id="sync" title="Synchronisation">
+            <GlossaryTerm term="En attente">
+              Données saisies sur le terrain pas encore confirmées par le serveur.
+            </GlossaryTerm>
+            <GlossaryTerm term="MVola">
+              Mobile money — canal de paiement des travailleurs.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
+      />
 
       <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-4 sm:grid-cols-2">
         <div>

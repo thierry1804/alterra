@@ -219,3 +219,20 @@ export function IconLogout(props: IconProps) {
     </Base>
   );
 }
+
+export function IconBell(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M6 17v-6a6 6 0 0 1 12 0v6l1.5 2h-15z" />
+      <path d="M10 21h4" />
+    </Base>
+  );
+}
+
+export function IconWifiOff(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 9a14 14 0 0 1 4-2.6M21 9a14 14 0 0 0-8-3.9M6 12.5a9.5 9.5 0 0 1 3-1.7M18 12.5a9.5 9.5 0 0 0-2.2-1.5M9 16a5 5 0 0 1 6 0M12 19.5h.01M4 4l16 16" />
+    </Base>
+  );
+}

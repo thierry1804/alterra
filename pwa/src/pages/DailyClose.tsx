@@ -6,6 +6,7 @@ import IconButton from "../components/ui/IconButton";
 import { Spinner } from "../components/ui/feedback";
 import { IconSync, IconCloture } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
+import PageHeader from "../components/ui/PageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 
@@ -133,23 +134,24 @@ export default function DailyClose() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Clôture journalière</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Vérifiez les pointages du jour, signez et générez le rapport PDF.
-          </p>
-        </div>
-        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadPreview()} />
-      </header>
-
-      <ContextHelp id="daily-close" title="Clôture journalière">
-        <p>
-          Vérifiez les compteurs avant signature. Si des pointages restent en attente, une
-          confirmation explicite est requise.
-        </p>
-        <GlossaryTerm term="Semaine ISO">Période de paie associée à la date clôturée.</GlossaryTerm>
-      </ContextHelp>
+      <PageHeader
+        title="Clôture"
+        subtitle="Vérifiez, signez, générez le rapport PDF."
+        help={
+          <ContextHelp id="daily-close" title="Clôture journalière">
+            <p>
+              Vérifiez les compteurs avant signature. Si des pointages restent en attente, une
+              confirmation explicite est requise.
+            </p>
+            <GlossaryTerm term="Semaine ISO">
+              Période de paie associée à la date clôturée.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
+        action={
+          <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadPreview()} />
+        }
+      />
 
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

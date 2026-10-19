@@ -51,6 +51,12 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-brand-ring)];
   }
 
+  /* Titres d'écran : Bricolage Grotesque, embarquée pour fonctionner hors ligne. */
+  .alterra-display {
+    font-family: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
   /* Micro-libellé institutionnel — eyebrow de section, usage sobre. */
   .alterra-eyebrow {
     @apply text-[0.6875rem] font-semibold uppercase tracking-[0.14em];

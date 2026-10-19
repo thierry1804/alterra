@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "../../lib/cn";
 import { IconClose } from "../icons";
 
@@ -6,63 +6,78 @@ interface ContextHelpProps {
   id: string;
   title: string;
   children: React.ReactNode;
+  /** Conservé pour compatibilité : l'aide n'est plus affichée d'office. */
   persistDismiss?: boolean;
 }
 
-function isDismissed(id: string): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(`alterra-help-${id}`) === "1";
-}
+/**
+ * Aide contextuelle : un bouton « ? » discret qui ouvre une feuille en bas d'écran.
+ * Elle ne prend plus de place dans la page tant qu'on ne la demande pas.
+ */
+export default function ContextHelp({ id, title, children }: ContextHelpProps) {
+  const [open, setOpen] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-function dismissHelp(id: string): void {
-  window.localStorage.setItem(`alterra-help-${id}`, "1");
-}
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
-export default function ContextHelp({
-  id,
-  title,
-  children,
-  persistDismiss = true,
-}: ContextHelpProps) {
-  const [open, setOpen] = useState(() => !(persistDismiss && isDismissed(id)));
-
-  if (!open) {
-    return (
+  return (
+    <>
       <button
         type="button"
         aria-label={`Aide : ${title}`}
+        aria-haspopup="dialog"
         onClick={() => setOpen(true)}
         className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-300 text-xs font-medium text-zinc-600",
-          "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
+          "alterra-focus inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-sm font-semibold text-zinc-600",
+          "hover:bg-zinc-50 active:bg-zinc-100",
         )}
       >
         ?
       </button>
-    );
-  }
-
-  function handleClose() {
-    setOpen(false);
-    if (persistDismiss) dismissHelp(id);
-  }
-
-  return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-medium text-zinc-900">{title}</p>
-        <button
-          type="button"
-          aria-label="Fermer l'aide"
-          title="Fermer l'aide"
-          onClick={handleClose}
-          className="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2"
-        >
-          <IconClose className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="mt-2 space-y-2 leading-relaxed">{children}</div>
-    </div>
+      {open && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Fermer l'aide"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 h-full w-full bg-zinc-900/40"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`help-${id}`}
+            className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-zinc-200 bg-white p-4 shadow-lg"
+            style={{ paddingBottom: "calc(1rem + var(--safe-area-bottom))" }}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300" aria-hidden="true" />
+            <div className="flex items-start justify-between gap-3">
+              <p id={`help-${id}`} className="text-base font-semibold text-zinc-900">
+                {title}
+              </p>
+              <button
+                ref={closeRef}
+                type="button"
+                aria-label="Fermer l'aide"
+                onClick={() => setOpen(false)}
+                className="alterra-focus -mr-1 -mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100"
+              >
+                <IconClose className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-3 space-y-2 text-sm leading-relaxed text-zinc-700">{children}</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

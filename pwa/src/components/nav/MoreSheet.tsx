@@ -107,7 +107,7 @@ export default function MoreSheet({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Menu"
+        aria-label="Profil et menu"
         className={cn(
           "absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-zinc-200 bg-white shadow-lg",
           "transition-transform duration-200 ease-out",
@@ -119,7 +119,7 @@ export default function MoreSheet({
 
         <div className="flex items-center justify-between px-4 pb-2 pt-3">
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold text-zinc-900">{userName}</p>
+            <p className="truncate text-base font-semibold text-zinc-900">{userName}</p>
             <p className="text-xs text-zinc-500">{roleLabel}</p>
           </div>
           <button

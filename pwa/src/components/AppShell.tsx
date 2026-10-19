@@ -3,13 +3,14 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { startAutoSync, stopAutoSync } from "../sync/SyncManager";
-import SyncStatusBar from "./sync/SyncStatusBar";
+import SyncStatusBar, { SyncPill } from "./sync/SyncStatusBar";
 import RejectedBanner from "./sync/RejectedBanner";
 import ClarificationBanner from "./sync/ClarificationBanner";
 import BottomNav from "./nav/BottomNav";
 import MoreSheet from "./nav/MoreSheet";
 import NotificationBell from "./notifications/NotificationBell";
-import { isActivePath, navForRole } from "./nav/nav-config";
+import { navForRole } from "./nav/nav-config";
+import { useOpenClarificationsCount } from "../hooks/useOpenClarificationsCount";
 
 export default function AppShell() {
   const { user, logout } = useAuth();
@@ -28,7 +29,10 @@ export default function AppShell() {
   }, [location.pathname]);
 
   const { primary, more } = navForRole(user?.role);
-  const moreActive = more.some((item) => isActivePath(location.pathname, item.to));
+  const openClarifications = useOpenClarificationsCount();
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
+    : "";
 
   const roleLabel =
     user?.role === "CHEF_EQUIPE"
@@ -42,20 +46,20 @@ export default function AppShell() {
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-20 bg-white">
-        <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="flex items-center gap-2 px-4 py-2">
           <img src={iconUrl} alt={appName} className="h-9 w-auto shrink-0" />
-          <div className="min-w-0 flex-1 border-l border-zinc-200 pl-3 leading-tight">
-            <p className="text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-brand">
-              Terrain
-            </p>
-            {user && (
-              <p className="truncate text-xs text-zinc-600">
-                {user.firstName} {user.lastName}
-                {roleLabel && <span className="text-zinc-400"> · {roleLabel}</span>}
-              </p>
-            )}
-          </div>
+          <div className="flex-1" />
+          <SyncPill />
           <NotificationBell />
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={`Profil de ${user ? `${user.firstName} ${user.lastName}` : "l'utilisateur"}`}
+            className="alterra-focus grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white active:bg-brand-hover"
+          >
+            {initials || "?"}
+          </button>
         </div>
         <div className="alterra-rule h-0.5" aria-hidden="true" />
         <SyncStatusBar />
@@ -73,8 +77,7 @@ export default function AppShell() {
       <BottomNav
         items={primary}
         currentPath={location.pathname}
-        moreActive={moreActive}
-        onOpenMore={() => setMoreOpen(true)}
+        badges={{ "/clarifications": openClarifications }}
       />
 
       <MoreSheet

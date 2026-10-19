@@ -42,7 +42,7 @@ export default defineConfig({
       includeAssets: ["icons/icon-192.svg", "icons/icon-512.svg"],
       manifest: false,
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
       devOptions: {
         enabled: false,

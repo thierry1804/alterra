@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { LoadingScreen } from "../components/ui/feedback";
 import { IconChevronRight } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
+import PageHeader from "../components/ui/PageHeader";
 import { db } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, saveDaySession, todayIsoDate } from "../lib/day-session";
@@ -108,22 +109,22 @@ export default function ActivitySelect() {
 
   return (
     <div className="space-y-4 p-4">
-      <header>
-        <p className="alterra-eyebrow">Étape 1 sur 2 · Préparation</p>
-        <h1 className="mt-1 text-lg font-semibold text-zinc-900">Activité du jour</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Choisissez l&apos;activité du jour avant la saisie en lot.
-        </p>
-      </header>
-
-      <ContextHelp id="activity-select" title="Activité du jour">
-        <p>
-          Choisissez l&apos;activité et la quantité par défaut avant d&apos;ouvrir la saisie en lot.
-        </p>
-        <GlossaryTerm term="MOC">
-          Main-d&apos;œuvre communautaire — travailleur du programme.
-        </GlossaryTerm>
-      </ContextHelp>
+      <p className="alterra-eyebrow">Étape 1 sur 2 · Préparation</p>
+      <PageHeader
+        title="Activité du jour"
+        subtitle="Choisissez l'activité, puis saisissez les quantités."
+        help={
+          <ContextHelp id="activity-select" title="Activité du jour">
+            <p>
+              Choisissez l&apos;activité et la quantité par défaut avant d&apos;ouvrir la saisie en
+              lot.
+            </p>
+            <GlossaryTerm term="MOC">
+              Main-d&apos;œuvre communautaire — travailleur du programme.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
+      />
 
       {syncMessage && (
         <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
@@ -217,13 +218,9 @@ export default function ActivitySelect() {
                   {isSelected && <span className="h-2 w-2 rounded-full bg-brand" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-zinc-900">
-                    {activity.label}
-                  </span>
+                  <span className="block text-sm font-medium text-zinc-900">{activity.label}</span>
                   <span className="block text-xs text-zinc-500">
-                    <span className="alterra-num">
-                      {activity.unitRate.toLocaleString("fr-MG")}
-                    </span>{" "}
+                    <span className="alterra-num">{activity.unitRate.toLocaleString("fr-MG")}</span>{" "}
                     Ar / {activity.unit}
                   </span>
                 </span>
