@@ -30,6 +30,22 @@
 }
 
 @layer components {
+  /* Titres d'écran : Bricolage Grotesque, embarquée (aucune requête externe, CSP stricte). */
+  .alterra-display {
+    font-family: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Barre latérale vert forêt. */
+  .alterra-side {
+    --side-ink: #b9d0c4;
+    --side-muted: #6d8d7d;
+    --side-on: #1b4433;
+    --side-line: #1d3d30;
+    background: #0f2a20;
+    color: var(--side-ink);
+  }
+
   .alterra-focus {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white;
   }

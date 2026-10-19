@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Users, UserCheck, ClipboardList, CreditCard } from "lucide-react";
+import { Users, UserCheck } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { cn } from "../../lib/utils";
-import { formatMga, formatPercent, type DashboardSummary } from "../../lib/dashboard";
+import { formatPercent, type DashboardSummary } from "../../lib/dashboard";
 
 export interface StatCardItem {
   key: string;
@@ -32,18 +32,6 @@ const dashboardItems = [
     icon: UserCheck,
     format: (value: number) => formatPercent(value),
   },
-  {
-    key: "pendingPointages" as const,
-    label: "Pointages en attente",
-    icon: ClipboardList,
-    format: (value: number) => String(value),
-  },
-  {
-    key: "pendingPaymentsAmount" as const,
-    label: "Paiements en attente",
-    icon: CreditCard,
-    format: (value: number) => formatMga(value),
-  },
 ];
 
 export default function KpiCards({ kpis, stats }: KpiCardsProps) {
@@ -51,21 +39,11 @@ export default function KpiCards({ kpis, stats }: KpiCardsProps) {
     stats ??
     (kpis
       ? dashboardItems.map((item) => {
-          const value =
-            item.key === "pendingPaymentsAmount" ? kpis.pendingPaymentsAmount : kpis[item.key];
-          const highlightPending = item.key === "pendingPointages" && kpis.pendingPointages > 10;
-          const highlightPayments =
-            item.key === "pendingPaymentsAmount" && kpis.pendingPaymentsCount > 0;
           return {
             key: item.key,
             label: item.label,
             icon: item.icon,
-            displayValue: item.format(value),
-            highlight: highlightPending || highlightPayments,
-            sublabel:
-              item.key === "pendingPaymentsAmount" && kpis.pendingPaymentsCount > 0
-                ? `${kpis.pendingPaymentsCount} ligne(s)`
-                : undefined,
+            displayValue: item.format(kpis[item.key]),
           };
         })
       : []);

@@ -23,29 +23,30 @@ export default function LoginAccessPanel({
     <aside
       className={
         variant === "embedded"
-          ? "space-y-4 border-t border-zinc-200 pt-6"
+          ? "space-y-4 pt-2"
           : "space-y-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
       }
     >
-      <div>
-        <h2 className="text-sm font-medium text-zinc-900">Accès à cette interface</h2>
-        <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-          {roles.map((role) => (
-            <li key={role}>{role}</li>
-          ))}
-        </ul>
-      </div>
+      {variant === "card" && (
+        <div>
+          <h2 className="text-sm font-medium text-zinc-900">Accès à cette interface</h2>
+          <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+            {roles.map((role) => (
+              <li key={role}>{role}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <div className="border-t border-zinc-200 pt-4">
-        <h2 className="text-sm font-medium text-zinc-900">Autre application</h2>
-        <p className="mt-1 text-sm text-zinc-600">{otherApp.description}</p>
+      <p className="text-center text-xs text-zinc-600">
+        {otherApp.description} ·{" "}
         <a
           href={otherApp.href}
-          className="mt-2 inline-block text-sm font-medium text-zinc-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          className="alterra-focus font-semibold text-zinc-900 underline-offset-2 hover:underline"
         >
-          {otherApp.label} →
+          {otherApp.label}
         </a>
-      </div>
+      </p>
 
       {showDemo && (
         <div className="border-t border-zinc-200 pt-4">

@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../lib/payments";
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
+import PaymentFlow from "../components/payments/PaymentFlow";
 import BordereauTable from "../components/payments/BordereauTable";
 import MvolaExportHistory from "../components/payments/MvolaExportHistory";
 import MvolaExportButton from "../components/payments/MvolaExportButton";
@@ -47,6 +48,7 @@ export default function PaymentsPage() {
     const blocked = rows.filter((r) => r.status === "PENDING" && !r.bioValid);
     const totalAmount = rows.reduce((sum, r) => sum + Number(r.amount), 0);
     return {
+      exported: rows.filter((r) => r.status === "EXPORTED").length,
       exportable: exportable.length,
       blocked: blocked.length,
       totalAmount,
@@ -144,18 +146,27 @@ export default function PaymentsPage() {
       <PageHeader
         title="Paiements"
         description="Bordereau MVola — génération, export et import retour."
+        help={
+          <ContextHelp id="payments-admin" title="Paiements MVola">
+            <GlossaryTerm term="Semaine ISO">
+              Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
+            </GlossaryTerm>
+            <GlossaryTerm term="Bio OK">
+              Travailleurs dont le contrôle biométrique autorise l&apos;export MVola.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
       />
 
-      <ContextHelp id="payments-admin" title="Paiements MVola" persistDismiss={false}>
-        <GlossaryTerm term="Semaine ISO">
-          Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
-        </GlossaryTerm>
-        <GlossaryTerm term="Bio OK">
-          Travailleurs dont le contrôle biométrique autorise l&apos;export MVola.
-        </GlossaryTerm>
-      </ContextHelp>
+      <PaymentFlow
+        periodIso={periodIso}
+        total={stats.total}
+        exportable={stats.exportable}
+        exported={stats.exported}
+        blocked={stats.blocked}
+      />
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
+      <div className="flex flex-wrap items-end gap-4 rounded-xl border border-zinc-200 bg-white p-4">
         <div className="space-y-2">
           <Label htmlFor="pay-period">Période (ISO semaine)</Label>
           <Input

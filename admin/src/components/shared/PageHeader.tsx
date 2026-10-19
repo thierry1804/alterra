@@ -2,18 +2,23 @@ import { Button } from "../ui/button";
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
+  /** Bouton « ? » (ContextHelp) affiché à côté du titre. */
+  help?: React.ReactNode;
 }
 
-export default function PageHeader({ title, description, action }: PageHeaderProps) {
+export default function PageHeader({ title, description, action, help }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="alterra-rule inline-block pb-1.5 text-xl font-semibold tracking-tight text-zinc-900">
-          {title}
-        </h1>
-        {description && <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p>}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="alterra-display text-2xl font-extrabold leading-tight text-zinc-900">
+            {title}
+          </h1>
+          {help}
+        </div>
+        {description && <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>

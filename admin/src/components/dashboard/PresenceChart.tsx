@@ -1,4 +1,13 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import type { DashboardSummary } from "../../lib/dashboard";
 
@@ -23,7 +32,15 @@ export default function PresenceChart({ data }: PresenceChartProps) {
                 formatter={(value) => [`${value ?? 0} MOC`, "Présents"]}
                 labelFormatter={(label) => String(label)}
               />
-              <Bar dataKey="workersPresent" fill="#52525b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="workersPresent" fill="#189060" radius={[4, 4, 0, 0]}>
+                {data.map((row, index) => (
+                  <Cell
+                    key={row.date}
+                    fill="#189060"
+                    fillOpacity={index === data.length - 1 ? 1 : 0.5}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -8,6 +8,10 @@ import WorkforceChart from "../components/dashboard/WorkforceChart";
 import GenderBreakdownChart from "../components/dashboard/GenderBreakdownChart";
 import GenderRatioBarChart from "../components/dashboard/GenderRatioBarChart";
 import AlertsBlock from "../components/dashboard/AlertsBlock";
+import TodoStrip from "../components/dashboard/TodoStrip";
+import PageHeader from "../components/shared/PageHeader";
+import { useAuth } from "../hooks/useAuth";
+import { useNavCounts } from "../hooks/useNavCounts";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -15,6 +19,14 @@ import { Skeleton } from "../components/ui/skeleton";
 const REFRESH_MS = 60_000;
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const counts = useNavCounts();
+  const today = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["dashboard", "kpis"],
     queryFn: () => api.get<DashboardSummary>("/dashboard/kpis").then((r) => r.data),
@@ -24,36 +36,35 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Tableau de bord</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            KPIs campagne, présence terrain et paiements.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Rafraîchir
-        </Button>
-      </div>
-
-      <ContextHelp id="dashboard-admin" title="Tableau de bord" persistDismiss={false}>
-        <GlossaryTerm term="Présence semaine">
-          Taux de travailleurs pointés sur la période en cours.
-        </GlossaryTerm>
-        <GlossaryTerm term="Paiements en attente">
-          Montant MVola non encore exporté pour la campagne active.
-        </GlossaryTerm>
-        <GlossaryTerm term="Non renseigné">
-          MOC dont le sexe n'a pas été saisi dans la fiche travailleur.
-        </GlossaryTerm>
-      </ContextHelp>
+      <PageHeader
+        title={user ? `Bonjour ${user.firstName}` : "Tableau de bord"}
+        description={today.charAt(0).toUpperCase() + today.slice(1)}
+        help={
+          <ContextHelp id="dashboard-admin" title="Tableau de bord">
+            <GlossaryTerm term="Présence semaine">
+              Taux de travailleurs pointés sur la période en cours.
+            </GlossaryTerm>
+            <GlossaryTerm term="Paiements en attente">
+              Montant MVola non encore exporté pour la campagne active.
+            </GlossaryTerm>
+            <GlossaryTerm term="Non renseigné">
+              MOC dont le sexe n&apos;a pas été saisi dans la fiche travailleur.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Rafraîchir
+          </Button>
+        }
+      />
 
       {isLoading && (
         <div className="space-y-4">
@@ -77,6 +88,7 @@ export default function Dashboard() {
 
       {data && (
         <>
+          <TodoStrip kpis={data.kpis} counts={counts} isAdmin={user?.role === "ADMIN"} />
           <KpiCards kpis={data.kpis} />
           <div className="grid gap-4 xl:grid-cols-2">
             <PresenceChart data={data.presenceLast7Days} />

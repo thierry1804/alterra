@@ -53,6 +53,22 @@ const TABS: { id: RequestTab; label: string }[] = [
 export default function RequestsPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<RequestTab>("activities");
+  const pendingCounts = useQuery({
+    queryKey: ["requests", "pending-counts"],
+    queryFn: async () => {
+      const [activities, workers, clarifications] = await Promise.all([
+        fetchActivityRequests("PENDING"),
+        fetchWorkerRequests("PENDING"),
+        fetchClarificationRequests("OPEN"),
+      ]);
+      return {
+        activities: activities.length,
+        workers: workers.length,
+        clarifications: clarifications.length,
+      } satisfies Record<RequestTab, number>;
+    },
+    refetchInterval: 30_000,
+  });
   const [statusFilter, setStatusFilter] = useState<RequestStatus | ClarificationStatus | "">(
     "PENDING",
   );
@@ -288,6 +304,11 @@ export default function RequestsPage() {
             title={`Raccourci ${index + 1}`}
           >
             {item.label}
+            {(pendingCounts.data?.[item.id] ?? 0) > 0 && (
+              <span className="alterra-num ml-2 rounded-full bg-[color:var(--color-earth)] px-1.5 py-0.5 text-[0.6875rem] font-bold text-white">
+                {pendingCounts.data?.[item.id]}
+              </span>
+            )}
           </button>
         ))}
       </div>

@@ -50,8 +50,8 @@ export default function GenderRatioBarChart({ title, data, emptyLabel }: GenderR
                 />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="masculin" name="Masculin" stackId="sexe" fill="#3f3f46" />
-                <Bar dataKey="feminin" name="Féminin" stackId="sexe" fill="#a1a1aa" />
+                <Bar dataKey="masculin" name="Masculin" stackId="sexe" fill="#2f6199" />
+                <Bar dataKey="feminin" name="Féminin" stackId="sexe" fill="#189060" />
                 <Bar
                   dataKey="nonRenseigne"
                   name="Non renseigné"

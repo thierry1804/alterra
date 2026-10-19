@@ -34,9 +34,9 @@ export default function WorkforceChart({ data }: WorkforceChartProps) {
               <Line
                 type="monotone"
                 dataKey="activeWorkers"
-                stroke="#3f3f46"
+                stroke="#189060"
                 strokeWidth={2}
-                dot={{ r: 3, fill: "#3f3f46" }}
+                dot={{ r: 3, fill: "#189060" }}
               />
             </LineChart>
           </ResponsiveContainer>

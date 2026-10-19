@@ -17,7 +17,6 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
-import { Select } from "../components/ui/select";
 import { EmptyState } from "../components/ui/EmptyState";
 import { TableRowsSkeleton } from "../components/ui/skeleton";
 import { Checkbox } from "../components/ui/checkbox";
@@ -208,7 +207,16 @@ export default function PointagesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pointages"
-        description="Validation et suivi des saisies terrain."
+        description={
+          <>
+            <span className="alterra-num font-semibold text-zinc-900">{pointages.length}</span>{" "}
+            pointage(s) affiché(s) ·{" "}
+            <span className="alterra-num font-semibold text-zinc-900">
+              {pointages.reduce((sum, row) => sum + Number(row.amount), 0).toLocaleString("fr-MG")}{" "}
+              Ar
+            </span>
+          </>
+        }
         action={
           <Button
             type="button"
@@ -223,22 +231,32 @@ export default function PointagesPage() {
       />
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted">Statut</span>
-          <Select
-            className="w-48"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as PointageStatus | "")}
-            aria-label="Filtrer par statut"
-          >
-            <option value="">Tous statuts</option>
-            {(Object.keys(POINTAGE_STATUS_LABELS) as PointageStatus[]).map((status) => (
-              <option key={status} value={status}>
-                {POINTAGE_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Filtrer par statut"
+        >
+          {(
+            [["", "Tous"], ...Object.entries(POINTAGE_STATUS_LABELS)] as Array<
+              [PointageStatus | "", string]
+            >
+          ).map(([value, label]) => (
+            <button
+              key={value || "all"}
+              type="button"
+              aria-pressed={statusFilter === value}
+              onClick={() => setStatusFilter(value)}
+              className={cn(
+                "alterra-focus rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                statusFilter === value
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted">Du</span>
           <Input

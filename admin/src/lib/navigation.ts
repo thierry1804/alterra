@@ -24,15 +24,11 @@ export interface NavItem {
   icon: LucideIcon;
   roles: AuthUser["role"][];
   section?: string;
+  /** Compteur affiché dans le menu (ce qui attend un geste). */
+  badge?: "requests" | "pointages" | "payments";
 }
 
-export const NAV_SECTIONS = [
-  "Vue d'ensemble",
-  "Référentiels",
-  "Opérations",
-  "Finance",
-  "Système",
-] as const;
+export const NAV_SECTIONS = ["Pilotage", "Opérations", "Référentiels", "Administration"] as const;
 
 export type NavSection = (typeof NAV_SECTIONS)[number];
 
@@ -42,7 +38,52 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/",
     icon: LayoutDashboard,
     roles: ["ADMIN", "CHEF_SERVICE"],
-    section: "Vue d'ensemble",
+    section: "Pilotage",
+  },
+  {
+    label: "Demandes",
+    path: "/requests",
+    icon: Inbox,
+    roles: ["ADMIN"],
+    section: "Opérations",
+    badge: "requests",
+  },
+  {
+    label: "Pointages",
+    path: "/pointages",
+    icon: ClipboardList,
+    roles: ["ADMIN", "CHEF_SERVICE"],
+    section: "Opérations",
+    badge: "pointages",
+  },
+  {
+    label: "Paiements",
+    path: "/payments",
+    icon: CreditCard,
+    roles: ["ADMIN"],
+    section: "Opérations",
+    badge: "payments",
+  },
+  {
+    label: "Factures",
+    path: "/invoices",
+    icon: FileStack,
+    roles: ["ADMIN"],
+    section: "Opérations",
+  },
+  {
+    label: "Rapports",
+    path: "/reports",
+    icon: FileText,
+    roles: ["ADMIN"],
+    section: "Opérations",
+  },
+  {
+    label: "Travailleurs",
+    path: "/workers",
+    icon: UsersRound,
+    roles: ["ADMIN"],
+    section: "Référentiels",
   },
   {
     label: "Sites",
@@ -80,69 +121,35 @@ export const NAV_ITEMS: NavItem[] = [
     section: "Référentiels",
   },
   {
-    label: "Travailleurs",
-    path: "/workers",
-    icon: UsersRound,
-    roles: ["ADMIN"],
-    section: "Référentiels",
-  },
-  {
     label: "Utilisateurs",
     path: "/users",
     icon: Users,
     roles: ["ADMIN"],
-    section: "Référentiels",
-  },
-  {
-    label: "Demandes",
-    path: "/requests",
-    icon: Inbox,
-    roles: ["ADMIN"],
-    section: "Opérations",
-  },
-  {
-    label: "Pointages",
-    path: "/pointages",
-    icon: ClipboardList,
-    roles: ["ADMIN", "CHEF_SERVICE"],
-    section: "Opérations",
-  },
-  {
-    label: "Paiements",
-    path: "/payments",
-    icon: CreditCard,
-    roles: ["ADMIN"],
-    section: "Finance",
-  },
-  {
-    label: "Factures",
-    path: "/invoices",
-    icon: FileStack,
-    roles: ["ADMIN"],
-    section: "Finance",
-  },
-  {
-    label: "Rapports",
-    path: "/reports",
-    icon: FileText,
-    roles: ["ADMIN"],
-    section: "Finance",
+    section: "Administration",
   },
   {
     label: "Audit",
     path: "/audit",
     icon: ScrollText,
     roles: ["ADMIN"],
-    section: "Système",
+    section: "Administration",
   },
   {
     label: "Paramètres",
     path: "/settings",
     icon: Settings,
     roles: ["ADMIN"],
-    section: "Système",
+    section: "Administration",
   },
 ];
+
+/** Fil d'Ariane : section puis page, d'après le chemin courant. */
+export function navTrail(pathname: string): { section: string; label: string } | null {
+  const item = NAV_ITEMS.find((candidate) =>
+    candidate.path === "/" ? pathname === "/" : pathname.startsWith(candidate.path),
+  );
+  return item ? { section: item.section ?? "Navigation", label: item.label } : null;
+}
 
 export function navItemsForRole(role: AuthUser["role"] | undefined): NavItem[] {
   if (!role) return [];

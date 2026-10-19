@@ -7,8 +7,8 @@ interface GenderBreakdownChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  Masculin: "#3f3f46",
-  Féminin: "#a1a1aa",
+  Masculin: "#2f6199",
+  Féminin: "#189060",
   "Non renseigné": "#e4e4e7",
 };
 

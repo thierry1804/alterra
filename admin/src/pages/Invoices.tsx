@@ -55,7 +55,8 @@ export default function InvoicesPage() {
   const canGenerateManually = !!periodIso && !isLoading && rows.length === 0 && !!exportedCount;
 
   const generateMutation = useMutation({
-    mutationFn: () => api.post("/invoices/generate", { periodIso, referenceYear: Number(referenceYear) }),
+    mutationFn: () =>
+      api.post("/invoices/generate", { periodIso, referenceYear: Number(referenceYear) }),
     onSuccess: (res) => {
       toast({
         title: "Facture(s) générée(s)",
@@ -77,7 +78,11 @@ export default function InvoicesPage() {
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Régénération échouée", description: String(message), variant: "destructive" });
+      toast({
+        title: "Régénération échouée",
+        description: String(message),
+        variant: "destructive",
+      });
     },
   });
 
@@ -113,17 +118,18 @@ export default function InvoicesPage() {
       <PageHeader
         title="Factures"
         description="Une facture PDF par activité et par période, générée automatiquement à chaque export MVola."
+        help={
+          <ContextHelp id="invoices-admin" title="Factures par activité">
+            <p>
+              Chaque export MVola (page Paiements) génère une facture par activité regroupant les
+              travailleurs validés de cette activité pour la période exportée.
+            </p>
+            <GlossaryTerm term="Semaine ISO">
+              Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
+            </GlossaryTerm>
+          </ContextHelp>
+        }
       />
-
-      <ContextHelp id="invoices-admin" title="Factures par activité" persistDismiss={false}>
-        <p>
-          Chaque export MVola (page Paiements) génère une facture par activité regroupant les
-          travailleurs validés de cette activité pour la période exportée.
-        </p>
-        <GlossaryTerm term="Semaine ISO">
-          Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
-        </GlossaryTerm>
-      </ContextHelp>
 
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-zinc-200 p-4">
         <div className="space-y-2">
@@ -211,7 +217,8 @@ export default function InvoicesPage() {
                     >
                       <RefreshCw
                         className={
-                          regenerateMutation.isPending && regenerateMutation.variables === invoice.id
+                          regenerateMutation.isPending &&
+                          regenerateMutation.variables === invoice.id
                             ? "h-4 w-4 animate-spin"
                             : "h-4 w-4"
                         }

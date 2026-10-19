@@ -4,7 +4,7 @@ import { cn } from "../../lib/utils";
 import { navItemsBySection } from "../../lib/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { useAppSettings } from "../../hooks/useAppSettings";
-import { Button } from "../ui/button";
+import { useNavCounts } from "../../hooks/useNavCounts";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -14,62 +14,61 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user } = useAuth();
   const { appName, iconUrl } = useAppSettings();
+  const counts = useNavCounts();
   const sections = navItemsBySection(user?.role);
   const showSections = !collapsed && sections.size > 1;
 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-zinc-200 transition-[width] duration-150",
-        collapsed ? "w-14" : "w-[248px]",
+        "alterra-side flex h-full shrink-0 flex-col transition-[width] duration-150",
+        collapsed ? "w-16" : "w-[232px]",
       )}
-      style={{
-        background:
-          "radial-gradient(circle at 12% 18%, rgba(24,144,96,0.07), transparent 50%)," +
-          "radial-gradient(circle at 88% 12%, rgba(228,84,48,0.05), transparent 48%)," +
-          "radial-gradient(circle at 80% 85%, rgba(47,97,153,0.06), transparent 52%)," +
-          "radial-gradient(circle at 15% 88%, rgba(234,178,92,0.06), transparent 50%)," +
-          "#fafafa",
-      }}
     >
       <div
         className={cn(
-          "flex h-12 items-center border-b border-zinc-200 px-3",
+          "flex h-14 items-center px-3",
           collapsed ? "justify-center" : "justify-between",
         )}
       >
         {!collapsed && (
-          <span className="flex items-center gap-2">
-            <img src={iconUrl} alt="" className="h-6 w-6 rounded" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight text-zinc-900">{appName}</span>
+          <span className="flex min-w-0 items-center gap-2.5">
+            <img src={iconUrl} alt="" className="h-7 w-7 rounded bg-white/90 p-0.5" aria-hidden />
+            <span className="alterra-display truncate text-sm font-extrabold uppercase tracking-[0.14em] text-white">
+              {appName}
+            </span>
           </span>
         )}
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           onClick={onToggle}
           aria-label={collapsed ? "Déplier le menu" : "Replier le menu"}
+          className="alterra-focus grid h-8 w-8 place-items-center rounded-md text-[color:var(--side-ink)] hover:bg-white/10 hover:text-white focus-visible:ring-offset-0"
         >
           {collapsed ? (
             <PanelLeftOpen className="h-4 w-4" />
           ) : (
             <PanelLeftClose className="h-4 w-4" />
           )}
-        </Button>
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto p-2">
+      <nav
+        aria-label="Navigation principale"
+        className="flex-1 space-y-1 overflow-y-auto px-2 pb-2"
+      >
         {[...sections.entries()].map(([section, items]) => (
           <div key={section}>
             {showSections && (
-              <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+              <p className="px-2.5 pb-1 pt-4 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[color:var(--side-muted)]">
                 {section}
               </p>
             )}
+            {!showSections && <div className="h-3" aria-hidden />}
             <div className="space-y-0.5">
               {items.map((item) => {
                 const Icon = item.icon;
+                const count = item.badge ? counts[item.badge] : 0;
                 return (
                   <NavLink
                     key={item.path}
@@ -78,24 +77,26 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     title={collapsed ? item.label : undefined}
                     className={({ isActive }) =>
                       cn(
-                        "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-1 focus-visible:ring-offset-white",
+                        "group relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-[color:var(--side-ink)] transition-colors hover:bg-white/10 hover:text-white",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring",
                         collapsed && "justify-center px-0",
-                        isActive && "bg-brand-tint text-brand hover:bg-brand-tint hover:text-brand",
+                        isActive &&
+                          "bg-[color:var(--side-on)] font-semibold text-white shadow-[inset_2px_0_0_var(--color-earth)] hover:bg-[color:var(--side-on)]",
                       )
                     }
                   >
-                    {({ isActive }) => (
-                      <>
-                        <Icon
-                          className={cn(
-                            "h-4 w-4 shrink-0 transition-colors",
-                            isActive ? "text-brand" : "text-subtle group-hover:text-zinc-700",
-                          )}
-                          aria-hidden
-                        />
-                        {!collapsed && <span>{item.label}</span>}
-                      </>
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          "alterra-num grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-[color:var(--color-earth)] px-1.5 text-[0.625rem] font-bold leading-none text-white",
+                          collapsed && "absolute right-1 top-1",
+                        )}
+                        aria-label={`${count} en attente`}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
                     )}
                   </NavLink>
                 );
@@ -106,9 +107,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {!collapsed && (
-        <div className="border-t border-zinc-200 px-3 py-2.5">
-          <div className="h-0.5 w-8 rounded-full bg-earth" aria-hidden />
-          <p className="mt-2 text-[11px] leading-tight text-subtle">Suivi terrain · Madagascar</p>
+        <div className="border-t border-[color:var(--side-line)] px-4 py-3">
+          <p className="text-[0.6875rem] leading-tight text-[color:var(--side-muted)]">
+            Suivi terrain · Madagascar
+          </p>
         </div>
       )}
     </aside>
