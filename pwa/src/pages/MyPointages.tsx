@@ -16,6 +16,8 @@ import { workflowErrorMessage } from "../lib/workflows";
 import PhotoCapture from "../components/pointage/PhotoCapture";
 import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
+import PageHeader from "../components/ui/PageHeader";
+import { cn } from "../lib/cn";
 import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
 import { IconSync } from "../components/icons";
 import { POINTAGES_UPDATED_EVENT } from "../hooks/useRejectedCount";
@@ -184,35 +186,52 @@ export default function MyPointages() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Mes pointages</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Consultez l&apos;état de vos saisies. Un pointage rejeté peut être corrigé et renvoyé.
-          </p>
-        </div>
-        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />
-      </header>
+      <PageHeader
+        title="Mes pointages"
+        subtitle="Suivez vos saisies. Un rejet se corrige et se renvoie."
+        action={<IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />}
+      />
 
       {availableDates.length > 0 && (
-        <div className="flex items-center gap-2">
-          <select
-            value={dateFilter ?? availableDates[0]}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
-          >
-            {availableDates.map((d) => (
-              <option key={d} value={d}>
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
+          role="tablist"
+          aria-label="Jour de saisie"
+        >
+          {availableDates.slice(0, 14).map((d) => {
+            const selected = (dateFilter ?? availableDates[0]) === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setDateFilter(d)}
+                className={cn(
+                  "alterra-focus min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium capitalize",
+                  selected
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200 bg-white text-zinc-700",
+                )}
+              >
                 {formatDateLong(d)}
-                {d === availableDates[0] ? " (dernière saisie)" : ""}
-              </option>
-            ))}
-          </select>
-          {dateFilter !== availableDates[0] && (
-            <Button type="button" variant="outline" onClick={() => setDateFilter(availableDates[0])}>
-              Dernière
-            </Button>
-          )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {visiblePointages.length > 0 && (
+        <div className="rounded-2xl bg-brand-tint p-4">
+          <p className="text-xs font-semibold text-brand">
+            {visiblePointages.filter((row) => row.status === "VALIDATED").length} validé(s) sur{" "}
+            {visiblePointages.length}
+          </p>
+          <p className="alterra-display alterra-num text-3xl font-extrabold text-brand">
+            {formatPointageAmount(
+              visiblePointages.reduce((total, row) => total + Number(row.amount), 0),
+            )}
+          </p>
         </div>
       )}
 
@@ -232,7 +251,7 @@ export default function MyPointages() {
       ) : visiblePointages.length === 0 ? (
         <EmptyHint>Aucun pointage pour cette date.</EmptyHint>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {visiblePointages.map((pointage) => {
             const worker = workersMap.get(pointage.workerId);
             const activity = activitiesMap.get(pointage.subActivityId);
@@ -241,7 +260,7 @@ export default function MyPointages() {
             const draft = draftFor(pointage);
 
             return (
-              <li key={pointage.id} className="rounded-md border border-zinc-200 bg-white p-3">
+              <li key={pointage.id} className="rounded-2xl border border-zinc-200 bg-white p-3">
                 <button
                   type="button"
                   className="flex w-full items-start justify-between gap-3 text-left"
@@ -309,9 +328,7 @@ export default function MyPointages() {
                       <label className="text-xs text-zinc-600">Activité</label>
                       <select
                         value={draft.subActivityId}
-                        onChange={(e) =>
-                          updateDraft(pointage, { subActivityId: e.target.value })
-                        }
+                        onChange={(e) => updateDraft(pointage, { subActivityId: e.target.value })}
                         className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
                       >
                         {activity && !activitiesMap.has(activity.id) && (
@@ -344,9 +361,7 @@ export default function MyPointages() {
                       </label>
                       <textarea
                         value={draft.resubmitReason}
-                        onChange={(e) =>
-                          updateDraft(pointage, { resubmitReason: e.target.value })
-                        }
+                        onChange={(e) => updateDraft(pointage, { resubmitReason: e.target.value })}
                         className="min-h-16 w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
                       />
                     </div>

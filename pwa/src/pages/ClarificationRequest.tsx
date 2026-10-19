@@ -7,6 +7,8 @@ import PhotoCapture from "../components/pointage/PhotoCapture";
 import ClarificationAnswerPhotoViewer from "../components/clarification/ClarificationAnswerPhotoViewer";
 import Button from "../components/ui/Button";
 import IconButton from "../components/ui/IconButton";
+import PageHeader from "../components/ui/PageHeader";
+import StickyAction from "../components/ui/StickyAction";
 import { LoadingScreen, EmptyHint } from "../components/ui/feedback";
 import { IconSync, IconSend, IconCheck } from "../components/icons";
 import { cn } from "../lib/cn";
@@ -88,6 +90,7 @@ export default function ClarificationRequest() {
   const [question, setQuestion] = useState("");
   const [requestedPhoto, setRequestedPhoto] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const [answerDrafts, setAnswerDrafts] = useState<
     Record<string, { text: string; previewUrl: string | null; blob: Blob | null }>
@@ -163,6 +166,7 @@ export default function ClarificationRequest() {
       setRequestedPhoto(false);
       setSelectedPointageId("");
       setMessage("Demande envoyée au chef d'équipe.");
+      setComposeOpen(false);
       await loadData();
     } catch (err) {
       setError(workflowErrorMessage(err, "Envoi de la demande échoué."));
@@ -189,10 +193,7 @@ export default function ClarificationRequest() {
           setError("Une photo est requise pour cette demande.");
           return;
         }
-        answerPhotoKey = await uploadWorkflowPhoto(
-          draft.blob,
-          "/clarification-requests/photo",
-        );
+        answerPhotoKey = await uploadWorkflowPhoto(draft.blob, "/clarification-requests/photo");
       }
 
       await api.patch(`/clarification-requests/${request.id}/answer`, {
@@ -250,17 +251,15 @@ export default function ClarificationRequest() {
 
   return (
     <div className="space-y-4 p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Précisions</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            {isCde
-              ? "Répondez aux questions du chef de service avant validation."
-              : "Demandez des précisions au chef d'équipe sur un pointage en attente."}
-          </p>
-        </div>
-        <IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />
-      </header>
+      <PageHeader
+        title="Messages"
+        subtitle={
+          isCde
+            ? "Questions du chef de service sur vos pointages."
+            : "Demandes de précisions envoyées aux chefs d'équipe."
+        }
+        action={<IconButton icon={IconSync} label="Actualiser" onClick={() => void loadData()} />}
+      />
 
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -273,9 +272,18 @@ export default function ClarificationRequest() {
         </p>
       )}
 
-      {isCds && (
-        <section className="rounded-md border border-zinc-200 bg-white p-4">
-          <h2 className="text-sm font-medium text-zinc-900">Nouvelle demande</h2>
+      {isCds && composeOpen && (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-zinc-900">Nouvelle demande</h2>
+            <button
+              type="button"
+              onClick={() => setComposeOpen(false)}
+              className="alterra-focus min-h-9 rounded-full px-3 text-sm font-medium text-zinc-600"
+            >
+              Annuler
+            </button>
+          </div>
           <div className="mt-3 space-y-3">
             <div>
               <label className="block text-xs font-medium text-zinc-600" htmlFor="clar-pointage">
@@ -338,7 +346,7 @@ export default function ClarificationRequest() {
           const draft = answerDrafts[request.id];
           const busy = busyId === request.id;
           return (
-            <article key={request.id} className="rounded-md border border-zinc-200 bg-white p-4">
+            <article key={request.id} className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-zinc-900">
@@ -435,6 +443,19 @@ export default function ClarificationRequest() {
           );
         })}
       </div>
+
+      {isCds && !composeOpen && (
+        <StickyAction>
+          <Button
+            size="lg"
+            className="w-full gap-2 rounded-2xl bg-[color:var(--color-earth)] shadow-lg hover:opacity-90"
+            onClick={() => setComposeOpen(true)}
+          >
+            <IconSend className="h-4 w-4 shrink-0" />
+            Demander une précision
+          </Button>
+        </StickyAction>
+      )}
     </div>
   );
 }

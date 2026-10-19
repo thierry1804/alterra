@@ -9,6 +9,7 @@ import IconButton from "../components/ui/IconButton";
 import { IconSync } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import PageHeader from "../components/ui/PageHeader";
+import { cn } from "../lib/cn";
 import { apiErrorMessage } from "../lib/errors";
 import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
 import { useAppSettings } from "../hooks/useAppSettings";
@@ -139,10 +140,16 @@ export default function Validation() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [loadData, rejectTarget]);
 
+  const [bioFilter, setBioFilter] = useState<"all" | "ok" | "review">("all");
+  const bioOkCount = pointages.filter((row) => row.bioCheck?.result === "OK").length;
+
   const groupedTeams = useMemo(() => {
     const groups = new Map<string, TeamGroupItem[]>();
 
     pointages.forEach((pointage) => {
+      const result = pointage.bioCheck?.result;
+      if (bioFilter === "ok" && result !== "OK") return;
+      if (bioFilter === "review" && result === "OK") return;
       const worker = workersMap.get(pointage.workerId);
       const activity = activitiesMap.get(pointage.subActivityId);
       if (!worker || !activity) return;
@@ -169,7 +176,7 @@ export default function Validation() {
         };
       })
       .sort((a, b) => a.teamLabel.localeCompare(b.teamLabel));
-  }, [pointages, workersMap, activitiesMap, teamsMap]);
+  }, [bioFilter, pointages, workersMap, activitiesMap, teamsMap]);
 
   async function handleValidate(pointageId: string) {
     setBusyId(pointageId);
@@ -281,6 +288,34 @@ export default function Validation() {
         }
       />
 
+      {bioValidationRequired && pointages.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Filtre contrôle bio">
+          {(
+            [
+              { value: "all", label: `À valider ${pointages.length}` },
+              { value: "ok", label: `Bio OK ${bioOkCount}` },
+              { value: "review", label: `À contrôler ${pointages.length - bioOkCount}` },
+            ] as const
+          ).map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              role="tab"
+              aria-selected={bioFilter === chip.value}
+              onClick={() => setBioFilter(chip.value)}
+              className={cn(
+                "alterra-focus min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium",
+                bioFilter === chip.value
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-zinc-200 bg-white text-zinc-700",
+              )}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -294,7 +329,14 @@ export default function Validation() {
 
       {groupedTeams.length === 0 && (
         <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <p>Aucun pointage en attente de validation.</p>
+          <p className="font-medium text-zinc-900">
+            {pointages.length > 0 ? "Aucun pointage pour ce filtre." : "Tout est validé."}
+          </p>
+          <p className="mt-1 text-zinc-600">
+            {pointages.length > 0
+              ? "Choisissez « À valider » pour tout voir."
+              : "Les nouveaux pointages des chefs d'équipe apparaîtront ici."}
+          </p>
           <Button
             type="button"
             variant="outline"

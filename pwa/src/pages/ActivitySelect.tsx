@@ -6,6 +6,9 @@ import { LoadingScreen } from "../components/ui/feedback";
 import { IconChevronRight } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import PageHeader from "../components/ui/PageHeader";
+import Stepper from "../components/ui/Stepper";
+import StickyAction from "../components/ui/StickyAction";
+import Button from "../components/ui/Button";
 import { db } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, saveDaySession, todayIsoDate } from "../lib/day-session";
@@ -17,15 +20,25 @@ export default function ActivitySelect() {
   const navigate = useNavigate();
   const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
   const [search, setSearch] = useState("");
+  const [lastUsedId, setLastUsedId] = useState("");
   const filteredActivities = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return activities;
     return activities.filter((a) => a.label.toLowerCase().includes(query));
   }, [activities, search]);
+  // Dernière activité utilisée en tête de liste quand on ne cherche rien.
+  const orderedActivities = useMemo(() => {
+    if (search.trim() || !lastUsedId) return filteredActivities;
+    const last = filteredActivities.find((a) => a.id === lastUsedId);
+    return last
+      ? [last, ...filteredActivities.filter((a) => a.id !== lastUsedId)]
+      : filteredActivities;
+  }, [filteredActivities, lastUsedId, search]);
 
   // Toujours la date du jour — pas de saisie rétroactive depuis cet écran.
   const date = todayIsoDate();
   const [subActivityId, setSubActivityId] = useState("");
+  const selectedActivity = activities.find((a) => a.id === subActivityId);
   const [defaultQuantity, setDefaultQuantity] = useState("1");
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -43,6 +56,7 @@ export default function ActivitySelect() {
       const existing = await getDaySession();
       if (existing) {
         setSubActivityId(existing.subActivityId);
+        setLastUsedId(existing.subActivityId);
         setDefaultQuantity(String(existing.defaultQuantity));
       }
       setLoading(false);
@@ -109,7 +123,7 @@ export default function ActivitySelect() {
 
   return (
     <div className="space-y-4 p-4">
-      <p className="alterra-eyebrow">Étape 1 sur 2 · Préparation</p>
+      <Stepper steps={["Activité", "Quantités"]} current={0} />
       <PageHeader
         title="Activité du jour"
         subtitle="Choisissez l'activité, puis saisissez les quantités."
@@ -132,36 +146,37 @@ export default function ActivitySelect() {
         </p>
       )}
 
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-zinc-700">Date</p>
-        <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-          {new Date(`${date}T00:00:00.000Z`).toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            timeZone: "UTC",
-          })}{" "}
-          — aujourd&apos;hui
-        </p>
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="default-quantity" className="text-sm font-medium text-zinc-700">
-          Quantité par défaut
-        </label>
-        <input
-          id="default-quantity"
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={defaultQuantity}
-          onChange={(event) => setDefaultQuantity(event.target.value)}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-        />
+      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-zinc-600">Date</p>
+          <p className="flex min-h-11 items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-medium capitalize text-zinc-800">
+            {new Date(`${date}T00:00:00.000Z`).toLocaleDateString("fr-FR", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              timeZone: "UTC",
+            })}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="default-quantity" className="text-xs font-semibold text-zinc-600">
+            Qté par défaut
+          </label>
+          <input
+            id="default-quantity"
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            step="0.01"
+            value={defaultQuantity}
+            onChange={(event) => setDefaultQuantity(event.target.value)}
+            className="alterra-num min-h-11 w-full rounded-xl border border-zinc-300 px-3 text-base font-semibold"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium text-zinc-700">Activité</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Activité</p>
         {activities.length === 0 && (
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
             <p>Aucune activité en cache. Connectez-vous pour synchroniser le référentiel.</p>
@@ -178,7 +193,7 @@ export default function ActivitySelect() {
               placeholder="Chercher une activité…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-md border border-zinc-300 py-2 pl-9 pr-3 text-sm"
+              className="min-h-11 w-full rounded-xl border border-zinc-300 py-2 pl-9 pr-3"
             />
           </div>
         )}
@@ -188,22 +203,18 @@ export default function ActivitySelect() {
           </p>
         )}
         <div className="space-y-2">
-          {filteredActivities.map((activity) => {
+          {orderedActivities.map((activity) => {
             const isSelected = subActivityId === activity.id;
             return (
               <button
                 key={activity.id}
                 type="button"
                 onClick={() => {
-                  if (isSelected) {
-                    void handleContinue();
-                  } else {
-                    setError(null);
-                    setSubActivityId(activity.id);
-                  }
+                  setError(null);
+                  setSubActivityId(activity.id);
                 }}
                 aria-pressed={isSelected}
-                className={`flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors ${
+                className={`flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                   isSelected
                     ? "border-brand bg-brand-tint ring-1 ring-brand"
                     : "border-zinc-200 bg-white hover:bg-zinc-50"
@@ -224,10 +235,9 @@ export default function ActivitySelect() {
                     Ar / {activity.unit}
                   </span>
                 </span>
-                {isSelected && (
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand">
-                    Continuer
-                    <IconChevronRight className="h-4 w-4 shrink-0" />
+                {!isSelected && activity.id === lastUsedId && (
+                  <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[0.6875rem] font-semibold text-zinc-600">
+                    Dernière
                   </span>
                 )}
               </button>
@@ -241,6 +251,23 @@ export default function ActivitySelect() {
           {error}
         </p>
       )}
+
+      <StickyAction>
+        <Button
+          size="lg"
+          className="w-full justify-between rounded-2xl shadow-lg"
+          disabled={!selectedActivity}
+          onClick={() => void handleContinue()}
+        >
+          <span className="flex w-full min-w-0 items-center justify-between gap-3">
+            <span>Continuer</span>
+            <span className="flex min-w-0 items-center gap-1 text-sm font-medium">
+              <span className="truncate">{selectedActivity?.label ?? "Choisir une activité"}</span>
+              <IconChevronRight className="h-4 w-4 shrink-0" />
+            </span>
+          </span>
+        </Button>
+      </StickyAction>
     </div>
   );
 }

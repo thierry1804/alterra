@@ -7,6 +7,7 @@ import { parseDecimal } from "../lib/number";
 import Button, { ButtonLink } from "../components/ui/Button";
 import { LoadingScreen, EmptyHint, Spinner } from "../components/ui/feedback";
 import { IconCheck } from "../components/icons";
+import Stepper from "../components/ui/Stepper";
 import { db, type ActivityRecord, type PointagePending, type WorkerRecord } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
 import { getDaySession, type DaySession } from "../lib/day-session";
@@ -192,58 +193,73 @@ export default function BatchEntry() {
     <div className="flex min-h-full flex-col">
       <div className="space-y-4 p-4 pb-32">
         <header className="space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="alterra-eyebrow">Étape 2 sur 2 · Saisie</p>
-              <h1 className="mt-1 text-lg font-semibold text-zinc-900">Saisie lot</h1>
-              <p className="text-sm text-zinc-600">
-                {activity?.label ?? "Activité"} ·{" "}
-                <span className="alterra-num">{session.date}</span>
+          <Stepper steps={["Activité", "Quantités"]} current={1} />
+
+          <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-zinc-900">
+                {activity?.label ?? "Activité"}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {activity && (
+                  <>
+                    <span className="alterra-num">{activity.unitRate.toLocaleString("fr-MG")}</span>{" "}
+                    Ar / {activity.unit} ·{" "}
+                  </>
+                )}
+                {new Date(`${session.date}T00:00:00.000Z`).toLocaleDateString("fr-FR", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  timeZone: "UTC",
+                })}
               </p>
             </div>
-            <ButtonLink to="/" variant="ghost" size="sm">
+            <ButtonLink to="/" variant="outline" size="sm">
               Changer
             </ButtonLink>
           </div>
 
           {workers.length > 0 && (
-            <div className="space-y-1">
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-zinc-600">
+                <span>
+                  <span className="alterra-num font-semibold text-zinc-900">{stats.count}</span> sur{" "}
+                  <span className="alterra-num">{workers.length}</span> saisis
+                </span>
+                <button
+                  type="button"
+                  onClick={applyDefaultToAll}
+                  className="alterra-focus inline-flex min-h-8 items-center gap-1.5 rounded-full px-2 font-semibold text-brand"
+                >
+                  <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  Mettre {session.defaultQuantity} à tous
+                </button>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
                 <div
                   className="h-full rounded-full bg-brand transition-all"
                   style={{ width: `${Math.round((stats.count / workers.length) * 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-zinc-500">
-                <span className="alterra-num font-medium text-zinc-700">{stats.count}</span> sur{" "}
-                <span className="alterra-num">{workers.length}</span> travailleurs saisis
-              </p>
             </div>
           )}
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            onClick={applyDefaultToAll}
-          >
-            <Copy className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Mettre {session.defaultQuantity} à tout le monde
-          </Button>
-
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Chercher un travailleur…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-md border border-zinc-300 py-2 pl-9 pr-3 text-sm"
-            />
-          </div>
+          {workers.length > 6 && (
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Chercher un travailleur…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="min-h-11 w-full rounded-xl border border-zinc-300 py-2 pl-9 pr-3"
+              />
+            </div>
+          )}
         </header>
 
         {error && (
@@ -257,7 +273,7 @@ export default function BatchEntry() {
           </p>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filteredWorkers.map((worker: WorkerRecord) => (
             <WorkerRow
               key={worker.id}

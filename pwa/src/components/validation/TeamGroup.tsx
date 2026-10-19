@@ -54,7 +54,7 @@ export default function TeamGroup({
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-900">{teamLabel}</h2>
+          <h2 className="alterra-display text-lg font-bold text-zinc-900">{teamLabel}</h2>
           <span className="text-xs text-zinc-600">{items.length} travailleur(s)</span>
         </div>
         {onValidateTeam && eligibleCount > 0 && (
@@ -78,7 +78,7 @@ export default function TeamGroup({
         {items.map(({ pointage, worker, activity }) => {
           const busy = busyId === pointage.id || bulkBusy;
           return (
-            <article key={pointage.id} className="rounded-md border border-zinc-200 bg-white p-3">
+            <article key={pointage.id} className="rounded-2xl border border-zinc-200 bg-white p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                   {pointage.photoKey && <PointagePhotoViewer pointageId={pointage.id} />}
@@ -127,48 +127,44 @@ export default function TeamGroup({
                 </div>
               </div>
 
-              <div className="mt-3 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    to={`/validation/bio/${worker.id}?pointageId=${pointage.id}&date=${pointage.date}`}
-                    className={cn(
-                      "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700",
-                      "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
-                    )}
-                  >
-                    <IconBio className="h-4 w-4 shrink-0" />
-                    Contrôle bio
-                  </Link>
-                  <Link
-                    to={`/clarifications?pointageId=${pointage.id}`}
-                    className={cn(
-                      "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700",
-                      "hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
-                    )}
-                  >
-                    <IconPrecisions className="h-4 w-4 shrink-0" />
-                    Précisions
-                  </Link>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    className="gap-1.5"
-                    disabled={busy}
-                    onClick={() => onValidate(pointage.id)}
-                  >
-                    <IconCheck className="h-4 w-4 shrink-0" />
-                    Valider
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="gap-1.5 text-red-700 hover:bg-red-50"
-                    disabled={busy}
-                    onClick={() => onReject(pointage.id)}
-                  >
-                    <IconClose className="h-4 w-4 shrink-0" />
-                    Rejeter
-                  </Button>
-                </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  className="min-w-0 flex-1 gap-1.5 rounded-xl"
+                  disabled={busy}
+                  onClick={() => onValidate(pointage.id)}
+                >
+                  <IconCheck className="h-4 w-4 shrink-0" />
+                  Valider
+                </Button>
+                <Link
+                  to={`/validation/bio/${worker.id}?pointageId=${pointage.id}&date=${pointage.date}`}
+                  aria-label={`Contrôle biométrique — ${worker.firstName} ${worker.lastName}`}
+                  className={cn(
+                    "alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-zinc-300 text-zinc-700",
+                    "hover:bg-zinc-50 active:bg-zinc-100",
+                  )}
+                >
+                  <IconBio className="h-5 w-5" />
+                </Link>
+                <Link
+                  to={`/clarifications?pointageId=${pointage.id}`}
+                  aria-label={`Demander une précision — ${worker.firstName} ${worker.lastName}`}
+                  className={cn(
+                    "alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-zinc-300 text-zinc-700",
+                    "hover:bg-zinc-50 active:bg-zinc-100",
+                  )}
+                >
+                  <IconPrecisions className="h-5 w-5" />
+                </Link>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onReject(pointage.id)}
+                  aria-label={`Rejeter — ${worker.firstName} ${worker.lastName}`}
+                  className="alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-red-200 text-red-700 hover:bg-red-50 active:bg-red-100 disabled:opacity-40"
+                >
+                  <IconClose className="h-5 w-5" />
+                </button>
               </div>
             </article>
           );

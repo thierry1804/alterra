@@ -1,6 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Button from "../components/ui/Button";
+import PageHeader from "../components/ui/PageHeader";
+import { cn } from "../lib/cn";
+import { IconCheck, IconPresence } from "../components/icons";
 import { useAuth } from "../hooks/useAuth";
 import { db, type WorkerRecord } from "../db/db";
 import {
@@ -48,7 +50,6 @@ export default function NfcScan() {
   const [lastScanLabel, setLastScanLabel] = useState<string | null>(null);
   const [lastScanTime, setLastScanTime] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(!nfcAvailable);
-  const [manualWorkerId, setManualWorkerId] = useState("");
   const [busy, setBusy] = useState(false);
 
   const teamWorkers: WorkerRecord[] =
@@ -166,11 +167,8 @@ export default function NfcScan() {
     };
   }, [nfcAvailable, handleTagRead]);
 
-  async function handleManualSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!manualWorkerId) return;
-
-    const worker = teamWorkers.find((row) => row.id === manualWorkerId);
+  async function registerManual(workerId: string) {
+    const worker = teamWorkers.find((row) => row.id === workerId);
     if (!worker) return;
 
     setBusy(true);
@@ -196,7 +194,6 @@ export default function NfcScan() {
       setStatusMessage(`${workerLabel(worker)} enregistré(e) (mode manuel).`);
       setLastScanLabel(workerLabel(worker));
       setLastScanTime(formatTime(entry.arrivalTime));
-      setManualWorkerId("");
       playPresenceFeedback("success");
       resetScanVisual();
     } catch {
@@ -208,109 +205,182 @@ export default function NfcScan() {
     }
   }
 
+  const presentIds = new Set(
+    sortedLogs.filter((log) => log.status !== "unknown" && log.workerId).map((log) => log.workerId),
+  );
+  const presentCount = teamWorkers.filter((worker) => presentIds.has(worker.id)).length;
+  const timeByWorker = new Map<string, string>();
+  sortedLogs.forEach((log) => {
+    if (log.workerId && !timeByWorker.has(log.workerId)) {
+      timeByWorker.set(log.workerId, formatTime(log.arrivalTime));
+    }
+  });
+
   return (
     <div className="space-y-4 p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Présence · Matin</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Scannez les badges NFC de votre équipe à l'arrivée sur site.
-          </p>
-        </div>
-        <p className="text-xs text-zinc-500">Sync {pendingSyncCount}</p>
-      </header>
+      <PageHeader
+        title="Présence"
+        subtitle={
+          <>
+            <span className="alterra-num font-semibold text-zinc-900">{presentCount}</span> sur{" "}
+            <span className="alterra-num">{teamWorkers.length}</span> présents ce matin
+            {pendingSyncCount > 0 && (
+              <>
+                {" · "}
+                <span className="alterra-num">{pendingSyncCount}</span> à envoyer
+              </>
+            )}
+          </>
+        }
+      />
 
-      <div
-        className={`rounded-md border-2 p-6 text-center transition-colors ${scanStateClass(scanState)} ${
-          scanState === "scanning" ? "animate-pulse" : ""
-        }`}
-      >
-        <p className="text-sm font-medium text-zinc-900">
-          {scanState === "scanning"
-            ? "Approchez le badge NFC"
-            : scanState === "success"
-              ? "Présence enregistrée"
-              : scanState === "unknown"
-                ? "Badge inconnu"
-                : scanState === "duplicate"
-                  ? "Déjà scanné"
-                  : "Lecteur NFC"}
-        </p>
-        <p className="mt-2 text-xs text-zinc-600">
-          {busy
-            ? "Traitement…"
-            : (statusMessage ??
-              (nfcAvailable
-                ? "Le scan reprend automatiquement après chaque badge."
-                : "Utilisez le mode manuel ci-dessous."))}
-        </p>
+      <div className="flex rounded-xl bg-zinc-100 p-1" role="tablist" aria-label="Mode de pointage">
+        {[
+          { open: false, label: "Badge NFC" },
+          { open: true, label: "Manuel" },
+        ].map((tab) => (
+          <button
+            key={tab.label}
+            type="button"
+            role="tab"
+            aria-selected={manualOpen === tab.open}
+            onClick={() => setManualOpen(tab.open)}
+            className={cn(
+              "alterra-focus min-h-10 flex-1 rounded-lg text-sm font-semibold transition-colors",
+              manualOpen === tab.open ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {(lastScanLabel || lastScanTime) && (
-        <p className="text-sm text-zinc-700">
-          Dernier scan : {lastScanLabel ?? "—"}
-          {lastScanTime ? ` · ${lastScanTime}` : ""}
+      {!manualOpen && (
+        <div
+          className={`rounded-2xl border-2 p-6 text-center transition-colors ${scanStateClass(scanState)}`}
+        >
+          <div
+            className={cn(
+              "mx-auto grid h-28 w-28 place-items-center rounded-full border-2 border-brand/30 bg-brand-tint text-brand",
+              scanState === "scanning" && "animate-pulse",
+            )}
+          >
+            <IconPresence className="h-12 w-12" />
+          </div>
+          <p className="mt-3 text-base font-semibold text-zinc-900">
+            {scanState === "scanning"
+              ? "Approchez le badge du téléphone"
+              : scanState === "success"
+                ? "Présence enregistrée"
+                : scanState === "unknown"
+                  ? "Badge inconnu"
+                  : scanState === "duplicate"
+                    ? "Déjà scanné"
+                    : "Lecteur NFC"}
+          </p>
+          <p className="mt-1 text-xs text-zinc-600">
+            {busy
+              ? "Traitement…"
+              : (statusMessage ??
+                (nfcAvailable
+                  ? "Le scan reprend automatiquement après chaque badge."
+                  : "NFC indisponible sur cet appareil : passez en mode Manuel."))}
+          </p>
+          {(lastScanLabel || lastScanTime) && (
+            <p className="mt-2 text-xs text-zinc-600">
+              Dernier scan : {lastScanLabel ?? "—"}
+              {lastScanTime ? ` · ${lastScanTime}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+
+      {manualOpen && statusMessage && (
+        <p
+          className={cn(
+            "rounded-xl px-3 py-2 text-sm",
+            scanState === "success"
+              ? "bg-emerald-50 text-emerald-800"
+              : "bg-amber-50 text-amber-900",
+          )}
+        >
+          {statusMessage}
         </p>
       )}
 
-      <section className="rounded-md border border-zinc-200 bg-white p-4">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setManualOpen((open) => !open)}
-        >
-          {manualOpen ? "Masquer le mode manuel" : "Mode manuel — dégradé"}
-        </Button>
-
-        {manualOpen && (
-          <form onSubmit={(event) => void handleManualSubmit(event)} className="mt-3 space-y-3">
-            <p className="text-xs text-zinc-600">
-              Si le NFC est indisponible ou le badge non programmé, enregistrez la présence
-              manuellement.
-            </p>
-            <select
-              value={manualWorkerId}
-              onChange={(event) => setManualWorkerId(event.target.value)}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              required
-            >
-              <option value="">Sélectionner un travailleur</option>
-              {teamWorkers.map((worker) => (
-                <option key={worker.id} value={worker.id}>
-                  {workerLabel(worker)} ({worker.matricule})
-                </option>
-              ))}
-            </select>
-            <Button type="submit" className="w-full" disabled={busy || !manualWorkerId}>
-              Enregistrer présence manuelle
-            </Button>
-          </form>
-        )}
-      </section>
-
       <section>
-        <h2 className="text-sm font-medium text-zinc-900">Journal du jour</h2>
-        {sortedLogs.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-500">Aucune présence enregistrée aujourd'hui.</p>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          Équipe{manualOpen ? " · touchez pour marquer présent" : ""}
+        </h2>
+        {teamWorkers.length === 0 ? (
+          <p className="text-sm text-zinc-500">Aucun travailleur dans cette équipe.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
-            {sortedLogs.slice(0, 20).map((log) => (
-              <li
-                key={log.clientUuid}
-                className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-              >
-                <span className={log.status === "unknown" ? "text-red-700" : "text-zinc-800"}>
-                  {log.workerLabel}
-                  {log.status === "unknown" ? " · badge inconnu" : ""}
-                  {log.source === "MANUAL" ? " · manuel" : ""}
-                </span>
-                <span className="text-xs text-zinc-500">{formatTime(log.arrivalTime)}</span>
-              </li>
-            ))}
+          <ul className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            {teamWorkers.map((worker) => {
+              const present = presentIds.has(worker.id);
+              return (
+                <li key={worker.id}>
+                  <button
+                    type="button"
+                    disabled={!manualOpen || present || busy}
+                    onClick={() => void registerManual(worker.id)}
+                    className="alterra-focus flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left disabled:cursor-default"
+                  >
+                    <span
+                      className={cn(
+                        "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2",
+                        present ? "border-brand bg-brand text-white" : "border-zinc-300",
+                      )}
+                      aria-hidden="true"
+                    >
+                      {present && <IconCheck className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-zinc-900">
+                        {workerLabel(worker)}
+                      </span>
+                      <span className="alterra-num block text-xs text-zinc-500">
+                        {worker.matricule}
+                      </span>
+                    </span>
+                    {present ? (
+                      <span className="alterra-num text-xs font-semibold text-brand">
+                        {timeByWorker.get(worker.id)}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[0.6875rem] font-bold text-amber-900">
+                        ATTENDU
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {sortedLogs.some((log) => log.status === "unknown") && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Badges inconnus
+          </h2>
+          <ul className="divide-y divide-zinc-100 rounded-2xl border border-red-200 bg-red-50/50">
+            {sortedLogs
+              .filter((log) => log.status === "unknown")
+              .slice(0, 10)
+              .map((log) => (
+                <li
+                  key={log.clientUuid}
+                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-red-800"
+                >
+                  <span>{log.workerLabel}</span>
+                  <span className="alterra-num text-xs">{formatTime(log.arrivalTime)}</span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

@@ -167,25 +167,33 @@ export default function BiometricCapture() {
         </ButtonLink>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
-        <div className="w-full max-w-md rounded-md border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-300">
-          <p className="font-medium text-zinc-100">Conseils de capture</p>
-          <ul className="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed">
-            <li>Visage centré, éclairage naturel de face</li>
-            <li>Retirez casquette ou masque si possible</li>
-            <li>En cas de doute, demandez une précision avant validation</li>
-          </ul>
-        </div>
-
-        <div className="flex h-72 w-full max-w-md items-center justify-center overflow-hidden rounded-md border border-zinc-700 bg-zinc-900">
-          {previewUrl ? (
-            <img src={previewUrl} alt={previewAlt} className="h-full w-full object-cover" />
-          ) : (
-            <p className="px-4 text-center text-sm text-zinc-400">
-              Cadrez le visage du travailleur puis capturez la photo.
-            </p>
+      <div className="flex flex-1 flex-col items-center gap-4 p-4">
+        <div className="relative flex h-80 w-full max-w-md items-center justify-center overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-900">
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt={previewAlt}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           )}
+          <div
+            className={`relative h-56 w-44 rounded-[50%] border-[3px] ${
+              result?.result === "OK"
+                ? "border-emerald-400"
+                : result
+                  ? "border-red-400"
+                  : "border-dashed border-white/70"
+            }`}
+            aria-hidden="true"
+          />
+          <p className="absolute inset-x-0 bottom-3 px-4 text-center text-sm font-medium text-white/90">
+            {previewUrl ? "Photo prise" : "Placez le visage dans l'ovale"}
+          </p>
         </div>
+        <p className="max-w-md text-center text-xs leading-relaxed text-zinc-400">
+          Visage centré, lumière de face, sans casquette ni masque. En cas de doute, demandez une
+          précision avant de valider.
+        </p>
 
         {result && (
           <div
@@ -217,18 +225,20 @@ export default function BiometricCapture() {
 
         <Button
           type="button"
-          className="w-full max-w-md bg-zinc-100 text-zinc-900 hover:bg-white"
+          size="lg"
+          className="mt-auto w-full max-w-md rounded-2xl bg-white text-zinc-900 hover:bg-zinc-100"
           disabled={loading}
           onClick={() => inputRef.current?.click()}
         >
-          {loading ? "Analyse en cours…" : "Capturer et analyser"}
+          {loading ? "Analyse en cours…" : result ? "Reprendre la photo" : "Capturer et analyser"}
         </Button>
 
         {result && (
           <Button
             type="button"
             variant="outline"
-            className="border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
+            size="lg"
+            className="w-full max-w-md rounded-2xl border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
             onClick={() => navigate("/validation")}
           >
             Retour à la validation

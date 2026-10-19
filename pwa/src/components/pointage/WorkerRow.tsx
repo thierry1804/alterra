@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Check, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import PhotoCapture from "./PhotoCapture";
 import { parseDecimal } from "../../lib/number";
 
@@ -112,92 +112,83 @@ export default function WorkerRow({
     onChange({ ...value, photoBlob: null, photoPreview: null });
   }
 
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
   return (
     <div
-      className={`rounded-lg border-2 p-3 transition-colors ${
-        hasQuantity ? "border-brand bg-brand-tint/30" : "border-zinc-200 bg-white"
+      className={`flex items-center gap-2 rounded-2xl border p-2.5 transition-colors ${
+        hasQuantity ? "border-brand/60 bg-brand-tint/40" : "border-zinc-200 bg-white"
       }`}
     >
-      <div className="flex items-center gap-3">
-        <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-people-bg text-sm font-bold text-people-fg"
-          aria-hidden="true"
-        >
-          {`${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-zinc-900">
-            {firstName} {lastName}
-          </p>
-          <p className="text-xs text-zinc-500">
-            <span className="alterra-num">{matricule}</span>
-          </p>
-        </div>
-        {hasQuantity && (
-          <span
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand text-white"
-            aria-hidden="true"
-          >
-            <Check className="h-4 w-4" />
-          </span>
-        )}
-      </div>
-
-      <div className="mt-3 flex items-center justify-center gap-4">
-        <button
-          type="button"
-          disabled={disabled || quantityNumber <= 0}
-          onPointerDown={() => startHold(-1)}
-          onPointerUp={endHold}
-          onPointerLeave={endHold}
-          onPointerCancel={endHold}
-          onClick={() => handleStepClick(-1)}
-          aria-label="Diminuer la quantité (appui long pour répéter)"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-300 text-zinc-700 active:bg-zinc-100 disabled:opacity-30"
-        >
-          <Minus className="h-6 w-6" />
-        </button>
-
-        <input
-          type="text"
-          inputMode="decimal"
-          disabled={disabled}
-          value={value.quantity}
-          onChange={(event) => updateQuantity(event.target.value)}
-          className="w-20 rounded-md border-0 bg-transparent text-center text-3xl font-bold tabular-nums text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-ring"
-        />
-
-        <button
-          type="button"
-          disabled={disabled}
-          onPointerDown={() => startHold(1)}
-          onPointerUp={endHold}
-          onPointerLeave={endHold}
-          onPointerCancel={endHold}
-          onClick={() => handleStepClick(1)}
-          aria-label="Augmenter la quantité (appui long pour répéter)"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-brand bg-brand text-white active:bg-brand-hover disabled:opacity-30"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      </div>
-      <p className="mt-1 text-center text-xs text-zinc-500">{unit}</p>
-
-      {hasQuantity && (
-        <p className="mt-1 text-center text-base font-semibold text-brand">
-          {lineAmount.toLocaleString("fr-MG")} Ar
+      <span
+        className="hidden h-10 w-10 shrink-0 place-items-center rounded-full bg-people-bg text-xs font-bold text-people-fg min-[420px]:grid"
+        aria-hidden="true"
+      >
+        {initials}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-zinc-900">
+          {firstName} {lastName}
         </p>
-      )}
-
-      <div className="mt-3">
-        <PhotoCapture
-          previewUrl={value.photoPreview}
-          disabled={disabled}
-          workerName={`${firstName} ${lastName}`}
-          onCapture={handleCapture}
-          onClear={handleClearPhoto}
-        />
+        <p className="truncate text-xs text-zinc-500">
+          <span className="alterra-num">{matricule}</span>
+          {hasQuantity && (
+            <>
+              {" · "}
+              <span className="alterra-num font-semibold text-brand">
+                {lineAmount.toLocaleString("fr-MG")} Ar
+              </span>
+            </>
+          )}
+        </p>
       </div>
+
+      <button
+        type="button"
+        disabled={disabled || quantityNumber <= 0}
+        onPointerDown={() => startHold(-1)}
+        onPointerUp={endHold}
+        onPointerLeave={endHold}
+        onPointerCancel={endHold}
+        onClick={() => handleStepClick(-1)}
+        aria-label={`Diminuer la quantité (${unit}), appui long pour répéter`}
+        className="alterra-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 active:bg-zinc-100 disabled:opacity-30"
+      >
+        <Minus className="h-5 w-5" />
+      </button>
+
+      <input
+        type="text"
+        inputMode="decimal"
+        disabled={disabled}
+        value={value.quantity}
+        onChange={(event) => updateQuantity(event.target.value)}
+        aria-label={`Quantité (${unit})`}
+        className="alterra-num w-12 rounded-md border-0 bg-transparent text-center text-xl font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-ring"
+      />
+
+      <button
+        type="button"
+        disabled={disabled}
+        onPointerDown={() => startHold(1)}
+        onPointerUp={endHold}
+        onPointerLeave={endHold}
+        onPointerCancel={endHold}
+        onClick={() => handleStepClick(1)}
+        aria-label={`Augmenter la quantité (${unit}), appui long pour répéter`}
+        className="alterra-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white active:bg-brand-hover disabled:opacity-30"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
+
+      <PhotoCapture
+        compact
+        previewUrl={value.photoPreview}
+        disabled={disabled}
+        workerName={`${firstName} ${lastName}`}
+        onCapture={handleCapture}
+        onClear={handleClearPhoto}
+      />
     </div>
   );
 }

@@ -62,13 +62,15 @@ export default function Login() {
       <div className="hidden lg:block lg:w-1/2" />
 
       <div className="relative flex w-full flex-col justify-center bg-white/85 px-6 py-10 backdrop-blur-sm sm:px-10 lg:w-1/2 lg:px-14">
-        <div className="mx-auto w-full max-w-sm space-y-8">
+        <div className="mx-auto w-full max-w-sm space-y-6">
           <div className="space-y-2">
             <img src={iconUrl} alt="ALTERRA" className="h-20 w-auto" />
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{appName}</h1>
+              <h1 className="alterra-display text-3xl font-extrabold tracking-tight text-zinc-900">
+                Bonjour
+              </h1>
               <p className="mt-1 text-sm text-zinc-600">
-                Connexion chef d&apos;équipe / chef de service
+                {appName} · chef d&apos;équipe ou chef de service, une seule connexion.
               </p>
             </div>
           </div>
@@ -81,7 +83,7 @@ export default function Login() {
             )}
 
             <div className="space-y-1">
-              <label htmlFor="email" className="text-sm font-medium text-zinc-700">
+              <label htmlFor="email" className="text-xs font-semibold text-zinc-600">
                 Email
               </label>
               <input
@@ -91,12 +93,12 @@ export default function Login() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                className="min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3"
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+              <label htmlFor="password" className="text-xs font-semibold text-zinc-600">
                 Mot de passe
               </label>
               <div className="relative">
@@ -107,11 +109,11 @@ export default function Login() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 pr-9 text-sm"
+                  className="min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 pr-12"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                  className="alterra-focus absolute inset-y-0 right-0 flex w-12 items-center justify-center text-zinc-500 hover:text-zinc-700"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                 >
@@ -124,7 +126,7 @@ export default function Login() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" size="lg" className="w-full rounded-xl" disabled={loading}>
               {loading ? "Connexion…" : "Se connecter"}
             </Button>
 

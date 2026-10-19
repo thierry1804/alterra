@@ -8,6 +8,8 @@ interface PhotoCaptureProps {
   disabled?: boolean;
   previewUrl?: string | null;
   workerName?: string;
+  /** Version réduite : une icône (ou la miniature) de 44 px, utilisée dans les lignes de saisie. */
+  compact?: boolean;
   onCapture: (blob: Blob) => void;
   onClear?: () => void;
 }
@@ -17,6 +19,7 @@ export default function PhotoCapture({
   disabled,
   previewUrl,
   workerName,
+  compact,
   onCapture,
   onClear,
 }: PhotoCaptureProps) {
@@ -47,6 +50,51 @@ export default function PhotoCapture({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (compact) {
+    return (
+      <div className="relative shrink-0">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          disabled={disabled || loading}
+          onChange={(event) => void handleFileChange(event)}
+        />
+        <button
+          type="button"
+          disabled={disabled || loading}
+          onClick={() => inputRef.current?.click()}
+          aria-label={
+            previewUrl
+              ? `Remplacer la photo — ${workerName ?? ""}`
+              : `Ajouter une photo — ${workerName ?? ""}`
+          }
+          className="alterra-focus grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-dashed border-zinc-300 text-zinc-500 active:bg-zinc-100 disabled:opacity-40"
+        >
+          {previewUrl ? (
+            <img src={previewUrl} alt={altText} className="h-full w-full object-cover" />
+          ) : (
+            <Camera className="h-5 w-5" aria-hidden="true" />
+          )}
+        </button>
+        {previewUrl && onClear && (
+          <button
+            type="button"
+            disabled={disabled || loading}
+            onClick={onClear}
+            aria-label="Retirer la photo"
+            className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-zinc-800 text-[0.625rem] font-bold text-white"
+          >
+            ×
+          </button>
+        )}
+        {error && <span className="sr-only">{error}</span>}
+      </div>
+    );
   }
 
   return (

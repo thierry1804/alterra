@@ -3,6 +3,8 @@ import { useState } from "react";
 import Button from "../components/ui/Button";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import PageHeader from "../components/ui/PageHeader";
+import StickyAction from "../components/ui/StickyAction";
+import { cn } from "../lib/cn";
 import { db } from "../db/db";
 import { discardRejectedPointage } from "../sync/ConflictResolver";
 import { forceSync } from "../sync/SyncManager";
@@ -27,6 +29,8 @@ export default function Sync() {
     useLiveQuery(() => db.pointages.where("status").equals("rejected").toArray(), []) ?? [];
   const [busy, setBusy] = useState(false);
 
+  const pendingTotal = state.pendingCount + state.syncingCount;
+
   async function handleForceSync() {
     setBusy(true);
     await forceSync();
@@ -50,46 +54,55 @@ export default function Sync() {
         }
       />
 
-      <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-4 sm:grid-cols-2">
-        <div>
-          <p className="text-xs text-zinc-500">Connexion</p>
-          <p
-            className={`text-sm font-medium ${state.online ? "text-emerald-800" : "text-red-700"}`}
+      <section
+        className={cn(
+          "rounded-2xl p-5 text-center",
+          pendingTotal === 0 && state.online ? "bg-brand-tint" : "bg-amber-50",
+        )}
+      >
+        <p
+          className={cn(
+            "alterra-display alterra-num text-5xl font-extrabold",
+            pendingTotal === 0 && state.online ? "text-brand" : "text-amber-900",
+          )}
+        >
+          {pendingTotal === 0 ? "✓" : pendingTotal}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-zinc-900">
+          {pendingTotal === 0 ? "Tout est envoyé au serveur" : "à envoyer"}
+        </p>
+        <p className="text-xs text-zinc-600">
+          {pendingTotal === 0
+            ? "Rien n'est en attente sur ce téléphone."
+            : "Enregistrés sur ce téléphone, envoyés dès que le réseau le permet."}
+          {state.mediaPendingCount > 0 ? ` · ${state.mediaPendingCount} photo(s)` : ""}
+        </p>
+      </section>
+
+      <dl className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white px-4 text-sm">
+        <div className="flex items-center justify-between py-3">
+          <dt className="text-zinc-500">Connexion</dt>
+          <dd
+            className={
+              state.online ? "font-semibold text-emerald-800" : "font-semibold text-red-700"
+            }
           >
             {state.online ? "En ligne" : "Hors ligne"}
-          </p>
+          </dd>
         </div>
-        <div>
-          <p className="text-xs text-zinc-500">En attente</p>
-          <p className="text-sm font-medium text-zinc-900">
-            {state.pendingCount + state.syncingCount} pointage(s)
-            {state.mediaPendingCount > 0 ? ` · ${state.mediaPendingCount} photo(s)` : ""}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">Dernière sync</p>
-          <p className="text-sm font-medium text-zinc-900">
+        <div className="flex items-center justify-between py-3">
+          <dt className="text-zinc-500">Dernière synchro</dt>
+          <dd className="font-semibold text-zinc-900">
             {state.lastSyncAt ? new Date(state.lastSyncAt).toLocaleString("fr-FR") : "Jamais"}
-          </p>
+          </dd>
         </div>
-        <div>
-          <p className="text-xs text-zinc-500">Sync auto</p>
-          <p className="text-sm font-medium text-zinc-900">
-            {state.autoSyncEnabled ? "Active (60 s)" : "Suspendue"}
-          </p>
+        <div className="flex items-center justify-between py-3">
+          <dt className="text-zinc-500">Envoi automatique</dt>
+          <dd className="font-semibold text-zinc-900">
+            {state.autoSyncEnabled ? "Toutes les 60 s" : "Suspendu"}
+          </dd>
         </div>
-      </div>
-
-      <Button
-        type="button"
-        className="w-full"
-        onClick={() => void handleForceSync()}
-        disabled={busy || !state.online || state.isSyncing}
-      >
-        {busy || state.isSyncing
-          ? "Synchronisation…"
-          : `Forcer la synchronisation (${state.pendingCount})`}
-      </Button>
+      </dl>
 
       {rejected.length > 0 && (
         <section className="space-y-2">
@@ -141,7 +154,7 @@ export default function Sync() {
           {state.recentLog.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`font-medium ${logLevelClass(entry.level)}`}>{entry.message}</span>
@@ -153,6 +166,22 @@ export default function Sync() {
           ))}
         </ul>
       </section>
+
+      <StickyAction>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full rounded-2xl shadow-lg"
+          onClick={() => void handleForceSync()}
+          disabled={busy || !state.online || state.isSyncing}
+        >
+          {busy || state.isSyncing
+            ? "Synchronisation…"
+            : pendingTotal > 0
+              ? `Envoyer maintenant (${pendingTotal})`
+              : "Vérifier avec le serveur"}
+        </Button>
+      </StickyAction>
     </div>
   );
 }

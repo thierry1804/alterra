@@ -7,6 +7,9 @@ import { Spinner } from "../components/ui/feedback";
 import { IconSync, IconCloture } from "../components/icons";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import PageHeader from "../components/ui/PageHeader";
+import Stepper from "../components/ui/Stepper";
+import StickyAction from "../components/ui/StickyAction";
+import { IconChevronRight } from "../components/icons";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 
@@ -55,6 +58,7 @@ export default function DailyClose() {
   const [preview, setPreview] = useState<DailyClosePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState<0 | 1>(0);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [signatureText, setSignatureText] = useState("");
@@ -132,6 +136,14 @@ export default function DailyClose() {
     }
   }
 
+  function shiftDate(days: number) {
+    const next = new Date(`${date}T00:00:00.000Z`);
+    next.setUTCDate(next.getUTCDate() + days);
+    setDate(next.toISOString().slice(0, 10));
+  }
+
+  const blocked = preview?.requiresConfirm && !confirmPending;
+
   return (
     <div className="space-y-4 p-4">
       <PageHeader
@@ -153,6 +165,8 @@ export default function DailyClose() {
         }
       />
 
+      <Stepper steps={["Vérifier", "Signer"]} current={step} />
+
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -164,18 +178,46 @@ export default function DailyClose() {
         </p>
       )}
 
-      <section className="rounded-md border border-zinc-200 bg-white p-4">
-        <label className="block text-xs font-medium text-zinc-600" htmlFor="close-date">
-          Date
-        </label>
-        <input
-          id="close-date"
-          type="date"
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-        />
-      </section>
+      {step === 0 && (
+        <section className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-2">
+          <button
+            type="button"
+            aria-label="Jour précédent"
+            onClick={() => shiftDate(-1)}
+            className="alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl text-zinc-700 active:bg-zinc-100"
+          >
+            <IconChevronRight className="h-5 w-5 rotate-180" />
+          </button>
+          <div className="relative min-w-0 flex-1 text-center">
+            <p className="text-sm font-semibold capitalize text-zinc-900">
+              {new Date(`${date}T00:00:00.000Z`).toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                timeZone: "UTC",
+              })}
+            </p>
+            <label htmlFor="close-date" className="sr-only">
+              Date
+            </label>
+            <input
+              id="close-date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </div>
+          <button
+            type="button"
+            aria-label="Jour suivant"
+            onClick={() => shiftDate(1)}
+            className="alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl text-zinc-700 active:bg-zinc-100"
+          >
+            <IconChevronRight className="h-5 w-5" />
+          </button>
+        </section>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 px-1 text-sm text-zinc-600">
@@ -184,20 +226,20 @@ export default function DailyClose() {
         </div>
       )}
 
-      {preview && !loading && (
+      {step === 0 && preview && !loading && (
         <section className="rounded-md border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-medium text-zinc-900">
             Résumé · <span className="alterra-num">{preview.periodIso}</span>
           </h2>
 
-          <div className="mt-3 rounded-md bg-brand-tint/50 px-3 py-2.5">
-            <p className="text-xs font-medium text-zinc-600">Montant à payer</p>
-            <p className="alterra-num mt-0.5 text-xl font-semibold text-brand">
+          <div className="mt-3 rounded-2xl bg-brand-tint px-4 py-3">
+            <p className="text-xs font-semibold text-brand">Montant à payer</p>
+            <p className="alterra-display alterra-num mt-0.5 text-3xl font-extrabold text-brand">
               {preview.totalAmount} Ar
             </p>
           </div>
 
-          <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <dl className="mt-3 grid grid-cols-3 gap-2 text-center min-[420px]:grid-cols-5">
             {[
               { label: "Validés", value: preview.validatedCount, tone: "text-brand" },
               { label: "Travailleurs", value: preview.workerCount, tone: "text-zinc-900" },
@@ -238,41 +280,62 @@ export default function DailyClose() {
         </section>
       )}
 
-      <section className="rounded-md border border-zinc-200 bg-white p-4">
-        <h2 className="text-sm font-medium text-zinc-900">Signature électronique</h2>
-        <label className="mt-3 block text-xs font-medium text-zinc-600" htmlFor="signature">
-          Nom signataire
-        </label>
-        <input
-          id="signature"
-          value={signatureText}
-          onChange={(event) => setSignatureText(event.target.value)}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-        />
-        <label className="mt-3 flex items-start gap-2 text-sm text-zinc-700">
+      {step === 1 && (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-zinc-900">Signature électronique</h2>
+          <label className="mt-3 block text-xs font-medium text-zinc-600" htmlFor="signature">
+            Nom signataire
+          </label>
           <input
-            type="checkbox"
-            checked={certify}
-            onChange={(event) => setCertify(event.target.checked)}
-            className="mt-1"
+            id="signature"
+            value={signatureText}
+            onChange={(event) => setSignatureText(event.target.value)}
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
-          Je certifie l'exactitude des pointages validés pour cette journée.
-        </label>
-        <Button
-          type="button"
-          size="lg"
-          className="mt-4 w-full gap-2"
-          disabled={submitting || !certify || signatureText.trim().length < 3}
-          onClick={() => void handleCloseDay()}
-        >
-          {submitting ? (
-            <Spinner className="h-4 w-4 text-white" />
-          ) : (
-            <IconCloture className="h-4 w-4 shrink-0" />
-          )}
-          {submitting ? "Clôture en cours…" : "Clôturer et envoyer le rapport"}
-        </Button>
-      </section>
+          <label className="mt-3 flex items-start gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              checked={certify}
+              onChange={(event) => setCertify(event.target.checked)}
+              className="mt-1"
+            />
+            Je certifie l'exactitude des pointages validés pour cette journée.
+          </label>
+          <Button
+            type="button"
+            size="lg"
+            className="mt-4 w-full gap-2"
+            disabled={submitting || !certify || signatureText.trim().length < 3}
+            onClick={() => void handleCloseDay()}
+          >
+            {submitting ? (
+              <Spinner className="h-4 w-4 text-white" />
+            ) : (
+              <IconCloture className="h-4 w-4 shrink-0" />
+            )}
+            {submitting ? "Clôture en cours…" : "Clôturer et envoyer le rapport"}
+          </Button>
+          <Button type="button" variant="ghost" className="mt-2 w-full" onClick={() => setStep(0)}>
+            Retour à la vérification
+          </Button>
+        </section>
+      )}
+
+      {step === 0 && (
+        <StickyAction>
+          <Button
+            size="lg"
+            className="w-full justify-between rounded-2xl bg-[color:var(--color-earth)] shadow-lg hover:opacity-90"
+            disabled={loading || !preview || Boolean(blocked)}
+            onClick={() => setStep(1)}
+          >
+            <span className="flex w-full items-center justify-between gap-3">
+              <span>Continuer vers la signature</span>
+              <IconChevronRight className="h-4 w-4 shrink-0" />
+            </span>
+          </Button>
+        </StickyAction>
+      )}
 
       {jobStatus?.state === "completed" && jobStatus.result?.reportUrl && (
         <p className="text-xs text-zinc-500">Rapport archivé ({jobStatus.result.reportKey}).</p>
