@@ -3,6 +3,9 @@ import { useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-react";
 import { api } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
+import WorkerDetailDrawer from "../components/workers/WorkerDetailDrawer";
+import { useSiteScope } from "../lib/site-scope";
 import { cn } from "../lib/utils";
 import type { Site, Team, Worker } from "../lib/referentials";
 import { WORKER_SEXE_LABELS, WORKER_STATUS_LABELS } from "../lib/referentials";
@@ -67,7 +70,8 @@ function pad2(n: number): string {
 export default function WorkersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [siteFilter, setSiteFilter] = useState("");
+  const [siteFilter, setSiteFilter] = useSiteScope();
+  const [detail, setDetail] = useState<Worker | null>(null);
   const [teamFilter, setTeamFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<Worker["status"] | "">("");
   const [sexeFilter, setSexeFilter] = useState<NonNullable<Worker["sexe"]> | "">("");
@@ -419,9 +423,7 @@ export default function WorkersPage() {
             setSiteFilter(nextSiteId);
             // L'équipe sélectionnée peut ne plus appartenir au site choisi — on la réinitialise.
             if (nextSiteId && teamFilter) {
-              const stillValid = teams.some(
-                (t) => t.id === teamFilter && t.siteId === nextSiteId,
-              );
+              const stillValid = teams.some((t) => t.id === teamFilter && t.siteId === nextSiteId);
               if (!stillValid) setTeamFilter("");
             }
           }}
@@ -637,7 +639,13 @@ export default function WorkersPage() {
                   </TableCell>
                   <TableCell>{worker.matricule}</TableCell>
                   <TableCell>
-                    {worker.firstName} {worker.lastName}
+                    <button
+                      type="button"
+                      onClick={() => setDetail(worker)}
+                      className="alterra-focus rounded text-left font-medium text-zinc-900 hover:text-brand hover:underline"
+                    >
+                      {worker.firstName} {worker.lastName}
+                    </button>
                   </TableCell>
                   <TableCell>{worker.mvolaNumber}</TableCell>
                   <TableCell>{siteName(worker.siteId)}</TableCell>
@@ -668,8 +676,12 @@ export default function WorkersPage() {
               ))}
             {!workersQuery.isLoading && workers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="text-zinc-500">
-                  Aucun MOC trouvé.
+                <TableCell colSpan={10} className="p-0">
+                  <EmptyState
+                    icon={UserRound}
+                    title="Aucun MOC trouvé"
+                    hint="Modifiez la recherche ou les filtres, ou ajoutez des travailleurs par import Excel."
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -681,6 +693,18 @@ export default function WorkersPage() {
         hasMore={!!workersQuery.hasNextPage}
         loading={workersQuery.isFetchingNextPage}
         onClick={() => void workersQuery.fetchNextPage()}
+      />
+
+      <WorkerDetailDrawer
+        worker={detail}
+        siteName={detail ? siteName(detail.siteId) : ""}
+        teamName={detail ? teamName(detail.teamId) : ""}
+        open={detail !== null}
+        onOpenChange={(open) => !open && setDetail(null)}
+        onEdit={(worker) => {
+          setDetail(null);
+          openEdit(worker);
+        }}
       />
 
       <ImportDialog

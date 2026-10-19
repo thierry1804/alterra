@@ -11,6 +11,7 @@ import AlertsBlock from "../components/dashboard/AlertsBlock";
 import TodoStrip from "../components/dashboard/TodoStrip";
 import PageHeader from "../components/shared/PageHeader";
 import { useAuth } from "../hooks/useAuth";
+import { useSiteScope } from "../lib/site-scope";
 import { useNavCounts } from "../hooks/useNavCounts";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
 import { Button } from "../components/ui/button";
@@ -20,6 +21,7 @@ const REFRESH_MS = 60_000;
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [siteId] = useSiteScope();
   const counts = useNavCounts();
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -28,8 +30,11 @@ export default function Dashboard() {
     year: "numeric",
   });
   const { data, isLoading, error, isFetching, refetch } = useQuery({
-    queryKey: ["dashboard", "kpis"],
-    queryFn: () => api.get<DashboardSummary>("/dashboard/kpis").then((r) => r.data),
+    queryKey: ["dashboard", "kpis", siteId],
+    queryFn: () =>
+      api
+        .get<DashboardSummary>("/dashboard/kpis", { params: { siteId: siteId || undefined } })
+        .then((r) => r.data),
     refetchInterval: REFRESH_MS,
     staleTime: REFRESH_MS,
   });

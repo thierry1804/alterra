@@ -43,6 +43,7 @@ const listPointagesQuery = z.object({
   status: z.nativeEnum(PointageStatus).optional(),
   workerId: z.string().uuid().optional(),
   subActivityId: z.string().uuid().optional(),
+  siteId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   orderBy: z.enum(POINTAGE_SORT_FIELDS).optional(),

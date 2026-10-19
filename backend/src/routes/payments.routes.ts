@@ -54,6 +54,7 @@ const listPaymentsQuery = z.object({
   periodIso: z.string().min(2).max(16),
   status: z.nativeEnum(PaymentStatus).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  siteId: z.string().uuid().optional(),
 });
 
 const paymentIdParams = z.object({ id: z.string().uuid() });

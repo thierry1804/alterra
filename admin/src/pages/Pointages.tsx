@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useSiteScope } from "../lib/site-scope";
 import type { Pointage, PointageStatus } from "../lib/pointages";
 import {
   POINTAGE_STATUS_LABELS,
@@ -39,6 +40,7 @@ import { TableQueryError } from "../components/ui/QueryError";
 
 export default function PointagesPage() {
   const queryClient = useQueryClient();
+  const [siteId] = useSiteScope();
   const [statusFilter, setStatusFilter] = useState<PointageStatus | "">("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -61,13 +63,14 @@ export default function PointagesPage() {
   const [bulkRejectReason, setBulkRejectReason] = useState("");
 
   const pointagesQuery = useInfiniteQuery({
-    queryKey: ["pointages", statusFilter, dateFrom, dateTo, sortKey, sortDir],
+    queryKey: ["pointages", siteId, statusFilter, dateFrom, dateTo, sortKey, sortDir],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       api
         .get<{ data: Pointage[]; nextCursor: string | null; hasMore: boolean }>("/pointages", {
           params: {
             status: statusFilter || undefined,
+            siteId: siteId || undefined,
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
             cursor: pageParam,
@@ -139,6 +142,7 @@ export default function PointagesPage() {
                   {
                     params: {
                       status: statusFilter || undefined,
+                      siteId: siteId || undefined,
                       dateFrom: dateFrom || undefined,
                       dateTo: dateTo || undefined,
                       cursor,

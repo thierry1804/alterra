@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
+import { useSiteScope } from "../lib/site-scope";
 import type { Site } from "../lib/referentials";
 import { geoPolygonCenter, type GeoPolygon, type Parcelle, type Zone } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
-import { Plus, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Layers } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -60,7 +62,7 @@ const emptyParcelForm: ParcelForm = { name: "", code: "", surfaceHa: "", geoPoly
 
 export default function ZonesPage() {
   const queryClient = useQueryClient();
-  const [siteId, setSiteId] = useState("");
+  const [siteId, setSiteId] = useSiteScope();
   const [expandedZones, setExpandedZones] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>("zone-create");
@@ -472,8 +474,18 @@ export default function ZonesPage() {
             )}
             {!isLoading && zones.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-sm text-zinc-500">
-                  Aucune zone pour ce site.
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={Layers}
+                    title="Aucune zone pour ce site"
+                    hint="Créez la première zone, puis dessinez ses parcelles sur la carte ou importez un fichier GeoJSON."
+                    action={
+                      <Button type="button" onClick={openZoneCreate}>
+                        <Plus className="h-4 w-4" aria-hidden />
+                        Nouvelle zone
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

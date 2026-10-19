@@ -18,6 +18,8 @@ export interface ListPointagesFilters {
   status?: PointageStatus;
   workerId?: string;
   subActivityId?: string;
+  /** Site du travailleur (sélecteur de site global du back-office). */
+  siteId?: string;
   dateFrom?: Date;
   dateTo?: Date;
   orderBy?: PointageSortField;
@@ -70,6 +72,7 @@ function buildWhere(filters: ListPointagesFilters): Prisma.PointageWhereInput {
   if (filters.status) where.status = filters.status;
   if (filters.workerId) where.workerId = filters.workerId;
   if (filters.subActivityId) where.subActivityId = filters.subActivityId;
+  if (filters.siteId) where.worker = { siteId: filters.siteId };
   if (filters.dateFrom || filters.dateTo) {
     where.date = {};
     if (filters.dateFrom) where.date.gte = filters.dateFrom;

@@ -2,6 +2,8 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
+import FilterChips from "../components/ui/FilterChips";
+import { useSiteScope } from "../lib/site-scope";
 import type { AppUser, Site } from "../lib/referentials";
 import { USER_ROLE_LABELS, formatDate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
@@ -66,7 +68,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<AppUser["role"] | "">("");
-  const [siteFilter, setSiteFilter] = useState("");
+  const [siteFilter] = useSiteScope();
   const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AppUser | null>(null);
@@ -277,39 +279,28 @@ export default function UsersPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+        <FilterChips
+          label="Rôle"
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as AppUser["role"] | "")}
-        >
-          <option value="">Tous les rôles</option>
-          {(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => (
-            <option key={role} value={role}>
-              {USER_ROLE_LABELS[role]}
-            </option>
-          ))}
-        </select>
-        <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
-          value={siteFilter}
-          onChange={(e) => setSiteFilter(e.target.value)}
-        >
-          <option value="">Tous les sites</option>
-          {sites.map((site) => (
-            <option key={site.id} value={site.id}>
-              {site.shortCode}
-            </option>
-          ))}
-        </select>
-        <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          onChange={setRoleFilter}
+          options={[
+            { value: "", label: "Tous" },
+            ...(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => ({
+              value: role,
+              label: USER_ROLE_LABELS[role],
+            })),
+          ]}
+        />
+        <FilterChips
+          label="Statut"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
-        >
-          <option value="">Tous statuts</option>
-          <option value="true">Actif</option>
-          <option value="false">Inactif</option>
-        </select>
+          onChange={setStatusFilter}
+          options={[
+            { value: "", label: "Tous statuts" },
+            { value: "true", label: "Actifs" },
+            { value: "false", label: "Inactifs" },
+          ]}
+        />
       </div>
 
       <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>

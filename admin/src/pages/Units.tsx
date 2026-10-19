@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { Pencil, Power, Plus } from "lucide-react";
+import { Pencil, Power, Plus, Ruler } from "lucide-react";
 import { api } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
+import FilterChips from "../components/ui/FilterChips";
 import type { Unit } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import { Button } from "../components/ui/button";
@@ -125,15 +127,16 @@ export default function UnitsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+        <FilterChips
+          label="Statut"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
-        >
-          <option value="">Tous statuts</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
-        </select>
+          onChange={setStatusFilter}
+          options={[
+            { value: "", label: "Toutes" },
+            { value: "true", label: "Actives" },
+            { value: "false", label: "Inactives" },
+          ]}
+        />
       </div>
 
       {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
@@ -152,8 +155,18 @@ export default function UnitsPage() {
             <TableBody>
               {units.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-zinc-500">
-                    Aucune unité.
+                  <TableCell colSpan={4} className="p-0">
+                    <EmptyState
+                      icon={Ruler}
+                      title="Aucune unité"
+                      hint="Les unités (Ha, Jour, Pièce…) servent à chiffrer les sous-activités."
+                      action={
+                        <Button type="button" onClick={openCreateUnit}>
+                          <Plus className="h-4 w-4" aria-hidden />
+                          Nouvelle unité
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               )}

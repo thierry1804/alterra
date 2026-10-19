@@ -10,8 +10,10 @@ import {
   ChevronRight,
   ChevronDown,
   MapPinned,
+  Activity,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
 import type { ActivityCategory, ActivitySubActivity, Site, Unit } from "../lib/referentials";
 import { formatDate, formatRate } from "../lib/referentials";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
@@ -374,8 +376,12 @@ export default function ActivitiesPage() {
             <TableBody>
               {categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-zinc-500">
-                    Aucune catégorie.
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={Activity}
+                      title="Aucune catégorie"
+                      hint="Une catégorie regroupe des sous-activités avec leur tarif unitaire."
+                    />
                   </TableCell>
                 </TableRow>
               )}

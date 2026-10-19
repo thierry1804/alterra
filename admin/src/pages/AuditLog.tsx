@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../lib/api";
+import { EmptyState } from "../components/ui/EmptyState";
+import FilterChips from "../components/ui/FilterChips";
 import {
   AUDIT_ACTIONS,
   AUDIT_ENTITY_TYPES,
@@ -11,7 +13,7 @@ import {
 } from "../lib/audit";
 import PageHeader from "../components/shared/PageHeader";
 import AuditDetailDrawer from "../components/audit/AuditDetailDrawer";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, ScrollText } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -31,6 +33,15 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { TableQueryError } from "../components/ui/QueryError";
+
+const QUICK_ACTIONS = [
+  { value: "", label: "Toutes" },
+  { value: "LOGIN", label: "Connexions" },
+  { value: "VALIDATE", label: "Validations" },
+  { value: "EXPORT", label: "Exports" },
+  { value: "UPDATE", label: "Modifications" },
+  { value: "RATE_CHANGE", label: "Tarifs" },
+];
 
 export default function AuditLogPage() {
   const [page, setPage] = useState(1);
@@ -135,7 +146,22 @@ export default function AuditLogPage() {
         }
       />
 
-      <div className="grid gap-4 rounded-md border border-zinc-200 bg-white p-4 md:grid-cols-5">
+      <FilterChips
+        label="Actions fréquentes"
+        value={QUICK_ACTIONS.some((item) => item.value === action) ? action : "__other__"}
+        onChange={(value) => {
+          setAction(value === "__other__" ? "" : value);
+          setPage(1);
+        }}
+        options={[
+          ...QUICK_ACTIONS,
+          ...(action && !QUICK_ACTIONS.some((i) => i.value === action)
+            ? [{ value: "__other__", label: action }]
+            : []),
+        ]}
+      />
+
+      <div className="grid gap-4 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-5">
         <div className="space-y-1">
           <Label htmlFor="audit-action">Action</Label>
           <select
@@ -277,8 +303,12 @@ export default function AuditLogPage() {
             )}
             {!isLoading && !isError && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-zinc-600">
-                  Aucune entrée pour ces filtres.
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={ScrollText}
+                    title="Aucune entrée pour ces filtres"
+                    hint="Élargissez la période ou choisissez « Toutes » pour revoir l'ensemble des actions."
+                  />
                 </TableCell>
               </TableRow>
             )}

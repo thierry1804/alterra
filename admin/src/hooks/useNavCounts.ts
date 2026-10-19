@@ -6,6 +6,7 @@ import {
   fetchClarificationRequests,
   fetchWorkerRequests,
 } from "../lib/workflows";
+import { useSiteScope } from "../lib/site-scope";
 import { useAuth } from "./useAuth";
 
 export interface NavCounts {
@@ -20,10 +21,14 @@ const REFRESH_MS = 60_000;
 export function useNavCounts(): NavCounts {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const [siteId] = useSiteScope();
 
   const kpis = useQuery({
-    queryKey: ["dashboard", "kpis"],
-    queryFn: () => api.get<DashboardSummary>("/dashboard/kpis").then((r) => r.data),
+    queryKey: ["dashboard", "kpis", siteId],
+    queryFn: () =>
+      api
+        .get<DashboardSummary>("/dashboard/kpis", { params: { siteId: siteId || undefined } })
+        .then((r) => r.data),
     refetchInterval: REFRESH_MS,
     staleTime: REFRESH_MS,
     enabled: Boolean(user),

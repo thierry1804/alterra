@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
+import { useSiteScope } from "../lib/site-scope";
 import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../lib/payments";
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
@@ -20,6 +21,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
+  const [siteId] = useSiteScope();
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [importOpen, setImportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -27,11 +29,15 @@ export default function PaymentsPage() {
   const listPeriod = useMemo(() => periodToExportParam(periodIso), [periodIso]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["payments", listPeriod],
+    queryKey: ["payments", listPeriod, siteId],
     queryFn: () =>
       api
         .get<{ periodIso: string; data: PaymentRow[] }>("/payments", {
-          params: { periodIso: listPeriod, referenceYear: periodIso.match(/^(\d{4})-W/)?.[1] },
+          params: {
+            periodIso: listPeriod,
+            referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
+            siteId: siteId || undefined,
+          },
         })
         .then((r) => r.data),
     enabled: !!listPeriod,

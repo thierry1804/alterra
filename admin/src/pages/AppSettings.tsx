@@ -13,6 +13,7 @@ import PageHeader from "../components/shared/PageHeader";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Switch } from "../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 
@@ -366,85 +367,120 @@ export default function AppSettingsPage() {
         </TabsList>
 
         <TabsContent value="general">
-          <div className="max-w-lg space-y-6 rounded-md border border-zinc-200 bg-white p-6">
-            <div className="space-y-2">
-              <Label htmlFor="app-name">Nom de l'application</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="app-name"
-                  value={editedAppName}
-                  disabled={isLoading}
-                  onChange={(e) => setAppName(e.target.value)}
-                  maxLength={60}
-                />
-                <Button
-                  type="button"
-                  disabled={
-                    saveNameMutation.isPending ||
-                    !editedAppName.trim() ||
-                    editedAppName === savedAppName
-                  }
-                  onClick={() => saveNameMutation.mutate(editedAppName.trim())}
-                >
-                  {saveNameMutation.isPending ? "Enregistrement…" : "Enregistrer"}
-                </Button>
-              </div>
-              <p className="text-xs text-zinc-500">
-                Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet — jusqu'à 60
-                caractères.
-              </p>
-            </div>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,32rem)_minmax(0,20rem)]">
+            <div className="space-y-6">
+              <div className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6">
+                <div className="space-y-2">
+                  <Label htmlFor="app-name">Nom de l'application</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="app-name"
+                      value={editedAppName}
+                      disabled={isLoading}
+                      onChange={(e) => setAppName(e.target.value)}
+                      maxLength={60}
+                    />
+                    <Button
+                      type="button"
+                      disabled={
+                        saveNameMutation.isPending ||
+                        !editedAppName.trim() ||
+                        editedAppName === savedAppName
+                      }
+                      onClick={() => saveNameMutation.mutate(editedAppName.trim())}
+                    >
+                      {saveNameMutation.isPending ? "Enregistrement…" : "Enregistrer"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet — jusqu'à 60
+                    caractères.
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label>Icône</Label>
-              <div className="flex items-center gap-4">
-                <img
-                  src={iconUrl}
-                  alt=""
-                  className="h-16 w-16 rounded border border-zinc-200 object-cover"
-                />
-                <div className="space-y-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                    className="hidden"
-                    onChange={(e) => void handleIconChange(e)}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {uploading ? "Envoi…" : "Changer l'icône"}
-                  </Button>
-                  <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
+                <div className="space-y-2">
+                  <Label>Icône</Label>
+                  <div className="flex items-center gap-4">
+                    <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-surface p-2">
+                      <img src={iconUrl} alt="" className="max-h-full max-w-full object-contain" />
+                    </span>
+                    <div className="space-y-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                        className="hidden"
+                        onChange={(e) => void handleIconChange(e)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploading}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {uploading ? "Envoi…" : "Changer l'icône"}
+                      </Button>
+                      <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-2 border-t border-zinc-200 pt-6">
-              <Label htmlFor="bio-validation-required">Contrôle biométrique à la validation</Label>
-              <label className="flex items-start gap-2 text-sm text-zinc-700">
-                <input
+              <div className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white p-6">
+                <div className="min-w-0 flex-1">
+                  <Label id="bio-validation-label" htmlFor="bio-validation-required">
+                    Contrôle biométrique à la validation
+                  </Label>
+                  <p className="mt-1 text-sm text-zinc-700">
+                    Exiger un contrôle biométrique OK avant de valider un pointage.
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    À désactiver temporairement si le contrôle biométrique terrain n'est pas encore
+                    opérationnel : la validation ne sera plus bloquée par son absence. À réactiver
+                    dès que prêt.
+                  </p>
+                  <p
+                    className={`mt-2 text-xs font-semibold ${
+                      (data?.bioValidationRequired ?? true) ? "text-brand" : "text-warning"
+                    }`}
+                  >
+                    {(data?.bioValidationRequired ?? true)
+                      ? "Activé : le contrôle est exigé."
+                      : "Désactivé : la validation n'est pas bloquée."}
+                  </p>
+                </div>
+                <Switch
                   id="bio-validation-required"
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-300"
+                  aria-labelledby="bio-validation-label"
                   checked={data?.bioValidationRequired ?? true}
                   disabled={isLoading || setBioValidationRequiredMutation.isPending}
-                  onChange={(e) =>
-                    setBioValidationRequiredMutation.mutate(e.target.checked)
-                  }
+                  onCheckedChange={(checked) => setBioValidationRequiredMutation.mutate(checked)}
                 />
-                Exiger un contrôle biométrique OK avant de valider un pointage
-              </label>
-              <p className="text-xs text-zinc-500">
-                À décocher temporairement si le contrôle biométrique terrain n'est pas encore
-                opérationnel — la validation ne sera plus bloquée par son absence. À réactiver dès
-                que prêt.
-              </p>
+              </div>
             </div>
+
+            <aside
+              aria-label="Aperçu de l'application terrain"
+              className="h-max rounded-xl border border-zinc-200 bg-surface p-4"
+            >
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-subtle">
+                Aperçu de l'application terrain
+              </p>
+              <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <img src={iconUrl} alt="" className="h-9 w-auto" />
+                  <span className="alterra-display flex-1 truncate text-base font-extrabold">
+                    {editedAppName || savedAppName}
+                  </span>
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-brand text-xs font-bold text-white">
+                    CE
+                  </span>
+                </div>
+                <div className="mt-4 rounded-xl border border-dashed border-zinc-300 px-3 py-8 text-center text-xs text-muted">
+                  En-tête de l'application, tel qu'affiché sur les téléphones
+                </div>
+              </div>
+            </aside>
           </div>
         </TabsContent>
 

@@ -5,8 +5,20 @@ import Topbar from "./Topbar";
 import CommandPalette from "./CommandPalette";
 
 export default function AppLayout() {
-  const [collapsed, setCollapsed] = useState(false);
+  // Menu replié en icônes sur tablette ; l'utilisateur garde la main avec le bouton.
+  const [collapsed, setCollapsed] = useState(
+    () => window.matchMedia("(max-width: 1023px)").matches,
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)");
+    function onChange(event: MediaQueryListEvent) {
+      setCollapsed(event.matches);
+    }
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

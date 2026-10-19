@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
+import FilterChips from "../components/ui/FilterChips";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
 import { Pencil, Power, PowerOff, Download, MapPin, Search } from "lucide-react";
@@ -71,6 +72,7 @@ export default function SitesPage() {
   const [editing, setEditing] = useState<Site | null>(null);
   const [form, setForm] = useState<SiteForm>(emptyForm);
   const [geocoding, setGeocoding] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
 
   const {
     data: sites = [],
@@ -82,7 +84,14 @@ export default function SitesPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
-  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Site>(sites, "name");
+  const visibleSites = useMemo(
+    () =>
+      sites.filter((site) =>
+        statusFilter === "" ? true : statusFilter === "active" ? site.active : !site.active,
+      ),
+    [sites, statusFilter],
+  );
+  const { sorted, sortKey, sortDir, toggleSort } = useClientSort<Site>(visibleSites, "name");
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pagedSites = useMemo(
@@ -233,7 +242,7 @@ export default function SitesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Sites"
-        description="Référentiel des sites ALTERRA."
+        description={`${sites.filter((site) => site.active).length} actif(s) · ${sites.filter((site) => !site.active).length} inactif(s)`}
         action={
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={handleExport}>
@@ -245,6 +254,20 @@ export default function SitesPage() {
             </Button>
           </div>
         }
+      />
+
+      <FilterChips
+        label="Statut"
+        value={statusFilter}
+        onChange={(value) => {
+          setStatusFilter(value);
+          setPage(0);
+        }}
+        options={[
+          { value: "", label: "Tous" },
+          { value: "active", label: "Actifs" },
+          { value: "inactive", label: "Inactifs" },
+        ]}
       />
 
       <BulkActionBar count={selection.selectedCount} onClear={selection.clear}>

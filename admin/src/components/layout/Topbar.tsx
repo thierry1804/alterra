@@ -4,6 +4,7 @@ import { Bell, ChevronRight, LogOut, Search } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useNavCounts } from "../../hooks/useNavCounts";
 import { navTrail, roleLabel } from "../../lib/navigation";
+import SiteSelect from "./SiteSelect";
 
 interface TopbarProps {
   onOpenPalette: () => void;
@@ -52,6 +53,8 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
       </nav>
 
       <div className="flex-1" />
+
+      {user?.role === "ADMIN" && <SiteSelect />}
 
       <button
         type="button"

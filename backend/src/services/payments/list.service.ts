@@ -8,6 +8,8 @@ export interface ListPaymentsFilters {
   periodIso: string;
   status?: PaymentStatus;
   referenceYear?: number;
+  /** Site du travailleur (sélecteur de site global du back-office). */
+  siteId?: string;
 }
 
 export async function listPayments(filters: ListPaymentsFilters) {
@@ -21,6 +23,7 @@ export async function listPayments(filters: ListPaymentsFilters) {
     periodIso: shortPeriod,
     referenceYear,
     ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.siteId ? { worker: { siteId: filters.siteId } } : {}),
   };
 
   const payments = await prisma.payment.findMany({

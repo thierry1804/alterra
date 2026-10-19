@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Download } from "lucide-react";
 import { api } from "../lib/api";
+import { useSiteScope } from "../lib/site-scope";
 import type { Site } from "../lib/referentials";
 import {
   REPORT_DEFINITIONS,
@@ -22,7 +23,7 @@ import { QueryError } from "../components/ui/QueryError";
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>("pointages");
   const [month, setMonth] = useState(currentMonthInput());
-  const [siteId, setSiteId] = useState("");
+  const [siteId, setSiteId] = useSiteScope();
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
 
   const { data: sites = [] } = useQuery({
@@ -99,9 +100,9 @@ export default function ReportsPage() {
             key={item.type}
             type="button"
             onClick={() => setReportType(item.type)}
-            className={`rounded-md border p-4 text-left transition-colors ${
+            className={`rounded-xl border p-4 text-left transition-colors ${
               reportType === item.type
-                ? "border-zinc-400 bg-zinc-100"
+                ? "border-brand bg-brand-tint ring-1 ring-brand"
                 : "border-zinc-200 bg-white hover:bg-zinc-50"
             }`}
           >
