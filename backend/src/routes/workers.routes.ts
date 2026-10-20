@@ -406,6 +406,8 @@ workersRouter.post(
   },
 );
 
+const WORKER_PHOTO_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 workersRouter.post(
   "/workers/:id/photo-upload",
   requireAuth,
@@ -423,7 +425,12 @@ workersRouter.post(
       }
 
       const contentType =
-        typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : undefined;
+        typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : "";
+      // Pas de SVG : une photo travailleur n'a aucun usage légitime de ce format, et un SVG
+      // contient potentiellement du script — on refuse plutôt que de le neutraliser à la lecture.
+      if (!WORKER_PHOTO_CONTENT_TYPES.has(contentType)) {
+        throw new ApiError(422, "UNSUPPORTED_FORMAT", "JPEG, PNG ou WebP uniquement");
+      }
       const photoKey = await uploadWorkerPhotoDirect(worker.id, req.body, contentType);
       res.json({ photoKey });
     } catch (err) {

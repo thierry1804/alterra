@@ -108,11 +108,7 @@ export async function revokeRefreshToken(
   rawToken: string | undefined,
   res: Response,
 ): Promise<void> {
-  res.clearCookie(REFRESH_COOKIE, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  res.clearCookie(REFRESH_COOKIE, cookieOptions());
 
   if (!rawToken) return;
 
