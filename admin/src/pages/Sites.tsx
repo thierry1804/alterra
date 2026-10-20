@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import FilterChips from "../components/ui/FilterChips";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
-import { Pencil, Power, PowerOff, Download, MapPin, Search } from "lucide-react";
+import { Pencil, Power, PowerOff, Download, MapPin, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -239,16 +239,13 @@ export default function SitesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sites"
         description={`${sites.filter((site) => site.active).length} actif(s) · ${sites.filter((site) => !site.active).length} inactif(s)`}
         action={
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={handleExport}>
-              <Download className="h-4 w-4" aria-hidden />
-              Exporter
-            </Button>
+          <div className="flex items-center gap-2">
+            <IconButton icon={Download} label="Exporter" onClick={handleExport} />
             <Button type="button" onClick={openCreate}>
               Nouveau site
             </Button>
@@ -409,28 +406,22 @@ export default function SitesPage() {
       </div>
 
       {pageCount > 1 && (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+        <div className="flex items-center justify-end gap-1.5">
+          <IconButton
+            icon={ChevronLeft}
+            label="Page précédente"
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
-          >
-            Précédent
-          </Button>
+          />
           <span className="text-sm text-zinc-500">
             Page {page + 1} / {pageCount}
           </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+          <IconButton
+            icon={ChevronRight}
+            label="Page suivante"
             disabled={page >= pageCount - 1}
             onClick={() => setPage((p) => p + 1)}
-          >
-            Suivant
-          </Button>
+          />
         </div>
       )}
 

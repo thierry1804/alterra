@@ -13,12 +13,12 @@ export default function PageHeader({ title, description, action, help }: PageHea
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <h1 className="alterra-display text-2xl font-extrabold leading-tight text-zinc-900">
+          <h1 className="alterra-display text-xl font-extrabold leading-tight text-zinc-900">
             {title}
           </h1>
           {help}
         </div>
-        {description && <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>}
+        {description && <p className="mt-0.5 max-w-2xl text-sm text-muted">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>

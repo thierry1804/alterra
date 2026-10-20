@@ -351,16 +351,13 @@ export default function ZonesPage() {
           : "Modifier la parcelle";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Zones & parcelles"
         description="Hiérarchie géographique Site → Zone → Parcelle (GeoJSON)."
         action={
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={handleExport}>
-              <Download className="h-4 w-4" aria-hidden />
-              Exporter
-            </Button>
+          <div className="flex items-center gap-2">
+            <IconButton icon={Download} label="Exporter" onClick={handleExport} />
             <Button type="button" onClick={openZoneCreate} disabled={!effectiveSiteId}>
               Nouvelle zone
             </Button>
@@ -404,7 +401,7 @@ export default function ZonesPage() {
             id="zone-site"
             value={effectiveSiteId}
             onChange={(e) => setSiteId(e.target.value)}
-            className="h-9 w-48 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="h-8 w-48 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           >
             {sites.map((site) => (
               <option key={site.id} value={site.id}>

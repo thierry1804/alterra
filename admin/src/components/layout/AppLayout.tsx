@@ -36,7 +36,7 @@ export default function AppLayout() {
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenPalette={() => setPaletteOpen(true)} />
-        <main className="flex-1 overflow-auto bg-surface/40 p-6">
+        <main className="flex-1 overflow-auto bg-surface/40 p-5">
           <Outlet />
         </main>
       </div>

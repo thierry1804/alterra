@@ -49,7 +49,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         "inline-flex shrink-0 items-center justify-center rounded-md transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-1 focus-visible:ring-offset-white",
         "disabled:pointer-events-none disabled:opacity-40",
-        size === "sm" ? "h-8 w-8" : "h-9 w-9",
+        size === "sm" ? "h-7 w-7" : "h-8 w-8",
         variants[variant],
         className,
       )}

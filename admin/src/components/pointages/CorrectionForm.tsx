@@ -82,7 +82,7 @@ export default function CorrectionForm({
         <Label htmlFor="corr-activity">Activité</Label>
         <select
           id="corr-activity"
-          className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={subActivityId}
           onChange={(e) => setSubActivityId(e.target.value)}
         >

@@ -383,21 +383,13 @@ export default function WorkersPage() {
     teamId ? (teams.find((t) => t.id === teamId)?.name ?? "—") : "—";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Travailleurs"
         description="Main-d'œuvre communautaire — référentiel travailleurs (MOC)."
         action={
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={exporting}
-              onClick={() => void handleExport()}
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              {exporting ? "Export…" : "Exporter"}
-            </Button>
+          <div className="flex items-center gap-2">
+            <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
             <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
               Import Excel
             </Button>
@@ -416,7 +408,7 @@ export default function WorkersPage() {
           className="max-w-xs"
         />
         <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={siteFilter}
           onChange={(e) => {
             const nextSiteId = e.target.value;
@@ -436,7 +428,7 @@ export default function WorkersPage() {
           ))}
         </select>
         <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={teamFilter}
           onChange={(e) => setTeamFilter(e.target.value)}
         >
@@ -448,7 +440,7 @@ export default function WorkersPage() {
           ))}
         </select>
         <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as Worker["status"] | "")}
         >
@@ -460,7 +452,7 @@ export default function WorkersPage() {
           ))}
         </select>
         <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={sexeFilter}
           onChange={(e) => setSexeFilter(e.target.value as NonNullable<Worker["sexe"]> | "")}
         >
@@ -795,7 +787,7 @@ export default function WorkersPage() {
                 <Label htmlFor="w-site">Site</Label>
                 <select
                   id="w-site"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
                   value={form.siteId}
                   onChange={(e) => {
                     const siteId = e.target.value;
@@ -827,7 +819,7 @@ export default function WorkersPage() {
                 <Label htmlFor="w-sexe">Sexe</Label>
                 <select
                   id="w-sexe"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
                   value={form.sexe}
                   onChange={(e) =>
                     setForm((f) => ({
@@ -850,7 +842,7 @@ export default function WorkersPage() {
                 <Label htmlFor="w-status">Statut</Label>
                 <select
                   id="w-status"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
                   value={form.status}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, status: e.target.value as Worker["status"] }))

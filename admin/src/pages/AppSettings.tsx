@@ -352,7 +352,7 @@ export default function AppSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Paramètres de l'application"
         description="Identité, écran de connexion et données portés par l'Admin et la PWA terrain."
@@ -368,7 +368,7 @@ export default function AppSettingsPage() {
 
         <TabsContent value="general">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,32rem)_minmax(0,20rem)]">
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6">
                 <div className="space-y-2">
                   <Label htmlFor="app-name">Nom de l'application</Label>

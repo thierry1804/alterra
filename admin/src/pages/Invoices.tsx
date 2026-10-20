@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Download, FileText, Receipt, RefreshCw } from "lucide-react";
+import { IconButton, RowActions } from "../components/ui/IconButton";
 import { api } from "../lib/api";
 import { currentIsoWeekInput, periodToExportParam } from "../lib/payments";
 import { formatInvoiceAmount, type InvoiceRow } from "../lib/invoices";
@@ -114,7 +115,7 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Factures"
         description="Une facture PDF par activité et par période, générée automatiquement à chaque export MVola."
@@ -204,37 +205,22 @@ export default function InvoicesPage() {
                 <td className="px-4 py-2">{formatInvoiceAmount(invoice.totalAmount)}</td>
                 <td className="px-4 py-2 text-zinc-500">{formatDateTime(invoice.createdAt)}</td>
                 <td className="px-4 py-2 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={
+                  <RowActions>
+                    <IconButton
+                      icon={RefreshCw}
+                      label="Régénérer cette facture"
+                      loading={
                         regenerateMutation.isPending && regenerateMutation.variables === invoice.id
                       }
                       onClick={() => regenerateMutation.mutate(invoice.id)}
-                      title="Régénérer cette facture"
-                    >
-                      <RefreshCw
-                        className={
-                          regenerateMutation.isPending &&
-                          regenerateMutation.variables === invoice.id
-                            ? "h-4 w-4 animate-spin"
-                            : "h-4 w-4"
-                        }
-                      />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={downloadingId === invoice.id}
+                    />
+                    <IconButton
+                      icon={Download}
+                      label="Télécharger le PDF"
+                      loading={downloadingId === invoice.id}
                       onClick={() => void handleDownload(invoice)}
-                    >
-                      <Download className="h-4 w-4" />
-                      {downloadingId === invoice.id ? "…" : "PDF"}
-                    </Button>
-                  </div>
+                    />
+                  </RowActions>
                 </td>
               </tr>
             ))}

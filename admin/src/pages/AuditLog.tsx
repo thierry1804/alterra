@@ -13,7 +13,7 @@ import {
 } from "../lib/audit";
 import PageHeader from "../components/shared/PageHeader";
 import AuditDetailDrawer from "../components/audit/AuditDetailDrawer";
-import { Eye, Download, ScrollText } from "lucide-react";
+import { Eye, Download, ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -129,20 +129,17 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Journal d'audit"
         description="Actions sensibles tracées — consultation en lecture seule."
         action={
-          <Button
-            type="button"
-            variant="outline"
-            disabled={exporting}
+          <IconButton
+            icon={Download}
+            label="Exporter"
+            loading={exporting}
             onClick={() => void handleExport()}
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Export…" : "Exporter"}
-          </Button>
+          />
         }
       />
 
@@ -171,7 +168,7 @@ export default function AuditLogPage() {
               setAction(event.target.value);
               setPage(1);
             }}
-            className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           >
             <option value="">Toutes</option>
             {AUDIT_ACTIONS.map((item) => (
@@ -190,7 +187,7 @@ export default function AuditLogPage() {
               setEntityType(event.target.value);
               setPage(1);
             }}
-            className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           >
             <option value="">Toutes</option>
             {AUDIT_ENTITY_TYPES.map((item) => (
@@ -348,25 +345,19 @@ export default function AuditLogPage() {
           Page {data?.page ?? page}
           {data?.total !== undefined ? ` · ${data.total} entrée(s)` : ""}
         </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+        <div className="flex items-center gap-1.5">
+          <IconButton
+            icon={ChevronLeft}
+            label="Page précédente"
             disabled={page <= 1 || isFetching}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
-          >
-            Précédent
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+          />
+          <IconButton
+            icon={ChevronRight}
+            label="Page suivante"
             disabled={!data?.hasMore || isFetching}
             onClick={() => setPage((current) => current + 1)}
-          >
-            Suivant
-          </Button>
+          />
         </div>
       </div>
 

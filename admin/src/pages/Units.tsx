@@ -108,7 +108,7 @@ export default function UnitsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Unités"
         description="Référentiel des unités de mesure utilisées par les sous-activités."

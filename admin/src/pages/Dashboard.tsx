@@ -14,7 +14,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useSiteScope } from "../lib/site-scope";
 import { useNavCounts } from "../hooks/useNavCounts";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
-import { Button } from "../components/ui/button";
+import { IconButton } from "../components/ui/IconButton";
 import { Skeleton } from "../components/ui/skeleton";
 
 const REFRESH_MS = 60_000;
@@ -40,7 +40,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={user ? `Bonjour ${user.firstName}` : "Tableau de bord"}
         description={today.charAt(0).toUpperCase() + today.slice(1)}
@@ -58,16 +58,12 @@ export default function Dashboard() {
           </ContextHelp>
         }
         action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+          <IconButton
+            icon={RefreshCw}
+            label="Rafraîchir"
+            loading={isFetching}
             onClick={() => void refetch()}
-            disabled={isFetching}
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            Rafraîchir
-          </Button>
+          />
         }
       />
 

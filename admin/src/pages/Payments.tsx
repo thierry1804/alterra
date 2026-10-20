@@ -148,7 +148,7 @@ export default function PaymentsPage() {
   }, [stats]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Paiements"
         description="Bordereau MVola — génération, export et import retour."

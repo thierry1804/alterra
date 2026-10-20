@@ -55,7 +55,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <nav
         aria-label="Navigation principale"
-        className="flex-1 space-y-1 overflow-y-auto px-2 pb-2"
+        className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-2 pb-2"
       >
         {[...sections.entries()].map(([section, items]) => (
           <div key={section}>
@@ -81,7 +81,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring",
                         collapsed && "justify-center px-0",
                         isActive &&
-                          "bg-[color:var(--side-on)] font-semibold text-white shadow-[inset_2px_0_0_var(--color-earth)] hover:bg-[color:var(--side-on)]",
+                          "bg-[color:var(--side-on)] font-semibold text-white hover:bg-[color:var(--side-on)]",
                       )
                     }
                   >

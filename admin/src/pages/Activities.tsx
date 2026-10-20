@@ -298,7 +298,7 @@ export default function ActivitiesPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Activités"
         description="Catégories officielles et sous-activités — tâches et tarifs unitaires."
@@ -318,7 +318,7 @@ export default function ActivitiesPage() {
           className="max-w-xs"
         />
         <select
-          className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as "" | "true" | "false")}
         >

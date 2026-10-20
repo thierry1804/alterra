@@ -88,7 +88,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Rapports"
         description="Rapports prédéfinis avec filtres période et exports."
@@ -129,7 +129,7 @@ export default function ReportsPage() {
             id="report-site"
             value={siteId}
             onChange={(event) => setSiteId(event.target.value)}
-            className="h-9 w-48 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="h-8 w-48 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
           >
             <option value="">Tous les sites</option>
             {sites.map((site) => (

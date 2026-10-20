@@ -208,7 +208,7 @@ export default function PointagesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Pointages"
         description={
@@ -222,15 +222,7 @@ export default function PointagesPage() {
           </>
         }
         action={
-          <Button
-            type="button"
-            variant="outline"
-            disabled={exporting}
-            onClick={() => void handleExport()}
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            {exporting ? "Export…" : "Exporter"}
-          </Button>
+          <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
         }
       />
 

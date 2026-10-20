@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { cn } from "../lib/utils";
 import { api } from "../lib/api";
 import PageHeader from "../components/shared/PageHeader";
 import RequestDetailDrawer, {
   type RequestSelection,
 } from "../components/requests/RequestDetailDrawer";
 import { Badge } from "../components/ui/badge";
-import { Eye, Check, X as XIcon, Download } from "lucide-react";
+import { Eye, Check, X as XIcon, Download, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
 import { Checkbox } from "../components/ui/checkbox";
@@ -17,6 +16,7 @@ import { useClientSort } from "../components/ui/data-table/useClientSort";
 import { SortableHead } from "../components/ui/data-table/SortableHead";
 import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
 import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -271,52 +271,42 @@ export default function RequestsPage() {
     tab === "activities" ? activitySelection : tab === "workers" ? workerSelection : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Demandes terrain"
         description="File unifiée des demandes CDS — triées par ancienneté."
         action={
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={handleExport}>
-              <Download className="h-4 w-4" aria-hidden />
-              Exporter
-            </Button>
-            <Button type="button" variant="outline" onClick={() => refreshCurrentTab()}>
-              Actualiser
-            </Button>
+          <div className="flex items-center gap-2">
+            <IconButton icon={Download} label="Exporter" onClick={handleExport} />
+            <IconButton icon={RefreshCw} label="Actualiser" onClick={() => refreshCurrentTab()} />
           </div>
         }
       />
 
-      <div className="flex flex-wrap gap-2 border-b border-zinc-200 pb-2">
-        {TABS.map((item, index) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => handleTabChange(item.id)}
-            className={cn(
-              "rounded-md px-3 py-2 text-sm transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2",
-              tab === item.id
-                ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
-                : "text-zinc-600 hover:text-zinc-900",
-            )}
-            title={`Raccourci ${index + 1}`}
-          >
-            {item.label}
-            {(pendingCounts.data?.[item.id] ?? 0) > 0 && (
-              <span className="alterra-num ml-2 rounded-full bg-[color:var(--color-earth)] px-1.5 py-0.5 text-[0.6875rem] font-bold text-white">
-                {pendingCounts.data?.[item.id]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(value) => handleTabChange(value as RequestTab)}>
+        <TabsList>
+          {TABS.map((item, index) => (
+            <TabsTrigger
+              key={item.id}
+              value={item.id}
+              title={`Raccourci ${index + 1}`}
+              className="gap-2"
+            >
+              {item.label}
+              {(pendingCounts.data?.[item.id] ?? 0) > 0 && (
+                <span className="alterra-num rounded-full bg-zinc-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-zinc-600">
+                  {pendingCounts.data?.[item.id]}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <div className="flex flex-wrap gap-3">
         {tab === "clarifications" ? (
           <select
-            className="alterra-focus h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="alterra-focus h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as ClarificationStatus | "")}
           >
@@ -329,7 +319,7 @@ export default function RequestsPage() {
           </select>
         ) : (
           <select
-            className="alterra-focus h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+            className="alterra-focus h-8 rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as RequestStatus | "")}
           >

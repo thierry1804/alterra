@@ -250,21 +250,13 @@ export default function UsersPage() {
     siteId ? (sites.find((s) => s.id === siteId)?.shortCode ?? "—") : "—";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Utilisateurs"
         description="Comptes Admin, CDS et CDE."
         action={
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={exporting}
-              onClick={() => void handleExport()}
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              {exporting ? "Export…" : "Exporter"}
-            </Button>
+          <div className="flex items-center gap-2">
+            <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
             <Button type="button" onClick={openCreate}>
               Nouvel utilisateur
             </Button>
@@ -510,7 +502,7 @@ export default function UsersPage() {
                 <Label htmlFor="u-role">Rôle</Label>
                 <select
                   id="u-role"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
                   value={form.role}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, role: e.target.value as AppUser["role"] }))
@@ -527,7 +519,7 @@ export default function UsersPage() {
                 <Label htmlFor="u-site">Site</Label>
                 <select
                   id="u-site"
-                  className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
+                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
                   value={form.siteId}
                   onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
                 >

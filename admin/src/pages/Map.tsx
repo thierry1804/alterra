@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
 import { api } from "../lib/api";
 import { useSiteScope } from "../lib/site-scope";
 import type { SiteGeo } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
 import SiteMap from "../components/map/SiteMap";
 import { Button } from "../components/ui/button";
+import { IconButton } from "../components/ui/IconButton";
 import { cn } from "../lib/utils";
 import { formatPercent, type DashboardSummary } from "../lib/dashboard";
 
@@ -43,19 +45,17 @@ export default function MapPage() {
   const sitesWithCoords = sites.filter((site) => site.geoLat != null && site.geoLng != null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Cartographie"
         description="Sites ALTERRA, zones et parcelles sur fond OSM."
         action={
-          <Button
-            type="button"
-            variant="outline"
+          <IconButton
+            icon={RefreshCw}
+            label="Actualiser"
+            loading={isFetching}
             onClick={() => void refetch()}
-            disabled={isFetching}
-          >
-            {isFetching ? "Actualisation…" : "Actualiser"}
-          </Button>
+          />
         }
       />
 
