@@ -28,12 +28,14 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Combobox } from "../components/ui/combobox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -389,8 +391,11 @@ export default function ActivitiesPage() {
                 const isOpen = search.trim().length > 0 || expanded.has(category.id);
                 return (
                   <Fragment key={category.id}>
-                    <TableRow>
-                      <TableCell>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() => openEditCategory(category)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className="flex h-6 w-6 items-center justify-center rounded hover:bg-zinc-100"
@@ -419,7 +424,7 @@ export default function ActivitiesPage() {
                           {category.active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <RowActions>
                           <IconButton
                             icon={Plus}
@@ -509,7 +514,11 @@ export default function ActivitiesPage() {
                                 subSort.sortDir,
                                 subAccessors,
                               ).map(({ representative: sub, siteOverrideCount }) => (
-                                <TableRow key={sub.groupKey}>
+                                <TableRow
+                                  key={sub.groupKey}
+                                  className="cursor-pointer"
+                                  onClick={() => openEditSub(sub)}
+                                >
                                   <TableCell className="pl-10">{sub.label}</TableCell>
                                   <TableCell>{sub.shortLabel}</TableCell>
                                   <TableCell>{sub.unit?.label}</TableCell>
@@ -526,7 +535,7 @@ export default function ActivitiesPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell>{formatDate(sub.validFrom)}</TableCell>
-                                  <TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
                                     <RowActions>
                                       <IconButton
                                         icon={Pencil}
@@ -600,151 +609,169 @@ export default function ActivitiesPage() {
         }}
       />
 
-      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
+      <Sheet open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
               {editingCategory ? "Modifier la catégorie" : "Nouvelle catégorie"}
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               Code officiel (ex. ACT04) et libellé — cf. CATEGORIES DES ACTIVITES MOC PAR SITE.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           <form
-            className="space-y-4"
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveCategoryMutation.mutate();
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="cat-code">Code</Label>
-              <Input
-                id="cat-code"
-                value={categoryForm.code}
-                onChange={(e) => setCategoryForm((f) => ({ ...f, code: e.target.value }))}
-                maxLength={20}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cat-label">Libellé</Label>
-              <Input
-                id="cat-label"
-                value={categoryForm.label}
-                onChange={(e) => setCategoryForm((f) => ({ ...f, label: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+            <SheetBody className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="cat-code">Code</Label>
+                <Input
+                  id="cat-code"
+                  value={categoryForm.code}
+                  onChange={(e) => setCategoryForm((f) => ({ ...f, code: e.target.value }))}
+                  maxLength={20}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cat-label">Libellé</Label>
+                <Input
+                  id="cat-label"
+                  value={categoryForm.label}
+                  onChange={(e) => setCategoryForm((f) => ({ ...f, label: e.target.value }))}
+                  required
+                />
+              </div>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCategoryDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveCategoryMutation.isPending}>
+              <Button type="submit" className="flex-1" disabled={saveCategoryMutation.isPending}>
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
+      <Sheet open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
               {editingSub ? "Modifier la sous-activité" : "Nouvelle sous-activité"}
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               Un changement de tarif crée une nouvelle version (RG-04).
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           <form
-            className="space-y-4"
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveSubActivityMutation.mutate();
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="sub-label">Libellé</Label>
-              <Input
-                id="sub-label"
-                value={subForm.label}
-                onChange={(e) => {
-                  const label = e.target.value;
-                  setSubForm((f) => ({
-                    ...f,
-                    label,
-                    shortLabel: shortLabelEdited ? f.shortLabel : label.toLowerCase(),
-                  }));
-                }}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sub-short">Libellé court (grammaire MVola, 1-2 mots)</Label>
-              <Input
-                id="sub-short"
-                value={subForm.shortLabel}
-                onChange={(e) => {
-                  setShortLabelEdited(true);
-                  setSubForm((f) => ({ ...f, shortLabel: e.target.value }));
-                }}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <SheetBody className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="sub-unit">Unité</Label>
-                <Combobox
-                  id="sub-unit"
-                  placeholder="Rechercher une unité…"
-                  options={units.map((unit) => ({ value: unit.id, label: unit.label }))}
-                  value={subForm.unitId}
-                  onChange={(unitId) => setSubForm((f) => ({ ...f, unitId }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sub-rate">Tarif (Ar)</Label>
+                <Label htmlFor="sub-label">Libellé</Label>
                 <Input
-                  id="sub-rate"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={subForm.unitRate}
-                  onChange={(e) => setSubForm((f) => ({ ...f, unitRate: e.target.value }))}
+                  id="sub-label"
+                  value={subForm.label}
+                  onChange={(e) => {
+                    const label = e.target.value;
+                    setSubForm((f) => ({
+                      ...f,
+                      label,
+                      shortLabel: shortLabelEdited ? f.shortLabel : label.toLowerCase(),
+                    }));
+                  }}
                   required
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sub-site">Site (vide = global)</Label>
-              <Combobox
-                id="sub-site"
-                placeholder="Rechercher un site…"
-                options={[
-                  { value: "", label: "Global" },
-                  ...sites.map((site) => ({
-                    value: site.id,
-                    label: `${site.name} (${site.shortCode})`,
-                  })),
-                ]}
-                value={subForm.siteId}
-                onChange={(siteId) => setSubForm((f) => ({ ...f, siteId }))}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setSubDialogOpen(false)}>
+              <div className="space-y-2">
+                <Label htmlFor="sub-short">Libellé court (grammaire MVola, 1-2 mots)</Label>
+                <Input
+                  id="sub-short"
+                  value={subForm.shortLabel}
+                  onChange={(e) => {
+                    setShortLabelEdited(true);
+                    setSubForm((f) => ({ ...f, shortLabel: e.target.value }));
+                  }}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sub-unit">Unité</Label>
+                  <Combobox
+                    id="sub-unit"
+                    placeholder="Rechercher une unité…"
+                    options={units.map((unit) => ({ value: unit.id, label: unit.label }))}
+                    value={subForm.unitId}
+                    onChange={(unitId) => setSubForm((f) => ({ ...f, unitId }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sub-rate">Tarif (Ar)</Label>
+                  <Input
+                    id="sub-rate"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={subForm.unitRate}
+                    onChange={(e) => setSubForm((f) => ({ ...f, unitRate: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sub-site">Site (vide = global)</Label>
+                <Combobox
+                  id="sub-site"
+                  placeholder="Rechercher un site…"
+                  options={[
+                    { value: "", label: "Global" },
+                    ...sites.map((site) => ({
+                      value: site.id,
+                      label: `${site.name} (${site.shortCode})`,
+                    })),
+                  ]}
+                  value={subForm.siteId}
+                  onChange={(siteId) => setSubForm((f) => ({ ...f, siteId }))}
+                />
+              </div>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setSubDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveSubActivityMutation.isPending}>
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={saveSubActivityMutation.isPending}
+              >
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -13,12 +13,14 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -171,7 +173,11 @@ export default function UnitsPage() {
                 </TableRow>
               )}
               {units.map((unit) => (
-                <TableRow key={unit.id}>
+                <TableRow
+                  key={unit.id}
+                  className="cursor-pointer"
+                  onClick={() => openEditUnit(unit)}
+                >
                   <TableCell>
                     <Badge variant={unit.active ? "success" : "default"}>{unit.code}</Badge>
                   </TableCell>
@@ -181,7 +187,7 @@ export default function UnitsPage() {
                       {unit.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <RowActions>
                       <IconButton
                         icon={Pencil}
@@ -212,49 +218,56 @@ export default function UnitsPage() {
         onClick={() => void unitsQuery.fetchNextPage()}
       />
 
-      <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingUnit ? "Modifier l'unité" : "Nouvelle unité"}</DialogTitle>
-            <DialogDescription>Code et libellé — ex. TROU / Trou, HA / Ha.</DialogDescription>
-          </DialogHeader>
+      <Sheet open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editingUnit ? "Modifier l'unité" : "Nouvelle unité"}</SheetTitle>
+            <SheetDescription>Code et libellé — ex. TROU / Trou, HA / Ha.</SheetDescription>
+          </SheetHeader>
           <form
-            className="space-y-4"
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveUnitMutation.mutate();
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="unit-code">Code</Label>
-              <Input
-                id="unit-code"
-                value={unitForm.code}
-                onChange={(e) => setUnitForm((f) => ({ ...f, code: e.target.value }))}
-                maxLength={20}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="unit-label">Libellé</Label>
-              <Input
-                id="unit-label"
-                value={unitForm.label}
-                onChange={(e) => setUnitForm((f) => ({ ...f, label: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setUnitDialogOpen(false)}>
+            <SheetBody className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="unit-code">Code</Label>
+                <Input
+                  id="unit-code"
+                  value={unitForm.code}
+                  onChange={(e) => setUnitForm((f) => ({ ...f, code: e.target.value }))}
+                  maxLength={20}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit-label">Libellé</Label>
+                <Input
+                  id="unit-label"
+                  value={unitForm.label}
+                  onChange={(e) => setUnitForm((f) => ({ ...f, label: e.target.value }))}
+                  required
+                />
+              </div>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setUnitDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveUnitMutation.isPending}>
+              <Button type="submit" className="flex-1" disabled={saveUnitMutation.isPending}>
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

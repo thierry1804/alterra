@@ -31,6 +31,15 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -606,16 +615,18 @@ export default function WorkersPage() {
               workers.map((worker) => (
                 <TableRow
                   key={worker.id}
+                  className="cursor-pointer"
                   data-state={selection.isSelected(worker.id) ? "selected" : undefined}
+                  onClick={() => setDetail(worker)}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selection.isSelected(worker.id)}
                       onChange={() => selection.toggle(worker.id)}
                       aria-label={`Sélectionner ${worker.firstName} ${worker.lastName}`}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100"
@@ -630,14 +641,8 @@ export default function WorkersPage() {
                     </button>
                   </TableCell>
                   <TableCell>{worker.matricule}</TableCell>
-                  <TableCell>
-                    <button
-                      type="button"
-                      onClick={() => setDetail(worker)}
-                      className="alterra-focus rounded text-left font-medium text-zinc-900 hover:text-brand hover:underline"
-                    >
-                      {worker.firstName} {worker.lastName}
-                    </button>
+                  <TableCell className="font-medium text-zinc-900">
+                    {worker.firstName} {worker.lastName}
                   </TableCell>
                   <TableCell>{worker.mvolaNumber}</TableCell>
                   <TableCell>{siteName(worker.siteId)}</TableCell>
@@ -648,7 +653,7 @@ export default function WorkersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>{worker.sexe ? WORKER_SEXE_LABELS[worker.sexe] : "—"}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <RowActions>
                       <IconButton
                         icon={Pencil}
@@ -705,21 +710,22 @@ export default function WorkersPage() {
         onImported={() => void queryClient.invalidateQueries({ queryKey: ["workers"] })}
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</DialogTitle>
-            <DialogDescription>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editing ? "Modifier le MOC" : "Nouveau MOC"}</SheetTitle>
+            <SheetDescription>
               Numéro MVola au format 034XXXXXXXX, 036XXXXXXXX ou 038XXXXXXXX.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           <form
-            className="space-y-4"
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveMutation.mutate();
             }}
           >
+            <SheetBody className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="w-matricule">
@@ -856,17 +862,23 @@ export default function WorkersPage() {
                 </select>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <Button type="submit" className="flex-1" disabled={saveMutation.isPending}>
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-md">

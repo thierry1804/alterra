@@ -9,7 +9,14 @@ import type {
   ImportPreview,
 } from "../../lib/referentials";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { Select } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { toast } from "../../hooks/use-toast";
@@ -172,24 +179,25 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
   const missingRequired = requiredFields.filter((f) => !mapping[f.key]);
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
         if (!next) reset();
       }}
     >
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Import Excel MOC</DialogTitle>
-          <DialogDescription>
+      <SheetContent className="max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>Import Excel MOC</SheetTitle>
+          <SheetDescription>
             {step === "upload" &&
               "Choisissez un fichier .xlsx, puis associez ses colonnes aux champs ALTERRA."}
             {step === "mapping" && "Associez chaque champ requis à une colonne de votre fichier."}
             {step === "preview" && "Vérifiez les lignes avant import."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <SheetBody className="space-y-4">
         {step === "upload" && (
           <div className="space-y-4">
             <label
@@ -370,7 +378,8 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

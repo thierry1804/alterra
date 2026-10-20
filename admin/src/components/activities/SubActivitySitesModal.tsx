@@ -4,7 +4,14 @@ import { isAxiosError } from "axios";
 import { History, Power, Plus } from "lucide-react";
 import { api } from "../../lib/api";
 import type { ActivitySubActivity, Site } from "../../lib/referentials";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -159,16 +166,17 @@ export default function SubActivitySitesModal({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Tarifs par site — {group?.label}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>Tarifs par site — {group?.label}</SheetTitle>
+          <SheetDescription>
             Le tarif global s'applique à tous les sites sans surcharge. Modifier un tarif crée une
             nouvelle version (RG-04) pour cette seule lignée.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <SheetBody className="space-y-4">
         <Table>
           <TableHeader>
             <TableRow>
@@ -268,7 +276,8 @@ export default function SubActivitySitesModal({
             </Button>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

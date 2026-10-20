@@ -21,7 +21,14 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { toast } from "../../hooks/use-toast";
 
 export type RequestSelection =
@@ -130,18 +137,18 @@ export default function RequestDetailDrawer({
     approveMutation.isPending || rejectMutation.isPending || complementMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>
             {selection.type === "activity" && "Demande d'activité"}
             {selection.type === "worker" && "Demande MOC"}
             {selection.type === "clarification" && "Demande de précisions"}
-          </DialogTitle>
-          <DialogDescription>Créée le {formatDate(selection.row.createdAt)}</DialogDescription>
-        </DialogHeader>
+          </SheetTitle>
+          <SheetDescription>Créée le {formatDate(selection.row.createdAt)}</SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4">
+        <SheetBody className="space-y-4">
           {selection.type === "activity" && (
             <>
               <DetailField
@@ -289,9 +296,9 @@ export default function RequestDetailDrawer({
               )}
             </div>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }
 

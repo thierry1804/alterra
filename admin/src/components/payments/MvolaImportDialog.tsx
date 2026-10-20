@@ -6,7 +6,14 @@ import { api } from "../../lib/api";
 import type { ImportMvolaResult } from "../../lib/payments";
 import type { ImportColumnsResult } from "../../lib/referentials";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { Select } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { toast } from "../../hooks/use-toast";
@@ -155,17 +162,17 @@ export default function MvolaImportDialog({
   const missingRequired = requiredFields.filter((f) => !mapping[f.key]);
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
         if (!next) reset();
       }}
     >
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Import retour MVola</DialogTitle>
-          <DialogDescription>
+      <SheetContent className="max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>Import retour MVola</SheetTitle>
+          <SheetDescription>
             {step === "upload" &&
               "Choisissez le relevé MVola (.xls ou .xlsx), puis associez ses colonnes."}
             {step === "mapping" && "Associez chaque champ requis à une colonne du relevé."}
@@ -173,9 +180,10 @@ export default function MvolaImportDialog({
               (applied
                 ? "Rapprochement enregistré — toutes les périodes du fichier."
                 : "Aperçu : rien n'est encore enregistré. Vérifiez puis confirmez.")}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <SheetBody className="space-y-4">
         {step === "upload" && (
           <div className="space-y-4">
             <label
@@ -478,7 +486,8 @@ export default function MvolaImportDialog({
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

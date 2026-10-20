@@ -18,12 +18,14 @@ import { SortableHead } from "../components/ui/data-table/SortableHead";
 import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
 import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -364,9 +366,11 @@ export default function SitesPage() {
               pagedSites.map((site) => (
                 <TableRow
                   key={site.id}
+                  className="cursor-pointer"
                   data-state={selection.isSelected(site.id) ? "selected" : undefined}
+                  onClick={() => openEdit(site)}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selection.isSelected(site.id)}
                       onChange={() => selection.toggle(site.id)}
@@ -381,7 +385,7 @@ export default function SitesPage() {
                       {site.active ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <RowActions>
                       <IconButton
                         icon={Pencil}
@@ -425,18 +429,20 @@ export default function SitesPage() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Modifier le site" : "Nouveau site"}</DialogTitle>
-            <DialogDescription>Code site : 2 à 3 lettres majuscules (ex. MNK).</DialogDescription>
-          </DialogHeader>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>{editing ? "Modifier le site" : "Nouveau site"}</SheetTitle>
+            <SheetDescription>Code site : 2 à 3 lettres majuscules (ex. MNK).</SheetDescription>
+          </SheetHeader>
           <form
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveMutation.mutate();
             }}
           >
+            <SheetBody>
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -503,17 +509,23 @@ export default function SitesPage() {
                 />
               </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <Button type="submit" className="flex-1" disabled={saveMutation.isPending}>
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

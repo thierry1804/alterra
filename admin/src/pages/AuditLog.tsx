@@ -312,9 +312,11 @@ export default function AuditLogPage() {
             {rows.map((entry) => (
               <TableRow
                 key={entry.id}
+                className="cursor-pointer"
                 data-state={selection.isSelected(entry.id) ? "selected" : undefined}
+                onClick={() => openEntry(entry)}
               >
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selection.isSelected(entry.id)}
                     onChange={() => selection.toggle(entry.id)}
@@ -326,7 +328,7 @@ export default function AuditLogPage() {
                 <TableCell>{entry.action}</TableCell>
                 <TableCell>{entry.entityType}</TableCell>
                 <TableCell className="font-mono text-xs">{entry.entityId ?? "—"}</TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <IconButton
                     icon={Eye}
                     label="Voir le détail"

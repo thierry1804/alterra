@@ -1,6 +1,13 @@
 import type { AuditLogEntry } from "../../lib/audit";
 import { auditActorLabel, formatAuditDate } from "../../lib/audit";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 
 interface AuditDetailDrawerProps {
   entry: AuditLogEntry | null;
@@ -187,18 +194,19 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
   if (!entry) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>
             {entry.action} · {entry.entityType}
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             {formatAuditDate(entry.createdAt)} · {auditActorLabel(entry)}
             {entry.entityId ? ` · ${entry.entityId}` : ""}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <SheetBody className="space-y-4">
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-zinc-500">IP</dt>
@@ -232,7 +240,8 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
             </div>
           </section>
         </div>
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

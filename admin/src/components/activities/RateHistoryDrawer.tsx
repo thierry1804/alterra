@@ -2,7 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { ActivitySubActivity } from "../../lib/referentials";
 import { formatDate, formatRate } from "../../lib/referentials";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { fetchAllCursorPages } from "../ui/data-table/fetchAllPages";
@@ -38,14 +45,15 @@ export default function RateHistoryDrawer({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Historique tarifs — {label}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>Historique tarifs — {label}</SheetTitle>
+          <SheetDescription>
             Versions tarifaires RG-04 pour cette lignée ({siteId ? "site" : "globale"}).
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
+        <SheetBody>
         <Table>
           <TableHeader>
             <TableRow>
@@ -81,7 +89,8 @@ export default function RateHistoryDrawer({
               ))}
           </TableBody>
         </Table>
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

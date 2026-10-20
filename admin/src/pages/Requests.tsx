@@ -366,6 +366,7 @@ export default function RequestsPage() {
           rows={activitySort.sorted}
           selection={activitySelection}
           sort={activitySort}
+          onRowClick={(row) => openSelection({ type: "activity", row })}
           columns={[
             { key: "createdAt", label: "Date" },
             { key: "proposedLabel", label: "Libellé" },
@@ -404,6 +405,7 @@ export default function RequestsPage() {
           rows={workerSort.sorted}
           selection={workerSelection}
           sort={workerSort}
+          onRowClick={(row) => openSelection({ type: "worker", row })}
           columns={[
             { key: "createdAt", label: "Date" },
             { key: "lastName", label: "Identité" },
@@ -442,6 +444,7 @@ export default function RequestsPage() {
           rows={clarificationSort.sorted}
           selection={clarificationSelection}
           sort={clarificationSort}
+          onRowClick={(row) => openSelection({ type: "clarification", row })}
           columns={[
             { key: "createdAt", label: "Date" },
             { key: "pointageId", label: "Pointage" },
@@ -495,6 +498,7 @@ function RequestsTable<T extends { id: string }>({
   renderCells,
   selection,
   sort,
+  onRowClick,
 }: {
   rows: T[];
   columns: (RequestsTableColumn | null)[];
@@ -502,6 +506,7 @@ function RequestsTable<T extends { id: string }>({
   emptyLabel: string;
   renderCells: (row: T) => React.ReactNode;
   selection: ReturnType<typeof useRowSelection> | null;
+  onRowClick?: (row: T) => void;
   sort: { sortKey: string | null; sortDir: "asc" | "desc"; toggleSort: (key: string) => void };
 }) {
   if (rows.length === 0) {
@@ -548,10 +553,12 @@ function RequestsTable<T extends { id: string }>({
           {rows.map((row) => (
             <TableRow
               key={row.id}
+              className={onRowClick ? "cursor-pointer" : undefined}
               data-state={selection?.isSelected(row.id) ? "selected" : undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
               {selection && (
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selection.isSelected(row.id)}
                     onChange={() => selection.toggle(row.id)}

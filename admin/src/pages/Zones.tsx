@@ -20,12 +20,14 @@ import { BulkActionBar } from "../components/ui/data-table/BulkActionBar";
 import { exportToExcel } from "../components/ui/data-table/exportToExcel";
 import PolygonDrawMap from "../components/map/PolygonDrawMap";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -493,10 +495,11 @@ export default function ZonesPage() {
               return (
                 <Fragment key={zone.id}>
                   <TableRow
-                    className="bg-zinc-50/80"
+                    className="cursor-pointer bg-zinc-50/80"
                     data-state={zoneSelection.isSelected(zone.id) ? "selected" : undefined}
+                    onClick={() => openZoneEdit(zone)}
                   >
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={zoneSelection.isSelected(zone.id)}
                         onChange={() => zoneSelection.toggle(zone.id)}
@@ -507,7 +510,10 @@ export default function ZonesPage() {
                       <button
                         type="button"
                         className="mr-2 text-zinc-500"
-                        onClick={() => toggleZone(zone.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleZone(zone.id);
+                        }}
                       >
                         {expanded ? "▼" : "▶"}
                       </button>
@@ -518,7 +524,7 @@ export default function ZonesPage() {
                       {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "—"}
                     </TableCell>
                     <TableCell>{zone.geoPolygon ? "Polygon" : "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions>
                         <IconButton
                           icon={Plus}
@@ -546,9 +552,11 @@ export default function ZonesPage() {
                     zoneParcels.map((parcel) => (
                       <TableRow
                         key={parcel.id}
+                        className="cursor-pointer"
                         data-state={parcelSelection.isSelected(parcel.id) ? "selected" : undefined}
+                        onClick={() => openParcelEdit(parcel)}
                       >
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={parcelSelection.isSelected(parcel.id)}
                             onChange={() => parcelSelection.toggle(parcel.id)}
@@ -563,7 +571,7 @@ export default function ZonesPage() {
                             : "—"}
                         </TableCell>
                         <TableCell>{parcel.geoPolygon ? "Polygon" : "—"}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <RowActions>
                             <IconButton
                               icon={Pencil}
@@ -594,15 +602,16 @@ export default function ZonesPage() {
         </Table>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{dialogTitle}</DialogTitle>
-            <DialogDescription>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="max-w-lg">
+          <SheetHeader>
+            <SheetTitle>{dialogTitle}</SheetTitle>
+            <SheetDescription>
               Dessinez le polygone sur la carte, puis nommez et attribuez un code.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
+          <SheetBody className="space-y-4">
           {(dialogMode === "zone-create" || dialogMode === "zone-edit") && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -687,21 +696,28 @@ export default function ZonesPage() {
               </div>
             </div>
           )}
+          </SheetBody>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+          <SheetFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setDialogOpen(false)}
+            >
               Annuler
             </Button>
             <Button
               type="button"
+              className="flex-1"
               disabled={saveMutation.isPending}
               onClick={() => void saveMutation.mutate()}
             >
               {saveMutation.isPending ? "Enregistrement…" : "Enregistrer"}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <ConfirmDialog
         open={deleteConfirm !== null}

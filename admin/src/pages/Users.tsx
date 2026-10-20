@@ -28,6 +28,15 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -389,9 +398,11 @@ export default function UsersPage() {
               users.map((user) => (
                 <TableRow
                   key={user.id}
+                  className="cursor-pointer"
                   data-state={selection.isSelected(user.id) ? "selected" : undefined}
+                  onClick={() => openEdit(user)}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selection.isSelected(user.id)}
                       onChange={() => selection.toggle(user.id)}
@@ -410,7 +421,7 @@ export default function UsersPage() {
                       {user.active ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <RowActions>
                       <IconButton
                         icon={Pencil}
@@ -453,21 +464,22 @@ export default function UsersPage() {
         onClick={() => void usersQuery.fetchNextPage()}
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? "Modifier l'utilisateur" : "Nouvel utilisateur"}</DialogTitle>
-            <DialogDescription>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editing ? "Modifier l'utilisateur" : "Nouvel utilisateur"}</SheetTitle>
+            <SheetDescription>
               Mot de passe laissé vide = génération automatique à la création.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
           <form
-            className="space-y-4"
+            className="contents"
             onSubmit={(e) => {
               e.preventDefault();
               saveMutation.mutate();
             }}
           >
+            <SheetBody className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="u-first">Prénom</Label>
@@ -573,17 +585,23 @@ export default function UsersPage() {
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDialogOpen(false)}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <Button type="submit" className="flex-1" disabled={saveMutation.isPending}>
                 Enregistrer
               </Button>
-            </div>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={!!tempPassword} onOpenChange={() => setTempPassword(null)}>
         <DialogContent>
