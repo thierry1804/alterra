@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Handlebars from "handlebars";
 import puppeteer from "puppeteer";
-import type { WeeklyReportViewModel } from "./weekly-data.service.js";
+import type { WeeklyInvoiceActivity, WeeklyReportViewModel } from "./weekly-data.service.js";
 import type { DailyReportViewModel } from "./daily-data.service.js";
 import type { ActivityInvoiceViewModel } from "../payments/activity-invoices.service.js";
 
@@ -25,8 +25,11 @@ export function renderWeeklyReportHtml(data: WeeklyReportViewModel): string {
   return loadTemplate("weekly-report.hbs")(data);
 }
 
-export function renderWeeklyInvoiceHtml(data: WeeklyReportViewModel): string {
-  return loadTemplate("weekly-invoice.hbs")(data);
+export function renderWeeklyInvoiceHtml(
+  data: WeeklyReportViewModel,
+  activity: WeeklyInvoiceActivity,
+): string {
+  return loadTemplate("weekly-invoice.hbs")({ ...data, activity });
 }
 
 export function renderDailyReportHtml(data: DailyReportViewModel): string {

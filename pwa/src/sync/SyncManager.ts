@@ -186,64 +186,62 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
     }
 
     const pending = await db.pointages.where("status").equals("local").toArray();
-    if (pending.length === 0) {
-      await setSetting(SETTING_LAST_SYNC_AT, new Date().toISOString());
-      return totals;
-    }
+    if (pending.length > 0) {
+      await appendLog("info", `Début sync — ${pending.length} pointage(s) en attente`);
 
-    await appendLog("info", `Début sync — ${pending.length} pointage(s) en attente`);
-    await attachPendingPhotos(pending);
+      await attachPendingPhotos(pending);
 
-    for (let index = 0; index < pending.length; index += BATCH_SIZE) {
-      const chunk = pending.slice(index, index + BATCH_SIZE);
-      const clientUuids = chunk.map((pointage) => pointage.clientUuid);
+      for (let index = 0; index < pending.length; index += BATCH_SIZE) {
+        const chunk = pending.slice(index, index + BATCH_SIZE);
+        const clientUuids = chunk.map((pointage) => pointage.clientUuid);
 
-      await db.pointages.bulkPut(
-        chunk.map((pointage) => ({ ...pointage, status: "syncing" as const })),
-      );
-      await markQueueProcessing(clientUuids);
+        await db.pointages.bulkPut(
+          chunk.map((pointage) => ({ ...pointage, status: "syncing" as const })),
+        );
+        await markQueueProcessing(clientUuids);
 
-      try {
-        const { data } = await api.post<{ results: PointageSyncResult[] }>("/pointages/sync", {
-          batch: chunk.map(toSyncPayload),
-        });
+        try {
+          const { data } = await api.post<{ results: PointageSyncResult[] }>("/pointages/sync", {
+            batch: chunk.map(toSyncPayload),
+          });
 
-        const batchResult = await applyPointageSyncResults(chunk, data.results);
-        totals.synced += batchResult.synced;
-        totals.rejected += batchResult.rejected;
-        totals.skipped += batchResult.skipped;
+          const batchResult = await applyPointageSyncResults(chunk, data.results);
+          totals.synced += batchResult.synced;
+          totals.rejected += batchResult.rejected;
+          totals.skipped += batchResult.skipped;
 
-        consecutiveFailures = 0;
-        autoSyncEnabled = true;
-      } catch (error) {
-        consecutiveFailures++;
-        await revertChunkToLocal(chunk);
+          consecutiveFailures = 0;
+          autoSyncEnabled = true;
+        } catch (error) {
+          consecutiveFailures++;
+          await revertChunkToLocal(chunk);
 
-        const message = error instanceof Error ? error.message : "Erreur réseau";
-        await appendLog("error", `Batch échoué — ${message}`);
+          const message = error instanceof Error ? error.message : "Erreur réseau";
+          await appendLog("error", `Batch échoué — ${message}`);
 
-        if (!options?.force && consecutiveFailures <= BACKOFF_DELAYS_MS.length) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, BACKOFF_DELAYS_MS[consecutiveFailures - 1]),
-          );
-        } else if (consecutiveFailures > BACKOFF_DELAYS_MS.length) {
-          autoSyncEnabled = false;
-          await appendLog("warning", "Sync auto suspendue après échecs répétés");
-          break;
+          if (!options?.force && consecutiveFailures <= BACKOFF_DELAYS_MS.length) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, BACKOFF_DELAYS_MS[consecutiveFailures - 1]),
+            );
+          } else if (consecutiveFailures > BACKOFF_DELAYS_MS.length) {
+            autoSyncEnabled = false;
+            await appendLog("warning", "Sync auto suspendue après échecs répétés");
+            break;
+          }
         }
+      }
+
+      if (totals.synced > 0 || totals.rejected > 0) {
+        await appendLog(
+          "success",
+          `Sync terminée — ${totals.synced} envoyé(s), ${totals.rejected} rejeté(s)`,
+        );
+      } else if (totals.skipped > 0) {
+        await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
       }
     }
 
     await setSetting(SETTING_LAST_SYNC_AT, new Date().toISOString());
-
-    if (totals.synced > 0 || totals.rejected > 0) {
-      await appendLog(
-        "success",
-        `Sync terminée — ${totals.synced} envoyé(s), ${totals.rejected} rejeté(s)`,
-      );
-    } else if (totals.skipped > 0) {
-      await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
-    }
 
     const presenceTotals = await syncPresenceLogs();
     if (presenceTotals.synced > 0 || presenceTotals.rejected > 0) {
