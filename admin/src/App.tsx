@@ -19,6 +19,7 @@ import ReportsPage from "./pages/Reports";
 import AuditLogPage from "./pages/AuditLog";
 import RequestsPage from "./pages/Requests";
 import MapPage from "./pages/Map";
+import BadgesPage from "./pages/Badges";
 import ProtectedRoute, { GuestRoute } from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import RoleGuard from "./components/layout/RoleGuard";
@@ -72,6 +73,7 @@ export default function App() {
               <Route element={<RoleGuard allowedRoles={["ADMIN", "CHEF_SERVICE"]} />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/pointages" element={<PointagesPage />} />
+                <Route path="/badges" element={<BadgesPage />} />
               </Route>
 
               <Route element={<RoleGuard allowedRoles={["ADMIN"]} />}>

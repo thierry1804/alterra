@@ -132,7 +132,7 @@ badgesRouter.get(
 badgesRouter.post(
   "/badges",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
   validate(createBadgeSchema),
   async (req, res, next) => {
     try {
@@ -140,6 +140,9 @@ badgesRouter.post(
         where: { id: req.body.workerId, deletedAt: null },
       });
       if (!worker) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
+      if (req.user!.role === Role.CHEF_SERVICE && worker.siteId !== req.user!.siteId) {
+        throw new ApiError(403, "FORBIDDEN", "Travailleur hors périmètre site");
+      }
 
       const existingWorkerBadge = await prisma.badge.findUnique({
         where: { workerId: worker.id },
@@ -198,12 +201,14 @@ badgesRouter.post(
 badgesRouter.patch(
   "/badges/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
   validate(badgeIdParams, "params"),
   validate(updateBadgeSchema),
   async (req, res, next) => {
     try {
-      const before = await prisma.badge.findUnique({ where: { id: req.params.id } });
+      const before = await prisma.badge.findFirst({
+        where: { id: req.params.id, ...buildBadgeScopeWhere(req) },
+      });
       if (!before) throw new ApiError(404, "NOT_FOUND", "Badge introuvable");
 
       const data: Prisma.BadgeUpdateInput = {};
@@ -250,11 +255,13 @@ badgesRouter.patch(
 badgesRouter.delete(
   "/badges/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
   validate(badgeIdParams, "params"),
   async (req, res, next) => {
     try {
-      const before = await prisma.badge.findUnique({ where: { id: req.params.id } });
+      const before = await prisma.badge.findFirst({
+        where: { id: req.params.id, ...buildBadgeScopeWhere(req) },
+      });
       if (!before) throw new ApiError(404, "NOT_FOUND", "Badge introuvable");
 
       const badge = await prisma.badge.update({

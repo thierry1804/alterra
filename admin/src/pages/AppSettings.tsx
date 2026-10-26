@@ -369,7 +369,7 @@ export default function AppSettingsPage() {
         <TabsContent value="general">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,32rem)_minmax(0,20rem)]">
             <div className="space-y-4">
-              <div className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6">
+              <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
                 <div className="space-y-2">
                   <Label htmlFor="app-name">Nom de l'application</Label>
                   <div className="flex gap-2">

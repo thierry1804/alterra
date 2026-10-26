@@ -5,6 +5,7 @@ import {
   CreditCard,
   FileStack,
   FileText,
+  IdCard,
   Inbox,
   Layers,
   LayoutDashboard,
@@ -55,6 +56,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["ADMIN", "CHEF_SERVICE"],
     section: "Opérations",
     badge: "pointages",
+  },
+  {
+    label: "Badges NFC",
+    path: "/badges",
+    icon: IdCard,
+    roles: ["ADMIN", "CHEF_SERVICE"],
+    section: "Opérations",
   },
   {
     label: "Paiements",

@@ -65,6 +65,22 @@ export interface Worker {
   photoKey: string | null;
 }
 
+export interface Badge {
+  id: string;
+  workerId: string;
+  nfcTagId: string;
+  assignedAt: string;
+  revokedAt: string | null;
+  worker: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    matricule: string;
+    siteId: string;
+    teamId: string | null;
+  };
+}
+
 export interface AppUser {
   id: string;
   email: string | null;

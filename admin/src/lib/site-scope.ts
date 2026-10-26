@@ -12,6 +12,7 @@ export const SITE_SCOPED_PATHS = [
   "/reports",
   "/zones",
   "/map",
+  "/badges",
 ];
 
 export function isSiteScopedPath(pathname: string): boolean {

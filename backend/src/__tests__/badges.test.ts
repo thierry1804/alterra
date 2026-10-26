@@ -6,6 +6,7 @@ import { signAccessToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
+const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
 const MOCK_CDE_ID = "00000000-0000-4000-8000-000000000003";
 const MOCK_WORKER_ID = "00000000-0000-4000-8000-000000000060";
 const MOCK_BADGE_ID = "00000000-0000-4000-8000-000000000080";
@@ -56,6 +57,15 @@ function cdeToken() {
     role: Role.CHEF_EQUIPE,
     siteId: MOCK_SITE_ID,
     teamId: MOCK_TEAM_ID,
+  });
+}
+
+function cdsToken(siteId: string = MOCK_SITE_ID) {
+  return signAccessToken({
+    sub: MOCK_CDS_ID,
+    role: Role.CHEF_SERVICE,
+    siteId,
+    teamId: null,
   });
 }
 
@@ -115,8 +125,48 @@ describe("badges routes", () => {
     expect(res.body.nfcTagId).toBe("a1b2c3d4");
   });
 
+  it("POST /badges creates badge for CDS on a worker of their own site", async () => {
+    vi.mocked(prisma.worker.findFirst).mockResolvedValue({
+      id: MOCK_WORKER_ID,
+      siteId: MOCK_SITE_ID,
+    } as never);
+    vi.mocked(prisma.badge.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.badge.create).mockResolvedValue({
+      id: MOCK_BADGE_ID,
+      workerId: MOCK_WORKER_ID,
+      nfcTagId: "a1b2c3d4",
+      assignedAt: new Date(),
+      revokedAt: null,
+      worker: { id: MOCK_WORKER_ID, firstName: "MOC", lastName: "Test", matricule: "MOC-1" },
+    } as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/badges")
+      .set("Authorization", `Bearer ${cdsToken()}`)
+      .send({ workerId: MOCK_WORKER_ID, nfcTagId: "A1B2C3D4" });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("POST /badges rejects CDS assigning a badge outside their site", async () => {
+    vi.mocked(prisma.worker.findFirst).mockResolvedValue({
+      id: MOCK_WORKER_ID,
+      siteId: "00000000-0000-4000-8000-000000000099",
+    } as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/badges")
+      .set("Authorization", `Bearer ${cdsToken()}`)
+      .send({ workerId: MOCK_WORKER_ID, nfcTagId: "A1B2C3D4" });
+
+    expect(res.status).toBe(403);
+    expect(prisma.badge.create).not.toHaveBeenCalled();
+  });
+
   it("DELETE /badges/:id revokes badge", async () => {
-    vi.mocked(prisma.badge.findUnique).mockResolvedValue({
+    vi.mocked(prisma.badge.findFirst).mockResolvedValue({
       id: MOCK_BADGE_ID,
       workerId: MOCK_WORKER_ID,
       nfcTagId: "a1b2c3d4",
