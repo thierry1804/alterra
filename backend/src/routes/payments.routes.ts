@@ -19,7 +19,7 @@ export const paymentsRouter = Router();
 
 const generateSchema = z.object({
   periodIso: z.string().min(2).max(16),
-  cycle: z.nativeEnum(PaymentCycle).optional(),
+  cycle: z.enum(PaymentCycle).optional(),
   referenceYear: z.number().int().min(2000).max(2100).optional(),
 });
 
@@ -42,7 +42,7 @@ const importStatusSchema = z.object({
   contentBase64: z.string().min(1),
   hasHeaderRow: z.boolean().optional(),
   referenceRowNumber: z.number().int().min(1).optional(),
-  mapping: z.record(z.string()).optional(),
+  mapping: z.record(z.string(), z.string()).optional(),
   dryRun: z.boolean().optional(),
 });
 
@@ -52,7 +52,7 @@ const failPaymentSchema = z.object({
 
 const listPaymentsQuery = z.object({
   periodIso: z.string().min(2).max(16),
-  status: z.nativeEnum(PaymentStatus).optional(),
+  status: z.enum(PaymentStatus).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
   siteId: z.string().uuid().optional(),
 });

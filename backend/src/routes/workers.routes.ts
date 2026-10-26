@@ -34,8 +34,8 @@ const WORKER_SORT_FIELDS = [
 const listWorkersQuery = z.object({
   siteId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
-  status: z.nativeEnum(WorkerStatus).optional(),
-  sexe: z.nativeEnum(Sexe).optional(),
+  status: z.enum(WorkerStatus).optional(),
+  sexe: z.enum(Sexe).optional(),
   q: z.string().min(1).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
@@ -45,7 +45,7 @@ const listWorkersQuery = z.object({
 
 const bulkStatusSchema = z.object({
   ids: bulkIdsSchema,
-  status: z.nativeEnum(WorkerStatus),
+  status: z.enum(WorkerStatus),
 });
 
 const bulkDeleteSchema = z.object({
@@ -54,7 +54,7 @@ const bulkDeleteSchema = z.object({
 
 const bulkSexeSchema = z.object({
   ids: bulkIdsSchema,
-  sexe: z.nativeEnum(Sexe),
+  sexe: z.enum(Sexe),
 });
 
 const createWorkerSchema = z.object({
@@ -69,9 +69,9 @@ const createWorkerSchema = z.object({
   siteId: z.string().uuid(),
   teamId: z.string().uuid().optional(),
   hiredAt: z.coerce.date(),
-  status: z.nativeEnum(WorkerStatus).default(WorkerStatus.ACTIVE),
+  status: z.enum(WorkerStatus).default(WorkerStatus.ACTIVE),
   birthDate: z.coerce.date().optional(),
-  sexe: z.nativeEnum(Sexe).nullable().optional(),
+  sexe: z.enum(Sexe).nullable().optional(),
   maritalStatus: z.string().optional(),
   childrenCount: z.coerce.number().int().min(0).optional(),
   legacyMocId: z.coerce.number().int().optional(),
@@ -101,7 +101,7 @@ const importBodySchema = z.object({
   contentBase64: z.string().min(1),
   hasHeaderRow: z.boolean().optional(),
   referenceRowNumber: z.number().int().min(1).optional(),
-  mapping: z.record(z.string()).optional(),
+  mapping: z.record(z.string(), z.string()).optional(),
 });
 
 const importColumnsBodySchema = z.object({

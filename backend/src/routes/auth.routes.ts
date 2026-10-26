@@ -25,13 +25,13 @@ import { confirmPasswordReset, requestPasswordReset } from "../services/auth/pas
 export const authRouter = Router();
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
   mfaCode: z.string().length(6).optional(),
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
 });
 
 const resetPasswordConfirmSchema = z.object({

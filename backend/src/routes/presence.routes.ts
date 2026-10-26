@@ -15,7 +15,7 @@ const syncItemSchema = z.object({
   date: z.coerce.date(),
   arrivalTime: z.coerce.date(),
   badgeNfcTagId: z.string().min(1).max(64),
-  source: z.nativeEnum(PresenceSource),
+  source: z.enum(PresenceSource),
   parcelleId: z.string().uuid().optional(),
   createdByClientAt: z.coerce.date(),
 });

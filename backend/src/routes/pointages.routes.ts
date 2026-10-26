@@ -40,7 +40,7 @@ const syncBatchSchema = z.object({
 
 const listPointagesQuery = z.object({
   cursor: z.string().uuid().optional(),
-  status: z.nativeEnum(PointageStatus).optional(),
+  status: z.enum(PointageStatus).optional(),
   workerId: z.string().uuid().optional(),
   subActivityId: z.string().uuid().optional(),
   siteId: z.string().uuid().optional(),

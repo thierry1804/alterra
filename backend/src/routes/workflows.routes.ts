@@ -44,13 +44,13 @@ export const workflowsRouter = Router();
 const idParams = z.object({ id: z.string().uuid() });
 
 const listRequestQuery = z.object({
-  status: z.nativeEnum(RequestStatus).optional(),
+  status: z.enum(RequestStatus).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const listClarificationQuery = z.object({
-  status: z.nativeEnum(ClarificationStatus).optional(),
+  status: z.enum(ClarificationStatus).optional(),
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -68,7 +68,7 @@ const createWorkerSchema = z.object({
   lastName: z.string().min(1),
   mvolaNumber: z.string().min(9),
   cinNumber: z.string().optional(),
-  sexe: z.nativeEnum(Sexe).optional(),
+  sexe: z.enum(Sexe).optional(),
   proposedPhotoKey: z.string().optional(),
   targetTeamId: z.string().uuid().optional(),
   justification: z.string().min(10),

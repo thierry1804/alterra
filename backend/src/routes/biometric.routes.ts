@@ -11,7 +11,7 @@ export const biometricRouter = Router();
 
 const checkSchema = z.object({
   workerId: z.string().uuid(),
-  context: z.nativeEnum(BioContext).optional(),
+  context: z.enum(BioContext).optional(),
   photoBase64: z.string().min(32).optional(),
   referenceDate: z.coerce.date().optional(),
 });
@@ -19,9 +19,9 @@ const checkSchema = z.object({
 const checkOfflineSchema = z.object({
   clientUuid: z.string().uuid(),
   workerId: z.string().uuid(),
-  result: z.nativeEnum(BioResult),
+  result: z.enum(BioResult),
   score: z.number().min(0).max(1).nullable(),
-  context: z.nativeEnum(BioContext).optional(),
+  context: z.enum(BioContext).optional(),
   referenceDate: z.coerce.date().optional(),
   performedAt: z.coerce.date(),
 });

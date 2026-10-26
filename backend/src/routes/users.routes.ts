@@ -30,7 +30,7 @@ const USER_SORT_FIELDS = [
 ] as const;
 
 const listUsersQuery = z.object({
-  role: z.nativeEnum(Role).optional(),
+  role: z.enum(Role).optional(),
   siteId: z.string().uuid().optional(),
   active: z
     .enum(["true", "false"])
@@ -57,10 +57,10 @@ function buildUserSearchFilter(q: string): Prisma.UserWhereInput {
 const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const createUserSchema = z.object({
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   phone: z.string().min(8).optional(),
   password: z.string().min(8).optional(),
-  role: z.nativeEnum(Role),
+  role: z.enum(Role),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   siteId: z.string().uuid().nullable().optional(),
@@ -69,9 +69,9 @@ const createUserSchema = z.object({
 });
 
 const updateUserSchema = z.object({
-  email: z.string().email().nullable().optional(),
+  email: z.email().nullable().optional(),
   phone: z.string().min(8).nullable().optional(),
-  role: z.nativeEnum(Role).optional(),
+  role: z.enum(Role).optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   siteId: z.string().uuid().nullable().optional(),
@@ -87,7 +87,7 @@ usersRouter.use(requireAuth, requireRole(Role.ADMIN));
 
 usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) => {
   try {
-    const { role, siteId, active, q, cursor, take, orderBy, dir } = req.query as z.infer<
+    const { role, siteId, active, q, cursor, take, orderBy, dir } = req.query as unknown as z.infer<
       typeof listUsersQuery
     >;
 
