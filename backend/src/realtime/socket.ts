@@ -86,3 +86,9 @@ export function emitToUser(userId: string, event: string, payload: unknown): voi
   if (!io) return;
   io.to(userRoom(userId)).emit(event, payload);
 }
+
+/** Ferme immédiatement les sockets déjà ouverts d'un utilisateur (compte bloqué, mot de passe réinitialisé). */
+export function disconnectUserSockets(userId: string): void {
+  if (!io) return;
+  void io.in(userRoom(userId)).disconnectSockets(true);
+}
