@@ -149,6 +149,7 @@ export default function RequestsPage() {
           variables.endpoint.includes("activity") ? "activity-requests" : "worker-requests",
         ],
       });
+      void queryClient.invalidateQueries({ queryKey: ["nav", "pending-requests"] });
       const failed = res.data.results.filter((r) => r.status === "error");
       activitySelection.clear();
       workerSelection.clear();
@@ -214,6 +215,7 @@ export default function RequestsPage() {
     if (tab === "activities") void activityQuery.refetch();
     if (tab === "workers") void workerQuery.refetch();
     if (tab === "clarifications") void clarificationQuery.refetch();
+    void queryClient.invalidateQueries({ queryKey: ["nav", "pending-requests"] });
   }
 
   function handleExport() {
