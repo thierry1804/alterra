@@ -21,9 +21,9 @@ export const appSettingsRouter = Router();
 const SETTINGS_ID = "singleton";
 const DEFAULT_APP_NAME = "ALTERRA";
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
-const ICON_EXTENSIONS = ["png", "jpg", "svg", "webp"] as const;
+type IconExtension = "png" | "jpg" | "svg" | "webp";
 
-const CONTENT_TYPE_BY_EXT: Record<(typeof ICON_EXTENSIONS)[number], string> = {
+const CONTENT_TYPE_BY_EXT: Record<IconExtension, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   svg: "image/svg+xml",
@@ -31,9 +31,9 @@ const CONTENT_TYPE_BY_EXT: Record<(typeof ICON_EXTENSIONS)[number], string> = {
 };
 
 const LOGIN_ASSET_MAX_BYTES = 5 * 1024 * 1024;
-const LOGIN_ASSET_EXTENSIONS = ["png", "jpg", "webp"] as const;
+type LoginAssetExtension = "png" | "jpg" | "webp";
 
-const LOGIN_ASSET_CONTENT_TYPE_BY_EXT: Record<(typeof LOGIN_ASSET_EXTENSIONS)[number], string> = {
+const LOGIN_ASSET_CONTENT_TYPE_BY_EXT: Record<LoginAssetExtension, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   webp: "image/webp",
@@ -132,7 +132,7 @@ appSettingsRouter.patch(
   },
 );
 
-const EXT_BY_CONTENT_TYPE: Record<string, (typeof ICON_EXTENSIONS)[number]> = {
+const EXT_BY_CONTENT_TYPE: Record<string, IconExtension> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/svg+xml": "svg",
@@ -219,7 +219,7 @@ appSettingsRouter.get("/app-settings/icon", async (_req, res, next) => {
       return;
     }
 
-    const ext = settings.iconKey.split(".").pop() as (typeof ICON_EXTENSIONS)[number] | undefined;
+    const ext = settings.iconKey.split(".").pop() as IconExtension | undefined;
     const contentType = (ext && CONTENT_TYPE_BY_EXT[ext]) || "application/octet-stream";
 
     const stream = await minioClient.getObject(BUCKETS.assets, settings.iconKey);
@@ -242,7 +242,7 @@ const confirmLoginAssetSchema = z.object({
   key: z.string().min(1),
 });
 
-const LOGIN_ASSET_EXT_BY_CONTENT_TYPE: Record<string, (typeof LOGIN_ASSET_EXTENSIONS)[number]> = {
+const LOGIN_ASSET_EXT_BY_CONTENT_TYPE: Record<string, LoginAssetExtension> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
@@ -335,7 +335,7 @@ function registerLoginAssetRoutes(slot: LoginAssetSlot) {
         return;
       }
 
-      const ext = key.split(".").pop() as (typeof LOGIN_ASSET_EXTENSIONS)[number] | undefined;
+      const ext = key.split(".").pop() as LoginAssetExtension | undefined;
       const contentType =
         (ext && LOGIN_ASSET_CONTENT_TYPE_BY_EXT[ext]) || "application/octet-stream";
 
