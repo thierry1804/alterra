@@ -8,6 +8,7 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { IMPOSSIBLE_SCOPE_FILTER } from "../middleware/prisma-rls.js";
 
 export const badgesRouter = Router();
 
@@ -34,14 +35,15 @@ const updateBadgeSchema = z.object({
 });
 
 function buildBadgeScopeWhere(req: Request): Prisma.BadgeWhereInput {
-  const where: Prisma.BadgeWhereInput = {};
-  if (req.user!.role === Role.CHEF_SERVICE && req.user!.siteId) {
-    where.worker = { siteId: req.user!.siteId };
+  if (req.user!.role === Role.CHEF_SERVICE) {
+    if (!req.user!.siteId) return IMPOSSIBLE_SCOPE_FILTER;
+    return { worker: { siteId: req.user!.siteId } };
   }
-  if (req.user!.role === Role.CHEF_EQUIPE && req.user!.teamId) {
-    where.worker = { teamId: req.user!.teamId };
+  if (req.user!.role === Role.CHEF_EQUIPE) {
+    if (!req.user!.teamId) return IMPOSSIBLE_SCOPE_FILTER;
+    return { worker: { teamId: req.user!.teamId } };
   }
-  return where;
+  return {};
 }
 
 badgesRouter.get(
