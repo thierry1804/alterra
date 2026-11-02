@@ -113,6 +113,11 @@ export async function blockUser(
   await redis.setEx(`${USER_BLOCKED_PREFIX}${userId}`, ttlSeconds, "1");
 }
 
+export async function unblockUser(userId: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.del(`${USER_BLOCKED_PREFIX}${userId}`);
+}
+
 export async function isUserBlocked(userId: string): Promise<boolean> {
   const redis = await getRedis();
   return (await redis.get(`${USER_BLOCKED_PREFIX}${userId}`)) !== null;

@@ -7,6 +7,7 @@ import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { unblockUser } from "../lib/redis.js";
 import {
   deactivateUser,
   generateTempPassword,
@@ -229,6 +230,12 @@ usersRouter.patch(
           updatedAt: true,
         },
       });
+
+      // Sans ça, un compte réactivé reste bloqué par `deactivateUser` (clé Redis TTL 7 jours) :
+      // il se reconnecte mais chaque appel API suivant répond 401 USER_BLOCKED.
+      if (!before.active && user.active) {
+        await unblockUser(user.id);
+      }
 
       await writeAuditLog({
         userId: req.user!.sub,
