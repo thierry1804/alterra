@@ -50,8 +50,11 @@ export async function validatePointage(id: string, validatedById: string) {
   assertActionable(existing.status);
   await assertBioOkForValidation(existing.workerId, existing.date);
 
-  return prisma.pointage.update({
-    where: { id },
+  // `where` revérifie le statut au moment de l'écriture : si un rejet concurrent a déjà fait
+  // bouger ce pointage entre notre lecture et ici, `count` vaut 0 et on échoue plutôt que
+  // d'écraser silencieusement le résultat de l'autre action.
+  const { count } = await prisma.pointage.updateMany({
+    where: { id, status: existing.status },
     data: {
       status: "VALIDATED",
       validatedById,
@@ -59,6 +62,15 @@ export async function validatePointage(id: string, validatedById: string) {
       rejectionReason: null,
     },
   });
+  if (count === 0) {
+    throw new ApiError(
+      409,
+      "INVALID_STATUS",
+      "Ce pointage vient d'être traité par quelqu'un d'autre — rechargez avant de réessayer",
+    );
+  }
+
+  return prisma.pointage.findUniqueOrThrow({ where: { id } });
 }
 
 export async function rejectPointage(id: string, validatedById: string, rejectionReason: string) {
@@ -73,8 +85,8 @@ export async function rejectPointage(id: string, validatedById: string, rejectio
   const existing = await prisma.pointage.findUniqueOrThrow({ where: { id } });
   assertActionable(existing.status);
 
-  return prisma.pointage.update({
-    where: { id },
+  const { count } = await prisma.pointage.updateMany({
+    where: { id, status: existing.status },
     data: {
       status: "REJECTED",
       rejectionReason: rejectionReason.trim(),
@@ -82,4 +94,13 @@ export async function rejectPointage(id: string, validatedById: string, rejectio
       validatedAt: new Date(),
     },
   });
+  if (count === 0) {
+    throw new ApiError(
+      409,
+      "INVALID_STATUS",
+      "Ce pointage vient d'être traité par quelqu'un d'autre — rechargez avant de réessayer",
+    );
+  }
+
+  return prisma.pointage.findUniqueOrThrow({ where: { id } });
 }

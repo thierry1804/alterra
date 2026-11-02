@@ -64,6 +64,7 @@ vi.mock("../lib/prisma.js", () => ({
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     biometricCheck: {
       findFirst: vi.fn(),
@@ -239,7 +240,14 @@ describe("Pointages", () => {
     });
 
     it("succeeds when latest bio is OK", async () => {
-      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.pointage.findUniqueOrThrow)
+        .mockResolvedValueOnce(mockPointage as never)
+        .mockResolvedValueOnce({
+          ...mockPointage,
+          status: PointageStatus.VALIDATED,
+          validatedById: MOCK_CDS_ID,
+          validatedAt: new Date(),
+        } as never);
       vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
         id: "bio-1",
         workerId: MOCK_WORKER_ID,
@@ -248,12 +256,7 @@ describe("Pointages", () => {
         performedAt: new Date("2026-07-14T10:00:00Z"),
         weekIso: "2026-W29",
       } as never);
-      vi.mocked(prisma.pointage.update).mockResolvedValue({
-        ...mockPointage,
-        status: PointageStatus.VALIDATED,
-        validatedById: MOCK_CDS_ID,
-        validatedAt: new Date(),
-      } as never);
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
 
       const app = createApp();
       const res = await request(app)
@@ -262,15 +265,37 @@ describe("Pointages", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("VALIDATED");
-      expect(prisma.pointage.update).toHaveBeenCalledWith(
+      expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: MOCK_POINTAGE_ID },
+          where: { id: MOCK_POINTAGE_ID, status: PointageStatus.PENDING },
           data: expect.objectContaining({
             status: "VALIDATED",
             validatedById: MOCK_CDS_ID,
           }),
         }),
       );
+    });
+
+    it("fails with INVALID_STATUS when a concurrent action already changed the status", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValueOnce(mockPointage as never);
+      vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
+        id: "bio-1",
+        workerId: MOCK_WORKER_ID,
+        result: "OK",
+        context: "WEEKLY_VALIDATION",
+        performedAt: new Date("2026-07-14T10:00:00Z"),
+        weekIso: "2026-W29",
+      } as never);
+      // Un rejet concurrent a deja fait bouger le statut entre la lecture et l'ecriture.
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/validate`)
+        .set("Authorization", cdsAuthHeader());
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
     });
   });
 
@@ -284,6 +309,48 @@ describe("Pointages", () => {
 
       expect(res.status).toBe(422);
       expect(res.body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("rejects with a valid reason", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow)
+        .mockResolvedValueOnce(mockPointage as never)
+        .mockResolvedValueOnce({
+          ...mockPointage,
+          status: PointageStatus.REJECTED,
+          rejectionReason: "Quantité suspecte sur le terrain",
+          validatedById: MOCK_CDS_ID,
+        } as never);
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/reject`)
+        .set("Authorization", cdsAuthHeader())
+        .send({ rejectionReason: "Quantité suspecte sur le terrain" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("REJECTED");
+      expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: MOCK_POINTAGE_ID, status: PointageStatus.PENDING },
+          data: expect.objectContaining({ status: "REJECTED" }),
+        }),
+      );
+    });
+
+    it("fails with INVALID_STATUS when a concurrent validation already changed the status", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValueOnce(mockPointage as never);
+      // Une validation concurrente a deja fait bouger le statut entre la lecture et l'ecriture.
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/reject`)
+        .set("Authorization", cdsAuthHeader())
+        .send({ rejectionReason: "Quantité suspecte sur le terrain" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
     });
   });
 
