@@ -214,6 +214,8 @@ export async function generatePayments(
 export interface DeletePaymentsBatchInput {
   periodIso: string;
   referenceYear?: number;
+  /** Site du travailleur (sélecteur de site global du back-office). */
+  siteId?: string;
   userId: string;
   ip?: string;
   userAgent?: string;
@@ -234,12 +236,16 @@ export async function deletePaymentsBatch(
     undefined,
     input.referenceYear,
   );
+  const siteFilter: Prisma.PaymentWhereInput = input.siteId
+    ? { worker: { siteId: input.siteId } }
+    : {};
 
   const lockedPayment = await prisma.payment.findFirst({
     where: {
       periodIso: shortPeriod,
       referenceYear,
       status: { in: [PaymentStatus.EXPORTED, PaymentStatus.PAID] },
+      ...siteFilter,
     },
     select: { id: true },
   });
@@ -253,7 +259,7 @@ export async function deletePaymentsBatch(
   }
 
   const existing = await prisma.payment.findMany({
-    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
+    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING, ...siteFilter },
     select: { id: true },
   });
 
@@ -262,7 +268,7 @@ export async function deletePaymentsBatch(
   }
 
   await prisma.payment.deleteMany({
-    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
+    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING, ...siteFilter },
   });
 
   await writeAuditLog({

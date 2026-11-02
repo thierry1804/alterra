@@ -345,6 +345,64 @@ describe("Payments API", () => {
     expect(sheet.getRow(2).getCell(5).value).toBe("OUI");
   });
 
+  it("GET /payments/:period/export scopes to siteId when a site is selected", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/payments/S29/export")
+      .query({ siteId: MOCK_SITE_ID })
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+  });
+
+  it("DELETE /payments/:period only deletes the selected site's pending lines", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .delete("/api/v1/payments/S29")
+      .query({ siteId: MOCK_SITE_ID })
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(res.body.deleted).toBe(1);
+    expect(prisma.payment.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+    expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+  });
+
+  it("DELETE /payments/:period deletes across all sites when no siteId is given", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .delete("/api/v1/payments/S29")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    const deleteArgs = vi.mocked(prisma.payment.deleteMany).mock.calls[0][0];
+    expect(deleteArgs.where).not.toHaveProperty("worker");
+  });
+
   it("GET /payments/:period/export rejects when no exportable lines", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       { ...mockPayment, bioValid: false },

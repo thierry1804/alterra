@@ -35,6 +35,8 @@ export async function exportMvolaPayments(
     userAgent?: string;
     referenceYear?: number;
     includeHeader?: boolean;
+    /** Site du travailleur (sélecteur de site global du back-office). */
+    siteId?: string;
   },
 ): Promise<ExportMvolaResult> {
   const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo } = resolvePeriod(
@@ -48,6 +50,7 @@ export async function exportMvolaPayments(
       periodIso: shortPeriod,
       referenceYear,
       status: PaymentStatus.PENDING,
+      ...(options.siteId ? { worker: { siteId: options.siteId } } : {}),
     },
     include: { worker: true },
   });

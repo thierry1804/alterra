@@ -30,6 +30,7 @@ const periodParams = z.object({
 const exportQuerySchema = z.object({
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
   includeHeader: z.enum(["true", "false"]).optional(),
+  siteId: z.string().uuid().optional(),
 });
 
 const importStatusColumnsSchema = z.object({
@@ -162,6 +163,7 @@ paymentsRouter.delete(
       const result = await deletePaymentsBatch({
         periodIso: period,
         referenceYear: query.referenceYear,
+        siteId: query.siteId,
         userId: req.user!.sub,
         ip: req.ip,
         userAgent:
@@ -191,6 +193,7 @@ paymentsRouter.get(
           typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
         referenceYear: query.referenceYear,
         includeHeader: query.includeHeader === "true",
+        siteId: query.siteId,
       });
 
       res.setHeader(

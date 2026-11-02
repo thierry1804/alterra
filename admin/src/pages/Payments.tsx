@@ -99,7 +99,10 @@ export default function PaymentsPage() {
   const deleteMutation = useMutation({
     mutationFn: () =>
       api.delete(`/payments/${listPeriod}`, {
-        params: { referenceYear: periodIso.match(/^(\d{4})-W/)?.[1] },
+        params: {
+          referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
+          siteId: siteId || undefined,
+        },
       }),
     onSuccess: (res) => {
       toast({
@@ -192,6 +195,7 @@ export default function PaymentsPage() {
         </Button>
         <MvolaExportButton
           periodIso={periodIso}
+          siteId={siteId}
           disabled={stats.exportable === 0}
           onExported={() => void refetch()}
         />
