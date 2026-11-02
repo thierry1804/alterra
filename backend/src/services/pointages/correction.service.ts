@@ -1,4 +1,4 @@
-import type { Prisma, Pointage } from "@prisma/client";
+import { Prisma, type Pointage } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
@@ -113,20 +113,31 @@ export async function correctPointage(
   const updateData = await buildEditData(before, input);
   const ctx = getRequestContext();
 
-  return prisma.$transaction(async (tx) => {
-    const after = await tx.pointage.update({ where: { id }, data: updateData });
-    await writeEditAudit({
-      action: "CORRECT",
-      pointageId: id,
-      userId: ctx?.userId ?? "",
-      reasonField: "correctionReason",
-      reason: correctionReason,
-      before,
-      after,
-      auditMeta,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const after = await tx.pointage.update({ where: { id }, data: updateData });
+      await writeEditAudit({
+        action: "CORRECT",
+        pointageId: id,
+        userId: ctx?.userId ?? "",
+        reasonField: "correctionReason",
+        reason: correctionReason,
+        before,
+        after,
+        auditMeta,
+      });
+      return after;
     });
-    return after;
-  });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiError(
+        409,
+        "DUPLICATE_SLOT",
+        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+      );
+    }
+    throw err;
+  }
 }
 
 export interface ResubmitPointageInput extends PointageEditInput {
@@ -166,18 +177,47 @@ export async function resubmitPointage(
   const resubmitReason = input.resubmitReason.trim();
   const updateData = await buildEditData(before, input);
 
-  return prisma.$transaction(async (tx) => {
-    const after = await tx.pointage.update({ where: { id }, data: updateData });
-    await writeEditAudit({
-      action: "RESUBMIT",
-      pointageId: id,
-      userId,
-      reasonField: "resubmitReason",
-      reason: resubmitReason,
-      before,
-      after,
-      auditMeta,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const conflicting = await tx.pointage.findFirst({
+        where: {
+          workerId: before.workerId,
+          subActivityId: (updateData.subActivityId as string | undefined) ?? before.subActivityId,
+          date: (updateData.date as Date | undefined) ?? before.date,
+          status: { not: "REJECTED" },
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+      if (conflicting) {
+        throw new ApiError(
+          409,
+          "DUPLICATE_SLOT",
+          "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+        );
+      }
+
+      const after = await tx.pointage.update({ where: { id }, data: updateData });
+      await writeEditAudit({
+        action: "RESUBMIT",
+        pointageId: id,
+        userId,
+        reasonField: "resubmitReason",
+        reason: resubmitReason,
+        before,
+        after,
+        auditMeta,
+      });
+      return after;
     });
-    return after;
-  });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiError(
+        409,
+        "DUPLICATE_SLOT",
+        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+      );
+    }
+    throw err;
+  }
 }

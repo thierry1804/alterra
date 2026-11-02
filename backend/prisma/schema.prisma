@@ -342,6 +342,8 @@ model Pointage {
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])
+  // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) — index partiel créé
+  // à la main dans la migration pointage_active_slot_unique (Prisma ne supporte pas @@unique(... WHERE)).
 }
 
 /// V2

@@ -80,14 +80,25 @@ export async function syncPointageBatch(
       results.push({ clientUuid: item.clientUuid, status: "created", id: created.id });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        const existing = await prisma.pointage.findUnique({
-          where: { clientUuid: item.clientUuid },
-        });
-        results.push({
-          clientUuid: item.clientUuid,
-          status: "already_exists",
-          id: existing?.id,
-        });
+        const target = err.meta?.target;
+        if (Array.isArray(target) && target.includes("clientUuid")) {
+          const existing = await prisma.pointage.findUnique({
+            where: { clientUuid: item.clientUuid },
+          });
+          results.push({
+            clientUuid: item.clientUuid,
+            status: "already_exists",
+            id: existing?.id,
+          });
+        } else {
+          // Course gagnée par une autre requête concurrente sur le même (worker, sous-activité, jour) :
+          // le findFirst ci-dessus les avait tous les deux laissés passer, l'index partiel tranche.
+          results.push({
+            clientUuid: item.clientUuid,
+            status: "rejected",
+            reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+          });
+        }
       } else {
         results.push({
           clientUuid: item.clientUuid,
