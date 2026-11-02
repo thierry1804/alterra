@@ -271,10 +271,44 @@ describe("Payments API", () => {
     expect(minioClient.putObject).toHaveBeenCalled();
     expect(prisma.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({ status: PaymentStatus.PENDING }),
         data: expect.objectContaining({ status: PaymentStatus.EXPORTED }),
       }),
     );
     expect(basePrisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("GET /payments/:period/export rejects a concurrent double export (EXPORT_CONFLICT)", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    // La revendication atomique ne trouve plus la ligne PENDING : un autre export l'a déjà prise.
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 0 });
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/payments/S29/export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("EXPORT_CONFLICT");
+    expect(minioClient.putObject).not.toHaveBeenCalled();
+  });
+
+  it("exportMvolaPayments reverts the claim to PENDING when file generation fails after the claim", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(minioClient.putObject).mockRejectedValueOnce(new Error("MinIO down"));
+
+    await expect(exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID })).rejects.toThrow(
+      "MinIO down",
+    );
+
+    expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ status: PaymentStatus.EXPORTED }),
+        data: expect.objectContaining({ status: PaymentStatus.PENDING, exportedAt: null }),
+      }),
+    );
   });
 
   it("exportMvolaPayments omits the header row by default", async () => {

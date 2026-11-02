@@ -81,57 +81,79 @@ export async function exportMvolaPayments(
     );
   }
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Paiements");
-
-  const compact = MVOLA_EXPORT_FORMAT === "compact3";
-  sheet.columns = compact
-    ? [
-        { header: "Numéro téléphone", key: "phone", width: 18 },
-        { header: "Description", key: "description", width: 32 },
-        { header: "Montant", key: "amount", width: 12 },
-      ]
-    : [
-        { header: "Numéro téléphone", key: "phone", width: 18 },
-        { header: "Description", key: "description", width: 32 },
-        { header: "Période", key: "period", width: 10 },
-        { header: "Montant", key: "amount", width: 12 },
-        { header: "Bio Validée", key: "bio", width: 12 },
-      ];
-
-  for (const payment of exportable) {
-    const row = sheet.addRow({
-      phone: payment.worker.mvolaNumber,
-      description: payment.description,
-      period: shortPeriod,
-      amount: Math.round(Number(payment.amount)),
-      // Seules les lignes bio OK sont exportables (RG-03) : la colonne vaut toujours OUI.
-      bio: "OUI",
-    });
-    row.getCell("phone").numFmt = "@";
-  }
-
-  if (!options.includeHeader) {
-    sheet.spliceRows(1, 1);
-  }
-
-  const rawBuffer = await workbook.xlsx.writeBuffer();
-  const buffer = Buffer.from(rawBuffer);
-  const filename = `ALTERRA_MVola_${shortPeriod}_${formatExportTimestamp()}.xlsx`;
-  const minioKey = `mvola/${filename}`;
-
-  await minioClient.putObject(BUCKETS.reports, minioKey, buffer, buffer.length, {
-    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
+  // Revendique les lignes AVANT de construire le fichier (pas après) : la condition `status:
+  // PENDING` dans le where fait de ce updateMany un verrou atomique — si un autre export concurrent
+  // a déjà basculé ces lignes en EXPORTED entre notre lecture et ici, `count` sera inférieur à ce
+  // qu'on attend et on abandonne avant de produire un second fichier MVola identique (double virement).
   const exportedAt = new Date();
-  await prisma.payment.updateMany({
-    where: { id: { in: exportable.map((payment) => payment.id) } },
-    data: {
-      status: PaymentStatus.EXPORTED,
-      exportedAt,
-    },
+  const claimed = await prisma.payment.updateMany({
+    where: { id: { in: exportable.map((payment) => payment.id) }, status: PaymentStatus.PENDING },
+    data: { status: PaymentStatus.EXPORTED, exportedAt },
   });
+  if (claimed.count !== exportable.length) {
+    throw new ApiError(
+      409,
+      "EXPORT_CONFLICT",
+      "Un export MVola est déjà en cours ou vient d'avoir lieu pour cette période — rafraîchissez avant de réessayer",
+    );
+  }
+
+  let buffer: Buffer;
+  let filename: string;
+  let minioKey: string;
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Paiements");
+
+    const compact = MVOLA_EXPORT_FORMAT === "compact3";
+    sheet.columns = compact
+      ? [
+          { header: "Numéro téléphone", key: "phone", width: 18 },
+          { header: "Description", key: "description", width: 32 },
+          { header: "Montant", key: "amount", width: 12 },
+        ]
+      : [
+          { header: "Numéro téléphone", key: "phone", width: 18 },
+          { header: "Description", key: "description", width: 32 },
+          { header: "Période", key: "period", width: 10 },
+          { header: "Montant", key: "amount", width: 12 },
+          { header: "Bio Validée", key: "bio", width: 12 },
+        ];
+
+    for (const payment of exportable) {
+      const row = sheet.addRow({
+        phone: payment.worker.mvolaNumber,
+        description: payment.description,
+        period: shortPeriod,
+        amount: Math.round(Number(payment.amount)),
+        // Seules les lignes bio OK sont exportables (RG-03) : la colonne vaut toujours OUI.
+        bio: "OUI",
+      });
+      row.getCell("phone").numFmt = "@";
+    }
+
+    if (!options.includeHeader) {
+      sheet.spliceRows(1, 1);
+    }
+
+    const rawBuffer = await workbook.xlsx.writeBuffer();
+    buffer = Buffer.from(rawBuffer);
+    filename = `ALTERRA_MVola_${shortPeriod}_${formatExportTimestamp()}.xlsx`;
+    minioKey = `mvola/${filename}`;
+
+    await minioClient.putObject(BUCKETS.reports, minioKey, buffer, buffer.length, {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+  } catch (err) {
+    // La revendication a déjà eu lieu : si le fichier n'a pas pu être produit/envoyé, les lignes
+    // ne doivent pas rester bloquées en EXPORTED sans qu'aucun fichier n'existe réellement.
+    await prisma.payment.updateMany({
+      where: { id: { in: exportable.map((payment) => payment.id) }, status: PaymentStatus.EXPORTED, exportedAt },
+      data: { status: PaymentStatus.PENDING, exportedAt: null },
+    });
+    throw err;
+  }
 
   await writeAuditLog({
     userId: options.userId,
