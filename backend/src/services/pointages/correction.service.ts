@@ -140,6 +140,32 @@ export async function correctPointage(
   }
 }
 
+/**
+ * Rattache a posteriori une photo dont l'envoi avait échoué au moment de la synchro initiale du
+ * pointage (texte parti, photo pas encore uploadée) — pas une "correction" métier, donc pas de motif
+ * exigé. Idempotent sur la même clé pour tolérer un retry réseau côté PWA après un succès non confirmé.
+ */
+export async function attachPointagePhoto(id: string, userId: string, photoKey: string) {
+  const before = await prisma.pointage.findUniqueOrThrow({ where: { id } });
+
+  if (before.enteredById !== userId) {
+    throw new ApiError(403, "FORBIDDEN", "Vous ne pouvez rattacher une photo qu'à votre propre saisie");
+  }
+  if (before.status === "VALIDATED") {
+    throw new ApiError(
+      409,
+      "INVALID_STATUS",
+      "Pointage déjà validé (potentiellement payé) — photo ne peut plus être rattachée",
+    );
+  }
+  if (before.photoKey) {
+    if (before.photoKey === photoKey) return before;
+    throw new ApiError(409, "PHOTO_ALREADY_SET", "Ce pointage a déjà une photo");
+  }
+
+  return prisma.pointage.update({ where: { id }, data: { photoKey } });
+}
+
 export interface ResubmitPointageInput extends PointageEditInput {
   resubmitReason: string;
 }

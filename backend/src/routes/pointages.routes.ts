@@ -7,7 +7,11 @@ import { validate } from "../middleware/validate.js";
 import { syncPointageBatch } from "../services/pointages/sync.service.js";
 import { listPointages } from "../services/pointages/list.service.js";
 import { rejectPointage, validatePointage } from "../services/pointages/validation.service.js";
-import { correctPointage, resubmitPointage } from "../services/pointages/correction.service.js";
+import {
+  attachPointagePhoto,
+  correctPointage,
+  resubmitPointage,
+} from "../services/pointages/correction.service.js";
 import { POINTAGE_SORT_FIELDS } from "../services/pointages/list.service.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 import { getPhotoStream, uploadPointagePhoto } from "../services/storage/presigned-url.service.js";
@@ -63,6 +67,13 @@ const correctionSchema = z.object({
   date: z.coerce.date().optional(),
   photoKey: z.string().min(1).optional(),
   correctionReason: z.string().min(10),
+});
+
+// Format exact généré par uploadPointagePhoto (pointages/<uuid>.jpg) — le bucket MinIO est partagé
+// avec d'autres préfixes (workers/, workflows/...), donc une clé non contrainte permettrait de
+// rattacher à son propre pointage une photo appartenant à une autre ressource (IDOR).
+const attachPhotoSchema = z.object({
+  photoKey: z.string().regex(/^pointages\/[0-9a-f-]{36}\.jpg$/),
 });
 
 const resubmitSchema = z.object({
@@ -204,6 +215,23 @@ pointagesRouter.patch(
         userAgent:
           typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
       });
+      res.json(pointage);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+pointagesRouter.patch(
+  "/pointages/:id/photo",
+  requireAuth,
+  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE),
+  validate(pointageIdParams, "params"),
+  validate(attachPhotoSchema),
+  async (req, res, next) => {
+    try {
+      const { photoKey } = req.body as z.infer<typeof attachPhotoSchema>;
+      const pointage = await attachPointagePhoto(req.params.id, req.user!.sub, photoKey);
       res.json(pointage);
     } catch (err) {
       next(err);

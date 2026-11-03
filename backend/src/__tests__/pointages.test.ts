@@ -526,4 +526,106 @@ describe("Pointages", () => {
       expect(res.body.status).toBe("PENDING");
     });
   });
+
+  describe("PATCH /pointages/:id/photo", () => {
+    it("rejects a photoKey outside the pointages/<uuid>.jpg shape (IDOR guard)", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: `workers/${MOCK_WORKER_ID}/11111111-1111-1111-1111-111111111111.jpg` });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("attaches the photo when the pointage has none yet", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.pointage.update).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.photoKey).toBe("pointages/11111111-1111-1111-1111-111111111111.jpg");
+      expect(prisma.pointage.update).toHaveBeenCalledWith({
+        where: { id: MOCK_POINTAGE_ID },
+        data: { photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" },
+      });
+    });
+
+    it("rejects another CHEF_EQUIPE's entry (FORBIDDEN)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        enteredById: "00000000-0000-4000-8000-000000000099",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("FORBIDDEN");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects once the pointage is VALIDATED (INVALID_STATUS)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        status: PointageStatus.VALIDATED,
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("is idempotent when retried with the same photoKey (network retry)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(200);
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects overwriting a different existing photo (PHOTO_ALREADY_SET)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/22222222-2222-2222-2222-222222222222.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("PHOTO_ALREADY_SET");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+  });
 });
