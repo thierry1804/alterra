@@ -197,6 +197,49 @@ describe("Pointages", () => {
       ]);
       expect(prisma.pointage.findUnique).not.toHaveBeenCalled();
     });
+
+    it("classifies a transient DB error (P2024, pool saturé) as retry, not a permanent rejection", async () => {
+      vi.mocked(prisma.pointage.create).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          "Timed out fetching a new connection from the pool",
+          { code: "P2024", clientVersion: "5.20.0" },
+        ),
+      );
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results).toEqual([
+        {
+          clientUuid: MOCK_CLIENT_UUID,
+          status: "retry",
+          reason: "Timed out fetching a new connection from the pool",
+        },
+      ]);
+    });
+
+    it("keeps a genuine business error as a permanent rejection, not a retry", async () => {
+      vi.mocked(prisma.pointage.create).mockRejectedValue(new Error("Validation métier échouée"));
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results).toEqual([
+        {
+          clientUuid: MOCK_CLIENT_UUID,
+          status: "rejected",
+          reason: "Validation métier échouée",
+        },
+      ]);
+    });
   });
 
   describe("PATCH /pointages/:id/validate", () => {

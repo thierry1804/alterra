@@ -167,17 +167,17 @@ export function subscribeSyncState(listener: (state: SyncState) => void): () => 
 export async function syncNow(options?: { force?: boolean }): Promise<SyncRunResult> {
   if (!navigator.onLine) {
     await appendLog("warning", "Sync ignorée — hors ligne");
-    return { synced: 0, rejected: 0, skipped: 0 };
+    return { synced: 0, rejected: 0, skipped: 0, retried: 0 };
   }
 
   if (isSyncing) {
-    return { synced: 0, rejected: 0, skipped: 0 };
+    return { synced: 0, rejected: 0, skipped: 0, retried: 0 };
   }
 
   isSyncing = true;
   await refreshAndNotify();
 
-  const totals: SyncRunResult = { synced: 0, rejected: 0, skipped: 0 };
+  const totals: SyncRunResult = { synced: 0, rejected: 0, skipped: 0, retried: 0 };
 
   try {
     const recovered = await recoverStuckSyncingPointages();
@@ -209,6 +209,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
           totals.synced += batchResult.synced;
           totals.rejected += batchResult.rejected;
           totals.skipped += batchResult.skipped;
+          totals.retried += batchResult.retried;
 
           consecutiveFailures = 0;
           autoSyncEnabled = true;
@@ -238,6 +239,12 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
         );
       } else if (totals.skipped > 0) {
         await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
+      }
+      if (totals.retried > 0) {
+        await appendLog(
+          "warning",
+          `${totals.retried} pointage(s) en attente de réessai (erreur serveur passagère)`,
+        );
       }
     }
 

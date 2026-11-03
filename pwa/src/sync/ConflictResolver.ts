@@ -1,9 +1,14 @@
 import { db, type PointagePending } from "../db/db";
 import type { PointageSyncResult, SyncRunResult } from "./sync-types";
 
+/** Au-delà, une erreur "retry" répétée n'est plus silencieuse : elle remonte à l'utilisateur
+ * plutôt que de retenter indéfiniment un item probablement bloqué pour une autre raison. */
+const MAX_RETRY_ATTEMPTS = 5;
+
 /**
  * Applique les résultats serveur — autorité serveur (RG-15).
  * - created / already_exists → local supprimé, entrée synced
+ * - retry (erreur transitoire côté serveur, pas un rejet métier) → remis en file, pas perdu
  * - rejected → conservé localement avec motif
  */
 export async function applyPointageSyncResults(
@@ -13,6 +18,7 @@ export async function applyPointageSyncResults(
   let synced = 0;
   let rejected = 0;
   let skipped = 0;
+  let retried = 0;
 
   const resultByUuid = new Map(results.map((result) => [result.clientUuid, result]));
 
@@ -38,6 +44,17 @@ export async function applyPointageSyncResults(
         continue;
       }
 
+      if (result.status === "retry") {
+        const attempts = await currentQueueAttempts(result.clientUuid);
+        if (attempts < MAX_RETRY_ATTEMPTS) {
+          await db.pointages.update(result.clientUuid, { status: "local" });
+          await requeueForRetry(result.clientUuid, result.reason);
+          retried++;
+          continue;
+        }
+        // Tentatives épuisées : bascule en rejeté pour ne pas retenter indéfiniment en silence.
+      }
+
       await db.pointages.update(result.clientUuid, {
         status: "rejected",
         reason: result.reason ?? "Rejeté par le serveur",
@@ -47,7 +64,7 @@ export async function applyPointageSyncResults(
     }
   });
 
-  return { synced, rejected, skipped };
+  return { synced, rejected, skipped, retried };
 }
 
 export async function revertChunkToLocal(chunk: PointagePending[]): Promise<void> {
@@ -81,6 +98,32 @@ async function markQueueItemDone(clientUuid: string): Promise<void> {
 
   for (const item of items) {
     if (item.id !== undefined) await db.syncQueue.delete(item.id);
+  }
+}
+
+async function currentQueueAttempts(clientUuid: string): Promise<number> {
+  const items = await db.syncQueue
+    .where("status")
+    .anyOf("pending", "processing")
+    .filter((item) => item.payload.includes(clientUuid))
+    .toArray();
+  return Math.max(0, ...items.map((item) => item.attempts));
+}
+
+async function requeueForRetry(clientUuid: string, reason?: string): Promise<void> {
+  const items = await db.syncQueue
+    .where("status")
+    .anyOf("pending", "processing")
+    .filter((item) => item.payload.includes(clientUuid))
+    .toArray();
+
+  for (const item of items) {
+    if (item.id === undefined) continue;
+    await db.syncQueue.update(item.id, {
+      status: "pending",
+      lastError: reason,
+      attempts: item.attempts + 1,
+    });
   }
 }
 

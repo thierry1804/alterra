@@ -15,7 +15,26 @@ export interface SyncPointageItem {
   photoKey?: string;
 }
 
-export type SyncPointageResultStatus = "created" | "already_exists" | "rejected";
+export type SyncPointageResultStatus = "created" | "already_exists" | "rejected" | "retry";
+
+/** Codes Prisma transitoires (pool saturé, DB injoignable un instant) — jamais un rejet métier
+ * définitif : la PWA doit garder l'item en file et retenter, pas l'abandonner. */
+const TRANSIENT_PRISMA_CODES = new Set([
+  "P1001", // Can't reach database server
+  "P1002", // Database server timed out
+  "P1008", // Operations timed out
+  "P1017", // Server has closed the connection
+  "P2024", // Timed out fetching a new connection from the pool
+  "P2028", // Transaction API error
+]);
+
+function isTransientError(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientInitializationError) return true;
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    return TRANSIENT_PRISMA_CODES.has(err.code);
+  }
+  return false;
+}
 
 export interface SyncPointageResult {
   clientUuid: string;
@@ -99,6 +118,12 @@ export async function syncPointageBatch(
             reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
           });
         }
+      } else if (isTransientError(err)) {
+        results.push({
+          clientUuid: item.clientUuid,
+          status: "retry",
+          reason: err instanceof Error ? err.message : "unknown_error",
+        });
       } else {
         results.push({
           clientUuid: item.clientUuid,
