@@ -9,6 +9,8 @@ export interface GeneratePaymentsInput {
   periodIso: string;
   cycle?: PaymentCycle;
   referenceYear?: number;
+  /** Confirme la régénération malgré des paiements PENDING déjà corrigés à la main. */
+  force?: boolean;
 }
 
 export interface GeneratePaymentsResult {
@@ -80,6 +82,25 @@ export async function generatePayments(
       "PAY_CONFLICT",
       "Un bordereau existe déjà pour cette période (exporté ou payé)",
     );
+  }
+
+  if (!input.force) {
+    const correctedCount = await prisma.payment.count({
+      where: {
+        periodIso: shortPeriod,
+        referenceYear,
+        status: PaymentStatus.PENDING,
+        correctionReason: { not: null },
+      },
+    });
+
+    if (correctedCount > 0) {
+      throw new ApiError(
+        409,
+        "PAY_HAS_CORRECTIONS",
+        `${correctedCount} paiement(s) corrigé(s) manuellement seront écrasés par la régénération`,
+      );
+    }
   }
 
   const pointages = await prisma.pointage.findMany({

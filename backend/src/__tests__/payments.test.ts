@@ -72,6 +72,7 @@ vi.mock("../lib/prisma.js", () => ({
     payment: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
       deleteMany: vi.fn(),
       createMany: vi.fn(),
       update: vi.fn(),
@@ -224,6 +225,7 @@ describe("Payments API", () => {
     vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
       result: "OK",
     } as never);
+    vi.mocked(prisma.payment.count).mockResolvedValue(0);
     vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 0 });
     vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
     vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
@@ -254,6 +256,49 @@ describe("Payments API", () => {
 
     expect(res.status).toBe(409);
     expect(res.body.code).toBe("PAY_CONFLICT");
+  });
+
+  it("POST /payments/generate returns PAY_HAS_CORRECTIONS when a manual correction would be erased", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.count).mockResolvedValue(1);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29" });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("PAY_HAS_CORRECTIONS");
+    expect(prisma.payment.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("POST /payments/generate proceeds and overwrites corrections when force is true", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.count).mockResolvedValue(1);
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([
+      {
+        workerId: MOCK_WORKER_ID,
+        amount: new Prisma.Decimal("75000"),
+        quantity: new Prisma.Decimal("5"),
+        subActivityId: MOCK_ACTIVITY_ID,
+        subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
+        worker: mockWorker,
+      },
+    ] as never);
+    vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({ result: "OK" } as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", force: true });
+
+    expect(res.status).toBe(201);
+    expect(prisma.payment.deleteMany).toHaveBeenCalled();
   });
 
   it("GET /payments/:period/export returns xlsx and marks EXPORTED", async () => {

@@ -21,6 +21,7 @@ const generateSchema = z.object({
   periodIso: z.string().min(2).max(16),
   cycle: z.nativeEnum(PaymentCycle).optional(),
   referenceYear: z.number().int().min(2000).max(2100).optional(),
+  force: z.boolean().optional(),
 });
 
 const periodParams = z.object({
