@@ -56,6 +56,7 @@ vi.mock("../lib/prisma.js", () => ({
     pointage: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -237,6 +238,74 @@ describe("workflows routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ANSWERED");
+  });
+
+  it("PATCH /clarification-requests/:id/close reverts a NEEDS_CLARIFICATION pointage to PENDING", async () => {
+    vi.mocked(prisma.clarificationRequest.findFirst).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.ANSWERED,
+      pointageId: MOCK_POINTAGE_ID,
+      pointage: { worker: { siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID } },
+    } as never);
+    vi.mocked(prisma.clarificationRequest.findUnique).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.ANSWERED,
+      pointageId: MOCK_POINTAGE_ID,
+      pointage: { worker: { siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID } },
+    } as never);
+    vi.mocked(prisma.clarificationRequest.update).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.CLOSED,
+    } as never);
+    vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .patch(`/api/v1/clarification-requests/${MOCK_CLAR_ID}/close`)
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("CLOSED");
+    expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: MOCK_POINTAGE_ID, status: "NEEDS_CLARIFICATION" },
+        data: { status: "PENDING" },
+      }),
+    );
+  });
+
+  it("PATCH /clarification-requests/:id/close does not revert a pointage already validated in the meantime", async () => {
+    vi.mocked(prisma.clarificationRequest.findFirst).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.ANSWERED,
+      pointageId: MOCK_POINTAGE_ID,
+      pointage: { worker: { siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID } },
+    } as never);
+    vi.mocked(prisma.clarificationRequest.findUnique).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.ANSWERED,
+      pointageId: MOCK_POINTAGE_ID,
+      pointage: { worker: { siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID } },
+    } as never);
+    vi.mocked(prisma.clarificationRequest.update).mockResolvedValue({
+      id: MOCK_CLAR_ID,
+      status: ClarificationStatus.CLOSED,
+    } as never);
+    // Le pointage a déjà été validé entre-temps : le where ne matche plus rien.
+    vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+
+    const app = createApp();
+    const res = await request(app)
+      .patch(`/api/v1/clarification-requests/${MOCK_CLAR_ID}/close`)
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("CLOSED");
+    expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: MOCK_POINTAGE_ID, status: "NEEDS_CLARIFICATION" },
+      }),
+    );
   });
 
   it("GET /clarification-requests/:id/photo returns 404 without answerPhotoKey", async () => {
