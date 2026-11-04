@@ -16,6 +16,12 @@ const checkSchema = z.object({
   referenceDate: z.coerce.date().optional(),
 });
 
+// Tolérance pour la dérive d'horloge normale d'un appareil terrain — au-delà, c'est une date
+// forgée : performedAt départage le contrôle biométrique le plus récent de la semaine (RG-03),
+// donc une date future gagnerait cette comparaison indéfiniment, sans qu'aucun contrôle réel
+// ultérieur ne puisse jamais la détrôner.
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
 const checkOfflineSchema = z.object({
   clientUuid: z.string().uuid(),
   workerId: z.string().uuid(),
@@ -23,7 +29,11 @@ const checkOfflineSchema = z.object({
   score: z.number().min(0).max(1).nullable(),
   context: z.nativeEnum(BioContext).optional(),
   referenceDate: z.coerce.date().optional(),
-  performedAt: z.coerce.date(),
+  performedAt: z.coerce
+    .date()
+    .refine((date) => date.getTime() <= Date.now() + MAX_CLOCK_SKEW_MS, {
+      message: "performedAt ne peut pas être dans le futur",
+    }),
 });
 
 biometricRouter.post(
