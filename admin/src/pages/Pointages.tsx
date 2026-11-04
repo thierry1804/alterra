@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
@@ -101,6 +102,24 @@ export default function PointagesPage() {
   );
 
   const selection = useRowSelection(pointages.map((p) => p.id));
+  const { clear: clearSelection } = selection;
+
+  // Une sélection faite sous un filtre ne doit pas survivre à son changement : sinon une
+  // action en masse peut porter sur des lignes qui ne sont plus affichées à l'écran.
+  useEffect(() => {
+    clearSelection();
+  }, [statusFilter, dateFrom, dateTo, siteId, clearSelection]);
+
+  function bulkErrorToast(title: string) {
+    return (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : undefined;
+      toast({
+        title,
+        description: typeof message === "string" ? message : "Erreur inattendue",
+        variant: "destructive",
+      });
+    };
+  }
 
   function invalidateAfterBulk(res: {
     data: { results: Array<{ id: string; status: string; error?: string }> };
@@ -124,6 +143,7 @@ export default function PointagesPage() {
         { ids: [...selection.selectedIds] },
       ),
     onSuccess: invalidateAfterBulk,
+    onError: bulkErrorToast("Échec de la validation"),
   });
 
   const bulkRejectMutation = useMutation({
@@ -136,6 +156,7 @@ export default function PointagesPage() {
       setBulkRejectReason("");
       invalidateAfterBulk(res);
     },
+    onError: bulkErrorToast("Échec du rejet"),
   });
 
   const [exporting, setExporting] = useState(false);
