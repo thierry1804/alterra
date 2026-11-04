@@ -74,12 +74,16 @@ async function retryPendingPhotos(): Promise<{ attached: number; lost: number }>
       attached++;
     } catch (err) {
       const status = isAxiosError(err) ? err.response?.status : undefined;
-      if (status !== undefined && status >= 400 && status < 500) {
+      // 401 exclu : ce statut ne peut venir que de l'intercepteur d'auth (lib/api.ts), jamais d'un
+      // rejet métier sur l'attachement de photo. Il remonte aussi bien pour un jeton vraiment mort
+      // que pour un refresh silencieux qui a échoué à cause du réseau — dans ce second cas, bien
+      // réel sur le terrain, marquer la photo perdue serait irréversible pour une panne transitoire.
+      if (status !== undefined && status >= 400 && status < 500 && status !== 401) {
         // Pointage déjà validé/payé ou déjà pourvu d'une autre photo : non récupérable, on arrête.
         await db.media.update(media.clientUuid, { uploaded: true });
         lost++;
       }
-      // sinon transitoire (réseau, 5xx) : laissé tel quel, retenté au prochain cycle.
+      // sinon transitoire (réseau, 5xx, 401) : laissé tel quel, retenté au prochain cycle.
     }
   }
 
