@@ -13,10 +13,19 @@ HOST_PORTS="3010,5173,5174"
 # (le trafic DNAT-é traverse FORWARD, pas INPUT).
 DOCKER_PORTS="5433 6380 9002 9003"
 
+# IPs bannies manuellement (brute-force SSH récurrent, cf. journalctl -g "Failed password") :
+# bloquées sur tout port, toute interface. Ajouter/retirer une IP ici, le script est idempotent.
+BANNED_IPS="109.160.32.39 195.178.110.30 109.160.32.108 45.148.10.152 193.47.62.69 45.148.10.151 109.160.32.30 45.148.10.141 45.148.10.157 109.160.32.68 121.242.232.216"
+
 for ipt in iptables ip6tables; do
   # --- INPUT : chaîne dédiée, recréée à chaque exécution -------------------------------------
   "$ipt" -N ALTERRA-INPUT 2>/dev/null || "$ipt" -F ALTERRA-INPUT
   "$ipt" -A ALTERRA-INPUT -i lo -j RETURN
+  for ip in $BANNED_IPS; do
+    [[ "$ip" == *:* && "$ipt" == "iptables" ]] && continue
+    [[ "$ip" != *:* && "$ipt" == "ip6tables" ]] && continue
+    "$ipt" -A ALTERRA-INPUT -s "$ip" -j DROP
+  done
   "$ipt" -A ALTERRA-INPUT -p tcp -m multiport --dports "$HOST_PORTS,${DOCKER_PORTS// /,}" -j DROP
   "$ipt" -C INPUT -j ALTERRA-INPUT 2>/dev/null || "$ipt" -I INPUT 1 -j ALTERRA-INPUT
 done

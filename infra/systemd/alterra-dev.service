@@ -22,8 +22,8 @@ User=debian
 Group=debian
 WorkingDirectory=/home/debian/alterra
 Environment=API_PROXY_PORT=3010
-Environment=PATH=/home/debian/.nvm/versions/node/v22.12.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/debian/.nvm/versions/node/v22.12.0/bin/npm run serve
+Environment=PATH=/home/debian/.nvm/versions/node/v24.22.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/debian/.nvm/versions/node/v24.22.1/bin/npm run serve
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:/home/debian/alterra-dev.log
