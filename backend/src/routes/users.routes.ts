@@ -88,7 +88,7 @@ usersRouter.use(requireAuth, requireRole(Role.ADMIN));
 
 usersRouter.get("/", validate(listUsersQuery, "query"), async (req, res, next) => {
   try {
-    const { role, siteId, active, q, cursor, take, orderBy, dir } = req.query as z.infer<
+    const { role, siteId, active, q, cursor, take, orderBy, dir } = req.query as unknown as z.infer<
       typeof listUsersQuery
     >;
 

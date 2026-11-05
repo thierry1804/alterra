@@ -101,7 +101,7 @@ const importBodySchema = z.object({
   contentBase64: z.string().min(1),
   hasHeaderRow: z.boolean().optional(),
   referenceRowNumber: z.number().int().min(1).optional(),
-  mapping: z.record(z.string()).optional(),
+  mapping: z.record(z.string(), z.string()).optional(),
 });
 
 const importColumnsBodySchema = z.object({
