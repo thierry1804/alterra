@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { ClipboardList, CreditCard, ShieldAlert, Wallet } from "lucide-react";
+import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
 import { useSiteScope } from "../lib/site-scope";
 import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../lib/payments";
@@ -25,8 +25,10 @@ export default function PaymentsPage() {
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [importOpen, setImportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   const listPeriod = useMemo(() => periodToExportParam(periodIso), [periodIso]);
+  const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["payments", listPeriod, siteId],
@@ -116,6 +118,44 @@ export default function PaymentsPage() {
     },
   });
 
+  async function handleRegenerate() {
+    setRegenerating(true);
+    try {
+      const response = await api.post(`/payments/${listPeriod}/regenerate-export`, null, {
+        responseType: "blob",
+        params: { referenceYear },
+      });
+      const disposition = response.headers["content-disposition"] as string | undefined;
+      const filenameMatch = disposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] ?? `ALTERRA_MVola_${listPeriod}_regenere.xlsx`;
+      const version = response.headers["x-alterra-version"];
+
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Bordereau régénéré",
+        description: version ? `Nouvelle version v${version}` : undefined,
+      });
+      void refetch();
+      void queryClient.invalidateQueries({ queryKey: ["payments-exports"] });
+    } catch (err) {
+      const code = isAxiosError(err) ? err.response?.data?.code : null;
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({
+        title: code === "NO_PREVIOUS_EXPORT" ? "Aucun bordereau à régénérer" : "Régénération échouée",
+        description: String(message),
+        variant: "destructive",
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   const paymentStats = useMemo((): StatCardItem[] => {
     return [
       {
@@ -195,6 +235,15 @@ export default function PaymentsPage() {
           disabled={stats.exportable === 0}
           onExported={() => void refetch()}
         />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleRegenerate()}
+          disabled={regenerating}
+        >
+          <RefreshCw className={`h-4 w-4 ${regenerating ? "animate-spin" : ""}`} />
+          {regenerating ? "Régénération…" : "Régénérer le bordereau"}
+        </Button>
         <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
           Import retour MVola
         </Button>
@@ -225,7 +274,11 @@ export default function PaymentsPage() {
 
       <BordereauTable rows={rows} loading={isLoading} onCorrected={() => void refetch()} />
 
-      <MvolaExportHistory refreshKey={data?.data?.filter((r) => r.status === "EXPORTED").length} />
+      <MvolaExportHistory
+        refreshKey={data?.data?.filter((r) => r.status === "EXPORTED").length}
+        periodIso={listPeriod}
+        referenceYear={referenceYear}
+      />
 
       <MvolaImportDialog
         open={importOpen}

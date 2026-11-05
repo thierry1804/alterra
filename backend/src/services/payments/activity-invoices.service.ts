@@ -297,6 +297,32 @@ export async function listInvoices(filters: ListInvoicesFilters) {
   }));
 }
 
+/** Même filtrage que listInvoices, mais avec fileKey pour l'archive ZIP (téléchargement groupé). */
+export async function listInvoicesForZip(filters: ListInvoicesFilters) {
+  const resolved = filters.periodIso
+    ? resolvePeriod(filters.periodIso, undefined, filters.referenceYear)
+    : undefined;
+
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      ...(resolved ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear } : {}),
+    },
+    include: {
+      subActivity: { select: { label: true } },
+      site: { select: { shortCode: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return invoices.map((invoice) => ({
+    id: invoice.id,
+    fileKey: invoice.fileKey,
+    periodIso: invoice.periodIso,
+    activityLabel: invoice.subActivity.label,
+    siteShortCode: invoice.site.shortCode,
+  }));
+}
+
 /**
  * Génération manuelle de rattrapage — pour une période déjà exportée MVola (payments EXPORTED/PAID)
  * mais sans facture (génération auto échouée à l'export, ou export fait avant cette fonctionnalité).

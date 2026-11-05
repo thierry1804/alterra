@@ -105,27 +105,27 @@ enum PresenceSource {
 // ---------------------------------------------------------------------------
 
 model User {
-  id             String          @id @default(uuid()) @db.Uuid
-  email          String?         @unique
-  phone          String?         @unique
-  passwordHash   String
-  role           Role
-  firstName      String
-  lastName       String
-  active         Boolean         @default(true)
-  mfaSecret      String? // TOTP secret chiffré AES-256-GCM
-  siteId         String?         @db.Uuid
-  site           Site?           @relation(fields: [siteId], references: [id])
-  teamId         String?         @db.Uuid
-  team           Team?           @relation(fields: [teamId], references: [id])
-  lastLoginAt        DateTime?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  deletedAt          DateTime?
-  refreshTokens      RefreshToken[]
-  passwordResets     PasswordReset[]
-  notifications      Notification[]
-  pushSubscriptions  PushSubscription[]
+  id                String             @id @default(uuid()) @db.Uuid
+  email             String?            @unique
+  phone             String?            @unique
+  passwordHash      String
+  role              Role
+  firstName         String
+  lastName          String
+  active            Boolean            @default(true)
+  mfaSecret         String? // TOTP secret chiffré AES-256-GCM
+  siteId            String?            @db.Uuid
+  site              Site?              @relation(fields: [siteId], references: [id])
+  teamId            String?            @db.Uuid
+  team              Team?              @relation(fields: [teamId], references: [id])
+  lastLoginAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  refreshTokens     RefreshToken[]
+  passwordResets    PasswordReset[]
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
 
   @@index([email])
   @@index([role, siteId])
@@ -424,12 +424,40 @@ model Payment {
   transferFee          Decimal?                     @db.Decimal(12, 2)
   reconciliationStatus PaymentReconciliationStatus?
 
+  // Dernier bordereau MVola (export ou régénération) dans lequel cette ligne a été incluse.
+  // Repointé à chaque régénération — l'historique des bordereaux passés reste lisible via
+  // MvolaExportBatch.fileKey, indépendamment de ce pointeur courant.
+  exportBatchId String?           @db.Uuid
+  exportBatch   MvolaExportBatch? @relation(fields: [exportBatchId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([workerId, periodIso])
   @@index([status, periodIso])
   @@index([referenceYear, periodIso])
+  @@index([exportBatchId])
+}
+
+/// Un bordereau MVola généré pour une période : export initial (version 1) ou régénération
+/// (version 2, 3...). Chaque version garde son propre fichier en MinIO, jamais écrasé ni
+/// supprimé — c'est ce qui constitue l'historique complet des bordereaux.
+model MvolaExportBatch {
+  id            String   @id @default(uuid()) @db.Uuid
+  periodIso     String
+  referenceYear Int?
+  version       Int
+  fileKey       String // clé MinIO (bucket reports)
+  filename      String
+  exportedCount Int
+  excludedCount Int
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  payments Payment[]
+
+  @@unique([periodIso, referenceYear, version])
+  @@index([periodIso, referenceYear])
 }
 
 /// V2

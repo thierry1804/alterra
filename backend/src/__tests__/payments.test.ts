@@ -80,6 +80,10 @@ vi.mock("../lib/prisma.js", () => ({
     pointage: {
       findMany: vi.fn(),
     },
+    mvolaExportBatch: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
     biometricCheck: {
       findFirst: vi.fn(),
     },
@@ -199,6 +203,11 @@ describe("Payments API", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
     );
+    vi.mocked(prisma.mvolaExportBatch.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.mvolaExportBatch.create).mockResolvedValue({
+      id: "00000000-0000-4000-8000-0000000000b1",
+      version: 1,
+    } as never);
   });
 
   it("POST /payments/generate aggregates validated pointages", async () => {
@@ -357,6 +366,78 @@ describe("Payments API", () => {
 
     expect(res.status).toBe(422);
     expect(res.body.code).toBe("NO_EXPORTABLE_PAYMENTS");
+  });
+
+  it("POST /payments/:period/regenerate-export rejects when no previous export exists", async () => {
+    vi.mocked(prisma.mvolaExportBatch.findFirst).mockResolvedValue(null);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/S29/regenerate-export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe("NO_PREVIOUS_EXPORT");
+  });
+
+  it("POST /payments/:period/regenerate-export reissues EXPORTED/FAILED lines as a new version, excludes CONFIRME", async () => {
+    vi.mocked(prisma.mvolaExportBatch.findFirst).mockResolvedValue({
+      id: "00000000-0000-4000-8000-0000000000b1",
+      periodIso: "S29",
+      referenceYear: null,
+      version: 1,
+    } as never);
+    vi.mocked(prisma.mvolaExportBatch.create).mockResolvedValue({
+      id: "00000000-0000-4000-8000-0000000000b2",
+      version: 2,
+    } as never);
+    // Mélange volontaire : une ligne jamais rapprochée (reconciliationStatus null — doit être
+    // reprise, régression couverte ici) et une ligne déjà confirmée payée (doit être exclue).
+    const neverReconciled = {
+      ...mockPayment,
+      id: "00000000-0000-4000-8000-000000000081",
+      status: PaymentStatus.EXPORTED,
+      reconciliationStatus: null,
+    };
+    const confirmedPaid = {
+      ...mockPayment,
+      id: "00000000-0000-4000-8000-000000000082",
+      status: PaymentStatus.EXPORTED,
+      reconciliationStatus: "CONFIRME",
+    };
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      neverReconciled,
+      confirmedPaid,
+    ] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/S29/regenerate-export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(res.headers["x-alterra-version"]).toBe("2");
+    expect(res.headers["x-alterra-exported-count"]).toBe("1");
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { in: [PaymentStatus.EXPORTED, PaymentStatus.FAILED] },
+        }),
+      }),
+    );
+    expect(prisma.mvolaExportBatch.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ version: 2 }) }),
+    );
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [neverReconciled.id] } },
+        data: expect.objectContaining({
+          status: PaymentStatus.EXPORTED,
+          exportBatchId: "00000000-0000-4000-8000-0000000000b2",
+        }),
+      }),
+    );
   });
 
   it("POST /payments/import-status confirme une ligne via la clé site|semaine|bordereau|matricule", async () => {

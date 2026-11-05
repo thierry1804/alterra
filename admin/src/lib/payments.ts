@@ -43,6 +43,9 @@ export interface MvolaExportEntry {
   createdAt: string;
   userEmail: string | null;
   periodIso: string | null;
+  referenceYear: number | null;
+  version: number;
+  isCurrent: boolean;
   exportedCount: number | null;
   filename: string | null;
 }

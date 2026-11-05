@@ -5,15 +5,18 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
-import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
+import { exportMvolaPayments, regenerateMvolaExport } from "../services/payments/mvola-export.service.js";
 import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
 import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
 import {
   correctPaymentAmount,
+  getMvolaExportFile,
   listMvolaExports,
   listPayments,
   markPaymentFailed,
 } from "../services/payments/list.service.js";
+import { getReportStream } from "../services/storage/presigned-url.service.js";
+import { ApiError } from "../middleware/error-handler.js";
 
 export const paymentsRouter = Router();
 
@@ -30,6 +33,11 @@ const periodParams = z.object({
 const exportQuerySchema = z.object({
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
   includeHeader: z.enum(["true", "false"]).optional(),
+});
+
+const exportsListQuery = z.object({
+  periodIso: z.string().min(1).max(16).optional(),
+  referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
 });
 
 const importStatusColumnsSchema = z.object({
@@ -124,9 +132,35 @@ paymentsRouter.get(
   "/payments/exports",
   requireAuth,
   requireRole(Role.ADMIN),
-  async (_req, res, next) => {
+  validate(exportsListQuery, "query"),
+  async (req, res, next) => {
     try {
-      res.json({ data: await listMvolaExports() });
+      const query = req.query as unknown as z.infer<typeof exportsListQuery>;
+      res.json({ data: await listMvolaExports(query) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/payments/exports/:id/download",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(z.object({ id: z.string().uuid() }), "params"),
+  async (req, res, next) => {
+    try {
+      const file = await getMvolaExportFile(req.params.id);
+      if (!file) throw new ApiError(404, "NOT_FOUND", "Export introuvable");
+
+      const stream = await getReportStream(file.minioKey);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+      stream.pipe(res);
+      stream.on("error", next);
     } catch (err) {
       next(err);
     }
@@ -200,6 +234,39 @@ paymentsRouter.get(
       res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
       res.setHeader("X-ALTERRA-Exported-Count", String(result.exportedCount));
       res.setHeader("X-ALTERRA-Excluded-Count", String(result.excludedCount));
+      res.send(result.buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/payments/:period/regenerate-export",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(periodParams, "params"),
+  validate(exportQuerySchema, "query"),
+  async (req, res, next) => {
+    try {
+      const { period } = req.params as z.infer<typeof periodParams>;
+      const query = req.query as z.infer<typeof exportQuerySchema>;
+      const result = await regenerateMvolaExport(period, {
+        userId: req.user!.sub,
+        ip: req.ip,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        referenceYear: query.referenceYear,
+        includeHeader: query.includeHeader === "true",
+      });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.setHeader("X-ALTERRA-Exported-Count", String(result.exportedCount));
+      res.setHeader("X-ALTERRA-Version", String(result.version));
       res.send(result.buffer);
     } catch (err) {
       next(err);

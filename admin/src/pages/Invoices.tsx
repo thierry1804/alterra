@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { isAxiosError } from "axios";
-import { Download, FileText, Receipt, RefreshCw } from "lucide-react";
+import { Archive, Download, FileText, Receipt, RefreshCw } from "lucide-react";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { api } from "../lib/api";
 import { currentIsoWeekInput, periodToExportParam } from "../lib/payments";
@@ -21,6 +21,7 @@ export default function InvoicesPage() {
   const queryClient = useQueryClient();
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
   const listPeriod = periodIso ? periodToExportParam(periodIso) : "";
@@ -114,6 +115,34 @@ export default function InvoicesPage() {
     }
   }
 
+  async function handleDownloadAll() {
+    setDownloadingAll(true);
+    try {
+      const response = await api.get("/invoices/download-all", {
+        responseType: "blob",
+        params: { periodIso: listPeriod, referenceYear },
+      });
+      const disposition = response.headers["content-disposition"] as string | undefined;
+      const filenameMatch = disposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] ?? `factures_${listPeriod}.zip`;
+
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({
+        title: "Téléchargement échoué",
+        description: "Impossible de récupérer les factures de cette période.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingAll(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -147,6 +176,14 @@ export default function InvoicesPage() {
           <Button type="button" variant="outline" onClick={() => setPeriodIso("")}>
             Effacer le filtre
           </Button>
+        )}
+        {!isLoading && rows.length > 0 && (
+          <IconButton
+            icon={Archive}
+            label="Télécharger toutes les factures de cette période (ZIP)"
+            loading={downloadingAll}
+            onClick={() => void handleDownloadAll()}
+          />
         )}
         {canGenerateManually && (
           <Button

@@ -148,34 +148,53 @@ export async function markPaymentFailed(
   return updated;
 }
 
-/** Historique des exports MVola, du plus récent au plus ancien (lu dans le journal d'audit). */
-export async function listMvolaExports(limit = 50) {
-  const entries = await prisma.auditLog.findMany({
-    where: { entityType: "Payment", action: "EXPORT" },
-    orderBy: { createdAt: "desc" },
+/** Historique des bordereaux MVola (export initial + régénérations), du plus récent au plus ancien. */
+export async function listMvolaExports(filters: { periodIso?: string; referenceYear?: number } = {}, limit = 50) {
+  const resolved = filters.periodIso
+    ? resolvePeriod(filters.periodIso, undefined, filters.referenceYear)
+    : undefined;
+
+  const batches = await prisma.mvolaExportBatch.findMany({
+    where: resolved ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear } : {},
+    orderBy: [{ periodIso: "desc" }, { version: "desc" }],
     take: limit,
   });
 
-  const userIds = [...new Set(entries.map((e) => e.userId).filter((id): id is string => !!id))];
+  const userIds = [...new Set(batches.map((b) => b.createdById).filter((id): id is string => !!id))];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
     select: { id: true, email: true },
   });
   const emailById = new Map(users.map((u) => [u.id, u.email]));
 
-  return entries.map((entry) => {
-    const after = (entry.after ?? {}) as {
-      periodIso?: string;
-      exportedCount?: number;
-      filename?: string;
-    };
+  // "Actuel" = version la plus haute déjà connue pour cette période parmi les lots retournés ;
+  // suffisant ici car les versions sont strictement croissantes par période.
+  const maxVersionByPeriod = new Map<string, number>();
+  for (const batch of batches) {
+    const key = `${batch.periodIso}:${batch.referenceYear ?? ""}`;
+    maxVersionByPeriod.set(key, Math.max(maxVersionByPeriod.get(key) ?? 0, batch.version));
+  }
+
+  return batches.map((batch) => {
+    const key = `${batch.periodIso}:${batch.referenceYear ?? ""}`;
     return {
-      id: String(entry.id),
-      createdAt: entry.createdAt.toISOString(),
-      userEmail: (entry.userId && emailById.get(entry.userId)) || null,
-      periodIso: after.periodIso ?? null,
-      exportedCount: after.exportedCount ?? null,
-      filename: after.filename ?? null,
+      id: batch.id,
+      createdAt: batch.createdAt.toISOString(),
+      userEmail: (batch.createdById && emailById.get(batch.createdById)) || null,
+      periodIso: batch.periodIso,
+      referenceYear: batch.referenceYear,
+      version: batch.version,
+      isCurrent: batch.version === maxVersionByPeriod.get(key),
+      exportedCount: batch.exportedCount,
+      filename: batch.filename,
     };
   });
+}
+
+/** Retrouve le fichier MinIO d'un bordereau MVola passé, à partir de son id de version. */
+export async function getMvolaExportFile(batchId: string) {
+  const batch = await prisma.mvolaExportBatch.findUnique({ where: { id: batchId } });
+  if (!batch) return null;
+
+  return { minioKey: batch.fileKey, filename: batch.filename };
 }

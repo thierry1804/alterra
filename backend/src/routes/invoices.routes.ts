@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import archiver from "archiver";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
@@ -9,6 +10,7 @@ import { prisma } from "../lib/prisma.js";
 import {
   generateInvoicesForPeriod,
   listInvoices,
+  listInvoicesForZip,
   regenerateInvoice,
 } from "../services/payments/activity-invoices.service.js";
 import { getReportStream } from "../services/storage/presigned-url.service.js";
@@ -18,6 +20,12 @@ export const invoicesRouter = Router();
 
 const listInvoicesQuery = z.object({
   periodIso: z.string().min(1).max(16).optional(),
+  referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+});
+
+// periodIso obligatoire ici : sans filtre, l'archive téléchargerait toutes les factures jamais générées.
+const downloadAllQuery = z.object({
+  periodIso: z.string().min(1).max(16),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
 });
 
@@ -63,6 +71,63 @@ invoicesRouter.post(
         },
       );
       res.status(201).json({ created });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+invoicesRouter.get(
+  "/invoices/download-all",
+  requireAuth,
+  requireRole(Role.ADMIN),
+  validate(downloadAllQuery, "query"),
+  async (req, res, next) => {
+    try {
+      const query = req.query as unknown as z.infer<typeof downloadAllQuery>;
+      const invoices = await listInvoicesForZip(query);
+      if (invoices.length === 0) {
+        throw new ApiError(404, "NOT_FOUND", "Aucune facture pour cette période");
+      }
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "DOWNLOAD",
+        entityType: "Invoice",
+        entityId: "bulk",
+        after: { periodIso: query.periodIso, referenceYear: query.referenceYear, count: invoices.length },
+        ip: req.ip,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
+
+      const periodLabel = invoices[0].periodIso;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="factures_${periodLabel}.zip"`,
+      );
+
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      archive.on("error", next);
+      archive.pipe(res);
+
+      const usedNames = new Set<string>();
+      for (const invoice of invoices) {
+        const base = `${invoice.activityLabel}_${invoice.siteShortCode}`
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+        let name = `facture_${base}.pdf`;
+        if (usedNames.has(name)) name = `facture_${base}_${invoice.id.slice(0, 8)}.pdf`;
+        usedNames.add(name);
+
+        const stream = await getReportStream(invoice.fileKey);
+        archive.append(stream, { name });
+      }
+
+      await archive.finalize();
     } catch (err) {
       next(err);
     }
