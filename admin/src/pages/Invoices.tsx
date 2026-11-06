@@ -201,6 +201,7 @@ export default function InvoicesPage() {
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left text-xs font-medium uppercase tracking-wide text-subtle">
             <tr>
+              <th className="px-4 py-2">N°</th>
               <th className="px-4 py-2">Activité</th>
               <th className="px-4 py-2">Site</th>
               <th className="px-4 py-2">Période</th>
@@ -214,20 +215,21 @@ export default function InvoicesPage() {
           <tbody className="divide-y divide-zinc-100">
             {isLoading && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-zinc-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-zinc-500">
                   Chargement…
                 </td>
               </tr>
             )}
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-zinc-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-zinc-500">
                   Aucune facture — générée automatiquement au prochain export MVola.
                 </td>
               </tr>
             )}
             {rows.map((invoice) => (
               <tr key={invoice.id}>
+                <td className="px-4 py-2 text-zinc-500">{invoice.number ?? "—"}</td>
                 <td className="flex items-center gap-2 px-4 py-2 font-medium text-zinc-900">
                   <FileText className="h-4 w-4 shrink-0 text-subtle" />
                   {invoice.activityLabel}

@@ -1,5 +1,6 @@
 export interface InvoiceRow {
   id: string;
+  number: number | null;
   periodIso: string;
   referenceYear: number | null;
   activityLabel: string;

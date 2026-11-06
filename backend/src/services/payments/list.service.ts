@@ -149,18 +149,25 @@ export async function markPaymentFailed(
 }
 
 /** Historique des bordereaux MVola (export initial + régénérations), du plus récent au plus ancien. */
-export async function listMvolaExports(filters: { periodIso?: string; referenceYear?: number } = {}, limit = 50) {
+export async function listMvolaExports(
+  filters: { periodIso?: string; referenceYear?: number } = {},
+  limit = 50,
+) {
   const resolved = filters.periodIso
     ? resolvePeriod(filters.periodIso, undefined, filters.referenceYear)
     : undefined;
 
   const batches = await prisma.mvolaExportBatch.findMany({
-    where: resolved ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear } : {},
+    where: resolved
+      ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear }
+      : {},
     orderBy: [{ periodIso: "desc" }, { version: "desc" }],
     take: limit,
   });
 
-  const userIds = [...new Set(batches.map((b) => b.createdById).filter((id): id is string => !!id))];
+  const userIds = [
+    ...new Set(batches.map((b) => b.createdById).filter((id): id is string => !!id)),
+  ];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
     select: { id: true, email: true },

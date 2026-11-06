@@ -297,7 +297,9 @@ export async function regenerateMvolaExport(
     );
   }
 
-  const invalidMvola = eligible.filter((payment) => !isValidMvolaNumber(payment.worker.mvolaNumber));
+  const invalidMvola = eligible.filter(
+    (payment) => !isValidMvolaNumber(payment.worker.mvolaNumber),
+  );
   if (invalidMvola.length > 0) {
     throw new ApiError(
       422,

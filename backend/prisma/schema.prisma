@@ -261,6 +261,9 @@ model Invoice {
   subActivityId    String              @db.Uuid
   subActivity      ActivitySubActivity @relation(fields: [subActivityId], references: [id])
   fileKey          String // clé MinIO (bucket reports)
+  // Compteur par site et année ("N° XX/AAAA/SITE") — alloué à la génération, jamais réattribué à
+  // la régénération. Nullable : les factures créées avant ce champ n'en ont pas et le resteront.
+  number           Int?
   workerCount      Int
   // Tarif au moment de la génération — snapshotté comme Pointage.unitRateSnapshot : le tarif de
   // l'activité peut changer après coup, la facture doit garder celui réellement facturé.

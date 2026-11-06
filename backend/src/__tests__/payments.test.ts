@@ -542,10 +542,7 @@ describe("Payments API", () => {
       status: PaymentStatus.EXPORTED,
       reconciliationStatus: "CONFIRME",
     };
-    vi.mocked(prisma.payment.findMany).mockResolvedValue([
-      neverReconciled,
-      confirmedPaid,
-    ] as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([neverReconciled, confirmedPaid] as never);
     vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
 
     const app = createApp();

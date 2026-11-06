@@ -5,30 +5,51 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { htmlToPdfBuffer, renderActivityInvoiceHtml } from "../reports/pdf-render.service.js";
 import { writeAuditLog } from "../audit/audit.service.js";
-import { DEFAULT_ICON_BASE64, DEFAULT_ICON_CONTENT_TYPE } from "../../assets/default-icon.js";
 
 export interface ActivityInvoiceLine {
+  rowNumber: number;
   matricule: string;
+  cinNumber: string;
+  designation: string;
   workerName: string;
   quantity: string;
   unitPrice: string;
   amount: string;
+  isiAmount: string;
+  netAmount: string;
 }
 
 export interface ActivityInvoiceViewModel {
   generatedAt: string;
+  invoiceDate: string;
+  invoiceNumber: string;
   weekIso: string;
   weekNumber: string;
   year: string;
   periodLabel: string;
+  motif: string;
   dateFrom: string;
   dateTo: string;
-  header: { appName: string; logoDataUri: string };
+  client: { name: string; nif: string; stat: string; addressLine1: string; addressLine2: string };
   site: { name: string; shortCode: string };
   activity: { label: string; unit: string; unitRate: string };
   lines: ActivityInvoiceLine[];
-  summary: { workerCount: number; totalAmount: string };
+  summary: { workerCount: number; totalAmount: string; isiAmount: string; netAmount: string };
 }
+
+/** Identité fiscale du client facturé ("Doit :") — reprise telle quelle du modèle de référence
+ * FORMAT FACTURE ISI.xlsx, pas une donnée qu'ALTERRA calcule ou stocke par ailleurs. */
+const INVOICE_CLIENT = {
+  name: "LOHASAHA MADAGASCO",
+  nif: "2001423709",
+  stat: "02101 11 2009 0 10596",
+  addressLine1: "BAT KUBE D 2EME ETAGE, ZONE GALAXY ANDRAHARO",
+  addressLine2: "101 ANTANANARIVO MADAGASCAR",
+};
+
+/** Retenue appliquée sur chaque ligne ("ISI 5%" du modèle de référence) — calculée à l'affichage,
+ * jamais stockée : le format de référence l'exprime lui-même comme une formule, pas une donnée. */
+const ISI_WITHHOLDING_RATE = 0.05;
 
 export interface GenerateActivityInvoicesInput {
   shortPeriod: string;
@@ -42,6 +63,7 @@ export interface GenerateActivityInvoicesInput {
 
 export interface GeneratedInvoiceSummary {
   id: string;
+  number: number | null;
   subActivityId: string;
   activityLabel: string;
   siteId: string;
@@ -57,38 +79,6 @@ function formatAmount(value: number): string {
 
 function formatDateFr(date: Date): string {
   return date.toISOString().slice(0, 10);
-}
-
-const ICON_CONTENT_TYPE_BY_EXT: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  svg: "image/svg+xml",
-  webp: "image/webp",
-};
-
-/** Logo + nom d'application actuels (mêmes réglages que la sidebar admin) — repliés sur le logo
- * ALTERRA par défaut si aucune icône custom n'est configurée ou que sa lecture échoue. */
-async function getInvoiceHeaderAssets(): Promise<{ appName: string; logoDataUri: string }> {
-  const defaultHeader = {
-    appName: "ALTERRA",
-    logoDataUri: `data:${DEFAULT_ICON_CONTENT_TYPE};base64,${DEFAULT_ICON_BASE64}`,
-  };
-
-  const setting = await prisma.appSetting.findUnique({ where: { id: "singleton" } });
-  const appName = setting?.appName ?? defaultHeader.appName;
-  if (!setting?.iconKey) return { appName, logoDataUri: defaultHeader.logoDataUri };
-
-  try {
-    const ext = setting.iconKey.split(".").pop() ?? "";
-    const contentType = ICON_CONTENT_TYPE_BY_EXT[ext] ?? "application/octet-stream";
-    const stream = await minioClient.getObject(BUCKETS.assets, setting.iconKey);
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) chunks.push(chunk as Buffer);
-    const base64 = Buffer.concat(chunks).toString("base64");
-    return { appName, logoDataUri: `data:${contentType};base64,${base64}` };
-  } catch {
-    return { appName, logoDataUri: defaultHeader.logoDataUri };
-  }
 }
 
 type InvoicePointageRow = Awaited<ReturnType<typeof fetchValidatedPointages>>[number];
@@ -109,11 +99,32 @@ function fetchValidatedPointages(where: {
       ...(where.siteId ? { worker: { siteId: where.siteId } } : {}),
     },
     include: {
-      worker: { select: { matricule: true, firstName: true, lastName: true, siteId: true, site: true } },
+      worker: {
+        select: {
+          matricule: true,
+          cinNumber: true,
+          firstName: true,
+          lastName: true,
+          siteId: true,
+          site: true,
+        },
+      },
       subActivity: { include: { unit: true } },
     },
     orderBy: [{ worker: { lastName: "asc" } }],
   });
+}
+
+/** Numéro de facture suivant pour un site et une année ("N° XX/AAAA/SITE") — même principe que
+ * `nextBordereauBySite` pour les paiements : un compteur alloué, pas réservé atomiquement. */
+async function nextInvoiceNumber(siteId: string, referenceYear: number): Promise<number> {
+  // `number` est nullable (factures créées avant ce champ) : Postgres trie NULL en tête sur un
+  // DESC, donc sans ce filtre `last` serait systématiquement une ligne sans numéro.
+  const last = await prisma.invoice.findFirst({
+    where: { siteId, referenceYear, number: { not: null } },
+    orderBy: { number: "desc" },
+  });
+  return (last?.number ?? 0) + 1;
 }
 
 /** Rend le PDF d'un (site, activité) et le stocke sur MinIO — ne touche pas la table Invoice
@@ -127,7 +138,8 @@ async function renderAndStoreInvoicePdf(
     referenceYear: number;
     dateFrom: Date;
     dateTo: Date;
-    header: { appName: string; logoDataUri: string };
+    /** Facture déjà numérotée (régénération) — sinon un numéro est alloué ici. */
+    existingNumber?: number | null;
   },
 ) {
   const subActivity = rows[0].subActivity;
@@ -135,19 +147,27 @@ async function renderAndStoreInvoicePdf(
   const site = rows[0].worker.site;
   const workerIds = new Set(rows.map((r) => r.workerId));
   const totalAmount = rows.reduce((sum, r) => sum + Number(r.amount), 0);
+  const isiAmount = totalAmount * ISI_WITHHOLDING_RATE;
+  const netAmount = totalAmount - isiAmount;
   const unitRateSnapshot = rows[0].unitRateSnapshot;
   const generatedAt = new Date();
   const weekNumber = String(Number(context.weekIso.split("-W")[1]));
+  const invoiceNumber =
+    context.existingNumber ?? (await nextInvoiceNumber(site.id, context.referenceYear));
+  const motif = `${subActivity.label} — Semaine ${weekNumber}/${context.referenceYear}`;
 
   const viewModel: ActivityInvoiceViewModel = {
     generatedAt: generatedAt.toLocaleString("fr-FR"),
+    invoiceDate: generatedAt.toLocaleDateString("fr-FR"),
+    invoiceNumber: `${String(invoiceNumber).padStart(2, "0")}/${context.referenceYear}/${site.shortCode}`,
     weekIso: context.weekIso,
     weekNumber,
     year: String(context.referenceYear),
     periodLabel: context.shortPeriod,
+    motif,
     dateFrom: formatDateFr(context.dateFrom),
     dateTo: formatDateFr(context.dateTo),
-    header: context.header,
+    client: INVOICE_CLIENT,
     site: { name: site.name, shortCode: site.shortCode },
     activity: {
       label: subActivity.label,
@@ -156,16 +176,27 @@ async function renderAndStoreInvoicePdf(
       // l'activité qui a pu changer depuis.
       unitRate: formatAmount(Number(unitRateSnapshot)),
     },
-    lines: rows.map((r) => ({
-      matricule: r.worker.matricule,
-      workerName: `${r.worker.lastName} ${r.worker.firstName}`,
-      quantity: r.quantity.toString(),
-      unitPrice: formatAmount(Number(r.unitRateSnapshot)),
-      amount: formatAmount(Number(r.amount)),
-    })),
+    lines: rows.map((r, index) => {
+      const amount = Number(r.amount);
+      const lineIsi = amount * ISI_WITHHOLDING_RATE;
+      return {
+        rowNumber: index + 1,
+        matricule: r.worker.matricule,
+        cinNumber: r.worker.cinNumber ?? "",
+        designation: motif,
+        workerName: `${r.worker.lastName} ${r.worker.firstName}`,
+        quantity: r.quantity.toString(),
+        unitPrice: formatAmount(Number(r.unitRateSnapshot)),
+        amount: formatAmount(amount),
+        isiAmount: formatAmount(lineIsi),
+        netAmount: formatAmount(amount - lineIsi),
+      };
+    }),
     summary: {
       workerCount: workerIds.size,
       totalAmount: formatAmount(totalAmount),
+      isiAmount: formatAmount(isiAmount),
+      netAmount: formatAmount(netAmount),
     },
   };
 
@@ -185,6 +216,7 @@ async function renderAndStoreInvoicePdf(
     siteId: site.id,
     siteLabel: `${site.name} (${site.shortCode})`,
     fileKey,
+    number: invoiceNumber,
     workerCount: workerIds.size,
     unitRateSnapshot,
     totalAmount,
@@ -219,14 +251,12 @@ export async function generateActivityInvoices(
   }
 
   const results: GeneratedInvoiceSummary[] = [];
-  const header = await getInvoiceHeaderAssets();
   const context = {
     weekIso: input.weekIso,
     shortPeriod: input.shortPeriod,
     referenceYear: input.referenceYear,
     dateFrom: input.dateFrom,
     dateTo: input.dateTo,
-    header,
   };
 
   for (const rows of bySiteActivity.values()) {
@@ -239,6 +269,7 @@ export async function generateActivityInvoices(
         siteId: built.siteId,
         subActivityId: built.subActivityId,
         fileKey: built.fileKey,
+        number: built.number,
         workerCount: built.workerCount,
         unitRateSnapshot: built.unitRateSnapshot,
         totalAmount: built.totalAmount,
@@ -248,6 +279,7 @@ export async function generateActivityInvoices(
 
     results.push({
       id: invoice.id,
+      number: invoice.number,
       subActivityId: built.subActivityId,
       activityLabel: built.activityLabel,
       siteId: built.siteId,
@@ -275,7 +307,9 @@ export async function listInvoices(filters: ListInvoicesFilters) {
 
   const invoices = await prisma.invoice.findMany({
     where: {
-      ...(resolved ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear } : {}),
+      ...(resolved
+        ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear }
+        : {}),
     },
     include: {
       subActivity: { select: { label: true, shortLabel: true } },
@@ -286,6 +320,7 @@ export async function listInvoices(filters: ListInvoicesFilters) {
 
   return invoices.map((invoice) => ({
     id: invoice.id,
+    number: invoice.number,
     periodIso: invoice.periodIso,
     referenceYear: invoice.referenceYear,
     activityLabel: invoice.subActivity.label,
@@ -305,7 +340,9 @@ export async function listInvoicesForZip(filters: ListInvoicesFilters) {
 
   const invoices = await prisma.invoice.findMany({
     where: {
-      ...(resolved ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear } : {}),
+      ...(resolved
+        ? { periodIso: resolved.shortPeriod, referenceYear: resolved.referenceYear }
+        : {}),
     },
     include: {
       subActivity: { select: { label: true } },
@@ -392,7 +429,11 @@ export async function regenerateInvoice(
   const existing = await prisma.invoice.findUnique({ where: { id: invoiceId } });
   if (!existing) throw new ApiError(404, "NOT_FOUND", "Facture introuvable");
 
-  const resolved = resolvePeriod(existing.periodIso, undefined, existing.referenceYear ?? undefined);
+  const resolved = resolvePeriod(
+    existing.periodIso,
+    undefined,
+    existing.referenceYear ?? undefined,
+  );
 
   const exportedPayments = await prisma.payment.findMany({
     where: {
@@ -420,21 +461,22 @@ export async function regenerateInvoice(
     );
   }
 
-  const header = await getInvoiceHeaderAssets();
-
   const built = await renderAndStoreInvoicePdf(rows, {
     weekIso: resolved.weekIso,
     shortPeriod: resolved.shortPeriod,
     referenceYear: resolved.referenceYear,
     dateFrom: resolved.dateFrom,
     dateTo: resolved.dateTo,
-    header,
+    // Une régénération garde le même numéro de facture — sauf rattrapage d'une facture créée
+    // avant l'introduction de ce champ, qui en reçoit alors un pour la première fois.
+    existingNumber: existing.number,
   });
 
   const updated = await prisma.invoice.update({
     where: { id: invoiceId },
     data: {
       fileKey: built.fileKey,
+      number: built.number,
       workerCount: built.workerCount,
       unitRateSnapshot: built.unitRateSnapshot,
       totalAmount: built.totalAmount,
@@ -462,6 +504,7 @@ export async function regenerateInvoice(
 
   return {
     id: updated.id,
+    number: updated.number,
     subActivityId: built.subActivityId,
     activityLabel: built.activityLabel,
     siteId: built.siteId,
