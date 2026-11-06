@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import axios, { isAxiosError, type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "./auth-store";
 
 export const api = axios.create({
@@ -31,10 +31,15 @@ async function refreshAccessToken(): Promise<string | null> {
     const token = res.data.accessToken as string;
     useAuthStore.getState().setAccessToken(token);
     return token;
-  } catch {
-    useAuthStore.getState().logout();
-    if (window.location.pathname !== "/login") {
-      window.location.assign("/login");
+  } catch (err) {
+    // Seul un 401 du serveur signifie un refresh token vraiment invalide/expiré/révoqué — une
+    // coupure réseau, un 5xx ou un 429 sont transitoires : ne jamais déconnecter pour ça, la
+    // session reste valide et un prochain appel retentera le refresh normalement.
+    if (isAxiosError(err) && err.response?.status === 401) {
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
     }
     return null;
   }

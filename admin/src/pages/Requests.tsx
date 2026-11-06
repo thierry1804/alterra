@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import PageHeader from "../components/shared/PageHeader";
@@ -52,6 +53,8 @@ const TABS: { id: RequestTab; label: string }[] = [
 
 export default function RequestsPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<RequestTab>("activities");
   const pendingCounts = useQuery({
     queryKey: ["requests", "pending-counts"],
@@ -149,6 +152,7 @@ export default function RequestsPage() {
           variables.endpoint.includes("activity") ? "activity-requests" : "worker-requests",
         ],
       });
+      void queryClient.invalidateQueries({ queryKey: ["nav", "pending-requests"] });
       const failed = res.data.results.filter((r) => r.status === "error");
       activitySelection.clear();
       workerSelection.clear();
@@ -193,6 +197,21 @@ export default function RequestsPage() {
   }
 
   useEffect(() => {
+    const state = location.state as { openSelection?: RequestSelection } | null;
+    if (!state?.openSelection) return;
+    const targetTab: RequestTab =
+      state.openSelection.type === "activity"
+        ? "activities"
+        : state.openSelection.type === "worker"
+          ? "workers"
+          : "clarifications";
+    handleTabChange(targetTab);
+    openSelection(state.openSelection);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (
@@ -214,6 +233,7 @@ export default function RequestsPage() {
     if (tab === "activities") void activityQuery.refetch();
     if (tab === "workers") void workerQuery.refetch();
     if (tab === "clarifications") void clarificationQuery.refetch();
+    void queryClient.invalidateQueries({ queryKey: ["nav", "pending-requests"] });
   }
 
   function handleExport() {

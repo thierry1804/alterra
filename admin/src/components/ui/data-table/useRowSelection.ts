@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /** Sélection multiple par id, avec état "tout sélectionné"/"partiel" dérivé des ids visibles. */
 export function useRowSelection(visibleIds: string[]) {
@@ -33,9 +33,9 @@ export function useRowSelection(visibleIds: string[]) {
     });
   }
 
-  function clear() {
+  const clear = useCallback(() => {
     setSelected(new Set());
-  }
+  }, []);
 
   return {
     selectedIds: selected,

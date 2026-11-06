@@ -37,7 +37,8 @@ interface EditDraft {
 
 export default function MyPointages() {
   const { user } = useAuth();
-  const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
+  const liveActivities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []);
+  const activities = useMemo(() => liveActivities ?? [], [liveActivities]);
 
   const [pointages, setPointages] = useState<Pointage[]>([]);
   const [workersMap, setWorkersMap] = useState<Map<string, WorkerSummary>>(new Map());

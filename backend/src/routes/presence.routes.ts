@@ -1,11 +1,12 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { z } from "zod";
-import { PresenceSource, Role } from "@prisma/client";
+import { Prisma, PresenceSource, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { syncPresenceBatch } from "../services/presence/sync.service.js";
+import { IMPOSSIBLE_SCOPE_FILTER } from "../middleware/prisma-rls.js";
 
 export const presenceRouter = Router();
 
@@ -31,6 +32,19 @@ const listPresenceQuery = z.object({
   cursor: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
+
+/** PresenceRecord n'est pas couvert par la RLS (middleware/prisma-rls.ts) : scope manuel par rôle. */
+function buildPresenceScopeWhere(req: Request): Prisma.PresenceRecordWhereInput {
+  if (req.user!.role === Role.CHEF_SERVICE) {
+    if (!req.user!.siteId) return IMPOSSIBLE_SCOPE_FILTER;
+    return { worker: { siteId: req.user!.siteId } };
+  }
+  if (req.user!.role === Role.CHEF_EQUIPE) {
+    if (!req.user!.teamId) return IMPOSSIBLE_SCOPE_FILTER;
+    return { worker: { teamId: req.user!.teamId } };
+  }
+  return {};
+}
 
 presenceRouter.post(
   "/presence/sync",
@@ -60,7 +74,8 @@ presenceRouter.get(
       >;
 
       const pageSize = take ?? 50;
-      const where = {
+      const where: Prisma.PresenceRecordWhereInput = {
+        ...buildPresenceScopeWhere(req),
         ...(workerId ? { workerId } : {}),
         ...(dateFrom || dateTo
           ? {

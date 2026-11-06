@@ -5,6 +5,7 @@ import { invalidateTokensIssuedBefore } from "../../lib/redis.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { sendPasswordResetEmail } from "../notifications/email.service.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { disconnectUserSockets } from "../../realtime/socket.js";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
@@ -53,6 +54,7 @@ export async function confirmPasswordReset(rawToken: string, newPassword: string
   ]);
 
   await invalidateTokensIssuedBefore(record.userId);
+  disconnectUserSockets(record.userId);
 
   await writeAuditLog({
     userId: record.userId,

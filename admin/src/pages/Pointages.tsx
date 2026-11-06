@@ -1,5 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { Camera, ClipboardList, Eye, Check, X as XIcon, Download } from "lucide-react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
@@ -40,11 +42,21 @@ import { TableQueryError } from "../components/ui/QueryError";
 
 export default function PointagesPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [siteId] = useSiteScope();
   const [statusFilter, setStatusFilter] = useState<PointageStatus | "">("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selected, setSelected] = useState<Pointage | null>(null);
+
+  useEffect(() => {
+    const state = location.state as { openPointage?: Pointage } | null;
+    if (!state?.openPointage) return;
+    setSelected(state.openPointage);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const { data: subActivities = [] } = useQuery({
     queryKey: ["sub-activities", "all"],
@@ -90,6 +102,24 @@ export default function PointagesPage() {
   );
 
   const selection = useRowSelection(pointages.map((p) => p.id));
+  const { clear: clearSelection } = selection;
+
+  // Une sélection faite sous un filtre ne doit pas survivre à son changement : sinon une
+  // action en masse peut porter sur des lignes qui ne sont plus affichées à l'écran.
+  useEffect(() => {
+    clearSelection();
+  }, [statusFilter, dateFrom, dateTo, siteId, clearSelection]);
+
+  function bulkErrorToast(title: string) {
+    return (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : undefined;
+      toast({
+        title,
+        description: typeof message === "string" ? message : "Erreur inattendue",
+        variant: "destructive",
+      });
+    };
+  }
 
   function invalidateAfterBulk(res: {
     data: { results: Array<{ id: string; status: string; error?: string }> };
@@ -113,6 +143,7 @@ export default function PointagesPage() {
         { ids: [...selection.selectedIds] },
       ),
     onSuccess: invalidateAfterBulk,
+    onError: bulkErrorToast("Échec de la validation"),
   });
 
   const bulkRejectMutation = useMutation({
@@ -125,6 +156,7 @@ export default function PointagesPage() {
       setBulkRejectReason("");
       invalidateAfterBulk(res);
     },
+    onError: bulkErrorToast("Échec du rejet"),
   });
 
   const [exporting, setExporting] = useState(false);
@@ -193,7 +225,9 @@ export default function PointagesPage() {
     if (next) setSelected(next);
   }
 
-  const selectedWorker = selected ? (workersMap.get(selected.workerId) ?? null) : null;
+  const selectedWorker = selected
+    ? (workersMap.get(selected.workerId) ?? selected.worker ?? null)
+    : null;
   const selectedSubActivity = selected
     ? (subActivitiesMap.get(selected.subActivityId) ?? null)
     : null;
@@ -222,7 +256,12 @@ export default function PointagesPage() {
           </>
         }
         action={
-          <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
+          <IconButton
+            icon={Download}
+            label="Exporter"
+            loading={exporting}
+            onClick={() => void handleExport()}
+          />
         }
       />
 

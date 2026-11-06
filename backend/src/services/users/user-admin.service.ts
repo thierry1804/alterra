@@ -5,6 +5,7 @@ import { basePrisma } from "../../lib/prisma-base.js";
 import { blockUser, invalidateTokensIssuedBefore } from "../../lib/redis.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { getRequestContext } from "../../middleware/prisma-rls.js";
+import { disconnectUserSockets } from "../../realtime/socket.js";
 
 export function generateTempPassword(length = 12): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
@@ -33,6 +34,7 @@ export async function resetUserPassword(userId: string, passwordHash: string) {
   // Coupe les sessions en cours (jetons émis avant maintenant) sans bloquer le compte :
   // le nouveau mot de passe permet de se reconnecter immédiatement.
   await invalidateTokensIssuedBefore(userId);
+  disconnectUserSockets(userId);
 }
 
 export async function deactivateUser(
@@ -48,6 +50,7 @@ export async function deactivateUser(
 
   await revokeUserRefreshTokens(userId);
   await blockUser(userId);
+  disconnectUserSockets(userId);
 
   await writeAuditLog({
     userId: ctx?.userId,

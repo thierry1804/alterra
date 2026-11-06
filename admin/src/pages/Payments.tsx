@@ -26,6 +26,9 @@ export default function PaymentsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [generateCorrectionsWarning, setGenerateCorrectionsWarning] = useState<string | null>(
+    null,
+  );
 
   const listPeriod = useMemo(() => periodToExportParam(periodIso), [periodIso]);
   const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
@@ -65,12 +68,14 @@ export default function PaymentsPage() {
   }, [rows]);
 
   const generateMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (force?: boolean) =>
       api.post("/payments/generate", {
         periodIso,
         referenceYear: Number(periodIso.match(/^(\d{4})-W/)?.[1]),
+        force,
       }),
     onSuccess: (res) => {
+      setGenerateCorrectionsWarning(null);
       toast({
         title: "Bordereau généré",
         description: `${res.data.created} ligne(s) créée(s)`,
@@ -80,7 +85,9 @@ export default function PaymentsPage() {
     onError: (err) => {
       const code = isAxiosError(err) ? err.response?.data?.code : null;
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      if (code === "PAY_CONFLICT") {
+      if (code === "PAY_HAS_CORRECTIONS") {
+        setGenerateCorrectionsWarning(String(message));
+      } else if (code === "PAY_CONFLICT") {
         toast({
           title: "Conflit période",
           description: String(message),
@@ -101,7 +108,10 @@ export default function PaymentsPage() {
   const deleteMutation = useMutation({
     mutationFn: () =>
       api.delete(`/payments/${listPeriod}`, {
-        params: { referenceYear: periodIso.match(/^(\d{4})-W/)?.[1] },
+        params: {
+          referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
+          siteId: siteId || undefined,
+        },
       }),
     onSuccess: (res) => {
       toast({
@@ -225,13 +235,14 @@ export default function PaymentsPage() {
         </div>
         <Button
           type="button"
-          onClick={() => generateMutation.mutate()}
+          onClick={() => generateMutation.mutate(undefined)}
           disabled={generateMutation.isPending}
         >
           {generateMutation.isPending ? "Génération…" : "Générer bordereau"}
         </Button>
         <MvolaExportButton
           periodIso={periodIso}
+          siteId={siteId}
           disabled={stats.exportable === 0}
           onExported={() => void refetch()}
         />
@@ -270,6 +281,17 @@ export default function PaymentsPage() {
         busy={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate()}
         onOpenChange={setDeleteConfirmOpen}
+      />
+
+      <ConfirmDialog
+        open={generateCorrectionsWarning !== null}
+        title="Des paiements ont été corrigés manuellement"
+        description={`${generateCorrectionsWarning}. Continuer quand même ?`}
+        confirmLabel="Régénérer quand même"
+        destructive
+        busy={generateMutation.isPending}
+        onConfirm={() => generateMutation.mutate(true)}
+        onOpenChange={(open) => !open && setGenerateCorrectionsWarning(null)}
       />
 
       <BordereauTable rows={rows} loading={isLoading} onCorrected={() => void refetch()} />

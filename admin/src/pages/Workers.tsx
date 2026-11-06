@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import { UserRound, Pencil, Trash2, Power, PowerOff, Download } from "lucide-react";
 import { api } from "../lib/api";
@@ -155,6 +155,24 @@ export default function WorkersPage() {
   );
 
   const selection = useRowSelection(workers.map((w) => w.id));
+  const { clear: clearSelection } = selection;
+
+  // Une sélection faite sous un filtre ne doit pas survivre à son changement : sinon une
+  // action en masse peut porter sur des lignes qui ne sont plus affichées à l'écran.
+  useEffect(() => {
+    clearSelection();
+  }, [search, siteFilter, teamFilter, statusFilter, sexeFilter, clearSelection]);
+
+  function bulkErrorToast(title: string) {
+    return (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : undefined;
+      toast({
+        title,
+        description: typeof message === "string" ? message : "Erreur inattendue",
+        variant: "destructive",
+      });
+    };
+  }
 
   const bulkStatusMutation = useMutation({
     mutationFn: (status: Worker["status"]) =>
@@ -174,6 +192,7 @@ export default function WorkersPage() {
         variant: failed.length ? "destructive" : undefined,
       });
     },
+    onError: bulkErrorToast("Échec de la mise à jour du statut"),
   });
 
   const bulkSexeMutation = useMutation({
@@ -194,6 +213,7 @@ export default function WorkersPage() {
         variant: failed.length ? "destructive" : undefined,
       });
     },
+    onError: bulkErrorToast("Échec de la mise à jour du sexe"),
   });
 
   const bulkDeleteMutation = useMutation({
@@ -215,6 +235,7 @@ export default function WorkersPage() {
         variant: failed.length ? "destructive" : undefined,
       });
     },
+    onError: bulkErrorToast("Échec de la suppression"),
   });
 
   const [exporting, setExporting] = useState(false);

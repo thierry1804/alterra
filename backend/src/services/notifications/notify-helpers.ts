@@ -101,7 +101,13 @@ export async function notifyActivityRequestDecided(
 }
 
 export async function notifyWorkerRequestDecided(
-  request: { id: string; requestedById: string; status: string; firstName: string; lastName: string },
+  request: {
+    id: string;
+    requestedById: string;
+    status: string;
+    firstName: string;
+    lastName: string;
+  },
   ctx: AuditCtx,
 ): Promise<void> {
   await createAndDispatch({
@@ -116,12 +122,19 @@ export async function notifyWorkerRequestDecided(
   });
 }
 
-async function teamIdsForPointages(ids: string[]): Promise<string[]> {
+async function groupPointageIdsByTeam(ids: string[]): Promise<Map<string, string[]>> {
   const rows = await prisma.pointage.findMany({
     where: { id: { in: ids } },
-    select: { worker: { select: { teamId: true } } },
+    select: { id: true, worker: { select: { teamId: true } } },
   });
-  return [...new Set(rows.map((r) => r.worker.teamId).filter(Boolean))] as string[];
+  const byTeam = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!row.worker.teamId) continue;
+    const idsForTeam = byTeam.get(row.worker.teamId);
+    if (idsForTeam) idsForTeam.push(row.id);
+    else byTeam.set(row.worker.teamId, [row.id]);
+  }
+  return byTeam;
 }
 
 export async function notifyPointagesRejected(
@@ -130,15 +143,16 @@ export async function notifyPointagesRejected(
   ctx: AuditCtx,
 ): Promise<void> {
   if (pointageIds.length === 0) return;
-  const teamIds = await teamIdsForPointages(pointageIds);
-  const title =
-    pointageIds.length === 1 ? "Pointage rejeté" : `${pointageIds.length} pointages rejetés`;
-  const body =
-    pointageIds.length === 1
-      ? reason.slice(0, 160)
-      : `${pointageIds.length} pointages rejetés — ${reason.slice(0, 100)}`;
+  const byTeam = await groupPointageIdsByTeam(pointageIds);
 
-  for (const teamId of teamIds) {
+  for (const [teamId, idsForTeam] of byTeam) {
+    const title =
+      idsForTeam.length === 1 ? "Pointage rejeté" : `${idsForTeam.length} pointages rejetés`;
+    const body =
+      idsForTeam.length === 1
+        ? reason.slice(0, 160)
+        : `${idsForTeam.length} pointages rejetés — ${reason.slice(0, 100)}`;
+
     const cdeIds = await findChefEquipeIdsByTeam(teamId);
     await createAndDispatchMany(
       cdeIds.map((userId) => ({
@@ -147,8 +161,8 @@ export async function notifyPointagesRejected(
         title,
         body,
         entityType: "Pointage",
-        entityId: pointageIds.length === 1 ? pointageIds[0] : null,
-        payload: { href: "/my-pointages", pointageIds },
+        entityId: idsForTeam.length === 1 ? idsForTeam[0] : null,
+        payload: { href: "/my-pointages", pointageIds: idsForTeam },
         ...base(ctx),
       })),
     );
@@ -160,15 +174,16 @@ export async function notifyPointagesValidated(
   ctx: AuditCtx,
 ): Promise<void> {
   if (pointageIds.length === 0) return;
-  const teamIds = await teamIdsForPointages(pointageIds);
-  const title =
-    pointageIds.length === 1 ? "Pointage validé" : `${pointageIds.length} pointages validés`;
-  const body =
-    pointageIds.length === 1
-      ? "Votre pointage a été validé."
-      : `${pointageIds.length} pointages ont été validés.`;
+  const byTeam = await groupPointageIdsByTeam(pointageIds);
 
-  for (const teamId of teamIds) {
+  for (const [teamId, idsForTeam] of byTeam) {
+    const title =
+      idsForTeam.length === 1 ? "Pointage validé" : `${idsForTeam.length} pointages validés`;
+    const body =
+      idsForTeam.length === 1
+        ? "Votre pointage a été validé."
+        : `${idsForTeam.length} pointages ont été validés.`;
+
     const cdeIds = await findChefEquipeIdsByTeam(teamId);
     await createAndDispatchMany(
       cdeIds.map((userId) => ({
@@ -177,8 +192,8 @@ export async function notifyPointagesValidated(
         title,
         body,
         entityType: "Pointage",
-        entityId: pointageIds.length === 1 ? pointageIds[0] : null,
-        payload: { href: "/my-pointages", pointageIds },
+        entityId: idsForTeam.length === 1 ? idsForTeam[0] : null,
+        payload: { href: "/my-pointages", pointageIds: idsForTeam },
         ...base(ctx),
       })),
     );

@@ -18,7 +18,8 @@ import { syncBiometricTemplatesFromServer } from "../services/biometric/Template
 export default function ActivitySelect() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const activities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []) ?? [];
+  const liveActivities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []);
+  const activities = useMemo(() => liveActivities ?? [], [liveActivities]);
   const [search, setSearch] = useState("");
   const [lastUsedId, setLastUsedId] = useState("");
   const filteredActivities = useMemo(() => {

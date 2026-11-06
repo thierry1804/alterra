@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { db, setSetting, getSetting, type PointagePending } from "../db/db";
 import { api } from "../lib/api";
 import {
@@ -8,7 +9,7 @@ import {
 import type { PointageSyncResult, SyncLogEntry, SyncRunResult, SyncState } from "./sync-types";
 import { syncPresenceLogs } from "./PresenceSync";
 import { syncPendingOfflineBiometricChecks } from "../lib/biometric";
-import { uploadPointagePhoto } from "../lib/pointage-photo";
+import { attachPointagePhoto, uploadPointagePhoto } from "../lib/pointage-photo";
 
 const BATCH_SIZE = 100;
 const BACKOFF_DELAYS_MS = [1000, 2000, 5000, 15000, 60000, 300000];
@@ -47,6 +48,46 @@ async function attachPendingPhotos(pointages: PointagePending[]): Promise<void> 
       // Photo non envoyée (hors ligne/erreur réseau) : le pointage part sans photo, réessayé au prochain sync.
     }
   }
+}
+
+/**
+ * Retente les photos dont le pointage associé est parti sans elles (upload initial échoué après que
+ * le texte, lui, soit déjà passé) — indépendant du statut du pointage, qui peut avoir déjà quitté
+ * `db.pointages` (synchronisé) : on retrouve son id serveur via `pointings_synced`.
+ */
+async function retryPendingPhotos(): Promise<{ attached: number; lost: number }> {
+  const orphans = await db.media.filter((media) => !media.uploaded).toArray();
+  let attached = 0;
+  let lost = 0;
+
+  for (const media of orphans) {
+    const stillLocal = await db.pointages.get(media.clientUuid);
+    if (stillLocal) continue; // repartira via attachPendingPhotos au prochain batch
+
+    const synced = await db.pointings_synced.get(media.clientUuid);
+    if (!synced) continue; // pointage rejeté puis supprimé — plus rien à rattacher
+
+    try {
+      const photoKey = await uploadPointagePhoto(media.blob);
+      await attachPointagePhoto(synced.id, photoKey);
+      await db.media.update(media.clientUuid, { uploaded: true });
+      attached++;
+    } catch (err) {
+      const status = isAxiosError(err) ? err.response?.status : undefined;
+      // 401 exclu : ce statut ne peut venir que de l'intercepteur d'auth (lib/api.ts), jamais d'un
+      // rejet métier sur l'attachement de photo. Il remonte aussi bien pour un jeton vraiment mort
+      // que pour un refresh silencieux qui a échoué à cause du réseau — dans ce second cas, bien
+      // réel sur le terrain, marquer la photo perdue serait irréversible pour une panne transitoire.
+      if (status !== undefined && status >= 400 && status < 500 && status !== 401) {
+        // Pointage déjà validé/payé ou déjà pourvu d'une autre photo : non récupérable, on arrête.
+        await db.media.update(media.clientUuid, { uploaded: true });
+        lost++;
+      }
+      // sinon transitoire (réseau, 5xx, 401) : laissé tel quel, retenté au prochain cycle.
+    }
+  }
+
+  return { attached, lost };
 }
 
 function createLogEntry(level: SyncLogEntry["level"], message: string): SyncLogEntry {
@@ -167,22 +208,33 @@ export function subscribeSyncState(listener: (state: SyncState) => void): () => 
 export async function syncNow(options?: { force?: boolean }): Promise<SyncRunResult> {
   if (!navigator.onLine) {
     await appendLog("warning", "Sync ignorée — hors ligne");
-    return { synced: 0, rejected: 0, skipped: 0 };
+    return { synced: 0, rejected: 0, skipped: 0, retried: 0 };
   }
 
   if (isSyncing) {
-    return { synced: 0, rejected: 0, skipped: 0 };
+    return { synced: 0, rejected: 0, skipped: 0, retried: 0 };
   }
 
   isSyncing = true;
   await refreshAndNotify();
 
-  const totals: SyncRunResult = { synced: 0, rejected: 0, skipped: 0 };
+  const totals: SyncRunResult = { synced: 0, rejected: 0, skipped: 0, retried: 0 };
 
   try {
     const recovered = await recoverStuckSyncingPointages();
     if (recovered > 0) {
       await appendLog("info", `${recovered} pointage(s) récupéré(s) après interruption`);
+    }
+
+    const photoRetry = await retryPendingPhotos();
+    if (photoRetry.attached > 0) {
+      await appendLog("success", `${photoRetry.attached} photo(s) rattachée(s) après coup`);
+    }
+    if (photoRetry.lost > 0) {
+      await appendLog(
+        "warning",
+        `${photoRetry.lost} photo(s) non rattachable(s) — pointage déjà validé ou déjà pourvu d'une photo`,
+      );
     }
 
     const pending = await db.pointages.where("status").equals("local").toArray();
@@ -209,6 +261,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
           totals.synced += batchResult.synced;
           totals.rejected += batchResult.rejected;
           totals.skipped += batchResult.skipped;
+          totals.retried += batchResult.retried;
 
           consecutiveFailures = 0;
           autoSyncEnabled = true;
@@ -238,6 +291,12 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
         );
       } else if (totals.skipped > 0) {
         await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
+      }
+      if (totals.retried > 0) {
+        await appendLog(
+          "warning",
+          `${totals.retried} pointage(s) en attente de réessai (erreur serveur passagère)`,
+        );
       }
     }
 

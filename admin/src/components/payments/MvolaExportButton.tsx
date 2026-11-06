@@ -8,12 +8,14 @@ import { toast } from "../../hooks/use-toast";
 
 interface MvolaExportButtonProps {
   periodIso: string;
+  siteId?: string;
   disabled?: boolean;
   onExported: () => void;
 }
 
 export default function MvolaExportButton({
   periodIso,
+  siteId,
   disabled,
   onExported,
 }: MvolaExportButtonProps) {
@@ -29,6 +31,7 @@ export default function MvolaExportButton({
         params: {
           referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
           includeHeader,
+          siteId: siteId || undefined,
         },
       });
 

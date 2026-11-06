@@ -149,6 +149,54 @@ describe("badges routes", () => {
     expect(res.status).toBe(201);
   });
 
+  it("GET /badges returns nothing for a CDS without a site (fails closed)", async () => {
+    vi.mocked(prisma.badge.findMany).mockResolvedValue([
+      {
+        id: MOCK_BADGE_ID,
+        workerId: MOCK_WORKER_ID,
+        nfcTagId: "a1b2c3d4",
+        assignedAt: new Date(),
+        revokedAt: null,
+        worker: {
+          id: MOCK_WORKER_ID,
+          firstName: "MOC",
+          lastName: "Test",
+          matricule: "MOC-1",
+          siteId: MOCK_SITE_ID,
+          teamId: MOCK_TEAM_ID,
+        },
+      },
+    ] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/badges")
+      .set("Authorization", `Bearer ${cdsToken(null as unknown as string)}`);
+
+    expect(res.status).toBe(200);
+    expect(prisma.badge.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "00000000-0000-0000-0000-000000000000" }),
+      }),
+    );
+  });
+
+  it("DELETE /badges/:id returns 404 for a CDS without a site (fails closed)", async () => {
+    vi.mocked(prisma.badge.findFirst).mockResolvedValue(null);
+
+    const app = createApp();
+    const res = await request(app)
+      .delete(`/api/v1/badges/${MOCK_BADGE_ID}`)
+      .set("Authorization", `Bearer ${cdsToken(null as unknown as string)}`);
+
+    expect(res.status).toBe(404);
+    expect(prisma.badge.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "00000000-0000-0000-0000-000000000000" }),
+      }),
+    );
+  });
+
   it("POST /badges rejects CDS assigning a badge outside their site", async () => {
     vi.mocked(prisma.worker.findFirst).mockResolvedValue({
       id: MOCK_WORKER_ID,

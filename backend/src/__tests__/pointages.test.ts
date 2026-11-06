@@ -64,6 +64,7 @@ vi.mock("../lib/prisma.js", () => ({
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     biometricCheck: {
       findFirst: vi.fn(),
@@ -150,6 +151,7 @@ describe("Pointages", () => {
         new Prisma.PrismaClientKnownRequestError("Unique constraint", {
           code: "P2002",
           clientVersion: "5.20.0",
+          meta: { modelName: "Pointage", target: ["clientUuid"] },
         }),
       );
       vi.mocked(prisma.pointage.findUnique).mockResolvedValue(mockPointage as never);
@@ -166,6 +168,75 @@ describe("Pointages", () => {
           clientUuid: MOCK_CLIENT_UUID,
           status: "already_exists",
           id: MOCK_POINTAGE_ID,
+        },
+      ]);
+    });
+
+    it("rejects a concurrent sync caught by the active-slot DB constraint (not clientUuid)", async () => {
+      vi.mocked(prisma.pointage.create).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+          code: "P2002",
+          clientVersion: "5.20.0",
+          meta: { modelName: "Pointage", target: ["workerId", "subActivityId", "date"] },
+        }),
+      );
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results).toEqual([
+        {
+          clientUuid: MOCK_CLIENT_UUID,
+          status: "rejected",
+          reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+        },
+      ]);
+      expect(prisma.pointage.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("classifies a transient DB error (P2024, pool saturé) as retry, not a permanent rejection", async () => {
+      vi.mocked(prisma.pointage.create).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          "Timed out fetching a new connection from the pool",
+          { code: "P2024", clientVersion: "5.20.0" },
+        ),
+      );
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results).toEqual([
+        {
+          clientUuid: MOCK_CLIENT_UUID,
+          status: "retry",
+          reason: "Timed out fetching a new connection from the pool",
+        },
+      ]);
+    });
+
+    it("keeps a genuine business error as a permanent rejection, not a retry", async () => {
+      vi.mocked(prisma.pointage.create).mockRejectedValue(new Error("Validation métier échouée"));
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results).toEqual([
+        {
+          clientUuid: MOCK_CLIENT_UUID,
+          status: "rejected",
+          reason: "Validation métier échouée",
         },
       ]);
     });
@@ -212,7 +283,14 @@ describe("Pointages", () => {
     });
 
     it("succeeds when latest bio is OK", async () => {
-      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.pointage.findUniqueOrThrow)
+        .mockResolvedValueOnce(mockPointage as never)
+        .mockResolvedValueOnce({
+          ...mockPointage,
+          status: PointageStatus.VALIDATED,
+          validatedById: MOCK_CDS_ID,
+          validatedAt: new Date(),
+        } as never);
       vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
         id: "bio-1",
         workerId: MOCK_WORKER_ID,
@@ -221,12 +299,7 @@ describe("Pointages", () => {
         performedAt: new Date("2026-07-14T10:00:00Z"),
         weekIso: "2026-W29",
       } as never);
-      vi.mocked(prisma.pointage.update).mockResolvedValue({
-        ...mockPointage,
-        status: PointageStatus.VALIDATED,
-        validatedById: MOCK_CDS_ID,
-        validatedAt: new Date(),
-      } as never);
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
 
       const app = createApp();
       const res = await request(app)
@@ -235,15 +308,37 @@ describe("Pointages", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("VALIDATED");
-      expect(prisma.pointage.update).toHaveBeenCalledWith(
+      expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: MOCK_POINTAGE_ID },
+          where: { id: MOCK_POINTAGE_ID, status: PointageStatus.PENDING },
           data: expect.objectContaining({
             status: "VALIDATED",
             validatedById: MOCK_CDS_ID,
           }),
         }),
       );
+    });
+
+    it("fails with INVALID_STATUS when a concurrent action already changed the status", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValueOnce(mockPointage as never);
+      vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
+        id: "bio-1",
+        workerId: MOCK_WORKER_ID,
+        result: "OK",
+        context: "WEEKLY_VALIDATION",
+        performedAt: new Date("2026-07-14T10:00:00Z"),
+        weekIso: "2026-W29",
+      } as never);
+      // Un rejet concurrent a deja fait bouger le statut entre la lecture et l'ecriture.
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/validate`)
+        .set("Authorization", cdsAuthHeader());
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
     });
   });
 
@@ -257,6 +352,48 @@ describe("Pointages", () => {
 
       expect(res.status).toBe(422);
       expect(res.body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("rejects with a valid reason", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow)
+        .mockResolvedValueOnce(mockPointage as never)
+        .mockResolvedValueOnce({
+          ...mockPointage,
+          status: PointageStatus.REJECTED,
+          rejectionReason: "Quantité suspecte sur le terrain",
+          validatedById: MOCK_CDS_ID,
+        } as never);
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/reject`)
+        .set("Authorization", cdsAuthHeader())
+        .send({ rejectionReason: "Quantité suspecte sur le terrain" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("REJECTED");
+      expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: MOCK_POINTAGE_ID, status: PointageStatus.PENDING },
+          data: expect.objectContaining({ status: "REJECTED" }),
+        }),
+      );
+    });
+
+    it("fails with INVALID_STATUS when a concurrent validation already changed the status", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValueOnce(mockPointage as never);
+      // Une validation concurrente a deja fait bouger le statut entre la lecture et l'ecriture.
+      vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/reject`)
+        .set("Authorization", cdsAuthHeader())
+        .send({ rejectionReason: "Quantité suspecte sur le terrain" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
     });
   });
 
@@ -300,6 +437,195 @@ describe("Pointages", () => {
           }),
         }),
       );
+    });
+
+    it("returns DUPLICATE_SLOT when the correction collides with the active-slot constraint", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.pointage.update).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+          code: "P2002",
+          clientVersion: "5.20.0",
+          meta: { modelName: "Pointage", target: ["workerId", "subActivityId", "date"] },
+        }),
+      );
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}`)
+        .set("Authorization", adminAuthHeader())
+        .send({ date: "2026-07-16", correctionReason: "Date corrigée après vérification terrain" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("DUPLICATE_SLOT");
+    });
+  });
+
+  describe("PATCH /pointages/:id/resubmit", () => {
+    const rejectedPointage = {
+      ...mockPointage,
+      status: PointageStatus.REJECTED,
+      rejectionReason: "Quantité suspecte",
+      enteredById: MOCK_CDE_ID,
+    };
+
+    it("requires resubmitReason", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/resubmit`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ resubmitReason: "no" });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("rejects with DUPLICATE_SLOT when another active pointage already fills the slot", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(rejectedPointage as never);
+      vi.mocked(prisma.pointage.findFirst).mockResolvedValue({
+        id: "00000000-0000-4000-8000-000000000099",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/resubmit`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ resubmitReason: "Quantité vérifiée et confirmée" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("DUPLICATE_SLOT");
+      expect(prisma.pointage.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workerId: rejectedPointage.workerId,
+            subActivityId: rejectedPointage.subActivityId,
+            date: rejectedPointage.date,
+            status: { not: "REJECTED" },
+            id: { not: MOCK_POINTAGE_ID },
+          }),
+        }),
+      );
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("resubmits successfully when no other active pointage occupies the slot", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(rejectedPointage as never);
+      vi.mocked(prisma.pointage.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.pointage.update).mockResolvedValue({
+        ...rejectedPointage,
+        status: PointageStatus.PENDING,
+        rejectionReason: null,
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/resubmit`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ resubmitReason: "Quantité vérifiée et confirmée" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("PENDING");
+    });
+  });
+
+  describe("PATCH /pointages/:id/photo", () => {
+    it("rejects a photoKey outside the pointages/<uuid>.jpg shape (IDOR guard)", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: `workers/${MOCK_WORKER_ID}/11111111-1111-1111-1111-111111111111.jpg` });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("attaches the photo when the pointage has none yet", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue(mockPointage as never);
+      vi.mocked(prisma.pointage.update).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.photoKey).toBe("pointages/11111111-1111-1111-1111-111111111111.jpg");
+      expect(prisma.pointage.update).toHaveBeenCalledWith({
+        where: { id: MOCK_POINTAGE_ID },
+        data: { photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" },
+      });
+    });
+
+    it("rejects another CHEF_EQUIPE's entry (FORBIDDEN)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        enteredById: "00000000-0000-4000-8000-000000000099",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("FORBIDDEN");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects once the pointage is VALIDATED (INVALID_STATUS)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        status: PointageStatus.VALIDATED,
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATUS");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("is idempotent when retried with the same photoKey (network retry)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(200);
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects overwriting a different existing photo (PHOTO_ALREADY_SET)", async () => {
+      vi.mocked(prisma.pointage.findUniqueOrThrow).mockResolvedValue({
+        ...mockPointage,
+        photoKey: "pointages/22222222-2222-2222-2222-222222222222.jpg",
+      } as never);
+
+      const app = createApp();
+      const res = await request(app)
+        .patch(`/api/v1/pointages/${MOCK_POINTAGE_ID}/photo`)
+        .set("Authorization", cdeAuthHeader())
+        .send({ photoKey: "pointages/11111111-1111-1111-1111-111111111111.jpg" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("PHOTO_ALREADY_SET");
+      expect(prisma.pointage.update).not.toHaveBeenCalled();
     });
   });
 });

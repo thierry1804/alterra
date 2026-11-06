@@ -92,6 +92,8 @@ export async function exportMvolaPayments(
     userAgent?: string;
     referenceYear?: number;
     includeHeader?: boolean;
+    /** Site du travailleur (sélecteur de site global du back-office). */
+    siteId?: string;
   },
 ): Promise<ExportMvolaResult> {
   const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo } = resolvePeriod(
@@ -105,6 +107,7 @@ export async function exportMvolaPayments(
       periodIso: shortPeriod,
       referenceYear,
       status: PaymentStatus.PENDING,
+      ...(options.siteId ? { worker: { siteId: options.siteId } } : {}),
     },
     include: { worker: true },
   });
@@ -135,37 +138,70 @@ export async function exportMvolaPayments(
     );
   }
 
-  const buffer = await buildMvolaWorkbook(exportable, shortPeriod, options.includeHeader);
-  const filename = `ALTERRA_MVola_${shortPeriod}_${formatExportTimestamp()}.xlsx`;
-  const minioKey = `mvola/${filename}`;
-
-  await minioClient.putObject(BUCKETS.reports, minioKey, buffer, buffer.length, {
-    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
-  const version = await nextBatchVersion(shortPeriod, referenceYear);
-  const batch = await prisma.mvolaExportBatch.create({
-    data: {
-      periodIso: shortPeriod,
-      referenceYear,
-      version,
-      fileKey: minioKey,
-      filename,
-      exportedCount: exportable.length,
-      excludedCount,
-      createdById: options.userId,
-    },
-  });
-
+  // Revendique les lignes AVANT de construire le fichier (pas après) : la condition `status:
+  // PENDING` dans le where fait de ce updateMany un verrou atomique — si un autre export concurrent
+  // a déjà basculé ces lignes en EXPORTED entre notre lecture et ici, `count` sera inférieur à ce
+  // qu'on attend et on abandonne avant de produire un second fichier MVola identique (double virement).
   const exportedAt = new Date();
-  await prisma.payment.updateMany({
-    where: { id: { in: exportable.map((payment) => payment.id) } },
-    data: {
-      status: PaymentStatus.EXPORTED,
-      exportedAt,
-      exportBatchId: batch.id,
-    },
+  const exportableIds = exportable.map((payment) => payment.id);
+  const claimed = await prisma.payment.updateMany({
+    where: { id: { in: exportableIds }, status: PaymentStatus.PENDING },
+    data: { status: PaymentStatus.EXPORTED, exportedAt },
   });
+  if (claimed.count !== exportable.length) {
+    throw new ApiError(
+      409,
+      "EXPORT_CONFLICT",
+      "Un export MVola est déjà en cours ou vient d'avoir lieu pour cette période — rafraîchissez avant de réessayer",
+    );
+  }
+
+  let buffer: Buffer;
+  let filename: string;
+  let minioKey: string;
+  let version: number;
+  let batchId: string | undefined;
+
+  try {
+    buffer = await buildMvolaWorkbook(exportable, shortPeriod, options.includeHeader);
+    filename = `ALTERRA_MVola_${shortPeriod}_${formatExportTimestamp()}.xlsx`;
+    minioKey = `mvola/${filename}`;
+
+    await minioClient.putObject(BUCKETS.reports, minioKey, buffer, buffer.length, {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    version = await nextBatchVersion(shortPeriod, referenceYear);
+    const batch = await prisma.mvolaExportBatch.create({
+      data: {
+        periodIso: shortPeriod,
+        referenceYear,
+        version,
+        fileKey: minioKey,
+        filename,
+        exportedCount: exportable.length,
+        excludedCount,
+        createdById: options.userId,
+      },
+    });
+    batchId = batch.id;
+
+    await prisma.payment.updateMany({
+      where: { id: { in: exportableIds } },
+      data: { exportBatchId: batch.id },
+    });
+  } catch (err) {
+    // La revendication a déjà eu lieu : si le fichier ou le bordereau n'a pas pu être produit,
+    // les lignes ne doivent pas rester bloquées en EXPORTED sans qu'aucun fichier n'existe réellement.
+    await prisma.payment.updateMany({
+      where: { id: { in: exportableIds }, status: PaymentStatus.EXPORTED, exportedAt },
+      data: { status: PaymentStatus.PENDING, exportedAt: null, exportBatchId: null },
+    });
+    if (batchId) {
+      await prisma.mvolaExportBatch.deleteMany({ where: { id: batchId } }).catch(() => undefined);
+    }
+    throw err;
+  }
 
   await writeAuditLog({
     userId: options.userId,

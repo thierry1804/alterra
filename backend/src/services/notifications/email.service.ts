@@ -29,7 +29,8 @@ async function sendViaMailgun(to: string[], subject: string, text: string): Prom
   const from = process.env.MAILGUN_FROM ?? `ALTERRA <noreply@${domain}>`;
 
   if (!apiKey || !domain) {
-    logger.info({ to, subject, text }, "Email mock — Mailgun not configured");
+    // Ne jamais logger `text` : il peut contenir un lien de réinitialisation de mot de passe en clair.
+    logger.info({ to, subject }, "Email mock — Mailgun not configured (contenu non loggé)");
     return;
   }
 

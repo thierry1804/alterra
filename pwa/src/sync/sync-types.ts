@@ -11,6 +11,7 @@ export interface SyncRunResult {
   synced: number;
   rejected: number;
   skipped: number;
+  retried: number;
 }
 
 export interface SyncState {
@@ -27,7 +28,7 @@ export interface SyncState {
   recentLog: SyncLogEntry[];
 }
 
-export type SyncResultStatus = "created" | "already_exists" | "rejected";
+export type SyncResultStatus = "created" | "already_exists" | "rejected" | "retry";
 
 export interface PointageSyncResult {
   clientUuid: string;

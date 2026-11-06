@@ -1,4 +1,4 @@
-import type { Prisma, Pointage } from "@prisma/client";
+import { Prisma, type Pointage } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
@@ -113,20 +113,57 @@ export async function correctPointage(
   const updateData = await buildEditData(before, input);
   const ctx = getRequestContext();
 
-  return prisma.$transaction(async (tx) => {
-    const after = await tx.pointage.update({ where: { id }, data: updateData });
-    await writeEditAudit({
-      action: "CORRECT",
-      pointageId: id,
-      userId: ctx?.userId ?? "",
-      reasonField: "correctionReason",
-      reason: correctionReason,
-      before,
-      after,
-      auditMeta,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const after = await tx.pointage.update({ where: { id }, data: updateData });
+      await writeEditAudit({
+        action: "CORRECT",
+        pointageId: id,
+        userId: ctx?.userId ?? "",
+        reasonField: "correctionReason",
+        reason: correctionReason,
+        before,
+        after,
+        auditMeta,
+      });
+      return after;
     });
-    return after;
-  });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiError(
+        409,
+        "DUPLICATE_SLOT",
+        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+      );
+    }
+    throw err;
+  }
+}
+
+/**
+ * Rattache a posteriori une photo dont l'envoi avait échoué au moment de la synchro initiale du
+ * pointage (texte parti, photo pas encore uploadée) — pas une "correction" métier, donc pas de motif
+ * exigé. Idempotent sur la même clé pour tolérer un retry réseau côté PWA après un succès non confirmé.
+ */
+export async function attachPointagePhoto(id: string, userId: string, photoKey: string) {
+  const before = await prisma.pointage.findUniqueOrThrow({ where: { id } });
+
+  if (before.enteredById !== userId) {
+    throw new ApiError(403, "FORBIDDEN", "Vous ne pouvez rattacher une photo qu'à votre propre saisie");
+  }
+  if (before.status === "VALIDATED") {
+    throw new ApiError(
+      409,
+      "INVALID_STATUS",
+      "Pointage déjà validé (potentiellement payé) — photo ne peut plus être rattachée",
+    );
+  }
+  if (before.photoKey) {
+    if (before.photoKey === photoKey) return before;
+    throw new ApiError(409, "PHOTO_ALREADY_SET", "Ce pointage a déjà une photo");
+  }
+
+  return prisma.pointage.update({ where: { id }, data: { photoKey } });
 }
 
 export interface ResubmitPointageInput extends PointageEditInput {
@@ -166,18 +203,47 @@ export async function resubmitPointage(
   const resubmitReason = input.resubmitReason.trim();
   const updateData = await buildEditData(before, input);
 
-  return prisma.$transaction(async (tx) => {
-    const after = await tx.pointage.update({ where: { id }, data: updateData });
-    await writeEditAudit({
-      action: "RESUBMIT",
-      pointageId: id,
-      userId,
-      reasonField: "resubmitReason",
-      reason: resubmitReason,
-      before,
-      after,
-      auditMeta,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const conflicting = await tx.pointage.findFirst({
+        where: {
+          workerId: before.workerId,
+          subActivityId: (updateData.subActivityId as string | undefined) ?? before.subActivityId,
+          date: (updateData.date as Date | undefined) ?? before.date,
+          status: { not: "REJECTED" },
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+      if (conflicting) {
+        throw new ApiError(
+          409,
+          "DUPLICATE_SLOT",
+          "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+        );
+      }
+
+      const after = await tx.pointage.update({ where: { id }, data: updateData });
+      await writeEditAudit({
+        action: "RESUBMIT",
+        pointageId: id,
+        userId,
+        reasonField: "resubmitReason",
+        reason: resubmitReason,
+        before,
+        after,
+        auditMeta,
+      });
+      return after;
     });
-    return after;
-  });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiError(
+        409,
+        "DUPLICATE_SLOT",
+        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
+      );
+    }
+    throw err;
+  }
 }

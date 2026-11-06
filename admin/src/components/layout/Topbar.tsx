@@ -5,6 +5,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useNavCounts } from "../../hooks/useNavCounts";
 import { navTrail, roleLabel } from "../../lib/navigation";
 import SiteSelect from "./SiteSelect";
+import NotificationPopover from "./NotificationPopover";
 
 interface TopbarProps {
   onOpenPalette: () => void;
@@ -17,17 +18,23 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
   const trail = navTrail(pathname);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const todo = user?.role === "ADMIN" ? counts.requests + counts.pointages : counts.pointages;
   const initials = user ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() : "—";
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !notifOpen) return;
     function onPointer(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+      if (menuOpen && !menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+      if (notifOpen && !notifRef.current?.contains(event.target as Node)) setNotifOpen(false);
     }
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
     }
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -35,7 +42,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [menuOpen]);
+  }, [menuOpen, notifOpen]);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-6">
@@ -77,18 +84,41 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
         <Search className="h-4 w-4" aria-hidden />
       </button>
 
-      <Link
-        to={user?.role === "ADMIN" ? "/requests" : "/pointages"}
-        className="alterra-focus relative grid h-9 w-9 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-        aria-label={todo > 0 ? `${todo} élément(s) à traiter` : "Rien à traiter"}
-      >
-        <Bell className="h-4 w-4" aria-hidden />
-        {todo > 0 && (
-          <span className="alterra-num absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[color:var(--color-earth)] px-1 text-[0.625rem] font-bold text-white">
-            {todo > 99 ? "99+" : todo}
-          </span>
-        )}
-      </Link>
+      {user?.role === "ADMIN" ? (
+        <div className="relative" ref={notifRef}>
+          <button
+            type="button"
+            onClick={() => setNotifOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={notifOpen}
+            className="alterra-focus relative grid h-9 w-9 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+            aria-label={todo > 0 ? `${todo} élément(s) à traiter` : "Rien à traiter"}
+          >
+            <Bell className="h-4 w-4" aria-hidden />
+            {todo > 0 && (
+              <span className="alterra-num absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[color:var(--color-earth)] px-1 text-[0.625rem] font-bold text-white">
+                {todo > 99 ? "99+" : todo}
+              </span>
+            )}
+          </button>
+          {notifOpen && (
+            <NotificationPopover open={notifOpen} onNavigate={() => setNotifOpen(false)} />
+          )}
+        </div>
+      ) : (
+        <Link
+          to="/pointages"
+          className="alterra-focus relative grid h-9 w-9 place-items-center rounded-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+          aria-label={todo > 0 ? `${todo} élément(s) à traiter` : "Rien à traiter"}
+        >
+          <Bell className="h-4 w-4" aria-hidden />
+          {todo > 0 && (
+            <span className="alterra-num absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[color:var(--color-earth)] px-1 text-[0.625rem] font-bold text-white">
+              {todo > 99 ? "99+" : todo}
+            </span>
+          )}
+        </Link>
+      )}
 
       <div className="relative" ref={menuRef}>
         <button

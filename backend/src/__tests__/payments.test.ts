@@ -72,6 +72,7 @@ vi.mock("../lib/prisma.js", () => ({
     payment: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
       deleteMany: vi.fn(),
       createMany: vi.fn(),
       update: vi.fn(),
@@ -233,6 +234,7 @@ describe("Payments API", () => {
     vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({
       result: "OK",
     } as never);
+    vi.mocked(prisma.payment.count).mockResolvedValue(0);
     vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 0 });
     vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
     vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
@@ -265,6 +267,49 @@ describe("Payments API", () => {
     expect(res.body.code).toBe("PAY_CONFLICT");
   });
 
+  it("POST /payments/generate returns PAY_HAS_CORRECTIONS when a manual correction would be erased", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.count).mockResolvedValue(1);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29" });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("PAY_HAS_CORRECTIONS");
+    expect(prisma.payment.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("POST /payments/generate proceeds and overwrites corrections when force is true", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.count).mockResolvedValue(1);
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([
+      {
+        workerId: MOCK_WORKER_ID,
+        amount: new Prisma.Decimal("75000"),
+        quantity: new Prisma.Decimal("5"),
+        subActivityId: MOCK_ACTIVITY_ID,
+        subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
+        worker: mockWorker,
+      },
+    ] as never);
+    vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({ result: "OK" } as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+
+    const app = createApp();
+    const res = await request(app)
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", force: true });
+
+    expect(res.status).toBe(201);
+    expect(prisma.payment.deleteMany).toHaveBeenCalled();
+  });
+
   it("GET /payments/:period/export returns xlsx and marks EXPORTED", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
     vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
@@ -280,10 +325,44 @@ describe("Payments API", () => {
     expect(minioClient.putObject).toHaveBeenCalled();
     expect(prisma.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({ status: PaymentStatus.PENDING }),
         data: expect.objectContaining({ status: PaymentStatus.EXPORTED }),
       }),
     );
     expect(basePrisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("GET /payments/:period/export rejects a concurrent double export (EXPORT_CONFLICT)", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    // La revendication atomique ne trouve plus la ligne PENDING : un autre export l'a déjà prise.
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 0 });
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/payments/S29/export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("EXPORT_CONFLICT");
+    expect(minioClient.putObject).not.toHaveBeenCalled();
+  });
+
+  it("exportMvolaPayments reverts the claim to PENDING when file generation fails after the claim", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(minioClient.putObject).mockRejectedValueOnce(new Error("MinIO down"));
+
+    await expect(exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID })).rejects.toThrow(
+      "MinIO down",
+    );
+
+    expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ status: PaymentStatus.EXPORTED }),
+        data: expect.objectContaining({ status: PaymentStatus.PENDING, exportedAt: null }),
+      }),
+    );
   });
 
   it("exportMvolaPayments omits the header row by default", async () => {
@@ -352,6 +431,64 @@ describe("Payments API", () => {
     ]);
     expect(sheet.getRow(2).getCell(3).value).toBe("S29");
     expect(sheet.getRow(2).getCell(5).value).toBe("OUI");
+  });
+
+  it("GET /payments/:period/export scopes to siteId when a site is selected", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/v1/payments/S29/export")
+      .query({ siteId: MOCK_SITE_ID })
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+  });
+
+  it("DELETE /payments/:period only deletes the selected site's pending lines", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .delete("/api/v1/payments/S29")
+      .query({ siteId: MOCK_SITE_ID })
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(res.body.deleted).toBe(1);
+    expect(prisma.payment.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+    expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ worker: { siteId: MOCK_SITE_ID } }),
+      }),
+    );
+  });
+
+  it("DELETE /payments/:period deletes across all sites when no siteId is given", async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 1 });
+
+    const app = createApp();
+    const res = await request(app)
+      .delete("/api/v1/payments/S29")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    const deleteArgs = vi.mocked(prisma.payment.deleteMany).mock.calls[0][0];
+    expect(deleteArgs.where).not.toHaveProperty("worker");
   });
 
   it("GET /payments/:period/export rejects when no exportable lines", async () => {

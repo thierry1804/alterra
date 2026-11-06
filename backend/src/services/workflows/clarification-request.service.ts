@@ -185,8 +185,11 @@ export async function closeClarificationRequest(user: AccessTokenPayload, id: st
       },
     });
 
-    await tx.pointage.update({
-      where: { id: request.pointageId },
+    // Conditionné au statut encore NEEDS_CLARIFICATION : si le pointage a déjà été validé/rejeté
+    // entre-temps (le CDS a traité la réponse avant de clôturer), la clôture ne doit pas écraser
+    // ce traitement plus avancé en le faisant reculer silencieusement en PENDING.
+    await tx.pointage.updateMany({
+      where: { id: request.pointageId, status: PointageStatus.NEEDS_CLARIFICATION },
       data: { status: PointageStatus.PENDING },
     });
 
