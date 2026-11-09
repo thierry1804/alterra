@@ -55,6 +55,7 @@ interface WorkerForm {
   firstName: string;
   lastName: string;
   mvolaNumber: string;
+  cinNumber: string;
   siteId: string;
   hiredAt: string;
   status: Worker["status"];
@@ -66,6 +67,7 @@ const emptyForm: WorkerForm = {
   firstName: "",
   lastName: "",
   mvolaNumber: "",
+  cinNumber: "",
   siteId: "",
   hiredAt: new Date().toISOString().slice(0, 10),
   status: "ACTIVE",
@@ -287,6 +289,7 @@ export default function WorkersPage() {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         mvolaNumber: form.mvolaNumber.trim(),
+        cinNumber: form.cinNumber.trim() || undefined,
         siteId: form.siteId,
         hiredAt: form.hiredAt,
         status: form.status,
@@ -395,6 +398,7 @@ export default function WorkersPage() {
       firstName: worker.firstName,
       lastName: worker.lastName,
       mvolaNumber: worker.mvolaNumber,
+      cinNumber: worker.cinNumber ?? "",
       siteId: worker.siteId,
       hiredAt: worker.hiredAt.slice(0, 10),
       status: worker.status,
@@ -808,6 +812,14 @@ export default function WorkersPage() {
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="w-cin">N° CIN</Label>
+              <Input
+                id="w-cin"
+                value={form.cinNumber}
+                onChange={(e) => setForm((f) => ({ ...f, cinNumber: e.target.value }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
