@@ -20,7 +20,7 @@ const reportTypeSchema = z.enum(["pointages", "payments", "presence-by-site"]);
 const reportQuerySchema = z.object({
   type: reportTypeSchema,
   month: z.string().regex(/^\d{4}-\d{2}$/),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 const exportQuerySchema = reportQuerySchema.extend({
@@ -29,7 +29,7 @@ const exportQuerySchema = reportQuerySchema.extend({
 
 const weeklyGenerateSchema = z.object({
   weekIso: z.string().regex(/^\d{4}-W\d{2}$/),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 reportsRouter.post(

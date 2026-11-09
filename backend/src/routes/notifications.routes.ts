@@ -20,11 +20,11 @@ export const notificationsRouter = Router();
 const PWA_ROLES = [Role.CHEF_SERVICE, Role.CHEF_EQUIPE, Role.ADMIN] as const;
 
 const listQuery = z.object({
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-const idParams = z.object({ id: z.string().uuid() });
+const idParams = z.object({ id: z.guid() });
 
 const pushSubscribeSchema = z.object({
   endpoint: z.string().url(),

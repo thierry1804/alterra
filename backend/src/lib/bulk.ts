@@ -31,4 +31,4 @@ export async function runBulk(
   return results;
 }
 
-export const bulkIdsSchema = z.array(z.string().uuid()).min(1).max(200);
+export const bulkIdsSchema = z.array(z.guid()).min(1).max(200);

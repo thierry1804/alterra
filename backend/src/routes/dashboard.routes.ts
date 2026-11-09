@@ -10,7 +10,7 @@ import { getDashboardSummary } from "../services/dashboard/dashboard.service.js"
 export const dashboardRouter = Router();
 
 const dashboardQuery = z.object({
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 dashboardRouter.get(

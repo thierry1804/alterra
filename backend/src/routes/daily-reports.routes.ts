@@ -13,12 +13,12 @@ export const dailyReportsRouter = Router();
 
 const dailyDateQuery = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 const dailyGenerateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
   signatureText: z.string().min(3),
   confirmPending: z.boolean().optional(),
 });

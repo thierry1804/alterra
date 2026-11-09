@@ -12,12 +12,12 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const zonesRouter = Router();
 
-const zoneIdParams = z.object({ id: z.string().uuid() });
+const zoneIdParams = z.object({ id: z.guid() });
 
 const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const listZonesQuery = z.object({
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 const zoneCodeSchema = z
@@ -29,7 +29,7 @@ const zoneCodeSchema = z
   .nullable();
 
 const createZoneSchema = z.object({
-  siteId: z.string().uuid(),
+  siteId: z.guid(),
   name: z.string().min(1).max(120),
   code: zoneCodeSchema.optional(),
   geoPolygon: geoPolygonSchema,

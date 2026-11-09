@@ -41,24 +41,24 @@ import {
 
 export const workflowsRouter = Router();
 
-const idParams = z.object({ id: z.string().uuid() });
+const idParams = z.object({ id: z.guid() });
 
 const listRequestQuery = z.object({
   status: z.enum(RequestStatus).optional(),
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const listClarificationQuery = z.object({
   status: z.enum(ClarificationStatus).optional(),
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const createActivitySchema = z.object({
-  categoryId: z.string().uuid(),
+  categoryId: z.guid(),
   proposedLabel: z.string().min(1).max(120),
-  unitId: z.string().uuid(),
+  unitId: z.guid(),
   proposedRate: z.coerce.number().positive(),
   justification: z.string().min(10),
 });
@@ -70,7 +70,7 @@ const createWorkerSchema = z.object({
   cinNumber: z.string().optional(),
   sexe: z.enum(Sexe).optional(),
   proposedPhotoKey: z.string().optional(),
-  targetTeamId: z.string().uuid().optional(),
+  targetTeamId: z.guid().optional(),
   justification: z.string().min(10),
 });
 
@@ -90,7 +90,7 @@ const complementSchema = z.object({
 });
 
 const createClarificationSchema = z.object({
-  pointageId: z.string().uuid(),
+  pointageId: z.guid(),
   question: z.string().min(10),
   requestedPhoto: z.boolean().optional(),
 });

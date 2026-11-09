@@ -13,7 +13,7 @@ const auditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   action: z.string().min(1).max(64).optional(),
   entityType: z.string().min(1).max(64).optional(),
-  userId: z.string().uuid().optional(),
+  userId: z.guid().optional(),
   dateFrom: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

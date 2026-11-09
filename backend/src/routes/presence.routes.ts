@@ -11,13 +11,13 @@ import { IMPOSSIBLE_SCOPE_FILTER } from "../middleware/prisma-rls.js";
 export const presenceRouter = Router();
 
 const syncItemSchema = z.object({
-  clientUuid: z.string().uuid(),
-  workerId: z.string().uuid(),
+  clientUuid: z.guid(),
+  workerId: z.guid(),
   date: z.coerce.date(),
   arrivalTime: z.coerce.date(),
   badgeNfcTagId: z.string().min(1).max(64),
   source: z.enum(PresenceSource),
-  parcelleId: z.string().uuid().optional(),
+  parcelleId: z.guid().optional(),
   createdByClientAt: z.coerce.date(),
 });
 
@@ -28,8 +28,8 @@ const syncBatchSchema = z.object({
 const listPresenceQuery = z.object({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
-  workerId: z.string().uuid().optional(),
-  cursor: z.string().uuid().optional(),
+  workerId: z.guid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 

@@ -18,7 +18,7 @@ import { isValidMvolaNumber } from "../services/payments/mvola-description.js";
 
 export const workersRouter = Router();
 
-const workerIdParams = z.object({ id: z.string().uuid() });
+const workerIdParams = z.object({ id: z.guid() });
 
 const WORKER_SORT_FIELDS = [
   "lastName",
@@ -32,12 +32,12 @@ const WORKER_SORT_FIELDS = [
 ] as const;
 
 const listWorkersQuery = z.object({
-  siteId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
+  teamId: z.guid().optional(),
   status: z.enum(WorkerStatus).optional(),
   sexe: z.enum(Sexe).optional(),
   q: z.string().min(1).optional(),
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
   orderBy: z.enum(WORKER_SORT_FIELDS).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
@@ -66,8 +66,8 @@ const createWorkerSchema = z.object({
     .trim()
     .refine(isValidMvolaNumber, "Numéro MVola invalide : 10 chiffres, préfixe 034, 036 ou 038"),
   cinNumber: z.string().optional(),
-  siteId: z.string().uuid(),
-  teamId: z.string().uuid().optional(),
+  siteId: z.guid(),
+  teamId: z.guid().optional(),
   hiredAt: z.coerce.date(),
   status: z.enum(WorkerStatus).default(WorkerStatus.ACTIVE),
   birthDate: z.coerce.date().optional(),

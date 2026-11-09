@@ -29,7 +29,7 @@ const downloadAllQuery = z.object({
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
 });
 
-const invoiceIdParams = z.object({ id: z.string().uuid() });
+const invoiceIdParams = z.object({ id: z.guid() });
 
 const generateInvoicesSchema = z.object({
   periodIso: z.string().min(2).max(16),

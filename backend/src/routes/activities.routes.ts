@@ -17,11 +17,11 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const activitiesRouter = Router();
 
-const idParams = z.object({ id: z.string().uuid() });
+const idParams = z.object({ id: z.guid() });
 const bulkDeactivateSchema = z.object({ ids: bulkIdsSchema });
 
 const cursorPaginationQuery = z.object({
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
@@ -403,11 +403,11 @@ activitiesRouter.delete(
 );
 
 const listSubActivitiesQuery = cursorPaginationQuery.extend({
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.guid().optional(),
   // "GLOBAL" n'a de sens qu'avec groupKey : cible explicitement la ligne globale (siteId NULL)
   // de ce groupe, un axios `params` ne pouvant pas transmettre une valeur null.
-  siteId: z.union([z.string().uuid(), z.literal("GLOBAL")]).optional(),
-  groupKey: z.string().uuid().optional(),
+  siteId: z.union([z.guid(), z.literal("GLOBAL")]).optional(),
+  groupKey: z.guid().optional(),
   active: z
     .enum(["true", "false"])
     .optional()
@@ -419,15 +419,15 @@ const listSubActivitiesQuery = cursorPaginationQuery.extend({
 });
 
 const createSubActivitySchema = z.object({
-  categoryId: z.string().uuid(),
+  categoryId: z.guid(),
   label: z.string().min(1),
   shortLabel: z.string().min(1),
-  unitId: z.string().uuid(),
+  unitId: z.guid(),
   unitRate: z.coerce.number().positive(),
   validFrom: z.coerce.date().optional(),
-  siteId: z.string().uuid().nullable().optional(),
+  siteId: z.guid().nullable().optional(),
   /** Fourni pour rattacher une surcharge par site à une tâche existante ; sinon une nouvelle tâche est créée. */
-  groupKey: z.string().uuid().optional(),
+  groupKey: z.guid().optional(),
   active: z.boolean().optional(),
 });
 
@@ -447,13 +447,13 @@ async function assertGroupSiteAvailable(groupKey: string, siteId: string | null)
 }
 
 const updateSubActivitySchema = z.object({
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.guid().optional(),
   label: z.string().min(1).optional(),
   shortLabel: z.string().min(1).optional(),
-  unitId: z.string().uuid().optional(),
+  unitId: z.guid().optional(),
   unitRate: z.coerce.number().positive().optional(),
   validFrom: z.coerce.date().optional(),
-  siteId: z.string().uuid().nullable().optional(),
+  siteId: z.guid().nullable().optional(),
   active: z.boolean().optional(),
 });
 

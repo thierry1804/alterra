@@ -10,7 +10,7 @@ import { recordOfflineBiometricCheck } from "../services/biometric/check-offline
 export const biometricRouter = Router();
 
 const checkSchema = z.object({
-  workerId: z.string().uuid(),
+  workerId: z.guid(),
   context: z.enum(BioContext).optional(),
   photoBase64: z.string().min(32).optional(),
   referenceDate: z.coerce.date().optional(),
@@ -23,8 +23,8 @@ const checkSchema = z.object({
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 const checkOfflineSchema = z.object({
-  clientUuid: z.string().uuid(),
-  workerId: z.string().uuid(),
+  clientUuid: z.guid(),
+  workerId: z.guid(),
   result: z.enum(BioResult),
   score: z.number().min(0).max(1).nullable(),
   context: z.enum(BioContext).optional(),

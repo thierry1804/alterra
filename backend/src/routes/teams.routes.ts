@@ -11,8 +11,8 @@ import type { Request } from "express";
 
 export const teamsRouter = Router();
 
-const teamIdParams = z.object({ id: z.string().uuid() });
-const memberParams = teamIdParams.extend({ workerId: z.string().uuid() });
+const teamIdParams = z.object({ id: z.guid() });
+const memberParams = teamIdParams.extend({ workerId: z.guid() });
 
 const listTeamsQuery = z.object({
   active: z
@@ -23,17 +23,17 @@ const listTeamsQuery = z.object({
 
 const createTeamSchema = z.object({
   name: z.string().min(1).max(80),
-  chefId: z.string().uuid().nullable().optional(),
+  chefId: z.guid().nullable().optional(),
 });
 
 const updateTeamSchema = z.object({
   name: z.string().min(1).max(80).optional(),
-  chefId: z.string().uuid().nullable().optional(),
+  chefId: z.guid().nullable().optional(),
   active: z.boolean().optional(),
 });
 
 const addMemberSchema = z.object({
-  workerId: z.string().uuid(),
+  workerId: z.guid(),
 });
 
 const eligibleWorkersQuery = z.object({

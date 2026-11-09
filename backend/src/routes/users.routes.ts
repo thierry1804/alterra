@@ -18,7 +18,7 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const usersRouter = Router();
 
-const userIdParams = z.object({ id: z.string().uuid() });
+const userIdParams = z.object({ id: z.guid() });
 
 const USER_SORT_FIELDS = [
   "lastName",
@@ -32,13 +32,13 @@ const USER_SORT_FIELDS = [
 
 const listUsersQuery = z.object({
   role: z.enum(Role).optional(),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
   active: z
     .enum(["true", "false"])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "true")),
   q: z.string().min(1).optional(),
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   take: z.coerce.number().int().min(1).max(100).optional(),
   orderBy: z.enum(USER_SORT_FIELDS).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
@@ -64,8 +64,8 @@ const createUserSchema = z.object({
   role: z.enum(Role),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  siteId: z.string().uuid().nullable().optional(),
-  teamId: z.string().uuid().nullable().optional(),
+  siteId: z.guid().nullable().optional(),
+  teamId: z.guid().nullable().optional(),
   active: z.boolean().optional(),
 });
 
@@ -75,8 +75,8 @@ const updateUserSchema = z.object({
   role: z.enum(Role).optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
-  siteId: z.string().uuid().nullable().optional(),
-  teamId: z.string().uuid().nullable().optional(),
+  siteId: z.guid().nullable().optional(),
+  teamId: z.guid().nullable().optional(),
   active: z.boolean().optional(),
 });
 

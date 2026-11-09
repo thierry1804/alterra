@@ -12,13 +12,13 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const parcelsRouter = Router();
 
-const parcelIdParams = z.object({ id: z.string().uuid() });
+const parcelIdParams = z.object({ id: z.guid() });
 
 const bulkIdsOnlySchema = z.object({ ids: bulkIdsSchema });
 
 const listParcelsQuery = z.object({
-  zoneId: z.string().uuid().optional(),
-  siteId: z.string().uuid().optional(),
+  zoneId: z.guid().optional(),
+  siteId: z.guid().optional(),
 });
 
 const parcelCodeSchema = z
@@ -30,7 +30,7 @@ const parcelCodeSchema = z
   .nullable();
 
 const createParcelSchema = z.object({
-  zoneId: z.string().uuid(),
+  zoneId: z.guid(),
   name: z.string().min(1).max(120),
   code: parcelCodeSchema.optional(),
   surfaceHa: z.number().positive().optional(),

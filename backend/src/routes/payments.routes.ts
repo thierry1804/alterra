@@ -34,7 +34,7 @@ const periodParams = z.object({
 const exportQuerySchema = z.object({
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
   includeHeader: z.enum(["true", "false"]).optional(),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
 const exportsListQuery = z.object({
@@ -64,10 +64,10 @@ const listPaymentsQuery = z.object({
   periodIso: z.string().min(2).max(16),
   status: z.enum(PaymentStatus).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
-  siteId: z.string().uuid().optional(),
+  siteId: z.guid().optional(),
 });
 
-const paymentIdParams = z.object({ id: z.string().uuid() });
+const paymentIdParams = z.object({ id: z.guid() });
 
 const correctPaymentSchema = z.object({
   amount: z.coerce.number().positive(),
@@ -149,7 +149,7 @@ paymentsRouter.get(
   "/payments/exports/:id/download",
   requireAuth,
   requireRole(Role.ADMIN),
-  validate(z.object({ id: z.string().uuid() }), "params"),
+  validate(z.object({ id: z.guid() }), "params"),
   async (req, res, next) => {
     try {
       const file = await getMvolaExportFile(req.params.id);

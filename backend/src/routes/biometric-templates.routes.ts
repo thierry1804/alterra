@@ -14,7 +14,7 @@ import {
 export const biometricTemplatesRouter = Router();
 
 const upsertTemplateSchema = z.object({
-  workerId: z.string().uuid(),
+  workerId: z.guid(),
   descriptor: z.array(z.number()).length(128),
   source: z.enum(BioProvider).optional(),
   expiresAt: z.coerce.date().optional(),

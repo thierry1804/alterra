@@ -11,7 +11,7 @@ import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 
 export const sitesRouter = Router();
 
-const siteIdParams = z.object({ id: z.string().uuid() });
+const siteIdParams = z.object({ id: z.guid() });
 
 const bulkStatusSchema = z.object({ ids: bulkIdsSchema, active: z.boolean() });
 

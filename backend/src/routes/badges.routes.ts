@@ -12,12 +12,12 @@ import { IMPOSSIBLE_SCOPE_FILTER } from "../middleware/prisma-rls.js";
 
 export const badgesRouter = Router();
 
-const badgeIdParams = z.object({ id: z.string().uuid() });
+const badgeIdParams = z.object({ id: z.guid() });
 
 const listBadgesQuery = z.object({
-  workerId: z.string().uuid().optional(),
-  siteId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
+  workerId: z.guid().optional(),
+  siteId: z.guid().optional(),
+  teamId: z.guid().optional(),
   active: z
     .enum(["true", "false"])
     .optional()
@@ -25,7 +25,7 @@ const listBadgesQuery = z.object({
 });
 
 const createBadgeSchema = z.object({
-  workerId: z.string().uuid(),
+  workerId: z.guid(),
   nfcTagId: z.string().min(4).max(64),
 });
 

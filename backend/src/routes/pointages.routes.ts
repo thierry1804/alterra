@@ -25,12 +25,12 @@ import {
 export const pointagesRouter = Router();
 
 const syncItemSchema = z.object({
-  clientUuid: z.string().uuid(),
-  workerId: z.string().uuid(),
-  subActivityId: z.string().uuid(),
+  clientUuid: z.guid(),
+  workerId: z.guid(),
+  subActivityId: z.guid(),
   quantity: z.number().positive(),
   date: z.coerce.date(),
-  parcelleId: z.string().uuid().optional(),
+  parcelleId: z.guid().optional(),
   geoLat: z.number().optional(),
   geoLng: z.number().optional(),
   notes: z.string().max(500).optional(),
@@ -43,18 +43,18 @@ const syncBatchSchema = z.object({
 });
 
 const listPointagesQuery = z.object({
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   status: z.enum(PointageStatus).optional(),
-  workerId: z.string().uuid().optional(),
-  subActivityId: z.string().uuid().optional(),
-  siteId: z.string().uuid().optional(),
+  workerId: z.guid().optional(),
+  subActivityId: z.guid().optional(),
+  siteId: z.guid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   orderBy: z.enum(POINTAGE_SORT_FIELDS).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
 });
 
-const pointageIdParams = z.object({ id: z.string().uuid() });
+const pointageIdParams = z.object({ id: z.guid() });
 
 const rejectSchema = z.object({ rejectionReason: z.string().min(3) });
 
@@ -63,7 +63,7 @@ const bulkRejectSchema = z.object({ ids: bulkIdsSchema, rejectionReason: z.strin
 
 const correctionSchema = z.object({
   quantity: z.number().positive().optional(),
-  subActivityId: z.string().uuid().optional(),
+  subActivityId: z.guid().optional(),
   date: z.coerce.date().optional(),
   photoKey: z.string().min(1).optional(),
   correctionReason: z.string().min(10),
@@ -78,7 +78,7 @@ const attachPhotoSchema = z.object({
 
 const resubmitSchema = z.object({
   quantity: z.number().positive().optional(),
-  subActivityId: z.string().uuid().optional(),
+  subActivityId: z.guid().optional(),
   date: z.coerce.date().optional(),
   photoKey: z.string().min(1).optional(),
   resubmitReason: z.string().min(10),
