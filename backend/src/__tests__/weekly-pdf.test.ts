@@ -48,11 +48,19 @@ import { processWeeklyPdfJob } from "../services/reports/weekly-pdf.service.js";
 
 const sampleViewModel = {
   generatedAt: "21/07/2026 20:00:00",
+  invoiceDate: "21/07/2026",
   weekIso: "2026-W29",
   periodLabel: "S29",
   dateFrom: "2026-07-14",
   dateTo: "2026-07-20",
   site: { name: "Manankazo", shortCode: "MNK" },
+  client: {
+    name: "LOHASAHA MADAGASCO",
+    nif: "2001423709",
+    stat: "02101 11 2009 0 10596",
+    addressLine1: "BAT KUBE D 2EME ETAGE, ZONE GALAXY ANDRAHARO",
+    addressLine2: "101 ANTANANARIVO MADAGASCAR",
+  },
   cds: { fullName: "Rabe Paul", signedAt: "21/07/2026 20:00:00" },
   summary: {
     workerCount: 1,
@@ -85,16 +93,25 @@ const sampleViewModel = {
     {
       code: "ACT02",
       label: "Plantation",
+      invoiceNumber: "ACT02/2026/MNK",
+      motif: "Plantation — Semaine 29/2026",
       workerCount: 1,
       subtotal: "12 500",
+      isiSubtotal: "625",
+      netSubtotal: "11 875",
       lines: [
         {
+          rowNumber: 1,
+          matricule: "MOC-MNK-01",
+          cinNumber: "",
           workerName: "Rakoto Jean",
           subActivityLabel: "Mise en terre",
           quantity: "50",
           unit: "plant",
           unitRate: "250",
           amount: "12 500",
+          isiAmount: "625",
+          netAmount: "11 875",
         },
       ],
     },
@@ -124,7 +141,7 @@ function invoicePointage(
     quantity: { toString: () => String(quantity) },
     unitRateSnapshot: { toString: () => String(unitRate) },
     amount: { toString: () => String(quantity * unitRate) },
-    worker: { firstName: "Jean", lastName },
+    worker: { firstName: "Jean", lastName, matricule: `MOC-${workerId}`, cinNumber: null },
     subActivity: {
       label: `Tâche ${subActivityId}`,
       unit: { label: "trou" },
@@ -210,12 +227,15 @@ describe("weekly PDF generation", () => {
   });
 
   it("buildInvoiceActivities groups by category and sums each MOC task over the week", () => {
-    const activities = buildInvoiceActivities([
-      invoicePointage("w1", "Rakoto", "trou", "ACT02", 10, 100),
-      invoicePointage("w1", "Rakoto", "trou", "ACT02", 5, 100),
-      invoicePointage("w2", "Rabe", "trou", "ACT02", 3, 100),
-      invoicePointage("w1", "Rakoto", "sol", "ACT01", 2, 1000),
-    ]);
+    const activities = buildInvoiceActivities(
+      [
+        invoicePointage("w1", "Rakoto", "trou", "ACT02", 10, 100),
+        invoicePointage("w1", "Rakoto", "trou", "ACT02", 5, 100),
+        invoicePointage("w2", "Rabe", "trou", "ACT02", 3, 100),
+        invoicePointage("w1", "Rakoto", "sol", "ACT01", 2, 1000),
+      ],
+      { siteShortCode: "MNK", weekNumber: "29", year: "2026" },
+    );
 
     expect(activities.map((activity) => activity.code)).toEqual(["ACT01", "ACT02"]);
     expect(activities[0]?.subtotal).toBe((2000).toLocaleString("fr-FR"));
@@ -235,9 +255,13 @@ describe("weekly PDF generation", () => {
 
     expect(reportHtml).toContain("Manankazo");
     expect(reportHtml).toContain("Rakoto Jean");
-    expect(invoiceHtml).toContain("Facture hebdomadaire");
+    expect(invoiceHtml).toContain("FACTURE N° ACT02/2026/MNK");
     expect(invoiceHtml).toContain("12 500");
-    expect(invoiceHtml).toContain("Facture hebdomadaire — ACT02 Plantation");
+    expect(invoiceHtml).toContain("625");
+    expect(invoiceHtml).toContain("11 875");
+    expect(invoiceHtml).toContain("MOC-MNK-01");
+    expect(invoiceHtml).toContain("LOHASAHA MADAGASCO");
+    expect(invoiceHtml).toContain("Plantation — Semaine 29/2026");
     expect(invoiceHtml).toContain("Mise en terre");
     expect(invoiceHtml).not.toContain("Bordereau de paiement MVola");
   });

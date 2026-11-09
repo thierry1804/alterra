@@ -5,6 +5,7 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { htmlToPdfBuffer, renderActivityInvoiceHtml } from "../reports/pdf-render.service.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
 
 export interface ActivityInvoiceLine {
   rowNumber: number;
@@ -36,20 +37,6 @@ export interface ActivityInvoiceViewModel {
   lines: ActivityInvoiceLine[];
   summary: { workerCount: number; totalAmount: string; isiAmount: string; netAmount: string };
 }
-
-/** Identité fiscale du client facturé ("Doit :") — reprise telle quelle du modèle de référence
- * FORMAT FACTURE ISI.xlsx, pas une donnée qu'ALTERRA calcule ou stocke par ailleurs. */
-const INVOICE_CLIENT = {
-  name: "LOHASAHA MADAGASCO",
-  nif: "2001423709",
-  stat: "02101 11 2009 0 10596",
-  addressLine1: "BAT KUBE D 2EME ETAGE, ZONE GALAXY ANDRAHARO",
-  addressLine2: "101 ANTANANARIVO MADAGASCAR",
-};
-
-/** Retenue appliquée sur chaque ligne ("ISI 5%" du modèle de référence) — calculée à l'affichage,
- * jamais stockée : le format de référence l'exprime lui-même comme une formule, pas une donnée. */
-const ISI_WITHHOLDING_RATE = 0.05;
 
 export interface GenerateActivityInvoicesInput {
   shortPeriod: string;

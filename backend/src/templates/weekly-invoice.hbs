@@ -1,26 +1,76 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>Facture hebdomadaire {{activity.code}} — {{site.name}}</title>
+    <title>Facture {{activity.code}} — {{site.name}}</title>
     <style>
       body {
-        font-family: Georgia, "Times New Roman", serif;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          "Liberation Sans",
+          Arial,
+          sans-serif;
         font-size: 11px;
         color: #18181b;
         margin: 32px;
       }
-      h1 {
+      .num {
+        font-family: ui-monospace, "SFMono-Regular", "Liberation Mono", Menlo, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      h1.invoice-title {
         font-size: 20px;
+        text-align: center;
         margin: 0 0 4px;
       }
-      .meta {
-        color: #52525b;
-        margin-bottom: 24px;
+      .invoice-date {
+        text-align: center;
+        margin: 0 0 20px;
+      }
+      .invoice-date .label {
+        font-weight: 700;
+        text-decoration: underline;
+      }
+      .invoice-meta {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        column-gap: 24px;
+        row-gap: 12px;
+        margin-bottom: 20px;
+      }
+      .client-block {
+        grid-column: 2;
+        grid-row: 1;
+        text-align: left;
+        font-size: 11px;
+      }
+      .invoice-fields {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: start;
+      }
+      .invoice-fields .field {
+        margin-bottom: 4px;
+      }
+      .invoice-fields .label {
+        font-weight: 700;
+        text-decoration: underline;
+      }
+      .client-block .label {
+        font-weight: 700;
+      }
+      .client-block .name {
+        font-weight: 700;
+        font-size: 13px;
+        margin-top: 2px;
       }
       table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: 16px;
+        font-size: 9.5px;
       }
       th,
       td {
@@ -30,21 +80,14 @@
       }
       th {
         background: #f4f4f5;
+        text-align: center;
       }
-      .total {
-        font-size: 14px;
+      td.num {
+        text-align: right;
+      }
+      tfoot td {
         font-weight: 700;
-        text-align: right;
-        margin-top: 16px;
-      }
-      .num {
-        text-align: right;
-      }
-      table {
-        page-break-inside: auto;
-      }
-      tr {
-        page-break-inside: avoid;
+        background: #f4f4f5;
       }
       .signature {
         margin-top: 32px;
@@ -54,56 +97,68 @@
     </style>
   </head>
   <body>
-    <h1>Facture hebdomadaire — {{activity.code}} {{activity.label}}</h1>
-    <p class="meta">
-      {{site.name}}
-      ({{site.shortCode}}) · Période
-      {{periodLabel}}
-      · Semaine
-      {{weekIso}}
-      ·
-      {{dateFrom}}
-      →
-      {{dateTo}}
-    </p>
+    <h1 class="invoice-title">FACTURE N° {{activity.invoiceNumber}}</h1>
+    <p class="invoice-date"><span class="label">DATE :</span> {{invoiceDate}}</p>
+
+    <div class="invoice-meta">
+      <div class="invoice-fields">
+        <p class="field"><span class="label">SITE :</span> {{site.name}} ({{site.shortCode}})</p>
+        <p class="field"><span class="label">MOTIF :</span> {{activity.motif}}</p>
+      </div>
+      <div class="client-block">
+        <p class="label">Doit :</p>
+        <p class="name">{{client.name}}</p>
+        <p>NIF : {{client.nif}}</p>
+        <p>STAT : {{client.stat}}</p>
+        <p>{{client.addressLine1}}</p>
+        <p>{{client.addressLine2}}</p>
+      </div>
+    </div>
+
     <table>
       <thead>
         <tr>
-          <th>MOC</th>
-          <th>Tâche</th>
-          <th class="num">Quantité</th>
+          <th>N°</th>
+          <th>Matricule</th>
+          <th>N° CIN</th>
+          <th>Désignation</th>
+          <th>Quantité</th>
           <th>Unité</th>
-          <th class="num">Tarif (Ar)</th>
-          <th class="num">Montant (Ar)</th>
+          <th>P.U (Ar)</th>
+          <th>Total (Ar)</th>
+          <th>ISI 5% (Ar)</th>
+          <th>Net à payer (Ar)</th>
         </tr>
       </thead>
       <tbody>
         {{#each activity.lines}}
           <tr>
-            <td>{{workerName}}</td>
+            <td class="num">{{rowNumber}}</td>
+            <td class="num">{{matricule}}</td>
+            <td class="num">{{cinNumber}}</td>
             <td>{{subActivityLabel}}</td>
             <td class="num">{{quantity}}</td>
             <td>{{unit}}</td>
             <td class="num">{{unitRate}}</td>
             <td class="num">{{amount}}</td>
+            <td class="num">{{isiAmount}}</td>
+            <td class="num">{{netAmount}}</td>
           </tr>
         {{/each}}
       </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="7">TOTAL · {{activity.workerCount}} travailleur(s)</td>
+          <td class="num">{{activity.subtotal}}</td>
+          <td class="num">{{activity.isiSubtotal}}</td>
+          <td class="num">{{activity.netSubtotal}}</td>
+        </tr>
+      </tfoot>
     </table>
-    <p class="total">
-      Total
-      {{activity.code}}
-      :
-      {{activity.subtotal}}
-      Ar ·
-      {{activity.workerCount}}
-      MOC
-    </p>
+
     <p class="signature">
-      Émis pour clôture semaine · Signé électroniquement par
-      {{cds.fullName}}
-      ·
-      {{cds.signedAt}}
+      Généré le {{generatedAt}} · Rapport hebdomadaire {{periodLabel}}<br />
+      Signé électroniquement par {{cds.fullName}} · {{cds.signedAt}}
     </p>
   </body>
 </html>

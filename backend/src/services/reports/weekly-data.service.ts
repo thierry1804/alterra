@@ -2,6 +2,7 @@ import { BioResult, PointageStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
+import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
 
 export interface WeeklyPdfJobInput {
   siteId: string;
@@ -36,29 +37,40 @@ export interface WeeklyPaymentRow {
 }
 
 export interface WeeklyInvoiceLine {
+  rowNumber: number;
+  matricule: string;
+  cinNumber: string;
   workerName: string;
   subActivityLabel: string;
   quantity: string;
   unit: string;
   unitRate: string;
   amount: string;
+  isiAmount: string;
+  netAmount: string;
 }
 
 export interface WeeklyInvoiceActivity {
   code: string;
   label: string;
+  invoiceNumber: string;
+  motif: string;
   workerCount: number;
   lines: WeeklyInvoiceLine[];
   subtotal: string;
+  isiSubtotal: string;
+  netSubtotal: string;
 }
 
 export interface WeeklyReportViewModel {
   generatedAt: string;
+  invoiceDate: string;
   weekIso: string;
   periodLabel: string;
   dateFrom: string;
   dateTo: string;
   site: { name: string; shortCode: string };
+  client: typeof INVOICE_CLIENT;
   cds: { fullName: string; signedAt: string };
   summary: {
     workerCount: number;
@@ -103,7 +115,7 @@ interface InvoicePointage {
   quantity: { toString(): string };
   unitRateSnapshot: { toString(): string };
   amount: { toString(): string };
-  worker: { firstName: string; lastName: string };
+  worker: { firstName: string; lastName: string; matricule: string; cinNumber: string | null };
   subActivity: {
     label: string;
     unit: { label: string };
@@ -111,7 +123,16 @@ interface InvoicePointage {
   };
 }
 
-export function buildInvoiceActivities(pointages: InvoicePointage[]): WeeklyInvoiceActivity[] {
+export interface InvoiceActivitiesContext {
+  siteShortCode: string;
+  weekNumber: string;
+  year: string;
+}
+
+export function buildInvoiceActivities(
+  pointages: InvoicePointage[],
+  context: InvoiceActivitiesContext,
+): WeeklyInvoiceActivity[] {
   const categories = new Map<
     string,
     {
@@ -121,6 +142,8 @@ export function buildInvoiceActivities(pointages: InvoicePointage[]): WeeklyInvo
       lines: Map<
         string,
         {
+          matricule: string;
+          cinNumber: string;
           workerName: string;
           subActivityLabel: string;
           unit: string;
@@ -152,6 +175,8 @@ export function buildInvoiceActivities(pointages: InvoicePointage[]): WeeklyInvo
       line.amount += amount;
     } else {
       category.lines.set(lineKey, {
+        matricule: pointage.worker.matricule,
+        cinNumber: pointage.worker.cinNumber ?? "",
         workerName: `${pointage.worker.lastName} ${pointage.worker.firstName}`,
         subActivityLabel: pointage.subActivity.label,
         unit: pointage.subActivity.unit.label,
@@ -164,26 +189,41 @@ export function buildInvoiceActivities(pointages: InvoicePointage[]): WeeklyInvo
 
   return [...categories.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([code, category]) => ({
-      code,
-      label: category.label,
-      workerCount: category.workerIds.size,
-      subtotal: formatAmount({ toString: () => String(category.subtotal) }),
-      lines: [...category.lines.values()]
-        .sort(
-          (a, b) =>
-            a.subActivityLabel.localeCompare(b.subActivityLabel) ||
-            a.workerName.localeCompare(b.workerName),
-        )
-        .map((line) => ({
-          workerName: line.workerName,
-          subActivityLabel: line.subActivityLabel,
-          quantity: line.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 }),
-          unit: line.unit,
-          unitRate: formatAmount({ toString: () => String(line.unitRate) }),
-          amount: formatAmount({ toString: () => String(line.amount) }),
-        })),
-    }));
+    .map(([code, category]) => {
+      const isiSubtotal = category.subtotal * ISI_WITHHOLDING_RATE;
+      return {
+        code,
+        label: category.label,
+        invoiceNumber: `${code}/${context.year}/${context.siteShortCode}`,
+        motif: `${category.label} — Semaine ${context.weekNumber}/${context.year}`,
+        workerCount: category.workerIds.size,
+        subtotal: formatAmount({ toString: () => String(category.subtotal) }),
+        isiSubtotal: formatAmount({ toString: () => String(isiSubtotal) }),
+        netSubtotal: formatAmount({ toString: () => String(category.subtotal - isiSubtotal) }),
+        lines: [...category.lines.values()]
+          .sort(
+            (a, b) =>
+              a.subActivityLabel.localeCompare(b.subActivityLabel) ||
+              a.workerName.localeCompare(b.workerName),
+          )
+          .map((line, index) => {
+            const isiAmount = line.amount * ISI_WITHHOLDING_RATE;
+            return {
+              rowNumber: index + 1,
+              matricule: line.matricule,
+              cinNumber: line.cinNumber,
+              workerName: line.workerName,
+              subActivityLabel: line.subActivityLabel,
+              quantity: line.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 }),
+              unit: line.unit,
+              unitRate: formatAmount({ toString: () => String(line.unitRate) }),
+              amount: formatAmount({ toString: () => String(line.amount) }),
+              isiAmount: formatAmount({ toString: () => String(isiAmount) }),
+              netAmount: formatAmount({ toString: () => String(line.amount - isiAmount) }),
+            };
+          }),
+      };
+    });
 }
 
 export async function buildWeeklyReportViewModel(
@@ -264,7 +304,12 @@ export async function buildWeeklyReportViewModel(
     });
   }
 
-  const invoiceActivities = buildInvoiceActivities(pointages);
+  const weekNumber = String(Number(period.weekIso.split("-W")[1]));
+  const invoiceActivities = buildInvoiceActivities(pointages, {
+    siteShortCode: site.shortCode,
+    weekNumber,
+    year: String(period.referenceYear),
+  });
 
   const byDay: WeeklyReportDay[] = [...dayMap.entries()].map(([date, activitiesMap]) => ({
     date,
@@ -291,11 +336,13 @@ export async function buildWeeklyReportViewModel(
 
   return {
     generatedAt: new Date(signedAt).toLocaleString("fr-FR"),
+    invoiceDate: new Date(signedAt).toLocaleDateString("fr-FR"),
     weekIso: period.weekIso,
     periodLabel: period.shortPeriod,
     dateFrom: formatDateFr(period.dateFrom),
     dateTo: formatDateFr(period.dateTo),
     site: { name: site.name, shortCode: site.shortCode },
+    client: INVOICE_CLIENT,
     cds: {
       fullName: `${cds.lastName} ${cds.firstName}`,
       signedAt: new Date(signedAt).toLocaleString("fr-FR"),
