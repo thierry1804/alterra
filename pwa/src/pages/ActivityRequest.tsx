@@ -89,6 +89,14 @@ export default function ActivityRequest() {
     void loadOptions();
   }, []);
 
+  const missingFields = [
+    !categoryId && "catégorie",
+    !proposedLabel.trim() && "libellé",
+    !unitId && "unité",
+    !(Number(proposedRate) > 0) && "tarif",
+    justification.trim().length < 10 && "justification (10 caractères minimum)",
+  ].filter(Boolean) as string[];
+
   async function handleSubmit() {
     const rate = Number(proposedRate);
     if (!categoryId || !proposedLabel.trim() || !unitId || !Number.isFinite(rate) || rate <= 0) {
@@ -238,6 +246,9 @@ export default function ActivityRequest() {
               />
             </div>
           </div>
+          {missingFields.length > 0 && (
+            <p className="mt-3 text-xs text-zinc-600">À renseigner : {missingFields.join(", ")}.</p>
+          )}
         </section>
       )}
 
