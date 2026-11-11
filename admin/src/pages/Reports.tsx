@@ -134,7 +134,7 @@ export default function ReportsPage() {
             <option value="">Tous les sites</option>
             {sites.map((site) => (
               <option key={site.id} value={site.id}>
-                {site.shortCode} — {site.name}
+                {site.shortCode} - {site.name}
               </option>
             ))}
           </select>

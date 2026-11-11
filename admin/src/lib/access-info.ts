@@ -11,8 +11,8 @@ export interface DemoAccount {
 }
 
 export const ADMIN_APP_ROLES = [
-  "Administrateur — référentiels, paiements, audit",
-  "Chef de service — validation, clôture, supervision",
+  "Administrateur - référentiels, paiements, audit",
+  "Chef de service - validation, clôture, supervision",
 ];
 
 export const TERRAIN_APP: AppAccessLink = {

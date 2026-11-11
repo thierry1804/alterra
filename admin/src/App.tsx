@@ -41,7 +41,7 @@ const queryClient = new QueryClient({
 function DocumentTitleSync() {
   const { appName } = useAppSettings();
   useEffect(() => {
-    document.title = `${appName} — Back-office`;
+    document.title = `${appName} - Back-office`;
   }, [appName]);
   return null;
 }

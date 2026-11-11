@@ -269,7 +269,7 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
                   onChange={(event) => setChefId(event.target.value)}
                   className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
                 >
-                  <option value="">— Aucun —</option>
+                  <option value="">- Aucun -</option>
                   {chefs.map((chef) =>
                     chef ? (
                       <option key={chef.id} value={chef.id}>
@@ -504,7 +504,7 @@ export default function TeamManagement() {
                 onChange={(event) => setNewTeamChefId(event.target.value)}
                 className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
               >
-                <option value="">— Aucun —</option>
+                <option value="">- Aucun -</option>
                 {chefs.map((chef) =>
                   chef ? (
                     <option key={chef.id} value={chef.id}>

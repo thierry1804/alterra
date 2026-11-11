@@ -201,11 +201,11 @@ export default function PaymentsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Paiements"
-        description="Bordereau MVola — génération, export et import retour."
+        description="Bordereau MVola - génération, export et import retour."
         help={
           <ContextHelp id="payments-admin" title="Paiements MVola">
             <GlossaryTerm term="Semaine ISO">
-              Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
+              Format AAAA-Wnn (ex. 2026-W29) - période de paie hebdomadaire.
             </GlossaryTerm>
             <GlossaryTerm term="Bio OK">
               Travailleurs dont le contrôle biométrique autorise l&apos;export MVola.

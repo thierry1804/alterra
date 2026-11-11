@@ -28,7 +28,7 @@ export default function PhotoCapture({
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<string | null>(null);
 
-  const altText = workerName ? `Photo de pointage — ${workerName}` : "Photo de pointage";
+  const altText = workerName ? `Photo de pointage - ${workerName}` : "Photo de pointage";
 
   useEffect(() => {
     if (!previewUrl) setMeta(null);
@@ -70,8 +70,8 @@ export default function PhotoCapture({
           onClick={() => inputRef.current?.click()}
           aria-label={
             previewUrl
-              ? `Remplacer la photo — ${workerName ?? ""}`
-              : `Ajouter une photo — ${workerName ?? ""}`
+              ? `Remplacer la photo - ${workerName ?? ""}`
+              : `Ajouter une photo - ${workerName ?? ""}`
           }
           className="alterra-focus grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-dashed border-zinc-300 text-zinc-500 active:bg-zinc-100 disabled:opacity-40"
         >

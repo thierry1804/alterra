@@ -294,7 +294,7 @@ export default function RequestsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Demandes terrain"
-        description="File unifiée des demandes CDS — triées par ancienneté."
+        description="File unifiée des demandes CDS - triées par ancienneté."
         action={
           <div className="flex items-center gap-2">
             <IconButton icon={Download} label="Exporter" onClick={handleExport} />

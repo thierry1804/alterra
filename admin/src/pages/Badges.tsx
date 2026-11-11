@@ -82,7 +82,7 @@ export default function BadgesPage() {
     return map;
   }, [badgesQuery.data]);
 
-  const teamName = (teamId: string | null) => teams.find((t) => t.id === teamId)?.name ?? "—";
+  const teamName = (teamId: string | null) => teams.find((t) => t.id === teamId)?.name ?? "-";
 
   const assignMutation = useMutation({
     mutationFn: async () => {
@@ -130,7 +130,7 @@ export default function BadgesPage() {
     <div className="space-y-4">
       <PageHeader
         title="Badges NFC"
-        description="Associe la carte NFC remise à chaque travailleur — utilisée pour le pointage de présence terrain."
+        description="Associe la carte NFC remise à chaque travailleur - utilisée pour le pointage de présence terrain."
       />
 
       <Input
@@ -250,7 +250,7 @@ export default function BadgesPage() {
                   required
                 />
                 <p className="text-xs text-zinc-500">
-                  UID hexadécimal de la carte — lu automatiquement par le lecteur NFC si disponible.
+                  UID hexadécimal de la carte - lu automatiquement par le lecteur NFC si disponible.
                 </p>
               </div>
             </SheetBody>

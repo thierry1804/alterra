@@ -155,7 +155,7 @@ export default function RequestDetailDrawer({
                 label="Catégorie"
                 value={
                   selection.row.category
-                    ? `${selection.row.category.code} — ${selection.row.category.label}`
+                    ? `${selection.row.category.code} - ${selection.row.category.label}`
                     : ""
                 }
               />

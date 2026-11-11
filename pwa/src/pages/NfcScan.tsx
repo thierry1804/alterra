@@ -94,7 +94,7 @@ export default function NfcScan() {
             status: "unknown",
           });
           setScanState("unknown");
-          setStatusMessage("Badge non enregistré — présence loguée localement.");
+          setStatusMessage("Badge non enregistré - présence loguée localement.");
           setLastScanLabel(`Badge ${tag.tagId.slice(0, 12)}…`);
           setLastScanTime(formatTime(new Date().toISOString()));
           playPresenceFeedback("unknown");
@@ -288,7 +288,7 @@ export default function NfcScan() {
           </p>
           {(lastScanLabel || lastScanTime) && (
             <p className="mt-2 text-xs text-zinc-600">
-              Dernier scan : {lastScanLabel ?? "—"}
+              Dernier scan : {lastScanLabel ?? "-"}
               {lastScanTime ? ` · ${lastScanTime}` : ""}
             </p>
           )}

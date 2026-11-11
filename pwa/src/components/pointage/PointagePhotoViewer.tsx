@@ -61,7 +61,7 @@ export default function PointagePhotoViewer({ pointageId }: PointagePhotoViewerP
         className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
         aria-label="Voir la photo en grand"
       >
-        <img src={url} alt="Photo — preuve de réalisation" className="h-full w-full object-cover" />
+        <img src={url} alt="Photo - preuve de réalisation" className="h-full w-full object-cover" />
       </button>
       <dialog
         ref={dialogRef}
@@ -69,7 +69,7 @@ export default function PointagePhotoViewer({ pointageId }: PointagePhotoViewerP
         onClose={() => setOpen(false)}
       >
         <button type="button" onClick={() => setOpen(false)} className="block w-full">
-          <img src={url} alt="Photo — preuve de réalisation" className="w-full rounded-lg" />
+          <img src={url} alt="Photo - preuve de réalisation" className="w-full rounded-lg" />
         </button>
       </dialog>
     </>

@@ -155,7 +155,7 @@ export default function InvoicesPage() {
               travailleurs validés de cette activité pour la période exportée.
             </p>
             <GlossaryTerm term="Semaine ISO">
-              Format AAAA-Wnn (ex. 2026-W29) — période de paie hebdomadaire.
+              Format AAAA-Wnn (ex. 2026-W29) - période de paie hebdomadaire.
             </GlossaryTerm>
           </ContextHelp>
         }
@@ -223,13 +223,13 @@ export default function InvoicesPage() {
             {!isLoading && rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-6 text-center text-zinc-500">
-                  Aucune facture — générée automatiquement au prochain export MVola.
+                  Aucune facture - générée automatiquement au prochain export MVola.
                 </td>
               </tr>
             )}
             {rows.map((invoice) => (
               <tr key={invoice.id}>
-                <td className="px-4 py-2 text-zinc-500">{invoice.number ?? "—"}</td>
+                <td className="px-4 py-2 text-zinc-500">{invoice.number ?? "-"}</td>
                 <td className="flex items-center gap-2 px-4 py-2 font-medium text-zinc-900">
                   <FileText className="h-4 w-4 shrink-0 text-subtle" />
                   {invoice.activityLabel}

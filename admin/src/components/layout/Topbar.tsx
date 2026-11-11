@@ -22,7 +22,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const todo = user?.role === "ADMIN" ? counts.requests + counts.pointages : counts.pointages;
-  const initials = user ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() : "—";
+  const initials = user ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() : "-";
 
   useEffect(() => {
     if (!menuOpen && !notifOpen) return;
@@ -138,7 +138,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
           >
             <div className="border-b border-zinc-100 px-4 py-3">
               <p className="truncate text-sm font-semibold text-zinc-900">
-                {user ? `${user.firstName} ${user.lastName}` : "—"}
+                {user ? `${user.firstName} ${user.lastName}` : "-"}
               </p>
               {user?.role && <p className="text-xs text-muted">{roleLabel(user.role)}</p>}
             </div>

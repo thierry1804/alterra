@@ -593,7 +593,7 @@ test.describe(`Paiements MVola — semaine vierge réservée`, () => {
     expect(result.dejaTraite).toBe(0);
     await expectToast(page, "Rapprochement enregistré");
     await expect(dialog.getByText("Confirmés", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("Écarts de montant — revue manuelle")).toBeVisible();
+    await expect(dialog.getByText("Écarts de montant - revue manuelle")).toBeVisible();
     await page.keyboard.press("Escape");
 
     // Effets sur les paiements

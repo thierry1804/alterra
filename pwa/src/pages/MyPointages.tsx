@@ -293,7 +293,7 @@ export default function MyPointages() {
                     )}
                     {pointage.status === "NEEDS_CLARIFICATION" && (
                       <p className="text-amber-800">
-                        Une précision a été demandée — voir l&apos;onglet Précisions.
+                        Une précision a été demandée - voir l&apos;onglet Précisions.
                       </p>
                     )}
                   </div>

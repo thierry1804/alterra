@@ -19,7 +19,7 @@ export default function PresenceChart({ data }: PresenceChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Présence — 7 derniers jours</CardTitle>
+        <CardTitle>Présence - 7 derniers jours</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-64">

@@ -146,7 +146,7 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                       )}
                     </>
                   ) : (
-                    <span className="text-zinc-400">—</span>
+                    <span className="text-zinc-400">-</span>
                   )}
                 </TableCell>
                 <TableCell>

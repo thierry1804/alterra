@@ -104,7 +104,7 @@ export default function MvolaExportHistory({
                 <TableCell className="whitespace-nowrap">
                   {new Date(entry.createdAt).toLocaleString("fr-FR")}
                 </TableCell>
-                <TableCell>{entry.periodIso ?? "—"}</TableCell>
+                <TableCell>{entry.periodIso ?? "-"}</TableCell>
                 <TableCell>
                   <span className="alterra-num">v{entry.version}</span>
                   {entry.isCurrent && (
@@ -113,9 +113,9 @@ export default function MvolaExportHistory({
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>{entry.exportedCount ?? "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{entry.filename ?? "—"}</TableCell>
-                <TableCell>{entry.userEmail ?? "—"}</TableCell>
+                <TableCell>{entry.exportedCount ?? "-"}</TableCell>
+                <TableCell className="font-mono text-xs">{entry.filename ?? "-"}</TableCell>
+                <TableCell>{entry.userEmail ?? "-"}</TableCell>
                 <TableCell>
                   <RowActions>
                     <IconButton

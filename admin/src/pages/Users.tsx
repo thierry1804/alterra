@@ -256,7 +256,7 @@ export default function UsersPage() {
   }
 
   const siteName = (siteId: string | null) =>
-    siteId ? (sites.find((s) => s.id === siteId)?.shortCode ?? "—") : "—";
+    siteId ? (sites.find((s) => s.id === siteId)?.shortCode ?? "-") : "-";
 
   return (
     <div className="space-y-4">
@@ -412,7 +412,7 @@ export default function UsersPage() {
                   <TableCell>
                     {user.firstName} {user.lastName}
                   </TableCell>
-                  <TableCell>{user.email ?? "—"}</TableCell>
+                  <TableCell>{user.email ?? "-"}</TableCell>
                   <TableCell>{USER_ROLE_LABELS[user.role]}</TableCell>
                   <TableCell>{siteName(user.siteId)}</TableCell>
                   <TableCell>{formatDate(user.lastLoginAt)}</TableCell>

@@ -11,8 +11,8 @@ export interface DemoAccount {
 }
 
 export const TERRAIN_APP_ROLES = [
-  "Chef de service — validation hebdomadaire, clôture journalière",
-  "Chef d'équipe — saisie quotidienne, NFC, synchronisation",
+  "Chef de service - validation hebdomadaire, clôture journalière",
+  "Chef d'équipe - saisie quotidienne, NFC, synchronisation",
 ];
 
 export const ADMIN_APP: AppAccessLink = {

@@ -118,7 +118,7 @@ export default function BiometricCapture() {
       }
 
       if (!navigator.onLine) {
-        setError("Hors ligne — modèle biométrique indisponible ou visage non détecté.");
+        setError("Hors ligne - modèle biométrique indisponible ou visage non détecté.");
         return;
       }
 
@@ -148,7 +148,7 @@ export default function BiometricCapture() {
     );
   }
 
-  const previewAlt = `Photo de contrôle biométrique — ${workerName}`;
+  const previewAlt = `Photo de contrôle biométrique - ${workerName}`;
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">

@@ -216,7 +216,7 @@ export default function PointageDetailDrawer({
             )}
           </div>
           <SheetDescription>
-            {worker ? `${worker.firstName} ${worker.lastName}` : pointage.workerId} —{" "}
+            {worker ? `${worker.firstName} ${worker.lastName}` : pointage.workerId} -{" "}
             {formatDate(pointage.date)}
           </SheetDescription>
         </SheetHeader>
@@ -267,7 +267,7 @@ export default function PointageDetailDrawer({
             <p className="font-medium text-zinc-900">Biométrie (semaine)</p>
             {pointage.bioCheck ? (
               <p className="text-zinc-600">
-                {pointage.bioCheck.result} — {formatDate(pointage.bioCheck.performedAt)}
+                {pointage.bioCheck.result} - {formatDate(pointage.bioCheck.performedAt)}
               </p>
             ) : (
               <p className="text-zinc-500">Aucun contrôle bio pour cette semaine</p>
@@ -295,7 +295,7 @@ export default function PointageDetailDrawer({
 
           {pointage.photoKey && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-900">Photo — preuve de réalisation</p>
+              <p className="text-sm font-medium text-zinc-900">Photo - preuve de réalisation</p>
               {photoQuery.data ? (
                 <button
                   type="button"
@@ -318,7 +318,7 @@ export default function PointageDetailDrawer({
 
           {pointage.status === "VALIDATED" && (
             <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
-              Pointage validé (potentiellement payé) — verrouillé, aucune modification possible.
+              Pointage validé (potentiellement payé) - verrouillé, aucune modification possible.
             </p>
           )}
 

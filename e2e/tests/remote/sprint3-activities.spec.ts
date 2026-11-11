@@ -228,7 +228,7 @@ test.describe(`${UC} (parcours CRUD + tarif versionné RG-04)`, () => {
       await expect(row.first()).toBeVisible();
       await row.first().getByRole("button", { name: "Historique des tarifs" }).click();
       const dialog = page.getByRole("dialog");
-      await expect(dialog.getByText(`Historique tarifs — ${label}`)).toBeVisible();
+      await expect(dialog.getByText(`Historique tarifs - ${label}`)).toBeVisible();
       await expect(dialog.getByRole("row")).toHaveCount(3); // en-tête + 2 versions
       await expect(dialog).toContainText("Clôturé");
       await expect(dialog).toContainText("Courant");

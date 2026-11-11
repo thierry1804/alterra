@@ -88,7 +88,7 @@ export default function WorkerDetailDrawer({
               {WORKER_STATUS_LABELS[worker.status]}
             </Badge>
             <Badge variant="info">{siteName}</Badge>
-            {worker.teamId && teamName !== "—" && <Badge variant="brand">{teamName}</Badge>}
+            {worker.teamId && teamName !== "-" && <Badge variant="brand">{teamName}</Badge>}
           </div>
         </SheetHeader>
 
@@ -98,7 +98,7 @@ export default function WorkerDetailDrawer({
               <span className="alterra-num">{worker.mvolaNumber}</span>
             </Row>
             <Row label="CIN">
-              <span className="alterra-num">{worker.cinNumber ?? "—"}</span>
+              <span className="alterra-num">{worker.cinNumber ?? "-"}</span>
             </Row>
             <Row label="Sexe">
               {worker.sexe ? WORKER_SEXE_LABELS[worker.sexe] : "Non renseigné"}

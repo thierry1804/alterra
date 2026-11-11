@@ -519,11 +519,11 @@ export default function ZonesPage() {
                       </button>
                       <span className="font-medium">{zone.name}</span>
                     </TableCell>
-                    <TableCell>{zone.code ?? "—"}</TableCell>
+                    <TableCell>{zone.code ?? "-"}</TableCell>
                     <TableCell>
-                      {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "—"}
+                      {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "-"}
                     </TableCell>
-                    <TableCell>{zone.geoPolygon ? "Polygon" : "—"}</TableCell>
+                    <TableCell>{zone.geoPolygon ? "Polygon" : "-"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions>
                         <IconButton
@@ -564,13 +564,13 @@ export default function ZonesPage() {
                           />
                         </TableCell>
                         <TableCell className="pl-10 text-zinc-700">{parcel.name}</TableCell>
-                        <TableCell>{parcel.code ?? "—"}</TableCell>
+                        <TableCell>{parcel.code ?? "-"}</TableCell>
                         <TableCell>
                           {parcel.surfaceHa
                             ? `${Number(parcel.surfaceHa).toLocaleString("fr-MG")} ha`
-                            : "—"}
+                            : "-"}
                         </TableCell>
-                        <TableCell>{parcel.geoPolygon ? "Polygon" : "—"}</TableCell>
+                        <TableCell>{parcel.geoPolygon ? "Polygon" : "-"}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <RowActions>
                             <IconButton

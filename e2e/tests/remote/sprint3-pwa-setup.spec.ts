@@ -232,7 +232,7 @@ test.describe(UC, () => {
     await expect(page.getByRole("button", { name: "Utiliser" })).toHaveCount(0);
     await expect(page.locator("#password")).toHaveValue("");
     await expect(
-      page.getByText("Chef de service — validation hebdomadaire, clôture journalière"),
+      page.getByText("Chef de service - validation hebdomadaire, clôture journalière"),
     ).toBeVisible();
   });
 });

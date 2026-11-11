@@ -86,7 +86,7 @@ export default function ActivitySelect() {
       } catch {
         const cachedActivities = await db.activities.count();
         if (cachedActivities === 0) {
-          setSyncMessage("Hors ligne — cache vide");
+          setSyncMessage("Hors ligne - cache vide");
         } else {
           setSyncMessage(`${cachedActivities} activité(s) en cache local`);
         }
@@ -135,7 +135,7 @@ export default function ActivitySelect() {
               lot.
             </p>
             <GlossaryTerm term="MOC">
-              Main-d&apos;œuvre communautaire — travailleur du programme.
+              Main-d&apos;œuvre communautaire - travailleur du programme.
             </GlossaryTerm>
           </ContextHelp>
         }

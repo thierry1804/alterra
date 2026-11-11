@@ -303,7 +303,7 @@ export default function ActivitiesPage() {
     <div className="space-y-4">
       <PageHeader
         title="Activités"
-        description="Catégories officielles et sous-activités — tâches et tarifs unitaires."
+        description="Catégories officielles et sous-activités - tâches et tarifs unitaires."
         action={
           <Button type="button" onClick={openCreateCategory}>
             <FolderPlus className="h-4 w-4" aria-hidden />
@@ -616,7 +616,7 @@ export default function ActivitiesPage() {
               {editingCategory ? "Modifier la catégorie" : "Nouvelle catégorie"}
             </SheetTitle>
             <SheetDescription>
-              Code officiel (ex. ACT04) et libellé — cf. CATEGORIES DES ACTIVITES MOC PAR SITE.
+              Code officiel (ex. ACT04) et libellé - cf. CATEGORIES DES ACTIVITES MOC PAR SITE.
             </SheetDescription>
           </SheetHeader>
           <form

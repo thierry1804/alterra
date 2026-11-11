@@ -221,7 +221,7 @@ export default function ClarificationRequest() {
     setMessage(null);
     try {
       await api.patch(`/clarification-requests/${requestId}/close`);
-      setMessage("Demande clôturée — le pointage repasse en attente.");
+      setMessage("Demande clôturée - le pointage repasse en attente.");
       await loadData();
     } catch (err) {
       setError(workflowErrorMessage(err, "Clôture échouée."));
@@ -295,7 +295,7 @@ export default function ClarificationRequest() {
                 onChange={(event) => setSelectedPointageId(event.target.value)}
                 className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
               >
-                <option value="">— Choisir un pointage —</option>
+                <option value="">- Choisir un pointage -</option>
                 {pointageOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}

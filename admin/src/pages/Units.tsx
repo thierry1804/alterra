@@ -222,7 +222,7 @@ export default function UnitsPage() {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>{editingUnit ? "Modifier l'unité" : "Nouvelle unité"}</SheetTitle>
-            <SheetDescription>Code et libellé — ex. TROU / Trou, HA / Ha.</SheetDescription>
+            <SheetDescription>Code et libellé - ex. TROU / Trou, HA / Ha.</SheetDescription>
           </SheetHeader>
           <form
             className="contents"

@@ -178,7 +178,7 @@ export default function MvolaImportDialog({
             {step === "mapping" && "Associez chaque champ requis à une colonne du relevé."}
             {step === "result" &&
               (applied
-                ? "Rapprochement enregistré — toutes les périodes du fichier."
+                ? "Rapprochement enregistré - toutes les périodes du fichier."
                 : "Aperçu : rien n'est encore enregistré. Vérifiez puis confirmez.")}
           </SheetDescription>
         </SheetHeader>
@@ -279,7 +279,7 @@ export default function MvolaImportDialog({
                       }
                     >
                       <option value="">
-                        {currentValue ? "— Désélectionner —" : "— Choisir une colonne —"}
+                        {currentValue ? "- Désélectionner -" : "- Choisir une colonne -"}
                       </option>
                       {availableColumns.map((col) => (
                         <option key={col.column} value={col.column}>
@@ -365,7 +365,7 @@ export default function MvolaImportDialog({
             )}
             {result.ecarts.length > 0 && (
               <div className="space-y-1">
-                <p className="font-medium text-amber-700">Écarts de montant — revue manuelle</p>
+                <p className="font-medium text-amber-700">Écarts de montant - revue manuelle</p>
                 <Table>
                   <TableHeader>
                     <TableRow>

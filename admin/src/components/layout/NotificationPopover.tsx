@@ -41,7 +41,7 @@ function itemLabel(item: NotificationItem): { title: string; subtitle: string } 
       const worker = item.row.worker;
       const workerName = worker ? `${worker.firstName} ${worker.lastName}` : "MOC inconnu";
       return {
-        title: `${workerName} — ${formatPointageAmount(item.row.amount)}`,
+        title: `${workerName} - ${formatPointageAmount(item.row.amount)}`,
         subtitle: `Pointage du ${formatDate(item.row.date)}`,
       };
     }

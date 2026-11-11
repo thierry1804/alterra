@@ -57,21 +57,21 @@ const LOGIN_ASSET_CONFIGS: LoginAssetConfig[] = [
     slot: "loginBackground",
     urlSegment: "login-background",
     label: "Fond de l'écran de connexion",
-    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    description: "PNG, JPG ou WebP - 5 Mo maximum.",
     previewClassName: "h-16 w-28 object-cover",
   },
   {
     slot: "loginBranch",
     urlSegment: "login-branch",
     label: "Décor coin supérieur droit",
-    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    description: "PNG, JPG ou WebP - 5 Mo maximum.",
     previewClassName: "h-16 w-16 object-contain",
   },
   {
     slot: "loginLeaf",
     urlSegment: "login-leaf",
     label: "Décor coin inférieur gauche",
-    description: "PNG, JPG ou WebP — 5 Mo maximum.",
+    description: "PNG, JPG ou WebP - 5 Mo maximum.",
     previewClassName: "h-16 w-16 object-contain",
   },
 ];
@@ -336,7 +336,7 @@ export default function AppSettingsPage() {
       await api.post("/system/restore", { backupKey: pendingBackupKey });
       toast({
         title: "Base restaurée",
-        description: "Rechargez la page — les données affichées peuvent avoir changé.",
+        description: "Rechargez la page - les données affichées peuvent avoir changé.",
       });
       cancelPendingRestore();
     } catch (err) {
@@ -393,7 +393,7 @@ export default function AppSettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-zinc-500">
-                    Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet — jusqu'à 60
+                    Affiché dans l'Admin, la PWA terrain, et le titre de l'onglet - jusqu'à 60
                     caractères.
                   </p>
                 </div>
@@ -420,7 +420,7 @@ export default function AppSettingsPage() {
                       >
                         {uploading ? "Envoi…" : "Changer l'icône"}
                       </Button>
-                      <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP — 2 Mo maximum.</p>
+                      <p className="text-xs text-zinc-500">PNG, JPG, SVG ou WebP - 2 Mo maximum.</p>
                     </div>
                   </div>
                 </div>
@@ -582,7 +582,7 @@ export default function AppSettingsPage() {
           <div className="max-w-lg space-y-5 rounded-md border border-zinc-200 bg-white p-6">
             <div>
               <p className="text-xs text-zinc-500">
-                Instantané complet de la base — indépendant des sauvegardes automatiques nocturnes.
+                Instantané complet de la base - indépendant des sauvegardes automatiques nocturnes.
               </p>
             </div>
 
@@ -621,7 +621,7 @@ export default function AppSettingsPage() {
                     {uploadingBackup ? "Envoi…" : "Choisir un fichier .dump"}
                   </Button>
                   <p className="mt-1 text-xs text-zinc-500">
-                    Remplace intégralement les données actuelles — à utiliser avec précaution.
+                    Remplace intégralement les données actuelles - à utiliser avec précaution.
                   </p>
                 </div>
               ) : (

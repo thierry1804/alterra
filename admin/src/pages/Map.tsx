@@ -152,7 +152,7 @@ export default function MapPage() {
                     Effectif actif
                   </p>
                   <p className="alterra-display alterra-num text-2xl font-extrabold text-brand">
-                    {siteKpis.data?.kpis.activeWorkers ?? "—"}
+                    {siteKpis.data?.kpis.activeWorkers ?? "-"}
                   </p>
                 </div>
                 <div className="rounded-lg bg-surface p-3">
@@ -160,7 +160,7 @@ export default function MapPage() {
                     Présence
                   </p>
                   <p className="alterra-display alterra-num text-2xl font-extrabold text-zinc-900">
-                    {siteKpis.data ? formatPercent(siteKpis.data.kpis.presenceRate) : "—"}
+                    {siteKpis.data ? formatPercent(siteKpis.data.kpis.presenceRate) : "-"}
                   </p>
                 </div>
               </div>

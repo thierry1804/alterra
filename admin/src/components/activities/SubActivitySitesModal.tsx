@@ -169,7 +169,7 @@ export default function SubActivitySitesModal({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-w-2xl">
         <SheetHeader>
-          <SheetTitle>Tarifs par site — {group?.label}</SheetTitle>
+          <SheetTitle>Tarifs par site - {group?.label}</SheetTitle>
           <SheetDescription>
             Le tarif global s'applique à tous les sites sans surcharge. Modifier un tarif crée une
             nouvelle version (RG-04) pour cette seule lignée.

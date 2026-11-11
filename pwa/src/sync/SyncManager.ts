@@ -207,7 +207,7 @@ export function subscribeSyncState(listener: (state: SyncState) => void): () => 
 /** Push pointages locaux par batch ≤100, idempotent via clientUuid. */
 export async function syncNow(options?: { force?: boolean }): Promise<SyncRunResult> {
   if (!navigator.onLine) {
-    await appendLog("warning", "Sync ignorée — hors ligne");
+    await appendLog("warning", "Sync ignorée - hors ligne");
     return { synced: 0, rejected: 0, skipped: 0, retried: 0 };
   }
 
@@ -233,13 +233,13 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
     if (photoRetry.lost > 0) {
       await appendLog(
         "warning",
-        `${photoRetry.lost} photo(s) non rattachable(s) — pointage déjà validé ou déjà pourvu d'une photo`,
+        `${photoRetry.lost} photo(s) non rattachable(s) - pointage déjà validé ou déjà pourvu d'une photo`,
       );
     }
 
     const pending = await db.pointages.where("status").equals("local").toArray();
     if (pending.length > 0) {
-      await appendLog("info", `Début sync — ${pending.length} pointage(s) en attente`);
+      await appendLog("info", `Début sync - ${pending.length} pointage(s) en attente`);
 
       await attachPendingPhotos(pending);
 
@@ -270,7 +270,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
           await revertChunkToLocal(chunk);
 
           const message = error instanceof Error ? error.message : "Erreur réseau";
-          await appendLog("error", `Batch échoué — ${message}`);
+          await appendLog("error", `Batch échoué - ${message}`);
 
           if (!options?.force && consecutiveFailures <= BACKOFF_DELAYS_MS.length) {
             await new Promise((resolve) =>
@@ -287,10 +287,10 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
       if (totals.synced > 0 || totals.rejected > 0) {
         await appendLog(
           "success",
-          `Sync terminée — ${totals.synced} envoyé(s), ${totals.rejected} rejeté(s)`,
+          `Sync terminée - ${totals.synced} envoyé(s), ${totals.rejected} rejeté(s)`,
         );
       } else if (totals.skipped > 0) {
-        await appendLog("warning", `Sync partielle — ${totals.skipped} sans réponse serveur`);
+        await appendLog("warning", `Sync partielle - ${totals.skipped} sans réponse serveur`);
       }
       if (totals.retried > 0) {
         await appendLog(
@@ -306,7 +306,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
     if (presenceTotals.synced > 0 || presenceTotals.rejected > 0) {
       await appendLog(
         "info",
-        `Présences — ${presenceTotals.synced} synchronisée(s), ${presenceTotals.rejected} rejetée(s)`,
+        `Présences - ${presenceTotals.synced} synchronisée(s), ${presenceTotals.rejected} rejetée(s)`,
       );
     }
 
@@ -314,7 +314,7 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
     if (bioTotals.synced > 0 || bioTotals.rejected > 0) {
       await appendLog(
         "info",
-        `Bio offline — ${bioTotals.synced} envoyé(s), ${bioTotals.rejected} rejeté(s)`,
+        `Bio offline - ${bioTotals.synced} envoyé(s), ${bioTotals.rejected} rejeté(s)`,
       );
     }
   } finally {

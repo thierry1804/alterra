@@ -5,7 +5,7 @@ const API_MESSAGES: Record<string, string> = {
   CONFIRM_REQUIRED: "Confirmez la clôture malgré les pointages non finalisés.",
   PIN_INCORRECT: "Code PIN incorrect.",
   PIN_INVALID: "Le PIN doit contenir 4 chiffres.",
-  MFA_REQUIRED: "Ce compte nécessite MFA — utilisez l'administration web.",
+  MFA_REQUIRED: "Ce compte nécessite MFA - utilisez l'administration web.",
   INVALID_MFA_CODE: "Code MFA invalide.",
 };
 

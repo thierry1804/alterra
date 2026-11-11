@@ -138,7 +138,7 @@ export default function TeamGroup({
                 </Button>
                 <Link
                   to={`/validation/bio/${worker.id}?pointageId=${pointage.id}&date=${pointage.date}`}
-                  aria-label={`Contrôle biométrique — ${worker.firstName} ${worker.lastName}`}
+                  aria-label={`Contrôle biométrique - ${worker.firstName} ${worker.lastName}`}
                   className={cn(
                     "alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-zinc-300 text-zinc-700",
                     "hover:bg-zinc-50 active:bg-zinc-100",
@@ -148,7 +148,7 @@ export default function TeamGroup({
                 </Link>
                 <Link
                   to={`/clarifications?pointageId=${pointage.id}`}
-                  aria-label={`Demander une précision — ${worker.firstName} ${worker.lastName}`}
+                  aria-label={`Demander une précision - ${worker.firstName} ${worker.lastName}`}
                   className={cn(
                     "alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-zinc-300 text-zinc-700",
                     "hover:bg-zinc-50 active:bg-zinc-100",
@@ -160,7 +160,7 @@ export default function TeamGroup({
                   type="button"
                   disabled={busy}
                   onClick={() => onReject(pointage.id)}
-                  aria-label={`Rejeter — ${worker.firstName} ${worker.lastName}`}
+                  aria-label={`Rejeter - ${worker.firstName} ${worker.lastName}`}
                   className="alterra-focus grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-red-200 text-red-700 hover:bg-red-50 active:bg-red-100 disabled:opacity-40"
                 >
                   <IconClose className="h-5 w-5" />

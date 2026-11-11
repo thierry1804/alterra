@@ -48,7 +48,7 @@ export default function ContextHelp({ id, title, children }: ContextHelpProps) {
 export function GlossaryTerm({ term, children }: { term: string; children: React.ReactNode }) {
   return (
     <p>
-      <span className="font-medium text-zinc-900">{term}</span> — {children}
+      <span className="font-medium text-zinc-900">{term}</span> - {children}
     </p>
   );
 }

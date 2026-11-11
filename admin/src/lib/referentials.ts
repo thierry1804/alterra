@@ -132,7 +132,7 @@ export interface ImportCommitResult {
 }
 
 export function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Date(value).toLocaleDateString("fr-FR");
 }
 

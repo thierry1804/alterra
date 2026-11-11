@@ -52,7 +52,7 @@ export default function LoginAccessPanel({
         <div className="border-t border-zinc-200 pt-4">
           <h2 className="text-sm font-medium text-zinc-900">Comptes de démonstration</h2>
           <p className="mt-1 text-xs text-zinc-600">
-            Environnement local uniquement — cliquez pour pré-remplir le formulaire.
+            Environnement local uniquement - cliquez pour pré-remplir le formulaire.
           </p>
           <ul className="mt-3 space-y-2">
             {demoAccounts.map((account) => (

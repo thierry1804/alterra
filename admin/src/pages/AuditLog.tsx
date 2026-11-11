@@ -132,7 +132,7 @@ export default function AuditLogPage() {
     <div className="space-y-4">
       <PageHeader
         title="Journal d'audit"
-        description="Actions sensibles tracées — consultation en lecture seule."
+        description="Actions sensibles tracées - consultation en lecture seule."
         action={
           <IconButton
             icon={Download}
@@ -327,7 +327,7 @@ export default function AuditLogPage() {
                 <TableCell>{auditActorLabel(entry)}</TableCell>
                 <TableCell>{entry.action}</TableCell>
                 <TableCell>{entry.entityType}</TableCell>
-                <TableCell className="font-mono text-xs">{entry.entityId ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs">{entry.entityId ?? "-"}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <IconButton
                     icon={Eye}

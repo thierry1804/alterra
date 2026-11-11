@@ -379,7 +379,7 @@ export default function SitesPage() {
                   </TableCell>
                   <TableCell>{site.name}</TableCell>
                   <TableCell>{site.shortCode}</TableCell>
-                  <TableCell>{site.location ?? "—"}</TableCell>
+                  <TableCell>{site.location ?? "-"}</TableCell>
                   <TableCell>
                     <Badge variant={site.active ? "success" : "danger"}>
                       {site.active ? "Actif" : "Inactif"}

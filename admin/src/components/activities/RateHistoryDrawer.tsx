@@ -48,7 +48,7 @@ export default function RateHistoryDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-w-2xl">
         <SheetHeader>
-          <SheetTitle>Historique tarifs — {label}</SheetTitle>
+          <SheetTitle>Historique tarifs - {label}</SheetTitle>
           <SheetDescription>
             Versions tarifaires RG-04 pour cette lignée ({siteId ? "site" : "globale"}).
           </SheetDescription>

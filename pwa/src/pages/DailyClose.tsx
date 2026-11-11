@@ -125,7 +125,7 @@ export default function DailyClose() {
       const status = await pollJob(response.data.jobId);
       setJobStatus(status);
       if (status.state === "completed") {
-        setMessage("Journée clôturée — rapport envoyé à l'administrateur.");
+        setMessage("Journée clôturée - rapport envoyé à l'administrateur.");
       } else {
         setError(status.error ?? "Génération du rapport échouée.");
       }

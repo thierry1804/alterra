@@ -210,11 +210,11 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-zinc-500">IP</dt>
-            <dd>{entry.ip ?? "—"}</dd>
+            <dd>{entry.ip ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-zinc-500">User-Agent</dt>
-            <dd className="truncate">{entry.userAgent ?? "—"}</dd>
+            <dd className="truncate">{entry.userAgent ?? "-"}</dd>
           </div>
         </dl>
 
@@ -225,7 +225,7 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
               {entry.before ? (
                 <DiffTree own={entry.before} counterpart={entry.after} side="before" />
               ) : (
-                <span className="text-zinc-500">—</span>
+                <span className="text-zinc-500">-</span>
               )}
             </div>
           </section>
@@ -235,7 +235,7 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
               {entry.after ? (
                 <DiffTree own={entry.after} counterpart={entry.before} side="after" />
               ) : (
-                <span className="text-zinc-500">—</span>
+                <span className="text-zinc-500">-</span>
               )}
             </div>
           </section>

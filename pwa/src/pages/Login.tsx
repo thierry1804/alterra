@@ -29,7 +29,7 @@ export default function Login() {
       navigate(nextPath);
     } catch (err) {
       if (isAxiosError(err) && err.response?.data?.code === "MFA_REQUIRED") {
-        setError("Ce compte nécessite MFA — utilisez l'administration web.");
+        setError("Ce compte nécessite MFA - utilisez l'administration web.");
       } else {
         setError("Email ou mot de passe incorrect.");
       }

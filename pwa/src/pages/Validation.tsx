@@ -200,7 +200,7 @@ export default function Validation() {
       ? items.filter(({ pointage }) => pointage.bioCheck?.result === "OK")
       : items;
     if (eligible.length === 0) {
-      setError("Aucun pointage bio OK dans cette équipe — lancez les contrôles bio d'abord.");
+      setError("Aucun pointage bio OK dans cette équipe - lancez les contrôles bio d'abord.");
       return;
     }
 
@@ -275,10 +275,10 @@ export default function Validation() {
         help={
           <ContextHelp id="validation" title="Comment valider ?">
             <GlossaryTerm term="Bio OK">
-              Contrôle biométrique réussi — requis avant validation du paiement.
+              Contrôle biométrique réussi - requis avant validation du paiement.
             </GlossaryTerm>
             <GlossaryTerm term="MOC">
-              Main-d&apos;œuvre communautaire — travailleur du programme.
+              Main-d&apos;œuvre communautaire - travailleur du programme.
             </GlossaryTerm>
             <p>Raccourci clavier : touche R pour actualiser la liste.</p>
           </ContextHelp>

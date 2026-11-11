@@ -18,7 +18,7 @@ export default function WorkforceChart({ data }: WorkforceChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Évolution effectifs — 8 semaines</CardTitle>
+        <CardTitle>Évolution effectifs - 8 semaines</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-64">

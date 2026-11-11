@@ -486,7 +486,7 @@ export default function PointagesPage() {
                         {pointage.bioCheck.result}
                       </Badge>
                     ) : (
-                      <span className="text-xs text-zinc-400">—</span>
+                      <span className="text-xs text-zinc-400">-</span>
                     )}
                   </TableCell>
                   <TableCell>

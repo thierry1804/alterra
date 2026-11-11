@@ -414,13 +414,13 @@ export default function WorkersPage() {
     sites.find((s) => s.id === siteId)?.shortCode ?? siteId.slice(0, 8);
 
   const teamName = (teamId: string | null) =>
-    teamId ? (teams.find((t) => t.id === teamId)?.name ?? "—") : "—";
+    teamId ? (teams.find((t) => t.id === teamId)?.name ?? "-") : "-";
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Travailleurs"
-        description="Main-d'œuvre communautaire — référentiel travailleurs (MOC)."
+        description="Main-d'œuvre communautaire - référentiel travailleurs (MOC)."
         action={
           <div className="flex items-center gap-2">
             <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
@@ -677,7 +677,7 @@ export default function WorkersPage() {
                       {WORKER_STATUS_LABELS[worker.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell>{worker.sexe ? WORKER_SEXE_LABELS[worker.sexe] : "—"}</TableCell>
+                  <TableCell>{worker.sexe ? WORKER_SEXE_LABELS[worker.sexe] : "-"}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <RowActions>
                       <IconButton

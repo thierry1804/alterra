@@ -48,7 +48,7 @@ export default function Sync() {
               Données saisies sur le terrain pas encore confirmées par le serveur.
             </GlossaryTerm>
             <GlossaryTerm term="MVola">
-              Mobile money — canal de paiement des travailleurs.
+              Mobile money - canal de paiement des travailleurs.
             </GlossaryTerm>
           </ContextHelp>
         }
@@ -107,7 +107,7 @@ export default function Sync() {
       {rejected.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-medium text-red-700">
-            Rejetés — serveur autoritaire ({rejected.length})
+            Rejetés - serveur autoritaire ({rejected.length})
           </h2>
           <ul className="space-y-2">
             {rejected.map((pointage) => (

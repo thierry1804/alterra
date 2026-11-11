@@ -295,7 +295,7 @@ export default function ImportDialog({ open, onOpenChange, onImported }: ImportD
                       }
                     >
                       <option value="">
-                        {currentValue ? "— Désélectionner —" : "— Choisir une colonne —"}
+                        {currentValue ? "- Désélectionner -" : "- Choisir une colonne -"}
                       </option>
                       {availableColumns.map((col) => (
                         <option key={col.column} value={col.column}>

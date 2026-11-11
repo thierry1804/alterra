@@ -67,7 +67,7 @@ export function currentMonthInput(): string {
 }
 
 export function formatReportCell(column: string, value: string | number | null): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (column === "amount" || column === "validatedAmount" || column === "paidAmount") {
     return `${Number(value).toLocaleString("fr-MG")} Ar`;
   }
