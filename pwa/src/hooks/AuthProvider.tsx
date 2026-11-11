@@ -17,12 +17,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function bootstrap() {
-      const restored = await restoreSession();
-      if (restored) {
-        setUser(getMemoryUser());
-        connectSocket();
+      try {
+        const restored = await restoreSession();
+        if (restored) {
+          setUser(getMemoryUser());
+          connectSocket();
+        }
+      } catch {
+        // IndexedDB indisponible ou session corrompue : on bascule sur l'écran de connexion
+        // plutôt que de rester bloqué sur « Chargement… ».
+      } finally {
+        setBootstrapped(true);
       }
-      setBootstrapped(true);
     }
 
     void bootstrap();
