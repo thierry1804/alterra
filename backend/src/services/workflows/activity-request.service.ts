@@ -3,6 +3,7 @@ import { Prisma, RequestStatus, Role } from "@prisma/client";
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
+import { createOnce } from "./idempotency.js";
 import { startOfUtcDay } from "../activities/activity-version.service.js";
 import { assertActivityCancelAllowed, assertActivityDecisionAllowed } from "./workflow-state.js";
 
@@ -18,6 +19,7 @@ export interface CreateActivityRequestInput {
   unitId: string;
   proposedRate: number;
   justification: string;
+  clientUuid?: string;
 }
 
 export interface ActivityDecisionInput {
@@ -77,18 +79,25 @@ export async function createActivityRequest(
     throw new ApiError(403, "FORBIDDEN", "Seul le chef de service peut créer cette demande");
   }
 
-  return prisma.activityRequest.create({
-    data: {
-      categoryId: input.categoryId,
-      proposedLabel: input.proposedLabel.trim(),
-      unitId: input.unitId,
-      proposedRate: input.proposedRate,
-      justification: input.justification.trim(),
-      requestedById: user.sub,
-      siteId: user.siteId,
-      status: RequestStatus.PENDING,
-    },
-  });
+  return createOnce(
+    input.clientUuid,
+    user.sub,
+    (clientUuid) => prisma.activityRequest.findUnique({ where: { clientUuid } }),
+    () =>
+      prisma.activityRequest.create({
+        data: {
+          clientUuid: input.clientUuid,
+          categoryId: input.categoryId,
+          proposedLabel: input.proposedLabel.trim(),
+          unitId: input.unitId,
+          proposedRate: input.proposedRate,
+          justification: input.justification.trim(),
+          requestedById: user.sub,
+          siteId: user.siteId,
+          status: RequestStatus.PENDING,
+        },
+      }),
+  );
 }
 
 export async function decideActivityRequest(

@@ -24,7 +24,8 @@ function useSyncSummary(): {
   pending: number;
 } {
   const state = useSyncState();
-  const pending = state.pendingCount + state.syncingCount + state.queuePendingCount;
+  const pending =
+    state.pendingCount + state.syncingCount + state.queuePendingCount + state.requestsPendingCount;
   const num = (value: number) => <span className="alterra-num">{value}</span>;
 
   if (state.isSyncing) {

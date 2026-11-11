@@ -341,12 +341,12 @@ model Pointage {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   clarifications    ClarificationRequest[]
+  // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) — index partiel créé
+  // à la main dans la migration pointage_active_slot_unique (Prisma ne supporte pas @@unique(... WHERE)).
 
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])
-  // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) — index partiel créé
-  // à la main dans la migration pointage_active_slot_unique (Prisma ne supporte pas @@unique(... WHERE)).
 }
 
 /// V2
@@ -483,6 +483,7 @@ model ActivityRequest {
   decisionReason       String?
   createdSubActivityId String?          @db.Uuid
   createdAt            DateTime         @default(now())
+  clientUuid           String?          @unique @db.Uuid // idempotence des envois hors ligne (PWA)
 
   @@index([status, createdAt])
 }
@@ -505,6 +506,7 @@ model WorkerRequest {
   decisionReason   String?
   createdWorkerId  String?       @db.Uuid
   createdAt        DateTime      @default(now())
+  clientUuid       String?       @unique @db.Uuid // idempotence des envois hors ligne (PWA)
 
   @@index([status, createdAt])
 }
@@ -524,6 +526,7 @@ model ClarificationRequest {
   answeredAt     DateTime?
   resolvedAt     DateTime?
   createdAt      DateTime            @default(now())
+  clientUuid     String?             @unique @db.Uuid // idempotence des envois hors ligne (PWA)
 
   @@index([pointageId])
   @@index([status, createdAt])

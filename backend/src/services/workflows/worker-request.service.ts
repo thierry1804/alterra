@@ -2,6 +2,7 @@ import { Prisma, RequestStatus, Role, Sexe, WorkerStatus } from "@prisma/client"
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
+import { createOnce } from "./idempotency.js";
 import { assertActivityCancelAllowed, assertActivityDecisionAllowed } from "./workflow-state.js";
 
 export interface ListWorkerRequestsInput {
@@ -19,6 +20,7 @@ export interface CreateWorkerRequestInput {
   proposedPhotoKey?: string;
   targetTeamId?: string;
   justification: string;
+  clientUuid?: string;
 }
 
 export interface WorkerDecisionInput {
@@ -97,20 +99,27 @@ export async function createWorkerRequest(
     throw new ApiError(403, "FORBIDDEN", "Équipe hors périmètre site");
   }
 
-  return prisma.workerRequest.create({
-    data: {
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      mvolaNumber: input.mvolaNumber.trim(),
-      cinNumber: input.cinNumber?.trim(),
-      sexe: input.sexe,
-      proposedPhotoKey: input.proposedPhotoKey,
-      targetTeamId: input.targetTeamId,
-      justification: input.justification.trim(),
-      requestedById: user.sub,
-      status: RequestStatus.PENDING,
-    },
-  });
+  return createOnce(
+    input.clientUuid,
+    user.sub,
+    (clientUuid) => prisma.workerRequest.findUnique({ where: { clientUuid } }),
+    () =>
+      prisma.workerRequest.create({
+        data: {
+          clientUuid: input.clientUuid,
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          mvolaNumber: input.mvolaNumber.trim(),
+          cinNumber: input.cinNumber?.trim(),
+          sexe: input.sexe,
+          proposedPhotoKey: input.proposedPhotoKey,
+          targetTeamId: input.targetTeamId,
+          justification: input.justification.trim(),
+          requestedById: user.sub,
+          status: RequestStatus.PENDING,
+        },
+      }),
+  );
 }
 
 export async function decideWorkerRequest(

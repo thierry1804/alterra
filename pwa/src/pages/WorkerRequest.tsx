@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { cachedFetch } from "../lib/offline-cache";
+import { newClientUuid, submitOrQueue } from "../lib/requests-outbox";
+import { useQueuedRequests } from "../hooks/useQueuedRequests";
+import QueuedRequestCard from "../components/requests/QueuedRequestCard";
 import type { TeamSummary } from "../lib/teams";
 import PhotoCapture from "../components/pointage/PhotoCapture";
 import Button from "../components/ui/Button";
@@ -12,7 +16,6 @@ import {
   fetchAllWorkerRequests,
   requestStatusClass,
   requestStatusLabel,
-  uploadWorkflowPhoto,
   workflowErrorMessage,
   type WorkerRequestRow,
 } from "../lib/workflows";
@@ -44,6 +47,8 @@ export default function WorkerRequest() {
   const [targetTeamId, setTargetTeamId] = useState("");
   const [justification, setJustification] = useState("");
   const [tab, setTab] = useState<"new" | "list">("new");
+  const [stale, setStale] = useState(false);
+  const queued = useQueuedRequests(["worker"]);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
 
@@ -51,12 +56,16 @@ export default function WorkerRequest() {
     setLoading(true);
     setError(null);
     try {
-      const [workerRequests, teamsResponse] = await Promise.all([
-        fetchAllWorkerRequests(),
-        api.get<{ data: TeamSummary[] }>("/teams", { params: { active: "true" } }),
-      ]);
-      setRequests(workerRequests);
-      setTeams(teamsResponse.data.data);
+      const { data, stale: isStale } = await cachedFetch("worker-requests", async () => {
+        const [workerRequests, teamsResponse] = await Promise.all([
+          fetchAllWorkerRequests(),
+          api.get<{ data: TeamSummary[] }>("/teams", { params: { active: "true" } }),
+        ]);
+        return { requests: workerRequests, teams: teamsResponse.data.data };
+      });
+      setRequests(data.requests);
+      setTeams(data.teams);
+      setStale(isStale);
     } catch (err) {
       setError(workflowErrorMessage(err, "Chargement des demandes échoué."));
     } finally {
@@ -66,6 +75,13 @@ export default function WorkerRequest() {
 
   useEffect(() => {
     void loadData();
+  }, [loadData]);
+
+  // Envoi automatique des demandes saisies hors ligne : on rafraîchit la liste à la reconnexion.
+  useEffect(() => {
+    const refresh = () => void loadData();
+    window.addEventListener("alterra:requests-synced", refresh);
+    return () => window.removeEventListener("alterra:requests-synced", refresh);
   }, [loadData]);
 
   function clearPhoto() {
@@ -81,20 +97,19 @@ export default function WorkerRequest() {
     setError(null);
     setMessage(null);
     try {
-      let proposedPhotoKey: string | undefined;
-      if (photoBlob) {
-        proposedPhotoKey = await uploadWorkflowPhoto(photoBlob, "/worker-requests/photo");
-      }
-
-      await api.post("/worker-requests", {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        mvolaNumber: mvolaNumber.trim(),
-        cinNumber: cinNumber.trim() || undefined,
-        sexe: sexe || undefined,
-        targetTeamId: targetTeamId || undefined,
-        justification: justification.trim(),
-        proposedPhotoKey,
+      const outcome = await submitOrQueue({
+        clientUuid: newClientUuid(),
+        kind: "worker",
+        photo: photoBlob ?? undefined,
+        payload: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          mvolaNumber: mvolaNumber.trim(),
+          cinNumber: cinNumber.trim() || undefined,
+          sexe: sexe || undefined,
+          targetTeamId: targetTeamId || undefined,
+          justification: justification.trim(),
+        },
       });
 
       setFirstName("");
@@ -105,7 +120,11 @@ export default function WorkerRequest() {
       setTargetTeamId("");
       setJustification("");
       clearPhoto();
-      setMessage("Demande envoyée à l'administrateur.");
+      setMessage(
+        outcome === "queued"
+          ? "Pas de réseau : demande enregistrée sur l'appareil, elle sera envoyée à la reconnexion."
+          : "Demande envoyée à l'administrateur.",
+      );
       setTab("list");
       await loadData();
     } catch (err) {
@@ -148,7 +167,7 @@ export default function WorkerRequest() {
           { value: "new", label: "Nouvelle" },
           {
             value: "list",
-            label: `Mes demandes${requests.length > 0 ? ` (${requests.length})` : ""}`,
+            label: `Mes demandes${requests.length + queued.length > 0 ? ` (${requests.length + queued.length})` : ""}`,
           },
         ]}
       />
@@ -161,6 +180,12 @@ export default function WorkerRequest() {
       {message && (
         <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
           {message}
+        </p>
+      )}
+
+      {stale && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Hors ligne : données du dernier chargement.
         </p>
       )}
 
@@ -311,7 +336,20 @@ export default function WorkerRequest() {
 
       {tab === "list" && (
         <section className="space-y-3">
-          {requests.length === 0 && (
+          {queued.map((record) => (
+            <QueuedRequestCard
+              key={record.clientUuid}
+              record={record}
+              title={`${String(record.payload.firstName)} ${String(record.payload.lastName)}`}
+            >
+              <p className="mt-1 text-xs text-zinc-500">
+                MVola {String(record.payload.mvolaNumber)} · {formatDate(record.createdAt)}
+              </p>
+              <p className="mt-3 text-sm text-zinc-700">{String(record.payload.justification)}</p>
+              {record.photo && <p className="mt-1 text-xs text-zinc-500">Photo jointe</p>}
+            </QueuedRequestCard>
+          ))}
+          {requests.length === 0 && queued.length === 0 && (
             <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
               <p>Aucune demande enregistrée.</p>
               <p className="mt-1 text-zinc-600">

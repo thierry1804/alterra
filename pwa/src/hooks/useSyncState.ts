@@ -12,6 +12,7 @@ export function useSyncState(): SyncState {
     rejectedCount: 0,
     mediaPendingCount: 0,
     queuePendingCount: 0,
+    requestsPendingCount: 0,
     lastSyncAt: null,
     lastSummary: null,
     recentLog: [],

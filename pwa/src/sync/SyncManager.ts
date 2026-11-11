@@ -9,6 +9,7 @@ import {
 import type { PointageSyncResult, SyncLogEntry, SyncRunResult, SyncState } from "./sync-types";
 import { syncPresenceLogs } from "./PresenceSync";
 import { syncPendingOfflineBiometricChecks } from "../lib/biometric";
+import { countPendingRequests, syncRequestsOutbox } from "../lib/requests-outbox";
 import { attachPointagePhoto, uploadPointagePhoto } from "../lib/pointage-photo";
 
 const BATCH_SIZE = 100;
@@ -161,6 +162,7 @@ async function buildSyncState(): Promise<SyncState> {
     rejectedCount,
     mediaPendingCount,
     queuePendingCount,
+    requestsPendingCount,
     lastSyncAt,
   ] = await Promise.all([
     db.pointages.where("status").equals("local").count(),
@@ -168,6 +170,7 @@ async function buildSyncState(): Promise<SyncState> {
     db.pointages.where("status").equals("rejected").count(),
     db.media.filter((media) => !media.uploaded).count(),
     db.syncQueue.where("status").equals("pending").count(),
+    countPendingRequests(),
     getSetting(SETTING_LAST_SYNC_AT),
   ]);
 
@@ -186,6 +189,7 @@ async function buildSyncState(): Promise<SyncState> {
     rejectedCount,
     mediaPendingCount,
     queuePendingCount,
+    requestsPendingCount,
     lastSyncAt: lastSyncAt ?? null,
     lastSummary,
     recentLog: cachedLog,
@@ -316,6 +320,15 @@ export async function syncNow(options?: { force?: boolean }): Promise<SyncRunRes
         "info",
         `Bio offline - ${bioTotals.synced} envoyé(s), ${bioTotals.rejected} rejeté(s)`,
       );
+    }
+
+    const requestTotals = await syncRequestsOutbox();
+    if (requestTotals.synced > 0 || requestTotals.rejected > 0) {
+      await appendLog(
+        requestTotals.rejected > 0 ? "warning" : "success",
+        `Demandes - ${requestTotals.synced} envoyée(s), ${requestTotals.rejected} refusée(s)`,
+      );
+      window.dispatchEvent(new Event("alterra:requests-synced"));
     }
   } finally {
     isSyncing = false;

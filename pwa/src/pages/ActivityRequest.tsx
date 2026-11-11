@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { fetchAllCursorPages } from "../lib/pagination";
+import { cachedFetch } from "../lib/offline-cache";
+import { newClientUuid, submitOrQueue } from "../lib/requests-outbox";
+import { useQueuedRequests } from "../hooks/useQueuedRequests";
+import QueuedRequestCard from "../components/requests/QueuedRequestCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
@@ -56,12 +60,16 @@ export default function ActivityRequest() {
   const [proposedRate, setProposedRate] = useState("");
   const [justification, setJustification] = useState("");
   const [tab, setTab] = useState<"new" | "list">("new");
+  const [stale, setStale] = useState(false);
+  const queued = useQueuedRequests(["activity"]);
 
   const loadRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setRequests(await fetchAllActivityRequests());
+      const result = await cachedFetch("activity-requests", () => fetchAllActivityRequests());
+      setRequests(result.data);
+      setStale(result.stale);
     } catch (err) {
       setError(workflowErrorMessage(err, "Chargement des demandes échoué."));
     } finally {
@@ -73,15 +81,24 @@ export default function ActivityRequest() {
     void loadRequests();
   }, [loadRequests]);
 
+  // Envoi automatique des demandes saisies hors ligne : on rafraîchit la liste à la reconnexion.
+  useEffect(() => {
+    const refresh = () => void loadRequests();
+    window.addEventListener("alterra:requests-synced", refresh);
+    return () => window.removeEventListener("alterra:requests-synced", refresh);
+  }, [loadRequests]);
+
   useEffect(() => {
     async function loadOptions() {
       try {
         const [categoriesRows, unitsRows] = await Promise.all([
-          fetchAllCursorPages<ActivityCategoryOption>("/activity-categories"),
-          fetchAllCursorPages<UnitOption>("/units"),
+          cachedFetch("activity-categories", () =>
+            fetchAllCursorPages<ActivityCategoryOption>("/activity-categories"),
+          ),
+          cachedFetch("units", () => fetchAllCursorPages<UnitOption>("/units")),
         ]);
-        setCategories(categoriesRows.filter((c) => c.active));
-        setUnits(unitsRows.filter((u) => u.active));
+        setCategories(categoriesRows.data.filter((c) => c.active));
+        setUnits(unitsRows.data.filter((u) => u.active));
       } catch (err) {
         setError(workflowErrorMessage(err, "Chargement des référentiels échoué."));
       }
@@ -108,19 +125,27 @@ export default function ActivityRequest() {
     setError(null);
     setMessage(null);
     try {
-      await api.post("/activity-requests", {
-        categoryId,
-        proposedLabel: proposedLabel.trim(),
-        unitId,
-        proposedRate: rate,
-        justification: justification.trim(),
+      const outcome = await submitOrQueue({
+        clientUuid: newClientUuid(),
+        kind: "activity",
+        payload: {
+          categoryId,
+          proposedLabel: proposedLabel.trim(),
+          unitId,
+          proposedRate: rate,
+          justification: justification.trim(),
+        },
       });
       setCategoryId("");
       setProposedLabel("");
       setUnitId("");
       setProposedRate("");
       setJustification("");
-      setMessage("Demande envoyée à l'administrateur.");
+      setMessage(
+        outcome === "queued"
+          ? "Pas de réseau : demande enregistrée sur l'appareil, elle sera envoyée à la reconnexion."
+          : "Demande envoyée à l'administrateur.",
+      );
       setTab("list");
       await loadRequests();
     } catch (err) {
@@ -163,7 +188,7 @@ export default function ActivityRequest() {
           { value: "new", label: "Nouvelle" },
           {
             value: "list",
-            label: `Mes demandes${requests.length > 0 ? ` (${requests.length})` : ""}`,
+            label: `Mes demandes${requests.length + queued.length > 0 ? ` (${requests.length + queued.length})` : ""}`,
           },
         ]}
       />
@@ -176,6 +201,12 @@ export default function ActivityRequest() {
       {message && (
         <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
           {message}
+        </p>
+      )}
+
+      {stale && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Hors ligne : données du dernier chargement.
         </p>
       )}
 
@@ -276,9 +307,22 @@ export default function ActivityRequest() {
 
       {tab === "list" && (
         <section className="space-y-3">
-          {requests.length === 0 && (
+          {requests.length === 0 && queued.length === 0 && (
             <p className="text-sm text-zinc-500">Aucune demande enregistrée.</p>
           )}
+          {queued.map((record) => (
+            <QueuedRequestCard
+              key={record.clientUuid}
+              record={record}
+              title={String(record.payload.proposedLabel ?? "")}
+            >
+              <p className="mt-1 text-xs text-zinc-500">
+                {Number(record.payload.proposedRate).toLocaleString("fr-MG")} Ar ·{" "}
+                {formatDate(record.createdAt)}
+              </p>
+              <p className="mt-3 text-sm text-zinc-700">{String(record.payload.justification)}</p>
+            </QueuedRequestCard>
+          ))}
           {requests.map((request) => (
             <article key={request.id} className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">

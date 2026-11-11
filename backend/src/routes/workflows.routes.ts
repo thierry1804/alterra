@@ -28,7 +28,10 @@ import {
   getClarificationRequest,
   listClarificationRequests,
 } from "../services/workflows/clarification-request.service.js";
-import { getPhotoStream, uploadWorkflowPhotoDirect } from "../services/storage/presigned-url.service.js";
+import {
+  getPhotoStream,
+  uploadWorkflowPhotoDirect,
+} from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 import {
@@ -61,6 +64,7 @@ const createActivitySchema = z.object({
   unitId: z.guid(),
   proposedRate: z.coerce.number().positive(),
   justification: z.string().min(10),
+  clientUuid: z.guid().optional(),
 });
 
 const createWorkerSchema = z.object({
@@ -72,6 +76,7 @@ const createWorkerSchema = z.object({
   proposedPhotoKey: z.string().optional(),
   targetTeamId: z.guid().optional(),
   justification: z.string().min(10),
+  clientUuid: z.guid().optional(),
 });
 
 const decisionSchema = z.object({
@@ -93,6 +98,7 @@ const createClarificationSchema = z.object({
   pointageId: z.guid(),
   question: z.string().min(10),
   requestedPhoto: z.boolean().optional(),
+  clientUuid: z.guid().optional(),
 });
 
 const answerClarificationSchema = z.object({

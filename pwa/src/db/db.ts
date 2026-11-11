@@ -65,6 +65,28 @@ export interface SyncQueueItem {
   createdAt: string;
 }
 
+export type RequestOutboxKind = "activity" | "worker" | "clarification" | "clarification-answer";
+export type RequestOutboxStatus = "pending" | "syncing" | "rejected";
+
+/** Demande (activité, travailleur, précision) saisie hors ligne, en attente d'envoi au serveur. */
+export interface RequestOutboxRecord {
+  clientUuid: string;
+  kind: RequestOutboxKind;
+  /** Auteur de la saisie : sur un téléphone partagé, seul lui peut l'envoyer (jeton de son compte). */
+  userId: string;
+  status: RequestOutboxStatus;
+  /** Corps JSON de la requête, sans `clientUuid` ni clé de photo. */
+  payload: Record<string, unknown>;
+  /** Id serveur ciblé (réponse à une demande de précisions). */
+  targetId?: string;
+  /** Photo à téléverser avant l'envoi (photo du travailleur, photo de réponse). */
+  photo?: Blob;
+  /** Clé de la photo une fois téléversée (évite un second téléversement en cas de reprise). */
+  photoKey?: string;
+  error?: string;
+  createdAt: string;
+}
+
 export interface SettingRecord {
   key: string;
   value: string;
@@ -126,6 +148,7 @@ class AlterraDB extends Dexie {
   presenceLog!: Table<PresenceLogRecord, string>;
   biometricTemplates!: Table<BiometricTemplateRecord, string>;
   biometricOfflineChecks!: Table<BiometricOfflineCheckRecord, string>;
+  requestsOutbox!: Table<RequestOutboxRecord, string>;
 
   constructor() {
     super("alterra");
@@ -192,6 +215,10 @@ class AlterraDB extends Dexie {
       biometricTemplates: "workerId, expiresAt, syncedAt",
       biometricOfflineChecks: "clientUuid, workerId, synced, performedAt",
     });
+
+    this.version(5).stores({
+      requestsOutbox: "clientUuid, kind, status, createdAt",
+    });
   }
 }
 
@@ -227,6 +254,7 @@ export async function purgeLocalData(): Promise<void> {
       db.presenceLog,
       db.biometricTemplates,
       db.biometricOfflineChecks,
+      db.settings,
     ],
     async () => {
       await Promise.all([
@@ -239,6 +267,8 @@ export async function purgeLocalData(): Promise<void> {
         db.media.filter((m) => m.uploaded).delete(),
         db.presenceLog.filter((r) => r.synced).delete(),
         db.biometricOfflineChecks.filter((c) => c.synced).delete(),
+        // Copies locales des listes de demandes et référentiels (voir lib/offline-cache.ts).
+        db.settings.filter((s) => s.key.startsWith("cache:")).delete(),
       ]);
     },
   );

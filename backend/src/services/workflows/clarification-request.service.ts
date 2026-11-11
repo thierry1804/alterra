@@ -2,6 +2,7 @@ import { ClarificationStatus, PointageStatus, Prisma, Role } from "@prisma/clien
 import type { AccessTokenPayload } from "../../lib/jwt.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
+import { createOnce } from "./idempotency.js";
 import {
   assertClarificationAnswerAllowed,
   assertClarificationCloseAllowed,
@@ -17,6 +18,7 @@ export interface CreateClarificationRequestInput {
   pointageId: string;
   question: string;
   requestedPhoto?: boolean;
+  clientUuid?: string;
 }
 
 export interface AnswerClarificationInput {
@@ -104,9 +106,19 @@ export async function createClarificationRequest(
 
   await assertPointageAccessible(user, input.pointageId);
 
+  return createOnce(
+    input.clientUuid,
+    user.sub,
+    (clientUuid) => prisma.clarificationRequest.findUnique({ where: { clientUuid } }),
+    () => createClarification(user, input),
+  );
+}
+
+function createClarification(user: AccessTokenPayload, input: CreateClarificationRequestInput) {
   return prisma.$transaction(async (tx) => {
     const created = await tx.clarificationRequest.create({
       data: {
+        clientUuid: input.clientUuid,
         pointageId: input.pointageId,
         question: input.question.trim(),
         requestedPhoto: input.requestedPhoto ?? false,
@@ -138,6 +150,14 @@ export async function answerClarificationRequest(
     include: { pointage: { include: { worker: true } } },
   });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande de précisions introuvable");
+  // Renvoi hors ligne d'une réponse déjà enregistrée (réponse HTTP perdue) : idempotent.
+  if (
+    request.status === ClarificationStatus.ANSWERED &&
+    request.answeredById === user.sub &&
+    request.answerText === input.answerText.trim()
+  ) {
+    return request;
+  }
   assertClarificationAnswerAllowed(request.status);
 
   if (user.role === Role.CHEF_EQUIPE && user.teamId !== request.pointage.worker.teamId) {

@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
+import { cachedFetch } from "../lib/offline-cache";
+import { newClientUuid, submitOrQueue, discardQueuedRequest } from "../lib/requests-outbox";
+import { useQueuedRequests } from "../hooks/useQueuedRequests";
+import QueuedRequestCard from "../components/requests/QueuedRequestCard";
 import type { ActivitySummary, Pointage, WorkerSummary } from "../lib/pointages";
 import PhotoCapture from "../components/pointage/PhotoCapture";
 import ClarificationAnswerPhotoViewer from "../components/clarification/ClarificationAnswerPhotoViewer";
@@ -16,7 +20,6 @@ import {
   clarificationStatusClass,
   clarificationStatusLabel,
   fetchAllClarificationRequests,
-  uploadWorkflowPhoto,
   workflowErrorMessage,
   type ClarificationRequestRow,
 } from "../lib/workflows";
@@ -91,6 +94,10 @@ export default function ClarificationRequest() {
   const [requestedPhoto, setRequestedPhoto] = useState(false);
   const [creating, setCreating] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [stale, setStale] = useState(false);
+  const queued = useQueuedRequests(["clarification", "clarification-answer"]);
+  const queuedCreations = queued.filter((record) => record.kind === "clarification");
+  const queuedAnswers = queued.filter((record) => record.kind === "clarification-answer");
 
   const [answerDrafts, setAnswerDrafts] = useState<
     Record<string, { text: string; previewUrl: string | null; blob: Blob | null }>
@@ -100,24 +107,35 @@ export default function ClarificationRequest() {
     setLoading(true);
     setError(null);
     try {
-      const clarifications = await fetchAllClarificationRequests();
-      setRequests(clarifications);
+      const { data, stale: isStale } = await cachedFetch(
+        `clarifications:${isCds ? "cds" : "cde"}`,
+        async () => {
+          const clarifications = await fetchAllClarificationRequests();
+          if (!isCds) {
+            return {
+              clarifications,
+              pending: [] as Pointage[],
+              workers: [] as WorkerSummary[],
+              activities: [] as ActivitySummary[],
+            };
+          }
 
-      if (isCds) {
-        const pending = await fetchPendingPointages();
-        setPendingPointages(pending);
-
-        const workerIds = [...new Set(pending.map((pointage) => pointage.workerId))];
-        const workers = await Promise.all(
-          workerIds.map((id) =>
-            api.get<WorkerSummary>(`/workers/${id}`).then((response) => response.data),
-          ),
-        );
-        setWorkersMap(new Map(workers.map((worker) => [worker.id, worker])));
-
-        const activities = await fetchAllActiveSubActivities();
-        setActivitiesMap(new Map(activities.map((activity) => [activity.id, activity])));
-      }
+          const pending = await fetchPendingPointages();
+          const workerIds = [...new Set(pending.map((pointage) => pointage.workerId))];
+          const workers = await Promise.all(
+            workerIds.map((id) =>
+              api.get<WorkerSummary>(`/workers/${id}`).then((response) => response.data),
+            ),
+          );
+          const activities = await fetchAllActiveSubActivities();
+          return { clarifications, pending, workers, activities };
+        },
+      );
+      setRequests(data.clarifications);
+      setPendingPointages(data.pending);
+      setWorkersMap(new Map(data.workers.map((worker) => [worker.id, worker])));
+      setActivitiesMap(new Map(data.activities.map((activity) => [activity.id, activity])));
+      setStale(isStale);
     } catch (err) {
       setError(workflowErrorMessage(err, "Chargement des demandes échoué."));
     } finally {
@@ -127,6 +145,13 @@ export default function ClarificationRequest() {
 
   useEffect(() => {
     void loadData();
+  }, [loadData]);
+
+  // Envoi automatique des demandes et réponses saisies hors ligne : on rafraîchit à la reconnexion.
+  useEffect(() => {
+    const refresh = () => void loadData();
+    window.addEventListener("alterra:requests-synced", refresh);
+    return () => window.removeEventListener("alterra:requests-synced", refresh);
   }, [loadData]);
 
   useEffect(() => {
@@ -140,16 +165,19 @@ export default function ClarificationRequest() {
   }, [isCde, requests]);
 
   const pointageOptions = useMemo(() => {
-    return pendingPointages.map((pointage) => {
-      const worker = workersMap.get(pointage.workerId);
-      const activity = activitiesMap.get(pointage.subActivityId);
-      const label =
-        worker && activity
-          ? `${worker.lastName} ${worker.firstName} · ${activity.label} · ${pointage.date}`
-          : `${pointage.id.slice(0, 8)} · ${pointage.date}`;
-      return { id: pointage.id, label };
-    });
-  }, [pendingPointages, workersMap, activitiesMap]);
+    const alreadyAsked = new Set(queuedCreations.map((record) => record.payload.pointageId));
+    return pendingPointages
+      .filter((pointage) => !alreadyAsked.has(pointage.id))
+      .map((pointage) => {
+        const worker = workersMap.get(pointage.workerId);
+        const activity = activitiesMap.get(pointage.subActivityId);
+        const label =
+          worker && activity
+            ? `${worker.lastName} ${worker.firstName} · ${activity.label} · ${pointage.date}`
+            : `${pointage.id.slice(0, 8)} · ${pointage.date}`;
+        return { id: pointage.id, label };
+      });
+  }, [pendingPointages, workersMap, activitiesMap, queuedCreations]);
 
   async function handleCreate() {
     if (!selectedPointageId || question.trim().length < 10) return;
@@ -157,15 +185,19 @@ export default function ClarificationRequest() {
     setError(null);
     setMessage(null);
     try {
-      await api.post("/clarification-requests", {
-        pointageId: selectedPointageId,
-        question: question.trim(),
-        requestedPhoto,
+      const outcome = await submitOrQueue({
+        clientUuid: newClientUuid(),
+        kind: "clarification",
+        payload: { pointageId: selectedPointageId, question: question.trim(), requestedPhoto },
       });
       setQuestion("");
       setRequestedPhoto(false);
       setSelectedPointageId("");
-      setMessage("Demande envoyée au chef d'équipe.");
+      setMessage(
+        outcome === "queued"
+          ? "Pas de réseau : demande enregistrée sur l'appareil, elle sera envoyée à la reconnexion."
+          : "Demande envoyée au chef d'équipe.",
+      );
       setComposeOpen(false);
       await loadData();
     } catch (err) {
@@ -187,20 +219,23 @@ export default function ClarificationRequest() {
     setError(null);
     setMessage(null);
     try {
-      let answerPhotoKey: string | undefined;
-      if (request.requestedPhoto) {
-        if (!draft?.blob) {
-          setError("Une photo est requise pour cette demande.");
-          return;
-        }
-        answerPhotoKey = await uploadWorkflowPhoto(draft.blob, "/clarification-requests/photo");
+      if (request.requestedPhoto && !draft?.blob) {
+        setError("Une photo est requise pour cette demande.");
+        return;
       }
 
-      await api.patch(`/clarification-requests/${request.id}/answer`, {
-        answerText,
-        answerPhotoKey,
+      const outcome = await submitOrQueue({
+        clientUuid: newClientUuid(),
+        kind: "clarification-answer",
+        targetId: request.id,
+        photo: request.requestedPhoto ? (draft?.blob ?? undefined) : undefined,
+        payload: { answerText },
       });
-      setMessage("Réponse envoyée.");
+      setMessage(
+        outcome === "queued"
+          ? "Pas de réseau : réponse enregistrée sur l'appareil, elle sera envoyée à la reconnexion."
+          : "Réponse envoyée.",
+      );
       setAnswerDrafts((current) => {
         const next = { ...current };
         delete next[request.id];
@@ -272,6 +307,18 @@ export default function ClarificationRequest() {
         </p>
       )}
 
+      {stale && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Hors ligne : données du dernier chargement.
+        </p>
+      )}
+
+      {queuedCreations.map((record) => (
+        <QueuedRequestCard key={record.clientUuid} record={record} title="Précision demandée">
+          <p className="mt-3 text-sm text-zinc-800">{String(record.payload.question)}</p>
+        </QueuedRequestCard>
+      ))}
+
       {isCds && composeOpen && (
         <section className="rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="flex items-center justify-between">
@@ -337,7 +384,7 @@ export default function ClarificationRequest() {
         </section>
       )}
 
-      {visibleRequests.length === 0 && (
+      {visibleRequests.length === 0 && queuedCreations.length === 0 && (
         <EmptyHint>{isCde ? "Aucune demande ouverte." : "Aucune demande de précisions."}</EmptyHint>
       )}
 
@@ -345,6 +392,7 @@ export default function ClarificationRequest() {
         {visibleRequests.map((request) => {
           const draft = answerDrafts[request.id];
           const busy = busyId === request.id;
+          const queuedAnswer = queuedAnswers.find((record) => record.targetId === request.id);
           return (
             <article key={request.id} className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
@@ -380,7 +428,31 @@ export default function ClarificationRequest() {
                 </div>
               )}
 
-              {isCde && request.status === "OPEN" && (
+              {isCde && request.status === "OPEN" && queuedAnswer && (
+                <div className="mt-3 space-y-2 border-t border-zinc-200 pt-3">
+                  <p className="text-xs font-medium text-zinc-600">Votre réponse</p>
+                  <p className="text-sm text-zinc-800">{String(queuedAnswer.payload.answerText)}</p>
+                  {queuedAnswer.status === "rejected" ? (
+                    <p className="text-xs text-red-700">
+                      Refusée : {queuedAnswer.error ?? "Refusée par le serveur"}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-700">
+                      En attente d&apos;envoi - enregistrée sur cet appareil.
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void discardQueuedRequest(queuedAnswer.clientUuid)}
+                  >
+                    {queuedAnswer.status === "rejected" ? "Écrire une autre réponse" : "Supprimer"}
+                  </Button>
+                </div>
+              )}
+
+              {isCde && request.status === "OPEN" && !queuedAnswer && (
                 <div className="mt-3 space-y-3 border-t border-zinc-200 pt-3">
                   <div>
                     <label

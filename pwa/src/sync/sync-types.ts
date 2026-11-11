@@ -23,6 +23,7 @@ export interface SyncState {
   rejectedCount: number;
   mediaPendingCount: number;
   queuePendingCount: number;
+  requestsPendingCount: number;
   lastSyncAt: string | null;
   lastSummary: string | null;
   recentLog: SyncLogEntry[];
