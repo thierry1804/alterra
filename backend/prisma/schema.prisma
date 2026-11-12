@@ -341,8 +341,9 @@ model Pointage {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   clarifications    ClarificationRequest[]
-  // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) — index partiel créé
-  // à la main dans la migration pointage_active_slot_unique (Prisma ne supporte pas @@unique(... WHERE)).
+  // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) et, depuis le 2026-11-13, par
+  // (workerId, date) : index partiels créés à la main dans les migrations pointage_active_slot_unique et
+  // pointage_one_active_per_worker_day (Prisma ne supporte pas @@unique(... WHERE)).
 
   @@index([workerId, date])
   @@index([status, date])

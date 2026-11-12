@@ -66,6 +66,9 @@ vi.mock("../lib/prisma.js", () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    worker: {
+      findUnique: vi.fn(),
+    },
     biometricCheck: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -127,6 +130,11 @@ describe("Pointages", () => {
       mockActivity as never,
     );
     vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
+    vi.mocked(prisma.worker.findUnique).mockResolvedValue({
+      teamId: MOCK_TEAM_ID,
+      siteId: MOCK_SITE_ID,
+    } as never);
+    vi.mocked(prisma.pointage.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
     );
@@ -145,6 +153,66 @@ describe("Pointages", () => {
         },
       ],
     };
+
+    it("rejects a pointage dated more than 3 days before the entry day", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send({ batch: [{ ...syncPayload.batch[0], date: "2026-07-10" }] });
+
+      expect(res.status).toBe(200);
+      expect(res.body.results[0].status).toBe("rejected");
+      expect(res.body.results[0].reason).toMatch(/3 jours/);
+      expect(prisma.pointage.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a pointage dated in the future", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send({ batch: [{ ...syncPayload.batch[0], date: "2026-07-20" }] });
+
+      expect(res.body.results[0].status).toBe("rejected");
+      expect(res.body.results[0].reason).toMatch(/futur/);
+    });
+
+    it("rejects a second activity for the same worker on the same day", async () => {
+      vi.mocked(prisma.pointage.findFirst).mockResolvedValue({
+        id: "other",
+        subActivityId: "11111111-1111-4111-8111-111111111111",
+        subActivity: { label: "Fauchage" },
+      } as never);
+
+      const res = await request(createApp())
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results[0]).toMatchObject({ status: "rejected" });
+      expect(res.body.results[0].reason).toContain("une seule activité par jour");
+      expect(prisma.pointage.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a worker who belongs to another team than the chef d'équipe", async () => {
+      vi.mocked(prisma.worker.findUnique).mockResolvedValue({
+        teamId: "22222222-2222-4222-8222-222222222222",
+        siteId: MOCK_SITE_ID,
+      } as never);
+
+      const res = await request(createApp())
+        .post("/api/v1/pointages/sync")
+        .set("Authorization", cdeAuthHeader())
+        .send(syncPayload);
+
+      expect(res.body.results[0]).toMatchObject({
+        status: "rejected",
+        reason: "Ce travailleur n'appartient pas à votre équipe",
+      });
+      expect(prisma.pointage.create).not.toHaveBeenCalled();
+    });
 
     it("returns already_exists on duplicate clientUuid", async () => {
       vi.mocked(prisma.pointage.create).mockRejectedValue(
@@ -192,7 +260,7 @@ describe("Pointages", () => {
         {
           clientUuid: MOCK_CLIENT_UUID,
           status: "rejected",
-          reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+          reason: expect.stringContaining("déjà pointé ce jour-là"),
         },
       ]);
       expect(prisma.pointage.findUnique).not.toHaveBeenCalled();
@@ -497,7 +565,6 @@ describe("Pointages", () => {
         expect.objectContaining({
           where: expect.objectContaining({
             workerId: rejectedPointage.workerId,
-            subActivityId: rejectedPointage.subActivityId,
             date: rejectedPointage.date,
             status: { not: "REJECTED" },
             id: { not: MOCK_POINTAGE_ID },

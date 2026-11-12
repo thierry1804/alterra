@@ -135,6 +135,28 @@ export default function BatchEntry() {
         return;
       }
 
+      // Règle : un travailleur n'a qu'un pointage par jour (une seule équipe, une seule activité).
+      // Contrôle local pour prévenir dès la saisie, y compris hors ligne ; le serveur reste l'arbitre.
+      const alreadyPointed: string[] = [];
+      for (const { worker } of entries) {
+        const sameDay = (p: { date: string }) => p.date === session.date;
+        const [local, synced] = await Promise.all([
+          db.pointages
+            .where("workerId")
+            .equals(worker.id)
+            .filter((p) => sameDay(p) && p.status !== "rejected")
+            .count(),
+          db.pointings_synced.where("workerId").equals(worker.id).filter(sameDay).count(),
+        ]);
+        if (local + synced > 0) alreadyPointed.push(`${worker.lastName} ${worker.firstName}`);
+      }
+      if (alreadyPointed.length > 0) {
+        setError(
+          `Déjà pointé ce jour-là : ${alreadyPointed.join(", ")}. Un travailleur ne peut avoir qu'une seule activité par jour.`,
+        );
+        return;
+      }
+
       const nowIso = new Date().toISOString();
 
       const pendingSync: PointagePending[] = [];

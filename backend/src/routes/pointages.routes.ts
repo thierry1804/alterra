@@ -110,7 +110,12 @@ pointagesRouter.post(
   async (req, res, next) => {
     try {
       const { batch } = req.body as z.infer<typeof syncBatchSchema>;
-      const results = await syncPointageBatch(batch, req.user!.sub);
+      const results = await syncPointageBatch(batch, {
+        id: req.user!.sub,
+        role: req.user!.role,
+        teamId: req.user!.teamId,
+        siteId: req.user!.siteId,
+      });
       res.json({ results });
     } catch (err) {
       next(err);

@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getRequestContext } from "../../middleware/prisma-rls.js";
+import { DAY_RULE_DB_ERROR, dayConflictMessage, findDayConflict, type Db } from "./day-rule.js";
 
 export interface PointageEditInput {
   quantity?: number;
@@ -82,6 +83,30 @@ async function writeEditAudit(params: {
   });
 }
 
+/** Refuse une édition qui ferait cohabiter deux pointages actifs du même travailleur le même jour. */
+async function assertNoDayConflict(
+  tx: Db,
+  before: Pointage,
+  updateData: Record<string, unknown>,
+  id: string,
+): Promise<void> {
+  const conflict = await findDayConflict(tx, {
+    workerId: before.workerId,
+    date: (updateData.date as Date | undefined) ?? before.date,
+    excludeId: id,
+  });
+  if (conflict) {
+    throw new ApiError(
+      409,
+      "DUPLICATE_SLOT",
+      dayConflictMessage(
+        conflict,
+        (updateData.subActivityId as string | undefined) ?? before.subActivityId,
+      ),
+    );
+  }
+}
+
 export interface CorrectPointageInput extends PointageEditInput {
   correctionReason: string;
 }
@@ -115,6 +140,7 @@ export async function correctPointage(
 
   try {
     return await prisma.$transaction(async (tx) => {
+      await assertNoDayConflict(tx, before, updateData, id);
       const after = await tx.pointage.update({ where: { id }, data: updateData });
       await writeEditAudit({
         action: "CORRECT",
@@ -130,11 +156,7 @@ export async function correctPointage(
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new ApiError(
-        409,
-        "DUPLICATE_SLOT",
-        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
-      );
+      throw new ApiError(409, "DUPLICATE_SLOT", DAY_RULE_DB_ERROR);
     }
     throw err;
   }
@@ -149,7 +171,11 @@ export async function attachPointagePhoto(id: string, userId: string, photoKey: 
   const before = await prisma.pointage.findUniqueOrThrow({ where: { id } });
 
   if (before.enteredById !== userId) {
-    throw new ApiError(403, "FORBIDDEN", "Vous ne pouvez rattacher une photo qu'à votre propre saisie");
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Vous ne pouvez rattacher une photo qu'à votre propre saisie",
+    );
   }
   if (before.status === "VALIDATED") {
     throw new ApiError(
@@ -205,23 +231,7 @@ export async function resubmitPointage(
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const conflicting = await tx.pointage.findFirst({
-        where: {
-          workerId: before.workerId,
-          subActivityId: (updateData.subActivityId as string | undefined) ?? before.subActivityId,
-          date: (updateData.date as Date | undefined) ?? before.date,
-          status: { not: "REJECTED" },
-          id: { not: id },
-        },
-        select: { id: true },
-      });
-      if (conflicting) {
-        throw new ApiError(
-          409,
-          "DUPLICATE_SLOT",
-          "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
-        );
-      }
+      await assertNoDayConflict(tx, before, updateData, id);
 
       const after = await tx.pointage.update({ where: { id }, data: updateData });
       await writeEditAudit({
@@ -238,11 +248,7 @@ export async function resubmitPointage(
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new ApiError(
-        409,
-        "DUPLICATE_SLOT",
-        "Un autre pointage actif existe déjà pour ce travailleur, cette activité et ce jour",
-      );
+      throw new ApiError(409, "DUPLICATE_SLOT", DAY_RULE_DB_ERROR);
     }
     throw err;
   }

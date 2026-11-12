@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { DAY_RULE_DB_ERROR, dayConflictMessage, findDayConflict } from "./day-rule.js";
 
 export interface SyncPointageItem {
   clientUuid: string;
@@ -28,6 +30,36 @@ const TRANSIENT_PRISMA_CODES = new Set([
   "P2028", // Transaction API error
 ]);
 
+/** Rattrapage max : jour de saisie + 3 jours précédents (même règle que la PWA). */
+const MAX_BACKDATE_DAYS = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function utcDay(d: Date): number {
+  return Math.floor(d.getTime() / DAY_MS);
+}
+
+/**
+ * Valide la date d'un pointage par rapport au moment de saisie sur l'appareil (createdByClientAt),
+ * pas à l'heure serveur : un lot saisi hors ligne puis synchronisé des jours plus tard reste valide.
+ * Retourne le motif de rejet, ou null si la date est acceptable. La date ne peut pas non plus
+ * dépasser demain côté serveur (tolérance fuseau), ce qui bloque un horodatage client falsifié.
+ */
+export function pointageDateRejection(
+  date: Date,
+  createdByClientAt: Date,
+  now: Date = new Date(),
+): string | null {
+  const day = utcDay(date);
+  const entryDay = utcDay(createdByClientAt);
+  if (day > entryDay + 1 || day > utcDay(now) + 1) {
+    return "La date du pointage ne peut pas être dans le futur";
+  }
+  if (day < entryDay - MAX_BACKDATE_DAYS) {
+    return `La date du pointage ne peut pas remonter à plus de ${MAX_BACKDATE_DAYS} jours`;
+  }
+  return null;
+}
+
 function isTransientError(err: unknown): boolean {
   if (err instanceof Prisma.PrismaClientInitializationError) return true;
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -43,31 +75,70 @@ export interface SyncPointageResult {
   reason?: string;
 }
 
+/** Acteur de la synchronisation, pour contrôler que les travailleurs pointés sont dans son périmètre. */
+export interface SyncActor {
+  id: string;
+  role: Role;
+  teamId?: string | null;
+  siteId?: string | null;
+}
+
 export async function syncPointageBatch(
   batch: SyncPointageItem[],
-  enteredById: string,
+  actor: SyncActor,
 ): Promise<SyncPointageResult[]> {
+  const enteredById = actor.id;
   const results: SyncPointageResult[] = [];
 
   for (const item of batch) {
     try {
-      // Même travailleur, même activité, même jour : un seul pointage actif à la fois — sinon
-      // double comptage au paiement. Un REJECTED ne compte pas (sa réparation passe par /resubmit).
-      const duplicate = await prisma.pointage.findFirst({
-        where: {
-          workerId: item.workerId,
-          subActivityId: item.subActivityId,
-          date: item.date,
-          status: { not: "REJECTED" },
-          clientUuid: { not: item.clientUuid },
-        },
-        select: { id: true },
+      const dateRejection = pointageDateRejection(item.date, item.createdByClientAt);
+      if (dateRejection) {
+        results.push({ clientUuid: item.clientUuid, status: "rejected", reason: dateRejection });
+        continue;
+      }
+
+      // Périmètre : un chef d'équipe ne pointe que sa propre équipe, un chef de service que son site.
+      const worker = await prisma.worker.findUnique({
+        where: { id: item.workerId },
+        select: { teamId: true, siteId: true },
       });
-      if (duplicate) {
+      if (!worker) {
         results.push({
           clientUuid: item.clientUuid,
           status: "rejected",
-          reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+          reason: "Travailleur introuvable",
+        });
+        continue;
+      }
+      if (
+        (actor.role === Role.CHEF_EQUIPE && worker.teamId !== actor.teamId) ||
+        (actor.role === Role.CHEF_SERVICE && worker.siteId !== actor.siteId)
+      ) {
+        results.push({
+          clientUuid: item.clientUuid,
+          status: "rejected",
+          reason:
+            actor.role === Role.CHEF_EQUIPE
+              ? "Ce travailleur n'appartient pas à votre équipe"
+              : "Ce travailleur n'appartient pas à votre site",
+        });
+        continue;
+      }
+
+      // Un seul pointage actif par travailleur et par jour (donc une seule équipe et une seule
+      // activité) — sinon double comptage au paiement. Un REJECTED ne compte pas (sa réparation
+      // passe par /resubmit).
+      const conflict = await findDayConflict(prisma, {
+        workerId: item.workerId,
+        date: item.date,
+        excludeClientUuid: item.clientUuid,
+      });
+      if (conflict) {
+        results.push({
+          clientUuid: item.clientUuid,
+          status: "rejected",
+          reason: dayConflictMessage(conflict, item.subActivityId),
         });
         continue;
       }
@@ -110,12 +181,12 @@ export async function syncPointageBatch(
             id: existing?.id,
           });
         } else {
-          // Course gagnée par une autre requête concurrente sur le même (worker, sous-activité, jour) :
-          // le findFirst ci-dessus les avait tous les deux laissés passer, l'index partiel tranche.
+          // Course gagnée par une autre requête concurrente sur le même (travailleur, jour) : le
+          // contrôle ci-dessus les avait tous les deux laissés passer, l'index partiel tranche.
           results.push({
             clientUuid: item.clientUuid,
             status: "rejected",
-            reason: "Ce travailleur a déjà un pointage pour cette activité ce jour-là",
+            reason: DAY_RULE_DB_ERROR,
           });
         }
       } else if (isTransientError(err)) {
