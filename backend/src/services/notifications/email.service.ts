@@ -1,4 +1,3 @@
-import { Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { logger } from "../../lib/logger.js";
 
@@ -13,7 +12,11 @@ export interface WeeklyReportEmailInput {
 async function listAdminEmails(): Promise<string[]> {
   const admins = await prisma.user.findMany({
     where: {
-      role: Role.ADMIN,
+      accessRole: {
+        groups: {
+          some: { group: { permissions: { some: { permissionKey: "facture:lecture" } } } },
+        },
+      },
       deletedAt: null,
       email: { not: null },
     },

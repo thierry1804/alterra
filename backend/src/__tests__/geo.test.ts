@@ -1,9 +1,10 @@
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
@@ -63,7 +64,7 @@ import { prisma } from "../lib/prisma.js";
 function adminToken() {
   return signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: null,
     teamId: null,
   });

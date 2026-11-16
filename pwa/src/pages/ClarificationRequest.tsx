@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { hasPermission } from "../lib/permissions";
 import { api } from "../lib/api";
 import { cachedFetch } from "../lib/offline-cache";
 import { newClientUuid, submitOrQueue, discardQueuedRequest } from "../lib/requests-outbox";
@@ -75,8 +76,8 @@ function formatDate(value: string): string {
 export default function ClarificationRequest() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const isCds = user?.role === "CHEF_SERVICE" || user?.role === "ADMIN";
-  const isCde = user?.role === "CHEF_EQUIPE";
+  const isCds = hasPermission(user, "precision:creer");
+  const isCde = hasPermission(user, "precision:repondre") && !isCds;
 
   const [requests, setRequests] = useState<ClarificationRequestRow[]>([]);
   const [pendingPointages, setPendingPointages] = useState<Pointage[]>([]);

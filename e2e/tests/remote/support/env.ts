@@ -41,3 +41,9 @@ export function realCredentials(role: RealRole): { email: string; password: stri
 export function usersPassword(): string {
   return requireEnv("ALTERRA_USERS_PASSWORD");
 }
+
+export const ROLE_IDS = {
+  ADMIN: "00000000-0000-0000-000b-000000000001",
+  CHEF_SERVICE: "00000000-0000-0000-000b-000000000002",
+  CHEF_EQUIPE: "00000000-0000-0000-000b-000000000003",
+} as const;

@@ -1,7 +1,7 @@
-import { Role } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { basePrisma, prisma } from "../lib/prisma.js";
 import { mergeUniqueWhere, runWithRequestContext } from "../middleware/prisma-rls.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 // Les requêtes Prisma sont paresseuses : elles doivent être attendues DANS le contexte de requête,
 // sinon la portée (AsyncLocalStorage) est perdue et le test ne prouve rien.
@@ -44,10 +44,15 @@ describe("mergeUniqueWhere", () => {
 describe("lectures par clé unique avec portée (base réelle, lecture seule)", () => {
   it("CHEF_SERVICE : findUniqueOrThrow sur son propre compte et sur un pointage de son site", async () => {
     const cds = await basePrisma.user.findFirst({
-      where: { role: Role.CHEF_SERVICE, active: true, deletedAt: null, siteId: { not: null } },
+      where: {
+        accessRoleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
+        active: true,
+        deletedAt: null,
+        siteId: { not: null },
+      },
     });
     if (!cds?.siteId) return;
-    const ctx = { userId: cds.id, role: Role.CHEF_SERVICE, siteId: cds.siteId, teamId: cds.teamId };
+    const ctx = { userId: cds.id, scope: "SITE" as const, siteId: cds.siteId, teamId: cds.teamId };
 
     const me = await scoped(
       ctx,
@@ -85,10 +90,20 @@ describe("lectures par clé unique avec portée (base réelle, lecture seule)", 
 
   it("CHEF_EQUIPE : findUniqueOrThrow sur son propre compte et sur une équipe", async () => {
     const cde = await basePrisma.user.findFirst({
-      where: { role: Role.CHEF_EQUIPE, active: true, deletedAt: null, teamId: { not: null } },
+      where: {
+        accessRoleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
+        active: true,
+        deletedAt: null,
+        teamId: { not: null },
+      },
     });
     if (!cde?.teamId) return;
-    const ctx = { userId: cde.id, role: Role.CHEF_EQUIPE, siteId: cde.siteId, teamId: cde.teamId };
+    const ctx = {
+      userId: cde.id,
+      scope: "EQUIPE" as const,
+      siteId: cde.siteId,
+      teamId: cde.teamId,
+    };
 
     const me = await scoped(
       ctx,

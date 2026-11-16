@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
+import { hasPermission } from "../lib/permissions";
 import { fetchMyPointages } from "../lib/pointages";
 import { isSocketConnected } from "../lib/socket";
 
@@ -14,7 +15,7 @@ export function useRejectedCount(): number {
   const [count, setCount] = useState(0);
 
   const refresh = useCallback(async () => {
-    if (!user || user.role !== "CHEF_EQUIPE") {
+    if (!user || user.scope !== "EQUIPE" || !hasPermission(user, "pointage:saisie")) {
       setCount(0);
       return;
     }

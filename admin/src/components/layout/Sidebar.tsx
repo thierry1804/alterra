@@ -15,7 +15,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user } = useAuth();
   const { appName, iconUrl } = useAppSettings();
   const counts = useNavCounts();
-  const sections = navItemsBySection(user?.role);
+  const sections = navItemsBySection(user);
   const showSections = !collapsed && sections.size > 1;
 
   return (

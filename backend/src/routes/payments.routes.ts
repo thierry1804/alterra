@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { PaymentCycle, PaymentStatus, Role } from "@prisma/client";
+import { PaymentCycle, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
-import { exportMvolaPayments, regenerateMvolaExport } from "../services/payments/mvola-export.service.js";
+import {
+  exportMvolaPayments,
+  regenerateMvolaExport,
+} from "../services/payments/mvola-export.service.js";
 import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
 import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
 import {
@@ -77,7 +80,7 @@ const correctPaymentSchema = z.object({
 paymentsRouter.get(
   "/payments",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:lecture"),
   validate(listPaymentsQuery, "query"),
   async (req, res, next) => {
     try {
@@ -93,7 +96,7 @@ paymentsRouter.get(
 paymentsRouter.patch(
   "/payments/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:correction"),
   validate(paymentIdParams, "params"),
   validate(correctPaymentSchema),
   async (req, res, next) => {
@@ -110,7 +113,7 @@ paymentsRouter.patch(
 paymentsRouter.patch(
   "/payments/:id/fail",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:correction"),
   validate(paymentIdParams, "params"),
   validate(failPaymentSchema),
   async (req, res, next) => {
@@ -133,7 +136,7 @@ paymentsRouter.patch(
 paymentsRouter.get(
   "/payments/exports",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:lecture"),
   validate(exportsListQuery, "query"),
   async (req, res, next) => {
     try {
@@ -148,7 +151,7 @@ paymentsRouter.get(
 paymentsRouter.get(
   "/payments/exports/:id/download",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:export"),
   validate(z.object({ id: z.guid() }), "params"),
   async (req, res, next) => {
     try {
@@ -172,7 +175,7 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/payments/generate",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:generation"),
   validate(generateSchema),
   async (req, res, next) => {
     try {
@@ -188,7 +191,7 @@ paymentsRouter.post(
 paymentsRouter.delete(
   "/payments/:period",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:suppression"),
   validate(periodParams, "params"),
   validate(exportQuerySchema, "query"),
   async (req, res, next) => {
@@ -214,7 +217,7 @@ paymentsRouter.delete(
 paymentsRouter.get(
   "/payments/:period/export",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:export"),
   validate(periodParams, "params"),
   validate(exportQuerySchema, "query"),
   async (req, res, next) => {
@@ -248,7 +251,7 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/payments/:period/regenerate-export",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:export"),
   validate(periodParams, "params"),
   validate(exportQuerySchema, "query"),
   async (req, res, next) => {
@@ -281,7 +284,7 @@ paymentsRouter.post(
 paymentsRouter.post(
   "/payments/import-status/columns",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:import_statut"),
   validate(importStatusColumnsSchema),
   async (req, res, next) => {
     try {
@@ -300,7 +303,7 @@ paymentsRouter.post(
 paymentsRouter.post(
   "/payments/import-status",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("paiement:import_statut"),
   validate(importStatusSchema),
   async (req, res, next) => {
     try {

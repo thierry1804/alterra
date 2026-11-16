@@ -1,4 +1,4 @@
-import { NotificationType, Role, type Notification, type Prisma } from "@prisma/client";
+import { NotificationType, type Notification, type Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -116,7 +116,7 @@ export async function createAndDispatchMany(
 export async function findChefEquipeIdsByTeam(teamId: string): Promise<string[]> {
   const users = await prisma.user.findMany({
     where: {
-      role: Role.CHEF_EQUIPE,
+      accessRole: { scope: "EQUIPE" },
       teamId,
       active: true,
       deletedAt: null,

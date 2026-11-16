@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
+
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { AUDIT_SORT_FIELDS, listAuditLogs } from "../services/audit/list.service.js";
 
@@ -29,7 +29,7 @@ const auditQuerySchema = z.object({
 auditRouter.get(
   "/audit-log",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("audit:lecture"),
   validate(auditQuerySchema, "query"),
   async (req, res, next) => {
     try {

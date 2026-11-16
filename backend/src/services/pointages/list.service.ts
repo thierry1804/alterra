@@ -58,7 +58,7 @@ export interface PointageListItem {
   bioCheck: PointageBioCheckSummary | null;
   /** MOC concerné : évite au client d'appeler GET /workers/:id pour chaque ligne. */
   worker: Worker;
-  /** Qui a saisi — CHEF_EQUIPE non accessible via GET /users (réservé ADMIN), donc résolu ici. */
+  /** Qui a saisi — non accessible via GET /users (permission utilisateur:lecture), donc résolu ici. */
   enteredBy: EnteredBySummary | null;
 }
 

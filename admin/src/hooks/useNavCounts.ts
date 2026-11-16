@@ -7,6 +7,7 @@ import {
   fetchWorkerRequests,
 } from "../lib/workflows";
 import { useSiteScope } from "../lib/site-scope";
+import { hasPermission } from "../lib/permissions";
 import { useAuth } from "./useAuth";
 
 export interface NavCounts {
@@ -20,7 +21,7 @@ const REFRESH_MS = 60_000;
 /** Ce qui attend un geste : demandes en attente, pointages à valider, lignes de paiement non exportées. */
 export function useNavCounts(): NavCounts {
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const decidesRequests = hasPermission(user, "demande:decider");
   const [siteId] = useSiteScope();
 
   const kpis = useQuery({
@@ -46,7 +47,7 @@ export function useNavCounts(): NavCounts {
     },
     refetchInterval: REFRESH_MS,
     staleTime: REFRESH_MS,
-    enabled: isAdmin,
+    enabled: decidesRequests,
   });
 
   return {

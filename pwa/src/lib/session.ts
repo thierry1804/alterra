@@ -6,7 +6,10 @@ export interface AuthUser {
   email: string | null;
   firstName: string;
   lastName: string;
-  role: "ADMIN" | "CHEF_SERVICE" | "CHEF_EQUIPE";
+  roleId: string;
+  roleName: string;
+  scope: "TOUS" | "SITE" | "EQUIPE";
+  permissions: string[];
   siteId: string | null;
   teamId: string | null;
 }
@@ -63,6 +66,10 @@ export async function restoreSession(): Promise<boolean> {
   if (!raw) return false;
 
   const payload = JSON.parse(raw) as StoredSessionPayload;
+  if (!Array.isArray(payload.user?.permissions)) {
+    await deleteSetting(SETTING_SESSION);
+    return false;
+  }
   memoryAccessToken = payload.accessToken;
   memoryUser = payload.user;
   return true;

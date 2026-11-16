@@ -10,6 +10,7 @@ import {
 } from "../lib/workflows";
 import type { Pointage } from "../lib/pointages";
 import { fetchAllCursorPages } from "../components/ui/data-table/fetchAllPages";
+import { hasPermission } from "../lib/permissions";
 import { useAuth } from "./useAuth";
 
 export type NotificationItem =
@@ -32,7 +33,7 @@ async function fetchPendingPointages(): Promise<Pointage[]> {
 
 export function useNotificationFeed(enabled: boolean) {
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const decidesRequests = hasPermission(user, "demande:decider");
 
   const query = useQuery({
     queryKey: ["nav", "notification-feed"],
@@ -45,7 +46,7 @@ export function useNotificationFeed(enabled: boolean) {
       ]);
       return { activities, workers, clarifications, pointages };
     },
-    enabled: enabled && isAdmin,
+    enabled: enabled && decidesRequests,
     staleTime: REFRESH_MS,
     refetchInterval: enabled ? REFRESH_MS : false,
   });

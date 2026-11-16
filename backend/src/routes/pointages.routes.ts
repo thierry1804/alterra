@@ -1,8 +1,8 @@
 import { Router, raw } from "express";
 import { z } from "zod";
-import { PointageStatus, Role } from "@prisma/client";
+import { PointageStatus } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { syncPointageBatch } from "../services/pointages/sync.service.js";
 import { listPointages } from "../services/pointages/list.service.js";
@@ -87,7 +87,7 @@ const resubmitSchema = z.object({
 pointagesRouter.post(
   "/pointages/photo",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:saisie"),
   raw({ type: "image/jpeg", limit: "5mb" }),
   async (req, res, next) => {
     try {
@@ -105,14 +105,14 @@ pointagesRouter.post(
 pointagesRouter.post(
   "/pointages/sync",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:saisie"),
   validate(syncBatchSchema),
   async (req, res, next) => {
     try {
       const { batch } = req.body as z.infer<typeof syncBatchSchema>;
       const results = await syncPointageBatch(batch, {
         id: req.user!.sub,
-        role: req.user!.role,
+        scope: req.user!.scope,
         teamId: req.user!.teamId,
         siteId: req.user!.siteId,
       });
@@ -126,6 +126,7 @@ pointagesRouter.post(
 pointagesRouter.get(
   "/pointages",
   requireAuth,
+  requirePermission("pointage:lecture"),
   validate(listPointagesQuery, "query"),
   async (req, res, next) => {
     try {
@@ -141,6 +142,7 @@ pointagesRouter.get(
 pointagesRouter.get(
   "/pointages/:id/photo",
   requireAuth,
+  requirePermission("pointage:lecture"),
   validate(pointageIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -167,7 +169,7 @@ pointagesRouter.get(
 pointagesRouter.patch(
   "/pointages/:id/validate",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:valider_site"),
   validate(pointageIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -187,7 +189,7 @@ pointagesRouter.patch(
 pointagesRouter.patch(
   "/pointages/:id/reject",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:valider_site"),
   validate(pointageIdParams, "params"),
   validate(rejectSchema),
   async (req, res, next) => {
@@ -209,7 +211,7 @@ pointagesRouter.patch(
 pointagesRouter.patch(
   "/pointages/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("pointage:correction"),
   validate(pointageIdParams, "params"),
   validate(correctionSchema),
   async (req, res, next) => {
@@ -230,7 +232,7 @@ pointagesRouter.patch(
 pointagesRouter.patch(
   "/pointages/:id/photo",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE),
+  requirePermission("pointage:saisie"),
   validate(pointageIdParams, "params"),
   validate(attachPhotoSchema),
   async (req, res, next) => {
@@ -247,7 +249,7 @@ pointagesRouter.patch(
 pointagesRouter.patch(
   "/pointages/:id/resubmit",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE),
+  requirePermission("pointage:saisie"),
   validate(pointageIdParams, "params"),
   validate(resubmitSchema),
   async (req, res, next) => {
@@ -268,7 +270,7 @@ pointagesRouter.patch(
 pointagesRouter.post(
   "/pointages/bulk-validate",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:valider_site"),
   validate(bulkIdsOnlySchema),
   async (req, res, next) => {
     try {
@@ -296,7 +298,7 @@ pointagesRouter.post(
 pointagesRouter.post(
   "/pointages/bulk-reject",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("pointage:valider_site"),
   validate(bulkRejectSchema),
   async (req, res, next) => {
     try {

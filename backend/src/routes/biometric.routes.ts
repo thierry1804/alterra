@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { BioContext, BioResult, Role } from "@prisma/client";
+import { BioContext, BioResult } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { performBiometricCheck } from "../services/biometric/check.service.js";
 import { recordOfflineBiometricCheck } from "../services/biometric/check-offline.service.js";
@@ -29,17 +29,15 @@ const checkOfflineSchema = z.object({
   score: z.number().min(0).max(1).nullable(),
   context: z.enum(BioContext).optional(),
   referenceDate: z.coerce.date().optional(),
-  performedAt: z.coerce
-    .date()
-    .refine((date) => date.getTime() <= Date.now() + MAX_CLOCK_SKEW_MS, {
-      message: "performedAt ne peut pas être dans le futur",
-    }),
+  performedAt: z.coerce.date().refine((date) => date.getTime() <= Date.now() + MAX_CLOCK_SKEW_MS, {
+    message: "performedAt ne peut pas être dans le futur",
+  }),
 });
 
 biometricRouter.post(
   "/biometric/check",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("biometrie:verifier_en_ligne"),
   validate(checkSchema),
   async (req, res, next) => {
     try {
@@ -61,7 +59,7 @@ biometricRouter.post(
 biometricRouter.post(
   "/biometric/check-offline",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("biometrie:verifier_hors_ligne"),
   validate(checkOfflineSchema),
   async (req, res, next) => {
     try {

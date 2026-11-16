@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { BioProvider, Role } from "@prisma/client";
+import { BioProvider } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import {
@@ -23,7 +23,7 @@ const upsertTemplateSchema = z.object({
 biometricTemplatesRouter.get(
   "/biometric/templates/sync",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("biometrie:gabarits_lecture"),
   async (req, res, next) => {
     try {
       const data = await listTemplatesForSync(req.user!);
@@ -37,7 +37,7 @@ biometricTemplatesRouter.get(
 biometricTemplatesRouter.post(
   "/biometric/templates",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("biometrie:gabarits_ecriture"),
   validate(upsertTemplateSchema),
   async (req, res, next) => {
     try {

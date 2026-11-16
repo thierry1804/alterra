@@ -1,4 +1,5 @@
 import type { AuthUser } from "./auth-store";
+import { canAccess, type Access } from "./permissions";
 import {
   Activity,
   ClipboardList,
@@ -14,6 +15,7 @@ import {
   Ruler,
   ScrollText,
   Settings,
+  ShieldCheck,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -23,7 +25,7 @@ export interface NavItem {
   label: string;
   path: string;
   icon: LucideIcon;
-  roles: AuthUser["role"][];
+  access: Access;
   section?: string;
   /** Compteur affiché dans le menu (ce qui attend un geste). */
   badge?: "requests" | "pointages" | "payments";
@@ -38,14 +40,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Tableau de bord",
     path: "/",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "CHEF_SERVICE"],
+    access: { all: ["tableau_bord:lecture"] },
     section: "Pilotage",
   },
   {
     label: "Demandes",
     path: "/requests",
     icon: Inbox,
-    roles: ["ADMIN"],
+    access: { all: ["demande:decider"] },
     section: "Opérations",
     badge: "requests",
   },
@@ -53,7 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Pointages",
     path: "/pointages",
     icon: ClipboardList,
-    roles: ["ADMIN", "CHEF_SERVICE"],
+    access: { any: ["pointage:valider_site", "pointage:correction"] },
     section: "Opérations",
     badge: "pointages",
   },
@@ -61,14 +63,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Badges NFC",
     path: "/badges",
     icon: IdCard,
-    roles: ["ADMIN", "CHEF_SERVICE"],
+    access: { all: ["badge:ecriture"] },
     section: "Opérations",
   },
   {
     label: "Paiements",
     path: "/payments",
     icon: CreditCard,
-    roles: ["ADMIN"],
+    access: { all: ["paiement:lecture"] },
     section: "Opérations",
     badge: "payments",
   },
@@ -76,77 +78,84 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Factures",
     path: "/invoices",
     icon: FileStack,
-    roles: ["ADMIN"],
+    access: { all: ["facture:lecture"] },
     section: "Opérations",
   },
   {
     label: "Rapports",
     path: "/reports",
     icon: FileText,
-    roles: ["ADMIN"],
+    access: { all: ["rapport:analyse"] },
     section: "Opérations",
   },
   {
     label: "Travailleurs",
     path: "/workers",
     icon: UsersRound,
-    roles: ["ADMIN"],
+    access: { all: ["travailleur:ecriture"] },
     section: "Référentiels",
   },
   {
     label: "Sites",
     path: "/sites",
     icon: Map,
-    roles: ["ADMIN"],
+    access: { all: ["site:ecriture"] },
     section: "Référentiels",
   },
   {
     label: "Zones",
     path: "/zones",
     icon: MapPinned,
-    roles: ["ADMIN"],
+    access: { all: ["zone:ecriture"] },
     section: "Référentiels",
   },
   {
     label: "Carte",
     path: "/map",
     icon: Layers,
-    roles: ["ADMIN"],
+    access: { all: ["carte:lecture"] },
     section: "Référentiels",
   },
   {
     label: "Activités",
     path: "/activities",
     icon: Activity,
-    roles: ["ADMIN"],
+    access: { all: ["activite:ecriture"] },
     section: "Référentiels",
   },
   {
     label: "Unités",
     path: "/units",
     icon: Ruler,
-    roles: ["ADMIN"],
+    access: { all: ["activite:ecriture"] },
     section: "Référentiels",
   },
   {
     label: "Utilisateurs",
     path: "/users",
     icon: Users,
-    roles: ["ADMIN"],
+    access: { all: ["utilisateur:lecture"] },
     section: "Administration",
   },
   {
     label: "Audit",
     path: "/audit",
     icon: ScrollText,
-    roles: ["ADMIN"],
+    access: { all: ["audit:lecture"] },
+    section: "Administration",
+  },
+  {
+    label: "Rôles et groupes",
+    path: "/access",
+    icon: ShieldCheck,
+    access: { all: ["role:gerer"] },
     section: "Administration",
   },
   {
     label: "Paramètres",
     path: "/settings",
     icon: Settings,
-    roles: ["ADMIN"],
+    access: { all: ["parametres:ecriture"] },
     section: "Administration",
   },
 ];
@@ -159,18 +168,20 @@ export function navTrail(pathname: string): { section: string; label: string } |
   return item ? { section: item.section ?? "Navigation", label: item.label } : null;
 }
 
-export function navItemsForRole(role: AuthUser["role"] | undefined): NavItem[] {
-  if (!role) return [];
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+export function navItemsForUser(user: AuthUser | null | undefined): NavItem[] {
+  return NAV_ITEMS.filter((item) => canAccess(user, item.access));
+}
+
+export function accessForPath(path: string): Access | undefined {
+  return NAV_ITEMS.find((item) => item.path === path)?.access;
 }
 
 export function navItemsBySection(
-  role: AuthUser["role"] | undefined,
+  user: AuthUser | null | undefined,
 ): globalThis.Map<string, NavItem[]> {
-  const items = navItemsForRole(role);
   const grouped = new globalThis.Map<string, NavItem[]>();
 
-  items.forEach((item) => {
+  navItemsForUser(user).forEach((item) => {
     const section = item.section ?? "Navigation";
     const current = grouped.get(section) ?? [];
     current.push(item);
@@ -178,17 +189,4 @@ export function navItemsBySection(
   });
 
   return grouped;
-}
-
-export function roleLabel(role: AuthUser["role"]): string {
-  switch (role) {
-    case "ADMIN":
-      return "Administrateur";
-    case "CHEF_SERVICE":
-      return "Chef de service";
-    case "CHEF_EQUIPE":
-      return "Chef d'équipe";
-    default:
-      return role;
-  }
 }

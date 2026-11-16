@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -102,6 +102,7 @@ const listUnitsQuery = cursorPaginationQuery.extend({
 activitiesRouter.get(
   "/units",
   requireAuth,
+  requirePermission("activite:lecture"),
   validate(listUnitsQuery, "query"),
   async (req, res, next) => {
     try {
@@ -130,7 +131,7 @@ activitiesRouter.get(
 activitiesRouter.post(
   "/units",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(createUnitSchema),
   async (req, res, next) => {
     try {
@@ -156,7 +157,7 @@ activitiesRouter.post(
 activitiesRouter.patch(
   "/units/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(idParams, "params"),
   validate(updateUnitSchema),
   async (req, res, next) => {
@@ -190,7 +191,7 @@ activitiesRouter.patch(
 activitiesRouter.delete(
   "/units/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:suppression"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -230,6 +231,7 @@ const listCategoriesQuery = cursorPaginationQuery.extend({
 activitiesRouter.get(
   "/activity-categories",
   requireAuth,
+  requirePermission("activite:lecture"),
   validate(listCategoriesQuery, "query"),
   async (req, res, next) => {
     try {
@@ -296,6 +298,7 @@ activitiesRouter.get(
 activitiesRouter.get(
   "/activity-categories/:id",
   requireAuth,
+  requirePermission("activite:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -311,7 +314,7 @@ activitiesRouter.get(
 activitiesRouter.post(
   "/activity-categories",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(createCategorySchema),
   async (req, res, next) => {
     try {
@@ -337,7 +340,7 @@ activitiesRouter.post(
 activitiesRouter.patch(
   "/activity-categories/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(idParams, "params"),
   validate(updateCategorySchema),
   async (req, res, next) => {
@@ -374,7 +377,7 @@ activitiesRouter.patch(
 activitiesRouter.delete(
   "/activity-categories/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:suppression"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -460,6 +463,7 @@ const updateSubActivitySchema = z.object({
 activitiesRouter.get(
   "/sub-activities",
   requireAuth,
+  requirePermission("activite:lecture"),
   validate(listSubActivitiesQuery, "query"),
   async (req, res, next) => {
     try {
@@ -500,12 +504,8 @@ activitiesRouter.get(
       // tâche) ne s'applique qu'à une demande EXPLICITE "quel tarif s'applique pour tel site"
       // (picker de saisie, ex. ReferentialSync côté PWA qui passe toujours son propre siteId).
       const resolvedSiteId =
-        siteId !== undefined
-          ? siteId
-          : req.user!.role !== Role.ADMIN
-            ? req.user!.siteId
-            : undefined;
-      const needsSiteScope = siteId !== undefined || req.user!.role !== Role.ADMIN;
+        siteId !== undefined ? siteId : req.user!.scope !== "TOUS" ? req.user!.siteId : undefined;
+      const needsSiteScope = siteId !== undefined || req.user!.scope !== "TOUS";
       const needsDedup = siteId !== undefined;
 
       if (needsSiteScope) {
@@ -561,6 +561,7 @@ activitiesRouter.get(
 activitiesRouter.get(
   "/sub-activities/:id",
   requireAuth,
+  requirePermission("activite:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -579,7 +580,7 @@ activitiesRouter.get(
 activitiesRouter.post(
   "/sub-activities",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(createSubActivitySchema),
   async (req, res, next) => {
     try {
@@ -630,7 +631,7 @@ activitiesRouter.post(
 activitiesRouter.patch(
   "/sub-activities/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(idParams, "params"),
   validate(updateSubActivitySchema),
   async (req, res, next) => {
@@ -693,7 +694,7 @@ activitiesRouter.patch(
 activitiesRouter.delete(
   "/sub-activities/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:suppression"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -724,7 +725,7 @@ activitiesRouter.delete(
 activitiesRouter.post(
   "/sub-activities/bulk-deactivate",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("activite:ecriture"),
   validate(bulkDeactivateSchema),
   async (req, res, next) => {
     try {

@@ -5,7 +5,10 @@ export interface AuthUser {
   email: string | null;
   firstName: string;
   lastName: string;
-  role: "ADMIN" | "CHEF_SERVICE" | "CHEF_EQUIPE";
+  roleId: string;
+  roleName: string;
+  scope: "TOUS" | "SITE" | "EQUIPE";
+  permissions: string[];
   siteId: string | null;
 }
 

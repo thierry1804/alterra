@@ -1,9 +1,9 @@
-import { Role } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
@@ -45,7 +45,7 @@ import { prisma } from "../lib/prisma.js";
 function adminToken() {
   return signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: null,
     teamId: null,
   });
@@ -54,7 +54,7 @@ function adminToken() {
 function cdeToken() {
   return signAccessToken({
     sub: MOCK_CDE_ID,
-    role: Role.CHEF_EQUIPE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     siteId: MOCK_SITE_ID,
     teamId: MOCK_TEAM_ID,
   });
@@ -63,7 +63,7 @@ function cdeToken() {
 function cdsToken(siteId: string = MOCK_SITE_ID) {
   return signAccessToken({
     sub: MOCK_CDS_ID,
-    role: Role.CHEF_SERVICE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId,
     teamId: null,
   });

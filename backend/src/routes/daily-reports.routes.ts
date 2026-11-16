@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
+
 import { z } from "zod";
 import { enqueueDailyPdfJob, getDailyPdfJobStatus } from "../jobs/pdf.worker.js";
 import { requireAuth } from "../middleware/auth.js";
 import { ApiError } from "../middleware/error-handler.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { getDailyClosePreview, parseDailyDate } from "../services/reports/daily-data.service.js";
@@ -26,7 +26,7 @@ const dailyGenerateSchema = z.object({
 dailyReportsRouter.get(
   "/reports/daily/preview",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("rapport:generation"),
   validate(dailyDateQuery, "query"),
   async (req, res, next) => {
     try {
@@ -35,7 +35,7 @@ dailyReportsRouter.get(
       if (!siteId) {
         throw new ApiError(422, "SITE_REQUIRED", "siteId is required");
       }
-      if (req.user!.role === Role.CHEF_SERVICE && req.user!.siteId !== siteId) {
+      if (req.user!.scope !== "TOUS" && req.user!.siteId !== siteId) {
         throw new ApiError(403, "FORBIDDEN", "Site hors périmètre");
       }
 
@@ -51,7 +51,7 @@ dailyReportsRouter.get(
 dailyReportsRouter.post(
   "/reports/daily",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("rapport:generation"),
   validate(dailyGenerateSchema),
   async (req, res, next) => {
     try {
@@ -60,7 +60,7 @@ dailyReportsRouter.post(
       if (!siteId) {
         throw new ApiError(422, "SITE_REQUIRED", "siteId is required");
       }
-      if (req.user!.role === Role.CHEF_SERVICE && req.user!.siteId !== siteId) {
+      if (req.user!.scope !== "TOUS" && req.user!.siteId !== siteId) {
         throw new ApiError(403, "FORBIDDEN", "Site hors périmètre");
       }
 
@@ -107,12 +107,12 @@ dailyReportsRouter.post(
 dailyReportsRouter.get(
   "/reports/daily/jobs/:jobId",
   requireAuth,
-  requireRole(Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("rapport:generation"),
   async (req, res, next) => {
     try {
       const status = await getDailyPdfJobStatus(req.params.jobId);
       // 404 (et non 403) pour un job d'un autre site : n'indique pas l'existence de l'identifiant.
-      if (!status || (req.user!.role === Role.CHEF_SERVICE && status.siteId !== req.user!.siteId)) {
+      if (!status || (req.user!.scope !== "TOUS" && status.siteId !== req.user!.siteId)) {
         throw new ApiError(404, "JOB_NOT_FOUND", "PDF job not found");
       }
       res.json(status);

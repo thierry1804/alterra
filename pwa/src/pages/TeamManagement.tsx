@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
+import { hasPermission } from "../lib/permissions";
 import { api } from "../lib/api";
 import type { TeamDetail, TeamSummary, WorkerSearchHit } from "../lib/teams";
 import Button from "../components/ui/Button";
@@ -366,8 +367,8 @@ function TeamCard({ team, canEditStructure, chefs, onRefresh, onSyncCache }: Tea
 
 export default function TeamManagement() {
   const { user } = useAuth();
-  const isCds = user?.role === "CHEF_SERVICE" || user?.role === "ADMIN";
-  const isCde = user?.role === "CHEF_EQUIPE";
+  const isCds = hasPermission(user, "equipe:ecriture");
+  const isCde = hasPermission(user, "equipe:membres") && !isCds;
 
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [teamDetails, setTeamDetails] = useState<Map<string, TeamDetail>>(new Map());

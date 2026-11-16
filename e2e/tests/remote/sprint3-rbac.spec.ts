@@ -5,6 +5,7 @@ import {
   INACTIVE_ACCOUNT_EMAIL,
   realCredentials,
   usersPassword,
+  ROLE_IDS,
 } from "./support/env.js";
 import { expectStatus } from "./support/helpers.js";
 import { newUuid, track } from "./support/state.js";
@@ -186,7 +187,7 @@ test.describe("RBAC — API", () => {
       ["PATCH /sites/:id (inexistant)", () => cds.patch(`/sites/${id}`, { name: "xx" })],
       ["POST /workers (corps invalide)", () => cds.post("/workers", { firstName: "x" })],
       ["DELETE /workers/:id (inexistant)", () => cds.delete(`/workers/${id}`)],
-      ["POST /users (corps invalide)", () => cds.post("/users", { role: "ADMIN" })],
+      ["POST /users (corps invalide)", () => cds.post("/users", { roleId: ROLE_IDS.ADMIN })],
       [
         "PATCH /pointages/:id (correction, inexistant)",
         () =>
@@ -314,7 +315,7 @@ test.describe("Comptes inactifs et échecs de connexion (comptes E2E, 2 tentativ
     const email = `e2e-s3-inactive-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: "E2E-S3-INACTIF",
       lastName: world.runId,
       siteId: world.site.id,
@@ -353,7 +354,7 @@ test.describe("Comptes inactifs et échecs de connexion (comptes E2E, 2 tentativ
     const email = `e2e-s3-wrongpw-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: "E2E-S3-BADPW",
       lastName: world.runId,
       siteId: world.site.id,

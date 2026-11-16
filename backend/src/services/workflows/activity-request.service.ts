@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { Prisma, RequestStatus, Role } from "@prisma/client";
-import type { AccessTokenPayload } from "../../lib/jwt.js";
+import { Prisma, RequestStatus } from "@prisma/client";
+import { can } from "../../middleware/rbac.js";
+import type { AuthUser } from "../access/auth-user.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { createOnce } from "./idempotency.js";
@@ -31,18 +32,18 @@ export interface ComplementInput {
   comment: string;
 }
 
-function listScopeWhere(user: AccessTokenPayload): Prisma.ActivityRequestWhereInput {
-  if (user.role === Role.ADMIN) return {};
-  if (user.role === Role.CHEF_SERVICE) {
+function listScopeWhere(user: AuthUser): Prisma.ActivityRequestWhereInput {
+  if (can(user, "demande:decider")) {
+    if (user.scope === "TOUS") return {};
+    return { OR: [{ requestedById: user.sub }, ...(user.siteId ? [{ siteId: user.siteId }] : [])] };
+  }
+  if (can(user, "demande:creer")) {
     return { requestedById: user.sub };
   }
   return { id: "00000000-0000-0000-0000-000000000000" };
 }
 
-export async function listActivityRequests(
-  user: AccessTokenPayload,
-  input: ListActivityRequestsInput,
-) {
+export async function listActivityRequests(user: AuthUser, input: ListActivityRequestsInput) {
   const pageSize = input.take ?? 50;
   const where: Prisma.ActivityRequestWhereInput = {
     ...listScopeWhere(user),
@@ -62,7 +63,7 @@ export async function listActivityRequests(
   return { data, nextCursor: hasMore ? data[data.length - 1]?.id : null, hasMore };
 }
 
-export async function getActivityRequest(user: AccessTokenPayload, id: string) {
+export async function getActivityRequest(user: AuthUser, id: string) {
   const request = await prisma.activityRequest.findFirst({
     where: { id, ...listScopeWhere(user) },
     include: { category: true, unit: true },
@@ -71,11 +72,8 @@ export async function getActivityRequest(user: AccessTokenPayload, id: string) {
   return request;
 }
 
-export async function createActivityRequest(
-  user: AccessTokenPayload,
-  input: CreateActivityRequestInput,
-) {
-  if (user.role !== Role.CHEF_SERVICE && user.role !== Role.ADMIN) {
+export async function createActivityRequest(user: AuthUser, input: CreateActivityRequestInput) {
+  if (!can(user, "demande:creer")) {
     throw new ApiError(403, "FORBIDDEN", "Seul le chef de service peut créer cette demande");
   }
 
@@ -101,15 +99,17 @@ export async function createActivityRequest(
 }
 
 export async function decideActivityRequest(
-  user: AccessTokenPayload,
+  user: AuthUser,
   id: string,
   input: ActivityDecisionInput,
 ) {
-  if (user.role !== Role.ADMIN) {
+  if (!can(user, "demande:decider")) {
     throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut décider");
   }
 
-  const request = await prisma.activityRequest.findUnique({ where: { id } });
+  const request = await prisma.activityRequest.findFirst({
+    where: { id, ...listScopeWhere(user) },
+  });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande activité introuvable");
   assertActivityDecisionAllowed(request.status);
 
@@ -158,15 +158,17 @@ export async function decideActivityRequest(
 }
 
 export async function complementActivityRequest(
-  user: AccessTokenPayload,
+  user: AuthUser,
   id: string,
   input: ComplementInput,
 ) {
-  if (user.role !== Role.ADMIN) {
+  if (!can(user, "demande:decider")) {
     throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut demander un complément");
   }
 
-  const request = await prisma.activityRequest.findUnique({ where: { id } });
+  const request = await prisma.activityRequest.findFirst({
+    where: { id, ...listScopeWhere(user) },
+  });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande activité introuvable");
   assertActivityDecisionAllowed(request.status);
 
@@ -176,14 +178,14 @@ export async function complementActivityRequest(
   });
 }
 
-export async function cancelActivityRequest(user: AccessTokenPayload, id: string) {
+export async function cancelActivityRequest(user: AuthUser, id: string) {
   const request = await prisma.activityRequest.findFirst({
     where: { id, ...listScopeWhere(user) },
   });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande activité introuvable");
   assertActivityCancelAllowed(request.status);
 
-  if (user.role !== Role.ADMIN && request.requestedById !== user.sub) {
+  if (!can(user, "demande:decider") && request.requestedById !== user.sub) {
     throw new ApiError(403, "FORBIDDEN", "Annulation non autorisée");
   }
 

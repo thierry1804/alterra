@@ -2,9 +2,9 @@ import { Router, raw } from "express";
 import { z } from "zod";
 import { spawn } from "node:child_process";
 import { Transform } from "node:stream";
-import { Role } from "@prisma/client";
+
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -65,62 +65,68 @@ function assertBackupKeyPrefix(backupKey: string) {
   }
 }
 
-systemRouter.get("/system/backup", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
-  const { host, port, user, password, dbname } = pgConnParams();
-  const dump = spawn(
-    "pg_dump",
-    ["-h", host, "-p", port, "-U", user, "-d", dbname, "-Fc", "--no-owner", "--no-privileges"],
-    { env: { ...process.env, PGPASSWORD: password } },
-  );
+systemRouter.get(
+  "/system/backup",
+  requireAuth,
+  requirePermission("systeme:sauvegarde"),
+  async (req, res, next) => {
+    const { host, port, user, password, dbname } = pgConnParams();
+    const dump = spawn(
+      "pg_dump",
+      ["-h", host, "-p", port, "-U", user, "-d", dbname, "-Fc", "--no-owner", "--no-privileges"],
+      { env: { ...process.env, PGPASSWORD: password } },
+    );
 
-  let stderr = "";
-  dump.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
+    let stderr = "";
+    dump.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
 
-  let failed = false;
-  dump.on("error", (err) => {
-    failed = true;
-    logger.error({ err }, "pg_dump spawn failed");
-    if (!res.headersSent) next(new ApiError(500, "BACKUP_FAILED", "Échec du démarrage de pg_dump"));
-  });
+    let failed = false;
+    dump.on("error", (err) => {
+      failed = true;
+      logger.error({ err }, "pg_dump spawn failed");
+      if (!res.headersSent)
+        next(new ApiError(500, "BACKUP_FAILED", "Échec du démarrage de pg_dump"));
+    });
 
-  dump.on("close", (code) => {
-    if (code !== 0 && !failed) {
-      logger.error({ code, stderr }, "pg_dump exited with error");
-      if (!res.headersSent) {
-        next(new ApiError(500, "BACKUP_FAILED", "pg_dump a échoué"));
-      } else {
-        res.destroy();
+    dump.on("close", (code) => {
+      if (code !== 0 && !failed) {
+        logger.error({ code, stderr }, "pg_dump exited with error");
+        if (!res.headersSent) {
+          next(new ApiError(500, "BACKUP_FAILED", "pg_dump a échoué"));
+        } else {
+          res.destroy();
+        }
       }
-    }
-  });
+    });
 
-  res.setHeader("Content-Type", "application/octet-stream");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="alterra-backup-${timestampSuffix()}.dump"`,
-  );
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="alterra-backup-${timestampSuffix()}.dump"`,
+    );
 
-  dump.stdout.pipe(res);
+    dump.stdout.pipe(res);
 
-  res.on("close", async () => {
-    if (res.writableFinished) {
-      await writeAuditLog({
-        userId: req.user!.sub,
-        action: "EXPORT",
-        entityType: "Database",
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-      }).catch((err) => logger.error({ err }, "audit log write failed after backup"));
-    }
-  });
-});
+    res.on("close", async () => {
+      if (res.writableFinished) {
+        await writeAuditLog({
+          userId: req.user!.sub,
+          action: "EXPORT",
+          entityType: "Database",
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        }).catch((err) => logger.error({ err }, "audit log write failed after backup"));
+      }
+    });
+  },
+);
 
 systemRouter.post(
   "/system/backup-upload",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("systeme:restauration"),
   raw({ type: "*/*", limit: "500mb" }),
   async (req, res, next) => {
     try {
@@ -138,7 +144,7 @@ systemRouter.post(
 systemRouter.post(
   "/system/restore",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("systeme:restauration"),
   validate(restoreSchema),
   async (req, res, next) => {
     const { backupKey } = req.body as z.infer<typeof restoreSchema>;

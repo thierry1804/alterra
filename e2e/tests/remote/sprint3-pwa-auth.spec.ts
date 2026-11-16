@@ -1,6 +1,6 @@
 import { test, expect, devices, type BrowserContext, type Page } from "@playwright/test";
 import { ApiClient } from "./support/api.js";
-import { PWA_URL, realCredentials } from "./support/env.js";
+import { PWA_URL, ROLE_IDS, realCredentials } from "./support/env.js";
 import { loadWorld, track } from "./support/state.js";
 
 /**
@@ -462,7 +462,7 @@ test.describe(`${UC} — comptes E2E-S3-`, () => {
     const email = `e2e-s3-pwa-inactive-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: "E2E-S3-PWAINACT",
       lastName: world.runId,
       siteId: world.site.id,

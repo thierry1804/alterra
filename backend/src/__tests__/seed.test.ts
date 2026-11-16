@@ -1,7 +1,7 @@
-import { Role } from "@prisma/client";
 import { beforeAll, describe, expect, it } from "vitest";
 import { EXPECTED_SEED_COUNTS } from "../../prisma/seed-data.js";
 import { prisma } from "../lib/prisma.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 let dbReady = false;
 
@@ -21,9 +21,9 @@ describe("seed data counts", () => {
 
     const [admin, cds, cde, sites, activityCategories, units, subActivities, workers, teams] =
       await Promise.all([
-        prisma.user.count({ where: { role: Role.ADMIN } }),
-        prisma.user.count({ where: { role: Role.CHEF_SERVICE } }),
-        prisma.user.count({ where: { role: Role.CHEF_EQUIPE } }),
+        prisma.user.count({ where: { accessRoleId: SYSTEM_ROLE_IDS.ADMIN } }),
+        prisma.user.count({ where: { accessRoleId: SYSTEM_ROLE_IDS.CHEF_SERVICE } }),
+        prisma.user.count({ where: { accessRoleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE } }),
         prisma.site.count(),
         prisma.activityCategory.count(),
         prisma.unit.count(),

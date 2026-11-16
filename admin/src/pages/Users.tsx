@@ -5,7 +5,8 @@ import { api } from "../lib/api";
 import FilterChips from "../components/ui/FilterChips";
 import { useSiteScope } from "../lib/site-scope";
 import type { AppUser, Site } from "../lib/referentials";
-import { USER_ROLE_LABELS, formatDate } from "../lib/referentials";
+import { formatDate } from "../lib/referentials";
+import { accessApi } from "../lib/access";
 import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import { Pencil, KeyRound, UserX, Download, Eye, EyeOff, RefreshCw, Copy } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -51,7 +52,7 @@ interface UserForm {
   email: string;
   firstName: string;
   lastName: string;
-  role: AppUser["role"];
+  roleId: string;
   siteId: string;
   password: string;
 }
@@ -60,7 +61,7 @@ const emptyForm: UserForm = {
   email: "",
   firstName: "",
   lastName: "",
-  role: "CHEF_SERVICE",
+  roleId: "",
   siteId: "",
   password: "",
 };
@@ -76,7 +77,7 @@ function generateClientPassword(length = 12): string {
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<AppUser["role"] | "">("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [siteFilter] = useSiteScope();
   const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,6 +91,11 @@ export default function UsersPage() {
     queryFn: () => api.get<{ data: Site[] }>("/sites").then((r) => r.data.data),
   });
 
+  const { data: roleOptions = [] } = useQuery({
+    queryKey: ["access", "role-options"],
+    queryFn: accessApi.roleOptions,
+  });
+
   const { sortKey, sortDir, toggleSort } = useServerSort("lastName");
 
   const usersQuery = useInfiniteQuery({
@@ -100,7 +106,7 @@ export default function UsersPage() {
         .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
           params: {
             q: search || undefined,
-            role: roleFilter || undefined,
+            roleId: roleFilter || undefined,
             siteId: siteFilter || undefined,
             active: statusFilter || undefined,
             cursor: pageParam,
@@ -153,7 +159,7 @@ export default function UsersPage() {
                 .get<{ data: AppUser[]; nextCursor: string | null; hasMore: boolean }>("/users", {
                   params: {
                     q: search || undefined,
-                    role: roleFilter || undefined,
+                    roleId: roleFilter || undefined,
                     siteId: siteFilter || undefined,
                     active: statusFilter || undefined,
                     cursor,
@@ -168,7 +174,7 @@ export default function UsersPage() {
           { header: "Prénom", accessor: (u) => u.firstName },
           { header: "Nom", accessor: (u) => u.lastName },
           { header: "Email", accessor: (u) => u.email ?? "" },
-          { header: "Rôle", accessor: (u) => USER_ROLE_LABELS[u.role] },
+          { header: "Rôle", accessor: (u) => u.roleName },
           { header: "Site", accessor: (u) => siteName(u.siteId) },
           {
             header: "Dernière connexion",
@@ -189,7 +195,7 @@ export default function UsersPage() {
         email: form.email.trim() || undefined,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
-        role: form.role,
+        roleId: form.roleId,
         siteId: form.siteId || null,
         password: form.password.trim() || undefined,
       };
@@ -197,7 +203,7 @@ export default function UsersPage() {
         return api.patch<AppUser>(`/users/${editing.id}`, {
           firstName: payload.firstName,
           lastName: payload.lastName,
-          role: payload.role,
+          roleId: payload.roleId,
           siteId: payload.siteId,
           email: payload.email ?? null,
         });
@@ -237,7 +243,7 @@ export default function UsersPage() {
 
   function openCreate() {
     setEditing(null);
-    setForm({ ...emptyForm, siteId: sites[0]?.id ?? "" });
+    setForm({ ...emptyForm, roleId: roleOptions[0]?.id ?? "", siteId: sites[0]?.id ?? "" });
     setShowPassword(false);
     setDialogOpen(true);
   }
@@ -248,7 +254,7 @@ export default function UsersPage() {
       email: user.email ?? "",
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role,
+      roleId: user.roleId,
       siteId: user.siteId ?? "",
       password: "",
     });
@@ -262,10 +268,15 @@ export default function UsersPage() {
     <div className="space-y-4">
       <PageHeader
         title="Utilisateurs"
-        description="Comptes Admin, CDS et CDE."
+        description="Comptes et rôles d'accès."
         action={
           <div className="flex items-center gap-2">
-            <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
+            <IconButton
+              icon={Download}
+              label="Exporter"
+              loading={exporting}
+              onClick={() => void handleExport()}
+            />
             <Button type="button" onClick={openCreate}>
               Nouvel utilisateur
             </Button>
@@ -286,10 +297,7 @@ export default function UsersPage() {
           onChange={setRoleFilter}
           options={[
             { value: "", label: "Tous" },
-            ...(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => ({
-              value: role,
-              label: USER_ROLE_LABELS[role],
-            })),
+            ...roleOptions.map((role) => ({ value: role.id, label: role.name })),
           ]}
         />
         <FilterChips
@@ -413,7 +421,7 @@ export default function UsersPage() {
                     {user.firstName} {user.lastName}
                   </TableCell>
                   <TableCell>{user.email ?? "-"}</TableCell>
-                  <TableCell>{USER_ROLE_LABELS[user.role]}</TableCell>
+                  <TableCell>{user.roleName}</TableCell>
                   <TableCell>{siteName(user.siteId)}</TableCell>
                   <TableCell>{formatDate(user.lastLoginAt)}</TableCell>
                   <TableCell>
@@ -480,111 +488,109 @@ export default function UsersPage() {
             }}
           >
             <SheetBody className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="u-first">Prénom</Label>
-                <Input
-                  id="u-first"
-                  value={form.firstName}
-                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="u-last">Nom</Label>
-                <Input
-                  id="u-last"
-                  value={form.lastName}
-                  onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="u-email">Email</Label>
-              <Input
-                id="u-email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="u-role">Rôle</Label>
-                <select
-                  id="u-role"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, role: e.target.value as AppUser["role"] }))
-                  }
-                >
-                  {(Object.keys(USER_ROLE_LABELS) as AppUser["role"][]).map((role) => (
-                    <option key={role} value={role}>
-                      {USER_ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="u-site">Site</Label>
-                <select
-                  id="u-site"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={form.siteId}
-                  onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
-                >
-                  <option value="">Aucun</option>
-                  {sites.map((site) => (
-                    <option key={site.id} value={site.id}>
-                      {site.shortCode}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {!editing && (
-              <div className="space-y-2">
-                <Label htmlFor="u-password">Mot de passe (optionnel)</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="u-password"
-                      type={showPassword ? "text" : "password"}
-                      value={form.password}
-                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={
-                        showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
-                      }
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" aria-hidden />
-                      ) : (
-                        <Eye className="h-4 w-4" aria-hidden />
-                      )}
-                    </button>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setForm((f) => ({ ...f, password: generateClientPassword() }));
-                      setShowPassword(true);
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4" aria-hidden />
-                    Générer
-                  </Button>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="u-first">Prénom</Label>
+                  <Input
+                    id="u-first"
+                    value={form.firstName}
+                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="u-last">Nom</Label>
+                  <Input
+                    id="u-last"
+                    value={form.lastName}
+                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                    required
+                  />
                 </div>
               </div>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="u-email">Email</Label>
+                <Input
+                  id="u-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="u-role">Rôle</Label>
+                  <select
+                    id="u-role"
+                    className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
+                    value={form.roleId}
+                    onChange={(e) => setForm((f) => ({ ...f, roleId: e.target.value }))}
+                  >
+                    {roleOptions.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="u-site">Site</Label>
+                  <select
+                    id="u-site"
+                    className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
+                    value={form.siteId}
+                    onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
+                  >
+                    <option value="">Aucun</option>
+                    {sites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.shortCode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {!editing && (
+                <div className="space-y-2">
+                  <Label htmlFor="u-password">Mot de passe (optionnel)</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="u-password"
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                        className="pr-9"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={
+                          showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" aria-hidden />
+                        ) : (
+                          <Eye className="h-4 w-4" aria-hidden />
+                        )}
+                      </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setForm((f) => ({ ...f, password: generateClientPassword() }));
+                        setShowPassword(true);
+                      }}
+                    >
+                      <RefreshCw className="h-4 w-4" aria-hidden />
+                      Générer
+                    </Button>
+                  </div>
+                </div>
+              )}
             </SheetBody>
             <SheetFooter>
               <Button

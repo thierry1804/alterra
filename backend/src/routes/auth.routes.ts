@@ -1,12 +1,11 @@
 import { Router } from "express";
 import argon2 from "argon2";
-import { Role } from "@prisma/client";
 import { z } from "zod";
 import { basePrisma, prisma } from "../lib/prisma.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requireMfaRole } from "../middleware/rbac.js";
 import { ApiError } from "../middleware/error-handler.js";
 import {
   assertLoginNotLocked,
@@ -20,7 +19,12 @@ import {
   rotateRefreshToken,
 } from "../services/auth/refresh.service.js";
 import { activateMfa, setupMfa, verifyLoginMfa } from "../services/auth/mfa.service.js";
-import { confirmPasswordReset, requestPasswordReset } from "../services/auth/password-reset.service.js";
+import { getRoleAccess } from "../services/access/access.service.js";
+import { buildSessionUser } from "../services/access/session-user.js";
+import {
+  confirmPasswordReset,
+  requestPasswordReset,
+} from "../services/auth/password-reset.service.js";
 
 export const authRouter = Router();
 
@@ -62,7 +66,10 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
       throw new ApiError(401, "INVALID_CREDENTIALS", "Email ou mot de passe incorrect");
     }
 
-    if (user.role === Role.ADMIN && user.mfaSecret) {
+    const access = await getRoleAccess(user.accessRoleId);
+    if (!access) throw new ApiError(500, "ROLE_NOT_FOUND", "Rôle introuvable");
+
+    if (access.mfaRequired && user.mfaSecret) {
       if (!mfaCode) {
         throw new ApiError(401, "MFA_REQUIRED", "MFA code required for admin login");
       }
@@ -75,7 +82,7 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
     await clearLoginFailures(email);
     const accessToken = signAccessToken({
       sub: user.id,
-      role: user.role,
+      roleId: user.accessRoleId,
       siteId: user.siteId,
       teamId: user.teamId,
     });
@@ -85,15 +92,7 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
 
     res.json({
       accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        siteId: user.siteId,
-        teamId: user.teamId,
-      },
+      user: buildSessionUser(user, access),
     });
   } catch (err) {
     next(err);
@@ -123,31 +122,27 @@ authRouter.post("/auth/logout", async (req, res, next) => {
   }
 });
 
-authRouter.post(
-  "/auth/forgot-password",
-  validate(forgotPasswordSchema),
-  async (req, res, next) => {
-    try {
-      const allowedOrigins = (process.env.ADMIN_ORIGIN ?? "")
-        .split(",")
-        .map((o) => o.trim())
-        .filter(Boolean);
-      const requestOrigin = req.headers.origin;
-      // Préfère l'origine réelle de l'appelant (celle depuis laquelle la demande a été faite) si elle
-      // est autorisée ; sinon retombe sur la première origine ADMIN_ORIGIN déclarée publique (https).
-      const adminOrigin =
-        (requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : undefined) ??
-        allowedOrigins.find((o) => o.startsWith("https://")) ??
-        allowedOrigins[0];
-      const resetUrlBase = `${adminOrigin}/reset-password`;
-      await requestPasswordReset(req.body.email, resetUrlBase);
-      // Toujours 200 — ne jamais révéler si l'adresse correspond à un compte.
-      res.json({ message: "Si ce compte existe, un email de réinitialisation a été envoyé." });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+authRouter.post("/auth/forgot-password", validate(forgotPasswordSchema), async (req, res, next) => {
+  try {
+    const allowedOrigins = (process.env.ADMIN_ORIGIN ?? "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+    const requestOrigin = req.headers.origin;
+    // Préfère l'origine réelle de l'appelant (celle depuis laquelle la demande a été faite) si elle
+    // est autorisée ; sinon retombe sur la première origine ADMIN_ORIGIN déclarée publique (https).
+    const adminOrigin =
+      (requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : undefined) ??
+      allowedOrigins.find((o) => o.startsWith("https://")) ??
+      allowedOrigins[0];
+    const resetUrlBase = `${adminOrigin}/reset-password`;
+    await requestPasswordReset(req.body.email, resetUrlBase);
+    // Toujours 200 — ne jamais révéler si l'adresse correspond à un compte.
+    res.json({ message: "Si ce compte existe, un email de réinitialisation a été envoyé." });
+  } catch (err) {
+    next(err);
+  }
+});
 
 authRouter.post(
   "/auth/reset-password",
@@ -162,7 +157,7 @@ authRouter.post(
   },
 );
 
-authRouter.post("/auth/mfa/setup", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
+authRouter.post("/auth/mfa/setup", requireAuth, requireMfaRole(), async (req, res, next) => {
   try {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.sub } });
     if (!user.email) {
@@ -178,7 +173,7 @@ authRouter.post("/auth/mfa/setup", requireAuth, requireRole(Role.ADMIN), async (
 authRouter.post(
   "/auth/mfa/verify",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requireMfaRole(),
   validate(mfaVerifySchema),
   async (req, res, next) => {
     try {
@@ -193,15 +188,9 @@ authRouter.post(
 authRouter.get("/me", requireAuth, async (req, res, next) => {
   try {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.sub } });
-    res.json({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      siteId: user.siteId,
-      teamId: user.teamId,
-    });
+    const access = await getRoleAccess(user.accessRoleId);
+    if (!access) throw new ApiError(500, "ROLE_NOT_FOUND", "Rôle introuvable");
+    res.json(buildSessionUser(user, access));
   } catch (err) {
     next(err);
   }

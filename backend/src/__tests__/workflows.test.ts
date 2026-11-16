@@ -1,9 +1,10 @@
-import { ClarificationStatus, Prisma, RequestStatus, Role } from "@prisma/client";
+import { ClarificationStatus, Prisma, RequestStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
@@ -94,7 +95,7 @@ import { getPhotoStream } from "../services/storage/presigned-url.service.js";
 function cdsToken() {
   return signAccessToken({
     sub: MOCK_CDS_ID,
-    role: Role.CHEF_SERVICE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId: MOCK_SITE_ID,
     teamId: null,
   });
@@ -103,7 +104,7 @@ function cdsToken() {
 function adminToken() {
   return signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: null,
     teamId: null,
   });
@@ -112,7 +113,7 @@ function adminToken() {
 function cdeToken() {
   return signAccessToken({
     sub: MOCK_CDE_ID,
-    role: Role.CHEF_EQUIPE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     siteId: MOCK_SITE_ID,
     teamId: MOCK_TEAM_ID,
   });
@@ -151,7 +152,7 @@ describe("workflows routes", () => {
   });
 
   it("PATCH /activity-requests/:id/decision approves and creates activity", async () => {
-    vi.mocked(prisma.activityRequest.findUnique).mockResolvedValue({
+    vi.mocked(prisma.activityRequest.findFirst).mockResolvedValue({
       id: MOCK_ACTIVITY_REQ_ID,
       status: RequestStatus.PENDING,
       categoryId: "00000000-0000-4000-8000-000000000025",
@@ -159,10 +160,6 @@ describe("workflows routes", () => {
       unitId: "00000000-0000-4000-8000-000000000026",
       proposedRate: new Prisma.Decimal("120"),
       siteId: MOCK_SITE_ID,
-    } as never);
-    vi.mocked(prisma.activityRequest.findFirst).mockResolvedValue({
-      id: MOCK_ACTIVITY_REQ_ID,
-      status: RequestStatus.PENDING,
     } as never);
     vi.mocked(prisma.activitySubActivity.create).mockResolvedValue({
       id: "00000000-0000-4000-8000-000000000090",

@@ -1,5 +1,5 @@
-import { BioProvider, Prisma, Role } from "@prisma/client";
-import type { AccessTokenPayload } from "../../lib/jwt.js";
+import { BioProvider, Prisma } from "@prisma/client";
+import type { AuthUser } from "../access/auth-user.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 
@@ -28,17 +28,17 @@ export function decodeTemplateData(data: Buffer): number[] {
   return parseDescriptor(JSON.parse(data.toString("utf8")));
 }
 
-function workerScopeFilter(user: AccessTokenPayload): Prisma.WorkerWhereInput {
-  if (user.role === Role.CHEF_EQUIPE && user.teamId) {
+function workerScopeFilter(user: AuthUser): Prisma.WorkerWhereInput {
+  if (user.scope === "EQUIPE" && user.teamId) {
     return { teamId: user.teamId };
   }
-  if (user.role === Role.CHEF_SERVICE && user.siteId) {
+  if (user.scope === "SITE" && user.siteId) {
     return { siteId: user.siteId };
   }
   return {};
 }
 
-export async function listTemplatesForSync(user: AccessTokenPayload): Promise<TemplateSyncItem[]> {
+export async function listTemplatesForSync(user: AuthUser): Promise<TemplateSyncItem[]> {
   const now = new Date();
   const workerScope = workerScopeFilter(user);
 

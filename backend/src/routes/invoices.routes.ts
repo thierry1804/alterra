@@ -2,10 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import archiver from "archiver";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
-import { Role } from "@prisma/client";
+
 import { prisma } from "../lib/prisma.js";
 import {
   generateInvoicesForPeriod,
@@ -39,7 +39,7 @@ const generateInvoicesSchema = z.object({
 invoicesRouter.get(
   "/invoices",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("facture:lecture"),
   validate(listInvoicesQuery, "query"),
   async (req, res, next) => {
     try {
@@ -55,7 +55,7 @@ invoicesRouter.get(
 invoicesRouter.post(
   "/invoices/generate",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("facture:generation"),
   validate(generateInvoicesSchema),
   async (req, res, next) => {
     try {
@@ -80,7 +80,7 @@ invoicesRouter.post(
 invoicesRouter.get(
   "/invoices/download-all",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("facture:lecture"),
   validate(downloadAllQuery, "query"),
   async (req, res, next) => {
     try {
@@ -95,7 +95,11 @@ invoicesRouter.get(
         action: "DOWNLOAD",
         entityType: "Invoice",
         entityId: "bulk",
-        after: { periodIso: query.periodIso, referenceYear: query.referenceYear, count: invoices.length },
+        after: {
+          periodIso: query.periodIso,
+          referenceYear: query.referenceYear,
+          count: invoices.length,
+        },
         ip: req.ip,
         userAgent:
           typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
@@ -103,10 +107,7 @@ invoicesRouter.get(
 
       const periodLabel = invoices[0].periodIso;
       res.setHeader("Content-Type", "application/zip");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="factures_${periodLabel}.zip"`,
-      );
+      res.setHeader("Content-Disposition", `attachment; filename="factures_${periodLabel}.zip"`);
 
       const archive = archiver("zip", { zlib: { level: 9 } });
       archive.on("error", next);
@@ -137,7 +138,7 @@ invoicesRouter.get(
 invoicesRouter.post(
   "/invoices/:id/regenerate",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("facture:generation"),
   validate(invoiceIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -156,7 +157,7 @@ invoicesRouter.post(
 invoicesRouter.get(
   "/invoices/:id/download",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("facture:lecture"),
   validate(invoiceIdParams, "params"),
   async (req, res, next) => {
     try {

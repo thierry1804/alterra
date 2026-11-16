@@ -4,7 +4,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { CornerDownLeft, Download, Search, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { navItemsForRole } from "../../lib/navigation";
+import { navItemsForUser } from "../../lib/navigation";
+import { hasPermission } from "../../lib/permissions";
 import { useAuth } from "../../hooks/useAuth";
 
 interface PaletteEntry {
@@ -30,7 +31,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
   const [active, setActive] = useState(0);
 
   const entries = useMemo<PaletteEntry[]>(() => {
-    const pages: PaletteEntry[] = navItemsForRole(user?.role).map((item) => ({
+    const pages: PaletteEntry[] = navItemsForUser(user).map((item) => ({
       id: `page:${item.path}`,
       group: "Pages",
       label: item.label,
@@ -38,37 +39,37 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
       icon: item.icon,
       to: item.path,
     }));
-    const actions: PaletteEntry[] =
-      user?.role === "ADMIN"
-        ? [
-            {
-              id: "action:bordereau",
-              group: "Actions",
-              label: "Générer le bordereau MVola",
-              hint: "Paiements",
-              icon: Download,
-              to: "/payments",
-            },
-            {
-              id: "action:import-mvola",
-              group: "Actions",
-              label: "Importer le retour MVola",
-              hint: "Paiements",
-              icon: Upload,
-              to: "/payments",
-            },
-            {
-              id: "action:import-workers",
-              group: "Actions",
-              label: "Importer des travailleurs (Excel)",
-              hint: "Travailleurs",
-              icon: Upload,
-              to: "/workers",
-            },
-          ]
-        : [];
-    return [...pages, ...actions];
-  }, [user?.role]);
+    const actions: (PaletteEntry & { requires: string })[] = [
+      {
+        id: "action:bordereau",
+        group: "Actions",
+        label: "Générer le bordereau MVola",
+        hint: "Paiements",
+        icon: Download,
+        to: "/payments",
+        requires: "paiement:export",
+      },
+      {
+        id: "action:import-mvola",
+        group: "Actions",
+        label: "Importer le retour MVola",
+        hint: "Paiements",
+        icon: Upload,
+        to: "/payments",
+        requires: "paiement:import_statut",
+      },
+      {
+        id: "action:import-workers",
+        group: "Actions",
+        label: "Importer des travailleurs (Excel)",
+        hint: "Travailleurs",
+        icon: Upload,
+        to: "/workers",
+        requires: "travailleur:import",
+      },
+    ];
+    return [...pages, ...actions.filter((action) => hasPermission(user, action.requires))];
+  }, [user]);
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BioResult, Role } from "@prisma/client";
+import { BioResult } from "@prisma/client";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { resetWeeklyPdfJobsForTests } from "../jobs/pdf.worker.js";
@@ -12,6 +12,7 @@ import {
   buildInvoiceActivities,
   buildWeeklyReportViewModel,
 } from "../services/reports/weekly-data.service.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
@@ -153,7 +154,7 @@ function invoicePointage(
 function cdsAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_CDS_ID,
-    role: Role.CHEF_SERVICE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;

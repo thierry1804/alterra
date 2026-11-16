@@ -3,7 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Bell, ChevronRight, LogOut, Search } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useNavCounts } from "../../hooks/useNavCounts";
-import { navTrail, roleLabel } from "../../lib/navigation";
+import { useCan } from "../../hooks/useCan";
+import { navTrail } from "../../lib/navigation";
 import SiteSelect from "./SiteSelect";
 import NotificationPopover from "./NotificationPopover";
 
@@ -15,13 +16,15 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
   const { user, signOut } = useAuth();
   const { pathname } = useLocation();
   const counts = useNavCounts();
+  const can = useCan();
   const trail = navTrail(pathname);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const todo = user?.role === "ADMIN" ? counts.requests + counts.pointages : counts.pointages;
+  const decidesRequests = can("demande:decider");
+  const todo = decidesRequests ? counts.requests + counts.pointages : counts.pointages;
   const initials = user ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() : "-";
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
 
       <div className="flex-1" />
 
-      {user?.role === "ADMIN" && <SiteSelect />}
+      {user?.scope === "TOUS" && <SiteSelect />}
 
       <button
         type="button"
@@ -84,7 +87,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
         <Search className="h-4 w-4" aria-hidden />
       </button>
 
-      {user?.role === "ADMIN" ? (
+      {decidesRequests ? (
         <div className="relative" ref={notifRef}>
           <button
             type="button"
@@ -140,7 +143,7 @@ export default function Topbar({ onOpenPalette }: TopbarProps) {
               <p className="truncate text-sm font-semibold text-zinc-900">
                 {user ? `${user.firstName} ${user.lastName}` : "-"}
               </p>
-              {user?.role && <p className="text-xs text-muted">{roleLabel(user.role)}</p>}
+              {user?.roleName && <p className="text-xs text-muted">{user.roleName}</p>}
             </div>
             <button
               type="button"

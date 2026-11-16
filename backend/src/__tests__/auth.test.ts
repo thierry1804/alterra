@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import { Role } from "@prisma/client";
 import argon2 from "argon2";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 import { decodeTokenHeader, signAccessToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
 import { encryptMfaSecret, clearPendingMfaForTests } from "../services/auth/mfa.service.js";
@@ -20,7 +20,7 @@ const mockUser = {
   id: MOCK_USER_ID,
   email: "admin@alterra.mg",
   passwordHash: "",
-  role: Role.ADMIN,
+  accessRoleId: SYSTEM_ROLE_IDS.ADMIN,
   firstName: "Admin",
   lastName: "ALTERRA",
   active: true,
@@ -54,7 +54,7 @@ vi.mock("../lib/prisma.js", () => {
 import { prisma } from "../lib/prisma.js";
 
 function adminAuthHeader() {
-  return `Bearer ${signAccessToken({ sub: mockUser.id, role: mockUser.role, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
+  return `Bearer ${signAccessToken({ sub: mockUser.id, roleId: mockUser.accessRoleId, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
 }
 
 describe("auth endpoints", () => {

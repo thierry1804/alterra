@@ -96,7 +96,7 @@ export async function rotateRefreshToken(rawToken: string, res: Response) {
 
   const accessToken = signAccessToken({
     sub: user.id,
-    role: user.role,
+    roleId: user.accessRoleId,
     siteId: user.siteId,
     teamId: user.teamId,
   });

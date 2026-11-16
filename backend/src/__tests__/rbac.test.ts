@@ -1,4 +1,3 @@
-import { Role } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
@@ -14,6 +13,7 @@ import {
   validateRelatedIdsInScope,
 } from "../middleware/prisma-rls.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
@@ -52,7 +52,7 @@ import { basePrisma } from "../lib/prisma-base.js";
 function adminAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;
@@ -61,7 +61,7 @@ function adminAuthHeader() {
 function cdeAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_CDE_ID,
-    role: Role.CHEF_EQUIPE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     siteId: MOCK_SITE_ID,
     teamId: MOCK_TEAM_ID,
   })}`;
@@ -73,14 +73,14 @@ describe("RBAC", () => {
     vi.mocked(prisma.user.findUniqueOrThrow).mockResolvedValue({
       id: MOCK_ADMIN_ID,
       email: "admin@alterra.mg",
-      role: Role.ADMIN,
+      roleId: SYSTEM_ROLE_IDS.ADMIN,
       siteId: MOCK_SITE_ID,
       teamId: null,
     } as never);
   });
 
-  describe("requireRole", () => {
-    it("allows ADMIN on admin-only route", async () => {
+  describe("permission guards", () => {
+    it("allows an MFA-capable role on the MFA setup route", async () => {
       const app = createApp();
       const res = await request(app)
         .post("/api/v1/auth/mfa/setup")
@@ -89,7 +89,7 @@ describe("RBAC", () => {
       expect(res.status).not.toBe(403);
     });
 
-    it("returns 403 FORBIDDEN with details when CDE hits admin-only route", async () => {
+    it("returns 403 FORBIDDEN when the role does not require MFA", async () => {
       const app = createApp();
       const res = await request(app)
         .post("/api/v1/auth/mfa/setup")
@@ -97,10 +97,34 @@ describe("RBAC", () => {
 
       expect(res.status).toBe(403);
       expect(res.body.code).toBe("FORBIDDEN");
-      expect(res.body.details).toEqual({
-        requiredRoles: [Role.ADMIN],
-        actualRole: Role.CHEF_EQUIPE,
+    });
+
+    it("returns 403 FORBIDDEN listing the missing permission", async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post("/api/v1/zones")
+        .set("Authorization", cdeAuthHeader())
+        .send({});
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("FORBIDDEN");
+      expect(res.body.details).toEqual({ missingPermissions: ["zone:ecriture"] });
+    });
+
+    it("rejects a token whose role no longer exists", async () => {
+      const app = createApp();
+      const token = signAccessToken({
+        sub: MOCK_CDE_ID,
+        roleId: "00000000-0000-4000-8000-0000000000ff",
+        siteId: MOCK_SITE_ID,
+        teamId: MOCK_TEAM_ID,
       });
+      const res = await request(app)
+        .get("/api/v1/pointages")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe("ROLE_NOT_FOUND");
     });
   });
 
@@ -110,20 +134,20 @@ describe("RBAC", () => {
     });
 
     it("getSiteFilter returns siteId for CHEF_SERVICE", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(getSiteFilter()).toEqual({ siteId: MOCK_SITE_ID });
       });
     });
 
     it("getSiteFilter returns empty for ADMIN", () => {
-      runWithRequestContext({ role: Role.ADMIN, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "TOUS" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(getSiteFilter()).toEqual({});
       });
     });
 
     it("getTeamFilter returns teamId for CHEF_EQUIPE", () => {
       runWithRequestContext(
-        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        { scope: "EQUIPE" as const, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(getTeamFilter()).toEqual({ teamId: MOCK_TEAM_ID });
         },
@@ -132,43 +156,49 @@ describe("RBAC", () => {
 
     it("getTeamFilter returns empty for CHEF_SERVICE", () => {
       runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        { scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(getTeamFilter()).toEqual({});
         },
       );
     });
 
-    it("getSiteFilter returns impossible filter when CHEF_SERVICE has no siteId", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+    it("getSiteFilter returns impossible filter when SITE scope has no siteId", () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: null, teamId: null }, () => {
         expect(getSiteFilter()).toEqual(IMPOSSIBLE_SCOPE_FILTER);
       });
     });
 
-    it("getTeamFilter returns impossible filter when CHEF_EQUIPE has no teamId", () => {
-      runWithRequestContext({ role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: null }, () => {
-        expect(getTeamFilter()).toEqual(IMPOSSIBLE_SCOPE_FILTER);
-      });
+    it("getTeamFilter returns impossible filter when EQUIPE scope has no teamId", () => {
+      runWithRequestContext(
+        { scope: "EQUIPE" as const, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(getTeamFilter()).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+        },
+      );
     });
   });
 
   describe("getModelScopeFilter fail-closed", () => {
-    it("returns impossible filter when CHEF_SERVICE has no siteId", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+    it("returns impossible filter when SITE scope has no siteId", () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: null, teamId: null }, () => {
         expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
         expect(getModelScopeFilter("Pointage")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
       });
     });
 
-    it("returns impossible filter when CHEF_EQUIPE has no teamId", () => {
-      runWithRequestContext({ role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: null }, () => {
-        expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
-        expect(getModelScopeFilter("Team")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
-      });
+    it("returns impossible filter when EQUIPE scope has no teamId", () => {
+      runWithRequestContext(
+        { scope: "EQUIPE" as const, siteId: MOCK_SITE_ID, teamId: null },
+        () => {
+          expect(getModelScopeFilter("Worker")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+          expect(getModelScopeFilter("Team")).toEqual(IMPOSSIBLE_SCOPE_FILTER);
+        },
+      );
     });
 
     it("returns null for ADMIN (no filter)", () => {
-      runWithRequestContext({ role: Role.ADMIN, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "TOUS" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(getModelScopeFilter("Worker")).toBeNull();
       });
     });
@@ -180,7 +210,7 @@ describe("RBAC", () => {
 
   describe("validateDirectFieldsInScope", () => {
     it("accepts Worker create data matching CHEF_SERVICE siteId", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(() =>
           validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID, firstName: "A" }),
         ).not.toThrow();
@@ -188,7 +218,7 @@ describe("RBAC", () => {
     });
 
     it("rejects Worker create data with wrong siteId", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(() =>
           validateDirectFieldsInScope("Worker", {
             siteId: "00000000-0000-4000-8000-000000000099",
@@ -197,8 +227,8 @@ describe("RBAC", () => {
       });
     });
 
-    it("rejects Worker create when CHEF_SERVICE has no siteId (fail-closed)", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: null, teamId: null }, () => {
+    it("rejects Worker create when SITE scope has no siteId (fail-closed)", () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: null, teamId: null }, () => {
         expect(() => validateDirectFieldsInScope("Worker", { siteId: MOCK_SITE_ID })).toThrow(
           RlsScopeError,
         );
@@ -207,7 +237,7 @@ describe("RBAC", () => {
 
     it("rejects Pointage create without workerId at relation validation layer", () => {
       runWithRequestContext(
-        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        { scope: "EQUIPE" as const, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(() => validateDirectFieldsInScope("Pointage", { quantity: 1 })).not.toThrow();
         },
@@ -216,7 +246,7 @@ describe("RBAC", () => {
 
     it("requires workerId on Pointage create", async () => {
       await runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        { scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null },
         async () => {
           await expect(
             validateRelatedIdsInScope(basePrisma as never, "Pointage", { quantity: 1 }),
@@ -227,7 +257,7 @@ describe("RBAC", () => {
 
     it("allows Pointage update without workerId in patch data", async () => {
       await runWithRequestContext(
-        { role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null },
+        { scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null },
         async () => {
           await expect(
             validateRelatedIdsInScope(
@@ -243,7 +273,7 @@ describe("RBAC", () => {
 
     it("rejects Team create for CHEF_EQUIPE", () => {
       runWithRequestContext(
-        { role: Role.CHEF_EQUIPE, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
+        { scope: "EQUIPE" as const, siteId: MOCK_SITE_ID, teamId: MOCK_TEAM_ID },
         () => {
           expect(() =>
             validateDirectFieldsInScope("Team", { siteId: MOCK_SITE_ID, name: "Equipe B" }),
@@ -253,15 +283,15 @@ describe("RBAC", () => {
     });
 
     it("rejects User create without siteId for CHEF_SERVICE", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
-        expect(() =>
-          validateDirectFieldsInScope("User", { email: "x@test.mg", role: Role.CHEF_EQUIPE }),
-        ).toThrow(RlsScopeError);
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
+        expect(() => validateDirectFieldsInScope("User", { email: "x@test.mg" })).toThrow(
+          RlsScopeError,
+        );
       });
     });
 
     it("allows a CHEF_SERVICE Team update that doesn't touch siteId (partial)", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(() =>
           validateDirectFieldsInScope(
             "Team",
@@ -273,7 +303,7 @@ describe("RBAC", () => {
     });
 
     it("still rejects a CHEF_SERVICE Team update carrying a wrong siteId (partial)", () => {
-      runWithRequestContext({ role: Role.CHEF_SERVICE, siteId: MOCK_SITE_ID, teamId: null }, () => {
+      runWithRequestContext({ scope: "SITE" as const, siteId: MOCK_SITE_ID, teamId: null }, () => {
         expect(() =>
           validateDirectFieldsInScope(
             "Team",

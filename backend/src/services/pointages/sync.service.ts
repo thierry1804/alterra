@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { Role } from "@prisma/client";
+import type { AccessScope } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { DAY_RULE_DB_ERROR, dayConflictMessage, findDayConflict } from "./day-rule.js";
 
@@ -78,7 +78,7 @@ export interface SyncPointageResult {
 /** Acteur de la synchronisation, pour contrôler que les travailleurs pointés sont dans son périmètre. */
 export interface SyncActor {
   id: string;
-  role: Role;
+  scope: AccessScope;
   teamId?: string | null;
   siteId?: string | null;
 }
@@ -98,7 +98,7 @@ export async function syncPointageBatch(
         continue;
       }
 
-      // Périmètre : un chef d'équipe ne pointe que sa propre équipe, un chef de service que son site.
+      // Périmètre : une portée équipe ne pointe que sa propre équipe, une portée site que son site.
       const worker = await prisma.worker.findUnique({
         where: { id: item.workerId },
         select: { teamId: true, siteId: true },
@@ -112,14 +112,14 @@ export async function syncPointageBatch(
         continue;
       }
       if (
-        (actor.role === Role.CHEF_EQUIPE && worker.teamId !== actor.teamId) ||
-        (actor.role === Role.CHEF_SERVICE && worker.siteId !== actor.siteId)
+        (actor.scope === "EQUIPE" && worker.teamId !== actor.teamId) ||
+        (actor.scope === "SITE" && worker.siteId !== actor.siteId)
       ) {
         results.push({
           clientUuid: item.clientUuid,
           status: "rejected",
           reason:
-            actor.role === Role.CHEF_EQUIPE
+            actor.scope === "EQUIPE"
               ? "Ce travailleur n'appartient pas à votre équipe"
               : "Ce travailleur n'appartient pas à votre site",
         });

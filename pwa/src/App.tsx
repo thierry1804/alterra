@@ -1,7 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./hooks/AuthProvider";
 import { GuestRoute, ProtectedRoute } from "./components/ProtectedRoute";
-import RoleRoute from "./components/RoleRoute";
+import PermissionRoute from "./components/PermissionRoute";
+import { ACCESS } from "./components/nav/nav-config";
 import AppShell from "./components/AppShell";
 import Login from "./pages/Login";
 import ActivitySelect from "./pages/ActivitySelect";
@@ -29,27 +30,35 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
-              <Route element={<RoleRoute allowedRoles={["CHEF_EQUIPE", "ADMIN"]} />}>
+              <Route element={<PermissionRoute access={ACCESS.fieldEntry} />}>
                 <Route path="/" element={<ActivitySelect />} />
                 <Route path="/batch" element={<BatchEntry />} />
+              </Route>
+              <Route element={<PermissionRoute access={ACCESS.presence} />}>
                 <Route path="/nfc" element={<NfcScan />} />
+              </Route>
+              <Route element={<PermissionRoute access={ACCESS.myPointages} />}>
                 <Route path="/my-pointages" element={<MyPointages />} />
               </Route>
 
-              <Route element={<RoleRoute allowedRoles={["CHEF_SERVICE", "ADMIN"]} />}>
+              <Route element={<PermissionRoute access={ACCESS.validation} />}>
                 <Route path="/validation" element={<Validation />} />
+              </Route>
+              <Route element={<PermissionRoute access={ACCESS.dailyClose} />}>
                 <Route path="/daily-close" element={<DailyClose />} />
+              </Route>
+              <Route element={<PermissionRoute access={ACCESS.requests} />}>
                 <Route path="/activity-requests" element={<ActivityRequest />} />
                 <Route path="/worker-requests" element={<WorkerRequest />} />
               </Route>
 
-              <Route
-                element={<RoleRoute allowedRoles={["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"]} />}
-              >
+              <Route element={<PermissionRoute access={ACCESS.teams} />}>
                 <Route path="/teams" element={<TeamManagement />} />
-                <Route path="/clarifications" element={<ClarificationRequest />} />
-                <Route path="/notifications" element={<Notifications />} />
               </Route>
+              <Route element={<PermissionRoute access={ACCESS.clarifications} />}>
+                <Route path="/clarifications" element={<ClarificationRequest />} />
+              </Route>
+              <Route path="/notifications" element={<Notifications />} />
 
               <Route path="/sync" element={<Sync />} />
             </Route>

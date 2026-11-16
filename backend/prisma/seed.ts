@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { PrismaClient, BioProvider, Role, WorkerStatus } from "@prisma/client";
+import { PrismaClient, BioProvider, WorkerStatus } from "@prisma/client";
 import argon2 from "argon2";
 import {
   buildMockDescriptor,
@@ -18,6 +18,7 @@ import {
   teamId,
   workerId,
 } from "./seed-data.js";
+import { SYSTEM_ROLE_IDS } from "../src/services/access/system-roles.js";
 
 const prisma = new PrismaClient();
 
@@ -69,7 +70,7 @@ async function main() {
       id: ADMIN_ID,
       email: "admin@alterra.mg",
       passwordHash: adminHash,
-      role: Role.ADMIN,
+      accessRoleId: SYSTEM_ROLE_IDS.ADMIN,
       firstName: "Admin",
       lastName: "ALTERRA",
     },
@@ -87,7 +88,7 @@ async function main() {
         id: cdsId(siteIndex),
         email: cdsEmail,
         passwordHash: userHash,
-        role: Role.CHEF_SERVICE,
+        accessRoleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
         firstName: "Chef",
         lastName: `Service ${site.shortCode}`,
         siteId,
@@ -118,7 +119,7 @@ async function main() {
           id: cdeUserId,
           email: cdeEmail,
           passwordHash: userHash,
-          role: Role.CHEF_EQUIPE,
+          accessRoleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
           firstName: "Chef",
           lastName: `Équipe ${teamName}`,
           siteId,

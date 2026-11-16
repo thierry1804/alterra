@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BioContext, BioProvider, BioResult, Role } from "@prisma/client";
+import { BioContext, BioProvider, BioResult } from "@prisma/client";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_CDS_ID = "00000000-0000-4000-8000-000000000002";
 const MOCK_CDE_ID = "00000000-0000-4000-8000-000000000003";
@@ -27,7 +28,7 @@ import { prisma } from "../lib/prisma.js";
 function cdsAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_CDS_ID,
-    role: Role.CHEF_SERVICE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;
@@ -36,7 +37,7 @@ function cdsAuthHeader() {
 function cdeAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_CDE_ID,
-    role: Role.CHEF_EQUIPE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     siteId: MOCK_SITE_ID,
     teamId: MOCK_TEAM_ID,
   })}`;

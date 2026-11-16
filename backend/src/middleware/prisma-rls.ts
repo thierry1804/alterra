@@ -1,11 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { Role } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
+import type { AccessScope, PrismaClient } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 
 export interface RequestContext {
   userId?: string;
-  role?: Role;
+  scope?: AccessScope;
   siteId?: string | null;
   teamId?: string | null;
   ip?: string;
@@ -76,8 +75,8 @@ export function requestContext(req: Request, _res: Response, next: NextFunction)
 
 export function getSiteFilter(): Record<string, string> {
   const ctx = getRequestContext();
-  if (!ctx?.role || ctx.role === Role.ADMIN) return {};
-  if (ctx.role === Role.CHEF_SERVICE) {
+  if (!ctx?.scope || ctx.scope === "TOUS") return {};
+  if (ctx.scope === "SITE") {
     if (!ctx.siteId) return IMPOSSIBLE_SCOPE_FILTER;
     return { siteId: ctx.siteId };
   }
@@ -86,8 +85,8 @@ export function getSiteFilter(): Record<string, string> {
 
 export function getTeamFilter(): Record<string, string> {
   const ctx = getRequestContext();
-  if (!ctx?.role || ctx.role === Role.ADMIN) return {};
-  if (ctx.role === Role.CHEF_EQUIPE) {
+  if (!ctx?.scope || ctx.scope === "TOUS") return {};
+  if (ctx.scope === "EQUIPE") {
     if (!ctx.teamId) return IMPOSSIBLE_SCOPE_FILTER;
     return { teamId: ctx.teamId };
   }
@@ -122,50 +121,50 @@ function isImpossibleScope(scope: Record<string, unknown>): boolean {
   return scope.id === IMPOSSIBLE_SCOPE_ID;
 }
 
-/** Returns null for ADMIN (no filter), scope filter for scoped roles, or impossible filter when scope/context is missing. */
+/** Returns null for full-access scope (no filter), scope filter for site/team scopes, or impossible filter when scope/context is missing. */
 export function getModelScopeFilter(model: ScopedModel): Record<string, unknown> | null {
   const ctx = getRequestContext();
-  if (!ctx?.role) return IMPOSSIBLE_SCOPE_FILTER;
-  if (ctx.role === Role.ADMIN) return null;
+  if (!ctx?.scope) return IMPOSSIBLE_SCOPE_FILTER;
+  if (ctx.scope === "TOUS") return null;
 
   switch (model) {
     case "Worker":
-      if (ctx.role === Role.CHEF_SERVICE) {
+      if (ctx.scope === "SITE") {
         if (!ctx.siteId) return IMPOSSIBLE_SCOPE_FILTER;
         return { siteId: ctx.siteId };
       }
-      if (ctx.role === Role.CHEF_EQUIPE) {
+      if (ctx.scope === "EQUIPE") {
         if (!ctx.teamId) return IMPOSSIBLE_SCOPE_FILTER;
         return { teamId: ctx.teamId };
       }
       break;
     case "Pointage":
     case "Payment":
-      if (ctx.role === Role.CHEF_SERVICE) {
+      if (ctx.scope === "SITE") {
         if (!ctx.siteId) return IMPOSSIBLE_SCOPE_FILTER;
         return { worker: { siteId: ctx.siteId } };
       }
-      if (ctx.role === Role.CHEF_EQUIPE) {
+      if (ctx.scope === "EQUIPE") {
         if (!ctx.teamId) return IMPOSSIBLE_SCOPE_FILTER;
         return { worker: { teamId: ctx.teamId } };
       }
       break;
     case "Team":
-      if (ctx.role === Role.CHEF_SERVICE) {
+      if (ctx.scope === "SITE") {
         if (!ctx.siteId) return IMPOSSIBLE_SCOPE_FILTER;
         return { siteId: ctx.siteId };
       }
-      if (ctx.role === Role.CHEF_EQUIPE) {
+      if (ctx.scope === "EQUIPE") {
         if (!ctx.teamId) return IMPOSSIBLE_SCOPE_FILTER;
         return { id: ctx.teamId };
       }
       break;
     case "User":
-      if (ctx.role === Role.CHEF_SERVICE) {
+      if (ctx.scope === "SITE") {
         if (!ctx.siteId) return IMPOSSIBLE_SCOPE_FILTER;
         return { siteId: ctx.siteId };
       }
-      if (ctx.role === Role.CHEF_EQUIPE) {
+      if (ctx.scope === "EQUIPE") {
         if (!ctx.teamId) return IMPOSSIBLE_SCOPE_FILTER;
         return { teamId: ctx.teamId };
       }
@@ -239,7 +238,7 @@ export function validateDirectFieldsInScope(
     }
     case "Team": {
       if ("id" in scope) {
-        throw new RlsScopeError("CHEF_EQUIPE cannot create or modify teams");
+        throw new RlsScopeError("Team-scoped users cannot create or modify teams");
       }
       const siteId = extractField(data, "siteId");
       if ("siteId" in scope) {
@@ -329,7 +328,7 @@ function scopedReadHandler(model: ScopedModel, operation: string) {
   return async ({ args, query }: { args: QueryArgs; query: QueryHandler }) => {
     const ctx = getRequestContext();
     // Unauthenticated routes (login, refresh) must read users without RLS scope.
-    if (!ctx?.role) {
+    if (!ctx?.scope) {
       return query(args);
     }
     const scope = getModelScopeFilter(model);

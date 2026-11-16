@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import xlsx from "node-xlsx";
-import { PaymentCycle, PaymentStatus, Prisma, Role } from "@prisma/client";
+import { PaymentCycle, PaymentStatus, Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
@@ -8,6 +8,7 @@ import { signAccessToken } from "../lib/jwt.js";
 import { buildMvolaDescription } from "../services/payments/mvola-description.js";
 import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
 import { resolvePeriod } from "../lib/period-iso.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_WORKER_ID = "00000000-0000-4000-8000-000000000040";
@@ -117,7 +118,7 @@ import { minioClient } from "../services/storage/minio.js";
 function adminAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: null,
     teamId: null,
   })}`;

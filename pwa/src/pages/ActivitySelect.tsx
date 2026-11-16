@@ -47,12 +47,6 @@ export default function ActivitySelect() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.role === "CHEF_SERVICE") {
-      navigate("/validation", { replace: true });
-    }
-  }, [user?.role, navigate]);
-
-  useEffect(() => {
     async function bootstrap() {
       const existing = await getDaySession();
       if (existing) {

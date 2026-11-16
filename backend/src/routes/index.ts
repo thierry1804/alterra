@@ -23,6 +23,7 @@ import { dailyReportsRouter } from "./daily-reports.routes.js";
 import { appSettingsRouter } from "./app-settings.routes.js";
 import { systemRouter } from "./system.routes.js";
 import { notificationsRouter } from "./notifications.routes.js";
+import { accessRouter } from "./access.routes.js";
 
 export const apiRouter = Router();
 
@@ -50,3 +51,4 @@ apiRouter.use(badgesRouter);
 apiRouter.use(workflowsRouter);
 apiRouter.use(notificationsRouter);
 apiRouter.use(dailyReportsRouter);
+apiRouter.use(accessRouter);

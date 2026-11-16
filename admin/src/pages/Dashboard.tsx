@@ -11,6 +11,7 @@ import AlertsBlock from "../components/dashboard/AlertsBlock";
 import TodoStrip from "../components/dashboard/TodoStrip";
 import PageHeader from "../components/shared/PageHeader";
 import { useAuth } from "../hooks/useAuth";
+import { hasPermission } from "../lib/permissions";
 import { useSiteScope } from "../lib/site-scope";
 import { useNavCounts } from "../hooks/useNavCounts";
 import ContextHelp, { GlossaryTerm } from "../components/ui/ContextHelp";
@@ -89,7 +90,11 @@ export default function Dashboard() {
 
       {data && (
         <>
-          <TodoStrip kpis={data.kpis} counts={counts} isAdmin={user?.role === "ADMIN"} />
+          <TodoStrip
+            kpis={data.kpis}
+            counts={counts}
+            isAdmin={hasPermission(user, "demande:decider")}
+          />
           <KpiCards kpis={data.kpis} />
           <div className="grid gap-4 xl:grid-cols-2">
             <PresenceChart data={data.presenceLast7Days} />

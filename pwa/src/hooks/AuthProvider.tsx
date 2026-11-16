@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { api, type AuthUser } from "../lib/api";
 import {
   clearPersistedSession,
+  getMemoryAccessToken,
   getMemoryUser,
   persistSession,
   restoreSession,
@@ -15,6 +16,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
 
+  const refreshUserFromServer = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await api.get<AuthUser>("/me");
+      const accessToken = getMemoryAccessToken();
+      if (!accessToken) return;
+      await persistSession(accessToken, res.data);
+      setUser(res.data);
+    } catch {
+      return;
+    }
+  }, []);
+
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -22,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (restored) {
           setUser(getMemoryUser());
           connectSocket();
+          void refreshUserFromServer();
         }
       } catch {
         // IndexedDB indisponible ou session corrompue : on bascule sur l'écran de connexion
@@ -32,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     void bootstrap();
-  }, []);
+  }, [refreshUserFromServer]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<{ accessToken: string; user: AuthUser }>("/auth/login", {

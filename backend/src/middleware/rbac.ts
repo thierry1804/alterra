@@ -1,50 +1,68 @@
-import type { NextFunction, Request, Response } from "express";
-import { Role } from "@prisma/client";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { ApiError } from "./error-handler.js";
+import type { PermissionKey } from "../services/access/permissions.catalog.js";
 
-/** Guard: restrict route to the given roles. Must run after requireAuth. */
-export function requireRole(...roles: Role[]) {
-  return (req: Request, _res: Response, next: NextFunction) => {
+interface PermissionHolder {
+  permissions: ReadonlySet<string>;
+}
+
+export type GuardedHandler = RequestHandler & {
+  __permissions?: readonly PermissionKey[];
+  __anyPermissions?: readonly PermissionKey[];
+  __mfaRole?: true;
+};
+
+export function can(user: PermissionHolder | undefined, key: PermissionKey): boolean {
+  return Boolean(user?.permissions.has(key));
+}
+
+function canAny(user: PermissionHolder | undefined, keys: readonly PermissionKey[]): boolean {
+  return keys.some((key) => can(user, key));
+}
+
+export function requirePermission(...keys: PermissionKey[]): GuardedHandler {
+  const guard: GuardedHandler = (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new ApiError(401, "UNAUTHENTICATED", "Missing user context"));
     }
-    if (!roles.includes(req.user.role)) {
+    const missing = keys.filter((key) => !can(req.user, key));
+    if (missing.length > 0) {
       return next(
-        new ApiError(403, "FORBIDDEN", "Insufficient role", {
-          requiredRoles: roles,
-          actualRole: req.user.role,
-        }),
+        new ApiError(403, "FORBIDDEN", "Permission insuffisante", { missingPermissions: missing }),
       );
     }
     next();
   };
+  guard.__permissions = keys;
+  return guard;
 }
 
-/**
- * Site scoping helper: CHEF_SERVICE is confined to their own site.
- * ADMIN sees everything. Attaches `req.siteScope` for explicit where clauses.
- * Prisma RLS extension applies the same filter automatically on reads.
- */
-export function siteScope(req: Request, _res: Response, next: NextFunction) {
-  req.siteScope = req.user?.role === Role.ADMIN ? undefined : (req.user?.siteId ?? undefined);
-  next();
-}
-
-/**
- * Team scoping helper: CHEF_EQUIPE is confined to their own team.
- * ADMIN sees everything. Attaches `req.teamScope` for explicit where clauses.
- */
-export function teamScope(req: Request, _res: Response, next: NextFunction) {
-  req.teamScope = req.user?.role === Role.CHEF_EQUIPE ? (req.user?.teamId ?? undefined) : undefined;
-  next();
-}
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      siteScope?: string;
-      teamScope?: string;
+export function requireMfaRole(): GuardedHandler {
+  const guard: GuardedHandler = (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new ApiError(401, "UNAUTHENTICATED", "Missing user context"));
     }
-  }
+    if (!req.user.mfaRequired) {
+      return next(new ApiError(403, "FORBIDDEN", "Permission insuffisante"));
+    }
+    next();
+  };
+  guard.__mfaRole = true;
+  return guard;
+}
+
+export function requireAnyPermission(...keys: PermissionKey[]): GuardedHandler {
+  const guard: GuardedHandler = (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new ApiError(401, "UNAUTHENTICATED", "Missing user context"));
+    }
+    if (!canAny(req.user, keys)) {
+      return next(
+        new ApiError(403, "FORBIDDEN", "Permission insuffisante", { anyOfPermissions: keys }),
+      );
+    }
+    next();
+  };
+  guard.__anyPermissions = keys;
+  return guard;
 }

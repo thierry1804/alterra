@@ -1,7 +1,14 @@
 import { execSync } from "node:child_process";
 import { test, expect, request } from "@playwright/test";
 import { ApiClient } from "./support/api.js";
-import { ADMIN_URL, PWA_URL, E2E_PREFIX, realCredentials, usersPassword } from "./support/env.js";
+import {
+  ADMIN_URL,
+  PWA_URL,
+  E2E_PREFIX,
+  ROLE_IDS,
+  realCredentials,
+  usersPassword,
+} from "./support/env.js";
 import {
   e2eName,
   isoWeekMonday,
@@ -67,7 +74,7 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
   await admin.login(); // MfaRequiredError => arrêt explicite
   const me = await admin.get("/me");
   expectStatus(me, 200);
-  expect(me.body.role).toBe("ADMIN");
+  expect(me.body.roleName).toBe("Administrateur");
 
   const runId = newRunId();
 
@@ -155,7 +162,7 @@ test("Sprint 3 — provisionnement du jeu de test E2E-S3-", async () => {
     const email = `e2e-s3-${tag}-${runId.toLowerCase()}@alterra.test`;
     const res = await admin.post("/users", {
       email,
-      role,
+      roleId: ROLE_IDS[role],
       firstName: `${E2E_PREFIX}${tag.toUpperCase()}`,
       lastName: runId,
       siteId: site!.id,

@@ -1,9 +1,9 @@
 import { Router, raw } from "express";
 import { z } from "zod";
-import { Prisma, Role, Sexe, WorkerStatus } from "@prisma/client";
+import { Prisma, Sexe, WorkerStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -127,6 +127,7 @@ function assertPhotoKeyForWorker(workerId: string, photoKey: string) {
 workersRouter.get(
   "/workers",
   requireAuth,
+  requirePermission("travailleur:lecture"),
   validate(listWorkersQuery, "query"),
   async (req, res, next) => {
     try {
@@ -171,6 +172,7 @@ workersRouter.get(
 workersRouter.get(
   "/workers/:id",
   requireAuth,
+  requirePermission("travailleur:lecture"),
   validate(workerIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -188,7 +190,7 @@ workersRouter.get(
 workersRouter.post(
   "/workers",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(createWorkerSchema),
   async (req, res, next) => {
     try {
@@ -212,7 +214,7 @@ workersRouter.post(
 workersRouter.patch(
   "/workers/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(workerIdParams, "params"),
   validate(updateWorkerSchema),
   async (req, res, next) => {
@@ -246,7 +248,7 @@ workersRouter.patch(
 workersRouter.delete(
   "/workers/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:suppression"),
   validate(workerIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -279,7 +281,7 @@ workersRouter.delete(
 workersRouter.post(
   "/workers/bulk-status",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(bulkStatusSchema),
   async (req, res, next) => {
     try {
@@ -309,7 +311,7 @@ workersRouter.post(
 workersRouter.post(
   "/workers/bulk-sexe",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(bulkSexeSchema),
   async (req, res, next) => {
     try {
@@ -339,7 +341,7 @@ workersRouter.post(
 workersRouter.post(
   "/workers/bulk-delete",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:suppression"),
   validate(bulkDeleteSchema),
   async (req, res, next) => {
     try {
@@ -372,7 +374,7 @@ workersRouter.post(
 workersRouter.post(
   "/workers/:id/photo",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(workerIdParams, "params"),
   validate(confirmPhotoSchema),
   async (req, res, next) => {
@@ -411,7 +413,7 @@ const WORKER_PHOTO_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/we
 workersRouter.post(
   "/workers/:id/photo-upload",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:ecriture"),
   validate(workerIdParams, "params"),
   raw({ type: "image/*", limit: "5mb" }),
   async (req, res, next) => {
@@ -442,7 +444,7 @@ workersRouter.post(
 workersRouter.post(
   "/workers/import/columns",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:import"),
   validate(importColumnsBodySchema),
   async (req, res, next) => {
     try {
@@ -465,7 +467,7 @@ workersRouter.post(
 workersRouter.post(
   "/workers/import",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("travailleur:import"),
   validate(importQuerySchema, "query"),
   validate(importBodySchema),
   async (req, res, next) => {

@@ -1,5 +1,6 @@
-import { Prisma, RequestStatus, Role, Sexe, WorkerStatus } from "@prisma/client";
-import type { AccessTokenPayload } from "../../lib/jwt.js";
+import { Prisma, RequestStatus, Sexe, WorkerStatus } from "@prisma/client";
+import { can } from "../../middleware/rbac.js";
+import type { AuthUser } from "../access/auth-user.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { createOnce } from "./idempotency.js";
@@ -32,9 +33,23 @@ export interface ComplementInput {
   comment: string;
 }
 
-function listScopeWhere(user: AccessTokenPayload): Prisma.WorkerRequestWhereInput {
-  if (user.role === Role.ADMIN) return {};
-  if (user.role === Role.CHEF_SERVICE) {
+async function listScopeWhere(user: AuthUser): Promise<Prisma.WorkerRequestWhereInput> {
+  if (can(user, "demande:decider")) {
+    if (user.scope === "TOUS") return {};
+    if (!user.siteId) return { requestedById: user.sub };
+    const [teams, requesters] = await Promise.all([
+      prisma.team.findMany({ where: { siteId: user.siteId }, select: { id: true } }),
+      prisma.user.findMany({ where: { siteId: user.siteId }, select: { id: true } }),
+    ]);
+    return {
+      OR: [
+        { requestedById: user.sub },
+        { requestedById: { in: requesters.map((row) => row.id) } },
+        { targetTeamId: { in: teams.map((row) => row.id) } },
+      ],
+    };
+  }
+  if (can(user, "demande:creer")) {
     return { requestedById: user.sub };
   }
   return { id: "00000000-0000-0000-0000-000000000000" };
@@ -56,10 +71,10 @@ async function resolveSiteIdForExistingRequest(
   return requester.siteId;
 }
 
-export async function listWorkerRequests(user: AccessTokenPayload, input: ListWorkerRequestsInput) {
+export async function listWorkerRequests(user: AuthUser, input: ListWorkerRequestsInput) {
   const pageSize = input.take ?? 50;
   const where: Prisma.WorkerRequestWhereInput = {
-    ...listScopeWhere(user),
+    ...(await listScopeWhere(user)),
     ...(input.status ? { status: input.status } : {}),
   };
 
@@ -75,19 +90,16 @@ export async function listWorkerRequests(user: AccessTokenPayload, input: ListWo
   return { data, nextCursor: hasMore ? data[data.length - 1]?.id : null, hasMore };
 }
 
-export async function getWorkerRequest(user: AccessTokenPayload, id: string) {
+export async function getWorkerRequest(user: AuthUser, id: string) {
   const request = await prisma.workerRequest.findFirst({
-    where: { id, ...listScopeWhere(user) },
+    where: { id, ...(await listScopeWhere(user)) },
   });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande MOC introuvable");
   return request;
 }
 
-export async function createWorkerRequest(
-  user: AccessTokenPayload,
-  input: CreateWorkerRequestInput,
-) {
-  if (user.role !== Role.CHEF_SERVICE && user.role !== Role.ADMIN) {
+export async function createWorkerRequest(user: AuthUser, input: CreateWorkerRequestInput) {
+  if (!can(user, "demande:creer")) {
     throw new ApiError(403, "FORBIDDEN", "Seul le chef de service peut créer cette demande");
   }
 
@@ -95,7 +107,7 @@ export async function createWorkerRequest(
     targetTeamId: input.targetTeamId,
     requestedById: user.sub,
   });
-  if (user.role === Role.CHEF_SERVICE && user.siteId !== siteId) {
+  if (user.scope !== "TOUS" && user.siteId !== siteId) {
     throw new ApiError(403, "FORBIDDEN", "Équipe hors périmètre site");
   }
 
@@ -122,16 +134,14 @@ export async function createWorkerRequest(
   );
 }
 
-export async function decideWorkerRequest(
-  user: AccessTokenPayload,
-  id: string,
-  input: WorkerDecisionInput,
-) {
-  if (user.role !== Role.ADMIN) {
+export async function decideWorkerRequest(user: AuthUser, id: string, input: WorkerDecisionInput) {
+  if (!can(user, "demande:decider")) {
     throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut décider");
   }
 
-  const request = await prisma.workerRequest.findUnique({ where: { id } });
+  const request = await prisma.workerRequest.findFirst({
+    where: { id, ...(await listScopeWhere(user)) },
+  });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande MOC introuvable");
   assertActivityDecisionAllowed(request.status);
 
@@ -197,16 +207,14 @@ export async function decideWorkerRequest(
   });
 }
 
-export async function complementWorkerRequest(
-  user: AccessTokenPayload,
-  id: string,
-  input: ComplementInput,
-) {
-  if (user.role !== Role.ADMIN) {
+export async function complementWorkerRequest(user: AuthUser, id: string, input: ComplementInput) {
+  if (!can(user, "demande:decider")) {
     throw new ApiError(403, "FORBIDDEN", "Seul l'administrateur peut demander un complément");
   }
 
-  const request = await prisma.workerRequest.findUnique({ where: { id } });
+  const request = await prisma.workerRequest.findFirst({
+    where: { id, ...(await listScopeWhere(user)) },
+  });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande MOC introuvable");
   assertActivityDecisionAllowed(request.status);
 
@@ -216,14 +224,14 @@ export async function complementWorkerRequest(
   });
 }
 
-export async function cancelWorkerRequest(user: AccessTokenPayload, id: string) {
+export async function cancelWorkerRequest(user: AuthUser, id: string) {
   const request = await prisma.workerRequest.findFirst({
-    where: { id, ...listScopeWhere(user) },
+    where: { id, ...(await listScopeWhere(user)) },
   });
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande MOC introuvable");
   assertActivityCancelAllowed(request.status);
 
-  if (user.role !== Role.ADMIN && request.requestedById !== user.sub) {
+  if (!can(user, "demande:decider") && request.requestedById !== user.sub) {
     throw new ApiError(403, "FORBIDDEN", "Annulation non autorisée");
   }
 

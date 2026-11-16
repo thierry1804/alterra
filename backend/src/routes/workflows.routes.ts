@@ -1,8 +1,8 @@
 import { Router, raw } from "express";
 import { z } from "zod";
-import { ClarificationStatus, RequestStatus, Role, Sexe } from "@prisma/client";
+import { ClarificationStatus, RequestStatus, Sexe } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import {
@@ -106,13 +106,10 @@ const answerClarificationSchema = z.object({
   answerPhotoKey: z.string().optional(),
 });
 
-const WF_CDS_ADMIN = [Role.CHEF_SERVICE, Role.ADMIN] as const;
-const WF_CLAR_ROLES = [Role.CHEF_SERVICE, Role.CHEF_EQUIPE, Role.ADMIN] as const;
-
 workflowsRouter.get(
   "/activity-requests",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:lecture"),
   validate(listRequestQuery, "query"),
   async (req, res, next) => {
     try {
@@ -128,7 +125,7 @@ workflowsRouter.get(
 workflowsRouter.get(
   "/activity-requests/:id",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -143,7 +140,7 @@ workflowsRouter.get(
 workflowsRouter.post(
   "/activity-requests",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:creer"),
   validate(createActivitySchema),
   async (req, res, next) => {
     try {
@@ -167,7 +164,7 @@ workflowsRouter.post(
 workflowsRouter.patch(
   "/activity-requests/:id/decision",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(idParams, "params"),
   validate(decisionSchema),
   async (req, res, next) => {
@@ -199,7 +196,7 @@ workflowsRouter.patch(
 workflowsRouter.post(
   "/activity-requests/bulk-decision",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(bulkDecisionSchema),
   async (req, res, next) => {
     try {
@@ -234,7 +231,7 @@ workflowsRouter.post(
 workflowsRouter.patch(
   "/activity-requests/:id/complement",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(idParams, "params"),
   validate(complementSchema),
   async (req, res, next) => {
@@ -261,7 +258,7 @@ workflowsRouter.patch(
 workflowsRouter.patch(
   "/activity-requests/:id/cancel",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:annuler"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -287,7 +284,7 @@ workflowsRouter.patch(
 workflowsRouter.get(
   "/worker-requests",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:lecture"),
   validate(listRequestQuery, "query"),
   async (req, res, next) => {
     try {
@@ -305,7 +302,7 @@ workflowsRouter.get(
 workflowsRouter.post(
   "/worker-requests/photo",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:creer"),
   raw({ type: "image/jpeg", limit: "5mb" }),
   async (req, res, next) => {
     try {
@@ -323,7 +320,7 @@ workflowsRouter.post(
 workflowsRouter.get(
   "/worker-requests/:id",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -337,7 +334,7 @@ workflowsRouter.get(
 workflowsRouter.post(
   "/worker-requests",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:creer"),
   validate(createWorkerSchema),
   async (req, res, next) => {
     try {
@@ -361,7 +358,7 @@ workflowsRouter.post(
 workflowsRouter.patch(
   "/worker-requests/:id/decision",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(idParams, "params"),
   validate(decisionSchema),
   async (req, res, next) => {
@@ -393,7 +390,7 @@ workflowsRouter.patch(
 workflowsRouter.post(
   "/worker-requests/bulk-decision",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(bulkDecisionSchema),
   async (req, res, next) => {
     try {
@@ -428,7 +425,7 @@ workflowsRouter.post(
 workflowsRouter.patch(
   "/worker-requests/:id/complement",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("demande:decider"),
   validate(idParams, "params"),
   validate(complementSchema),
   async (req, res, next) => {
@@ -455,7 +452,7 @@ workflowsRouter.patch(
 workflowsRouter.patch(
   "/worker-requests/:id/cancel",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("demande:annuler"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -481,7 +478,7 @@ workflowsRouter.patch(
 workflowsRouter.get(
   "/clarification-requests",
   requireAuth,
-  requireRole(...WF_CLAR_ROLES),
+  requirePermission("precision:lecture"),
   validate(listClarificationQuery, "query"),
   async (req, res, next) => {
     try {
@@ -499,7 +496,7 @@ workflowsRouter.get(
 workflowsRouter.post(
   "/clarification-requests/photo",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.ADMIN),
+  requirePermission("precision:repondre"),
   raw({ type: "image/jpeg", limit: "5mb" }),
   async (req, res, next) => {
     try {
@@ -517,7 +514,7 @@ workflowsRouter.post(
 workflowsRouter.get(
   "/clarification-requests/:id",
   requireAuth,
-  requireRole(...WF_CLAR_ROLES),
+  requirePermission("precision:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -531,7 +528,7 @@ workflowsRouter.get(
 workflowsRouter.post(
   "/clarification-requests",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("precision:creer"),
   validate(createClarificationSchema),
   async (req, res, next) => {
     try {
@@ -560,7 +557,7 @@ workflowsRouter.post(
 workflowsRouter.get(
   "/clarification-requests/:id/photo",
   requireAuth,
-  requireRole(...WF_CLAR_ROLES),
+  requirePermission("precision:lecture"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -582,7 +579,7 @@ workflowsRouter.get(
 workflowsRouter.patch(
   "/clarification-requests/:id/answer",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.ADMIN),
+  requirePermission("precision:repondre"),
   validate(idParams, "params"),
   validate(answerClarificationSchema),
   async (req, res, next) => {
@@ -614,7 +611,7 @@ workflowsRouter.patch(
 workflowsRouter.patch(
   "/clarification-requests/:id/close",
   requireAuth,
-  requireRole(...WF_CDS_ADMIN),
+  requirePermission("precision:cloturer"),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {

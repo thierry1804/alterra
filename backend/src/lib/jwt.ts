@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
-import { Role } from "@prisma/client";
 
 export interface AccessTokenPayload {
   sub: string;
-  role: Role;
+  roleId: string;
   siteId: string | null;
   teamId: string | null;
   /** Date d'émission (secondes), ajoutée par jsonwebtoken. */

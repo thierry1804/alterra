@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
@@ -22,7 +22,8 @@ import MapPage from "./pages/Map";
 import BadgesPage from "./pages/Badges";
 import ProtectedRoute, { GuestRoute } from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
-import RoleGuard from "./components/layout/RoleGuard";
+import PermissionGuard from "./components/layout/PermissionGuard";
+import AccessRolesPage from "./pages/AccessRoles";
 import { Toaster } from "./components/ui/toaster";
 import { LoadingRow } from "./components/ui/feedback";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
@@ -44,6 +45,10 @@ function DocumentTitleSync() {
     document.title = `${appName} - Back-office`;
   }, [appName]);
   return null;
+}
+
+function guard(path: string, page: ReactElement) {
+  return <PermissionGuard path={path}>{page}</PermissionGuard>;
 }
 
 export default function App() {
@@ -70,27 +75,23 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
-              <Route element={<RoleGuard allowedRoles={["ADMIN", "CHEF_SERVICE"]} />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/pointages" element={<PointagesPage />} />
-                <Route path="/badges" element={<BadgesPage />} />
-              </Route>
-
-              <Route element={<RoleGuard allowedRoles={["ADMIN"]} />}>
-                <Route path="/sites" element={<SitesPage />} />
-                <Route path="/zones" element={<ZonesPage />} />
-                <Route path="/activities" element={<ActivitiesPage />} />
-                <Route path="/units" element={<UnitsPage />} />
-                <Route path="/workers" element={<WorkersPage />} />
-                <Route path="/requests" element={<RequestsPage />} />
-                <Route path="/map" element={<MapPage />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/payments" element={<PaymentsPage />} />
-                <Route path="/invoices" element={<InvoicesPage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/audit" element={<AuditLogPage />} />
-                <Route path="/settings" element={<AppSettingsPage />} />
-              </Route>
+              <Route path="/" element={guard("/", <Dashboard />)} />
+              <Route path="/pointages" element={guard("/pointages", <PointagesPage />)} />
+              <Route path="/badges" element={guard("/badges", <BadgesPage />)} />
+              <Route path="/sites" element={guard("/sites", <SitesPage />)} />
+              <Route path="/zones" element={guard("/zones", <ZonesPage />)} />
+              <Route path="/activities" element={guard("/activities", <ActivitiesPage />)} />
+              <Route path="/units" element={guard("/units", <UnitsPage />)} />
+              <Route path="/workers" element={guard("/workers", <WorkersPage />)} />
+              <Route path="/requests" element={guard("/requests", <RequestsPage />)} />
+              <Route path="/map" element={guard("/map", <MapPage />)} />
+              <Route path="/users" element={guard("/users", <UsersPage />)} />
+              <Route path="/access" element={guard("/access", <AccessRolesPage />)} />
+              <Route path="/payments" element={guard("/payments", <PaymentsPage />)} />
+              <Route path="/invoices" element={guard("/invoices", <InvoicesPage />)} />
+              <Route path="/reports" element={guard("/reports", <ReportsPage />)} />
+              <Route path="/audit" element={guard("/audit", <AuditLogPage />)} />
+              <Route path="/settings" element={guard("/settings", <AppSettingsPage />)} />
             </Route>
           </Route>
 

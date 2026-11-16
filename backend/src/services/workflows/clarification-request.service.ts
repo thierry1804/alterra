@@ -1,5 +1,6 @@
-import { ClarificationStatus, PointageStatus, Prisma, Role } from "@prisma/client";
-import type { AccessTokenPayload } from "../../lib/jwt.js";
+import { ClarificationStatus, PointageStatus, Prisma } from "@prisma/client";
+import { can } from "../../middleware/rbac.js";
+import type { AuthUser } from "../access/auth-user.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { createOnce } from "./idempotency.js";
@@ -26,16 +27,16 @@ export interface AnswerClarificationInput {
   answerPhotoKey?: string;
 }
 
-function listScopeWhere(user: AccessTokenPayload): Prisma.ClarificationRequestWhereInput {
-  if (user.role === Role.ADMIN) return {};
+function listScopeWhere(user: AuthUser): Prisma.ClarificationRequestWhereInput {
+  if (user.scope === "TOUS") return {};
 
-  if (user.role === Role.CHEF_SERVICE && user.siteId) {
+  if (user.scope === "SITE" && user.siteId) {
     return {
       OR: [{ requestedById: user.sub }, { pointage: { worker: { siteId: user.siteId } } }],
     };
   }
 
-  if (user.role === Role.CHEF_EQUIPE && user.teamId) {
+  if (user.scope === "EQUIPE" && user.teamId) {
     return {
       pointage: {
         worker: { teamId: user.teamId },
@@ -47,7 +48,7 @@ function listScopeWhere(user: AccessTokenPayload): Prisma.ClarificationRequestWh
 }
 
 async function assertPointageAccessible(
-  user: AccessTokenPayload,
+  user: AuthUser,
   pointageId: string,
 ): Promise<{ id: string; workerId: string }> {
   const pointage = await prisma.pointage.findUnique({
@@ -56,10 +57,10 @@ async function assertPointageAccessible(
   });
   if (!pointage) throw new ApiError(404, "NOT_FOUND", "Pointage introuvable");
 
-  if (user.role === Role.CHEF_SERVICE && user.siteId !== pointage.worker.siteId) {
+  if (user.scope === "SITE" && user.siteId !== pointage.worker.siteId) {
     throw new ApiError(403, "FORBIDDEN", "Pointage hors périmètre site");
   }
-  if (user.role === Role.CHEF_EQUIPE && user.teamId !== pointage.worker.teamId) {
+  if (user.scope === "EQUIPE" && user.teamId !== pointage.worker.teamId) {
     throw new ApiError(403, "FORBIDDEN", "Pointage hors périmètre équipe");
   }
 
@@ -67,7 +68,7 @@ async function assertPointageAccessible(
 }
 
 export async function listClarificationRequests(
-  user: AccessTokenPayload,
+  user: AuthUser,
   input: ListClarificationRequestsInput,
 ) {
   const pageSize = input.take ?? 50;
@@ -88,7 +89,7 @@ export async function listClarificationRequests(
   return { data, nextCursor: hasMore ? data[data.length - 1]?.id : null, hasMore };
 }
 
-export async function getClarificationRequest(user: AccessTokenPayload, id: string) {
+export async function getClarificationRequest(user: AuthUser, id: string) {
   const request = await prisma.clarificationRequest.findFirst({
     where: { id, ...listScopeWhere(user) },
   });
@@ -97,10 +98,10 @@ export async function getClarificationRequest(user: AccessTokenPayload, id: stri
 }
 
 export async function createClarificationRequest(
-  user: AccessTokenPayload,
+  user: AuthUser,
   input: CreateClarificationRequestInput,
 ) {
-  if (user.role !== Role.CHEF_SERVICE && user.role !== Role.ADMIN) {
+  if (!can(user, "precision:creer")) {
     throw new ApiError(403, "FORBIDDEN", "Seul le chef de service peut demander des précisions");
   }
 
@@ -114,7 +115,7 @@ export async function createClarificationRequest(
   );
 }
 
-function createClarification(user: AccessTokenPayload, input: CreateClarificationRequestInput) {
+function createClarification(user: AuthUser, input: CreateClarificationRequestInput) {
   return prisma.$transaction(async (tx) => {
     const created = await tx.clarificationRequest.create({
       data: {
@@ -137,11 +138,11 @@ function createClarification(user: AccessTokenPayload, input: CreateClarificatio
 }
 
 export async function answerClarificationRequest(
-  user: AccessTokenPayload,
+  user: AuthUser,
   id: string,
   input: AnswerClarificationInput,
 ) {
-  if (user.role !== Role.CHEF_EQUIPE && user.role !== Role.ADMIN) {
+  if (!can(user, "precision:repondre")) {
     throw new ApiError(403, "FORBIDDEN", "Seul le chef d'équipe peut répondre");
   }
 
@@ -160,7 +161,7 @@ export async function answerClarificationRequest(
   }
   assertClarificationAnswerAllowed(request.status);
 
-  if (user.role === Role.CHEF_EQUIPE && user.teamId !== request.pointage.worker.teamId) {
+  if (user.scope === "EQUIPE" && user.teamId !== request.pointage.worker.teamId) {
     throw new ApiError(403, "FORBIDDEN", "Demande hors périmètre équipe");
   }
 
@@ -180,8 +181,8 @@ export async function answerClarificationRequest(
   });
 }
 
-export async function closeClarificationRequest(user: AccessTokenPayload, id: string) {
-  if (user.role !== Role.CHEF_SERVICE && user.role !== Role.ADMIN) {
+export async function closeClarificationRequest(user: AuthUser, id: string) {
+  if (!can(user, "precision:cloturer")) {
     throw new ApiError(403, "FORBIDDEN", "Seul le chef de service peut clôturer");
   }
 
@@ -192,7 +193,7 @@ export async function closeClarificationRequest(user: AccessTokenPayload, id: st
   if (!request) throw new ApiError(404, "NOT_FOUND", "Demande de précisions introuvable");
   assertClarificationCloseAllowed(request.status);
 
-  if (user.role === Role.CHEF_SERVICE && user.siteId !== request.pointage.worker.siteId) {
+  if (user.scope === "SITE" && user.siteId !== request.pointage.worker.siteId) {
     throw new ApiError(403, "FORBIDDEN", "Demande hors périmètre site");
   }
 

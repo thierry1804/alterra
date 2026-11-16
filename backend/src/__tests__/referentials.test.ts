@@ -1,4 +1,4 @@
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
@@ -12,6 +12,7 @@ import {
   startOfUtcDay,
 } from "../services/activities/activity-version.service.js";
 import { parseWorkersWorkbook } from "../services/import/workers-import.service.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
@@ -99,7 +100,7 @@ import { basePrisma } from "../lib/prisma-base.js";
 function adminAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;
@@ -108,7 +109,7 @@ function adminAuthHeader() {
 function chefServiceAuthHeader(siteId: string) {
   return `Bearer ${signAccessToken({
     sub: MOCK_CHEF_SERVICE_ID,
-    role: Role.CHEF_SERVICE,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId,
     teamId: null,
   })}`;
@@ -117,7 +118,7 @@ function chefServiceAuthHeader(siteId: string) {
 function blockedUserAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_BLOCKED_USER_ID,
-    role: Role.CDS,
+    roleId: SYSTEM_ROLE_IDS.CHEF_SERVICE,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;
@@ -491,6 +492,7 @@ describe("referentials module", () => {
       id: MOCK_USER_TARGET_ID,
       active: true,
       deletedAt: null,
+      accessRoleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     } as never);
     vi.mocked(prisma.user.update).mockResolvedValue({
       id: MOCK_USER_TARGET_ID,
@@ -523,6 +525,7 @@ describe("referentials module", () => {
       id: MOCK_USER_TARGET_ID,
       active: true,
       deletedAt: null,
+      accessRoleId: SYSTEM_ROLE_IDS.CHEF_EQUIPE,
     } as never);
     vi.mocked(prisma.user.update).mockResolvedValue({
       id: MOCK_USER_TARGET_ID,

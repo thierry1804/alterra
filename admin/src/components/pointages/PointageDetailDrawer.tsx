@@ -12,6 +12,7 @@ import {
 import type { ActivitySubActivity, Worker } from "../../lib/referentials";
 import { formatDate } from "../../lib/referentials";
 import { useAuth } from "../../hooks/useAuth";
+import { hasPermission } from "../../lib/permissions";
 import CorrectionForm from "./CorrectionForm";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -68,12 +69,12 @@ export default function PointageDetailDrawer({
     setPhotoOpen(false);
   }, [pointage?.id]);
 
-  const canValidate = user?.role === "ADMIN" || user?.role === "CHEF_SERVICE";
+  const canValidate = hasPermission(user, "pointage:valider_site");
   const canActOnPending =
     pointage?.status === "PENDING" || pointage?.status === "NEEDS_CLARIFICATION";
   // Un pointage validé est potentiellement déjà payé — plus aucune action (valider/rejeter/corriger)
   // ne doit pouvoir le modifier. Un rejeté reste corrigeable : c'est le seul chemin de réparation.
-  const canCorrect = user?.role === "ADMIN" && pointage?.status !== "VALIDATED";
+  const canCorrect = hasPermission(user, "pointage:correction") && pointage?.status !== "VALIDATED";
 
   // Après une action (valider/rejeter/corriger), on reste dans l'offcanvas et on avance au pointage
   // suivant pour enchaîner la revue sans ressaisir — fermeture seulement s'il n'y en a plus.

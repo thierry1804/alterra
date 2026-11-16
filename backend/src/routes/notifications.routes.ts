@@ -1,8 +1,6 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import {
@@ -16,8 +14,6 @@ import {
 import { getVapidPublicKey } from "../services/notifications/web-push.service.js";
 
 export const notificationsRouter = Router();
-
-const PWA_ROLES = [Role.CHEF_SERVICE, Role.CHEF_EQUIPE, Role.ADMIN] as const;
 
 const listQuery = z.object({
   cursor: z.guid().optional(),
@@ -38,37 +34,26 @@ const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url(),
 });
 
-notificationsRouter.get(
-  "/notifications/vapid-public-key",
-  requireAuth,
-  requireRole(...PWA_ROLES),
-  (_req, res) => {
-    const key = getVapidPublicKey();
-    if (!key) {
-      throw new ApiError(503, "PUSH_UNAVAILABLE", "Web Push non configuré (clés VAPID manquantes)");
-    }
-    res.json({ publicKey: key });
-  },
-);
+notificationsRouter.get("/notifications/vapid-public-key", requireAuth, (_req, res) => {
+  const key = getVapidPublicKey();
+  if (!key) {
+    throw new ApiError(503, "PUSH_UNAVAILABLE", "Web Push non configuré (clés VAPID manquantes)");
+  }
+  res.json({ publicKey: key });
+});
 
-notificationsRouter.get(
-  "/notifications/unread-count",
-  requireAuth,
-  requireRole(...PWA_ROLES),
-  async (req, res, next) => {
-    try {
-      const count = await unreadCount(req.user!.sub);
-      res.json({ count });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+notificationsRouter.get("/notifications/unread-count", requireAuth, async (req, res, next) => {
+  try {
+    const count = await unreadCount(req.user!.sub);
+    res.json({ count });
+  } catch (err) {
+    next(err);
+  }
+});
 
 notificationsRouter.get(
   "/notifications",
   requireAuth,
-  requireRole(...PWA_ROLES),
   validate(listQuery, "query"),
   async (req, res, next) => {
     try {
@@ -87,7 +72,6 @@ notificationsRouter.get(
 notificationsRouter.patch(
   "/notifications/:id/read",
   requireAuth,
-  requireRole(...PWA_ROLES),
   validate(idParams, "params"),
   async (req, res, next) => {
     try {
@@ -102,27 +86,21 @@ notificationsRouter.patch(
   },
 );
 
-notificationsRouter.post(
-  "/notifications/read-all",
-  requireAuth,
-  requireRole(...PWA_ROLES),
-  async (req, res, next) => {
-    try {
-      const result = await markAllNotificationsRead(req.user!.sub, {
-        ip: req.ip,
-        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
-      });
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+notificationsRouter.post("/notifications/read-all", requireAuth, async (req, res, next) => {
+  try {
+    const result = await markAllNotificationsRead(req.user!.sub, {
+      ip: req.ip,
+      userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 notificationsRouter.post(
   "/notifications/push-subscribe",
   requireAuth,
-  requireRole(...PWA_ROLES),
   validate(pushSubscribeSchema),
   async (req, res, next) => {
     try {
@@ -152,7 +130,6 @@ notificationsRouter.post(
 notificationsRouter.delete(
   "/notifications/push-subscribe",
   requireAuth,
-  requireRole(...PWA_ROLES),
   validate(pushUnsubscribeSchema),
   async (req, res, next) => {
     try {

@@ -1,8 +1,8 @@
-import { Role } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
+import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
@@ -16,7 +16,7 @@ import { getDashboardSummary } from "../services/dashboard/dashboard.service.js"
 function adminAuthHeader() {
   return `Bearer ${signAccessToken({
     sub: MOCK_ADMIN_ID,
-    role: Role.ADMIN,
+    roleId: SYSTEM_ROLE_IDS.ADMIN,
     siteId: MOCK_SITE_ID,
     teamId: null,
   })}`;

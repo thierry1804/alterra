@@ -85,7 +85,8 @@ export interface AppUser {
   id: string;
   email: string | null;
   phone: string | null;
-  role: "ADMIN" | "CHEF_SERVICE" | "CHEF_EQUIPE";
+  roleId: string;
+  roleName: string;
   firstName: string;
   lastName: string;
   active: boolean;
@@ -149,10 +150,4 @@ export const WORKER_STATUS_LABELS: Record<Worker["status"], string> = {
 export const WORKER_SEXE_LABELS: Record<NonNullable<Worker["sexe"]>, string> = {
   MASCULIN: "Masculin",
   FEMININ: "Féminin",
-};
-
-export const USER_ROLE_LABELS: Record<AppUser["role"], string> = {
-  ADMIN: "Administrateur",
-  CHEF_SERVICE: "Chef de service",
-  CHEF_EQUIPE: "Chef d'équipe",
 };

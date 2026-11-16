@@ -1,6 +1,6 @@
 import { test, expect } from "./support/fixtures.js";
 import { ApiClient } from "./support/api.js";
-import { E2E_PREFIX } from "./support/env.js";
+import { E2E_PREFIX, ROLE_IDS } from "./support/env.js";
 import { expectAudit, expectStatus } from "./support/helpers.js";
 import { persisted, randomPassword, stReset, track } from "./support/state.js";
 import { expectToast, findRowLoadMore, heading, waitTableReady } from "./support/ui.js";
@@ -28,8 +28,8 @@ test.describe(`${UC} (consultation, filtres, états)`, () => {
     const roleSelect = page
       .locator("select")
       .filter({ has: page.locator("option", { hasText: "Tous les rôles" }) });
-    const cds = await admin.getAllCursor<any>("/users?role=CHEF_SERVICE&take=100");
-    await roleSelect.selectOption("CHEF_SERVICE");
+    const cds = await admin.getAllCursor<any>(`/users?roleId=${ROLE_IDS.CHEF_SERVICE}&take=100`);
+    await roleSelect.selectOption(ROLE_IDS.CHEF_SERVICE);
     await expect(page.locator("tbody tr")).toHaveCount(Math.min(cds.length, 50), {
       timeout: 20_000,
     });
@@ -90,7 +90,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     ).toBe(true);
 
     await dialog.locator("#u-email").fill(st.email);
-    await dialog.locator("#u-role").selectOption("CHEF_EQUIPE");
+    await dialog.locator("#u-role").selectOption({ label: "Chef d'équipe" });
     await dialog.locator("#u-site").selectOption(world.site.id);
     const [resp] = await Promise.all([
       page.waitForResponse(
@@ -115,7 +115,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     // Le compte créé peut se connecter avec le mot de passe temporaire
     const login = await ApiClient.rawLogin(st.email, st.tempPassword!);
     expect(login.status).toBe(200);
-    expect(login.body.user.role).toBe("CHEF_EQUIPE");
+    expect(login.body.user.roleName).toBe("Chef d'équipe");
   });
 
   test(`${UC} › création avec un mot de passe saisi (champ « optionnel » du formulaire)`, async ({
@@ -131,7 +131,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     await dialog.locator("#u-first").fill(`${E2E_PREFIX}PWD`);
     await dialog.locator("#u-last").fill(world.runId);
     await dialog.locator("#u-email").fill(email);
-    await dialog.locator("#u-role").selectOption("CHEF_EQUIPE");
+    await dialog.locator("#u-role").selectOption({ label: "Chef d'équipe" });
     await dialog.locator("#u-site").selectOption(world.site.id);
     await dialog.locator("#u-password").fill(randomPassword());
     const [resp] = await Promise.all([
@@ -154,7 +154,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
   }) => {
     test.skip(!st.email, "utilisateur UI non créé");
     const base = {
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: `${E2E_PREFIX}VAL`,
       lastName: world.runId,
       siteId: world.site.id,
@@ -174,7 +174,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     if (dup.status === 201) track("user", dup.body.user.id, "dup-email");
     expect.soft(dup.status, `e-mail en doublon : HTTP ${dup.status} (409 attendu)`).toBe(409);
     expectStatus(
-      await admin.post("/users", { role: "CHEF_EQUIPE", firstName: "X", lastName: "Y" }),
+      await admin.post("/users", { roleId: ROLE_IDS.CHEF_EQUIPE, firstName: "X", lastName: "Y" }),
       201,
       400,
       422,
@@ -231,7 +231,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     const email = `e2e-s3-reset-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: "E2E-S3-RESET",
       lastName: world.runId,
       siteId: world.site.id,
@@ -260,7 +260,7 @@ test.describe(`${UC} (création, validation, édition, reset, désactivation)`, 
     const email = `e2e-s3-deact-${world.runId.toLowerCase()}-${Date.now().toString(36)}@alterra.test`;
     const created = await admin.post("/users", {
       email,
-      role: "CHEF_EQUIPE",
+      roleId: ROLE_IDS.CHEF_EQUIPE,
       firstName: "E2E-S3-DEACT",
       lastName: world.runId,
       siteId: world.site.id,

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -32,64 +32,73 @@ const updateSiteSchema = z.object({
   active: z.boolean().optional(),
 });
 
-sitesRouter.get("/sites", requireAuth, async (req, res, next) => {
-  try {
-    const where = req.user!.role === Role.ADMIN ? {} : { id: req.user!.siteId ?? "__none__" };
-    const sites = await prisma.site.findMany({ where, orderBy: { name: "asc" } });
-    res.json({ data: sites });
-  } catch (err) {
-    next(err);
-  }
-});
+sitesRouter.get(
+  "/sites",
+  requireAuth,
+  requirePermission("site:lecture"),
+  async (req, res, next) => {
+    try {
+      const where = req.user!.scope === "TOUS" ? {} : { id: req.user!.siteId ?? "__none__" };
+      const sites = await prisma.site.findMany({ where, orderBy: { name: "asc" } });
+      res.json({ data: sites });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
-sitesRouter.get("/sites/geo", requireAuth, requireRole(Role.ADMIN), async (req, res, next) => {
-  try {
-    const sites = await prisma.site.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        shortCode: true,
-        geoLat: true,
-        geoLng: true,
-        zones: {
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            geoPolygon: true,
-            parcelles: {
-              orderBy: { name: "asc" },
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                surfaceHa: true,
-                geoPolygon: true,
+sitesRouter.get(
+  "/sites/geo",
+  requireAuth,
+  requirePermission("carte:lecture"),
+  async (req, res, next) => {
+    try {
+      const sites = await prisma.site.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          shortCode: true,
+          geoLat: true,
+          geoLng: true,
+          zones: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              geoPolygon: true,
+              parcelles: {
+                orderBy: { name: "asc" },
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  surfaceHa: true,
+                  geoPolygon: true,
+                },
               },
             },
           },
         },
-      },
-    });
-    res.json({ data: sites });
-  } catch (err) {
-    next(err);
-  }
-});
+      });
+      res.json({ data: sites });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 sitesRouter.get(
   "/sites/:id",
   requireAuth,
+  requirePermission("site:lecture"),
   validate(siteIdParams, "params"),
   async (req, res, next) => {
     try {
       const where =
-        req.user!.role === Role.ADMIN
-          ? { id: req.params.id }
-          : { id: req.user!.siteId ?? "__none__" };
+        req.user!.scope === "TOUS" ? { id: req.params.id } : { id: req.user!.siteId ?? "__none__" };
 
       const site = await prisma.site.findFirst({ where });
       if (!site) throw new ApiError(404, "NOT_FOUND", "Site introuvable");
@@ -103,7 +112,7 @@ sitesRouter.get(
 sitesRouter.post(
   "/sites",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("site:ecriture"),
   validate(createSiteSchema),
   async (req, res, next) => {
     try {
@@ -130,7 +139,7 @@ sitesRouter.post(
 sitesRouter.patch(
   "/sites/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("site:ecriture"),
   validate(siteIdParams, "params"),
   validate(updateSiteSchema),
   async (req, res, next) => {
@@ -159,7 +168,7 @@ sitesRouter.patch(
 sitesRouter.delete(
   "/sites/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("site:suppression"),
   validate(siteIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -190,7 +199,7 @@ sitesRouter.delete(
 sitesRouter.post(
   "/sites/bulk-status",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("site:ecriture"),
   validate(bulkStatusSchema),
   async (req, res, next) => {
     try {

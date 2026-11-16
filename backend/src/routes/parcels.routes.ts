@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { geoPolygonSchema } from "../lib/geo-json.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -47,7 +47,7 @@ const updateParcelSchema = z.object({
 parcelsRouter.get(
   "/parcels",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:lecture"),
   validate(listParcelsQuery, "query"),
   async (req, res, next) => {
     try {
@@ -71,7 +71,7 @@ parcelsRouter.get(
 parcelsRouter.get(
   "/parcels/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:lecture"),
   validate(parcelIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -90,7 +90,7 @@ parcelsRouter.get(
 parcelsRouter.post(
   "/parcels",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:ecriture"),
   validate(createParcelSchema),
   async (req, res, next) => {
     try {
@@ -134,7 +134,7 @@ parcelsRouter.post(
 parcelsRouter.patch(
   "/parcels/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:ecriture"),
   validate(parcelIdParams, "params"),
   validate(updateParcelSchema),
   async (req, res, next) => {
@@ -175,7 +175,7 @@ parcelsRouter.patch(
 parcelsRouter.delete(
   "/parcels/:id",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:suppression"),
   validate(parcelIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -208,7 +208,7 @@ parcelsRouter.delete(
 parcelsRouter.post(
   "/parcels/bulk-delete",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parcelle:suppression"),
   validate(bulkIdsOnlySchema),
   async (req, res, next) => {
     try {

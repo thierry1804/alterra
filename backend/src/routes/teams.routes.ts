@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Prisma, Role, WorkerStatus } from "@prisma/client";
+import { Prisma, WorkerStatus } from "@prisma/client";
 import { prisma, basePrisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -41,9 +41,6 @@ const eligibleWorkersQuery = z.object({
   take: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-const TEAM_ROLES = [Role.CHEF_SERVICE, Role.CHEF_EQUIPE, Role.ADMIN] as const;
-const CDS_ROLES = [Role.CHEF_SERVICE, Role.ADMIN] as const;
-
 const workerMemberSelect = {
   id: true,
   matricule: true,
@@ -63,7 +60,7 @@ const teamDetailInclude = {
 type TeamWithWorkers = Prisma.TeamGetPayload<{ include: typeof teamDetailInclude }>;
 
 function assertCanManageTeamStructure(req: Request): void {
-  if (req.user!.role === Role.CHEF_EQUIPE) {
+  if (req.user!.scope === "EQUIPE") {
     throw new ApiError(
       403,
       "FORBIDDEN",
@@ -73,7 +70,7 @@ function assertCanManageTeamStructure(req: Request): void {
 }
 
 function assertCanManageMembers(req: Request, teamId: string): void {
-  if (req.user!.role === Role.CHEF_EQUIPE && req.user!.teamId !== teamId) {
+  if (req.user!.scope === "EQUIPE" && req.user!.teamId !== teamId) {
     throw new ApiError(403, "FORBIDDEN", "Accès équipe refusé");
   }
 }
@@ -82,10 +79,10 @@ async function assertTeamReadable(
   req: Request,
   team: { id: string; siteId: string },
 ): Promise<void> {
-  if (req.user!.role === Role.CHEF_EQUIPE && req.user!.teamId !== team.id) {
+  if (req.user!.scope === "EQUIPE" && req.user!.teamId !== team.id) {
     throw new ApiError(403, "FORBIDDEN", "Accès équipe refusé");
   }
-  if (req.user!.role === Role.CHEF_SERVICE && req.user!.siteId !== team.siteId) {
+  if (req.user!.scope === "SITE" && req.user!.siteId !== team.siteId) {
     throw new ApiError(403, "FORBIDDEN", "Accès site refusé");
   }
 }
@@ -143,7 +140,7 @@ async function syncChefAssignment(
     const chef = await basePrisma.user.findFirst({
       where: {
         id: nextChefId,
-        role: Role.CHEF_EQUIPE,
+        accessRole: { scope: "EQUIPE" },
         siteId,
         deletedAt: null,
         active: true,
@@ -162,17 +159,17 @@ async function syncChefAssignment(
 teamsRouter.get(
   "/teams/chef-candidates",
   requireAuth,
-  requireRole(...CDS_ROLES),
+  requirePermission("equipe:ecriture"),
   async (req, res, next) => {
     try {
-      const siteId = req.user!.role === Role.CHEF_SERVICE ? req.user!.siteId : req.query.siteId;
+      const siteId = req.user!.scope !== "TOUS" ? req.user!.siteId : req.query.siteId;
       if (!siteId) {
         throw new ApiError(422, "SITE_REQUIRED", "Site requis pour lister les chefs");
       }
 
       const chefs = await prisma.user.findMany({
         where: {
-          role: Role.CHEF_EQUIPE,
+          accessRole: { scope: "EQUIPE" },
           siteId: siteId as string,
           deletedAt: null,
           active: true,
@@ -197,7 +194,7 @@ teamsRouter.get(
 teamsRouter.get(
   "/teams",
   requireAuth,
-  requireRole(...TEAM_ROLES),
+  requirePermission("equipe:lecture"),
   validate(listTeamsQuery, "query"),
   async (req, res, next) => {
     try {
@@ -248,7 +245,7 @@ teamsRouter.get(
 teamsRouter.get(
   "/teams/:id",
   requireAuth,
-  requireRole(...TEAM_ROLES),
+  requirePermission("equipe:lecture"),
   validate(teamIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -264,7 +261,7 @@ teamsRouter.get(
 teamsRouter.post(
   "/teams",
   requireAuth,
-  requireRole(...CDS_ROLES),
+  requirePermission("equipe:ecriture"),
   validate(createTeamSchema),
   async (req, res, next) => {
     try {
@@ -314,7 +311,7 @@ teamsRouter.post(
 teamsRouter.patch(
   "/teams/:id",
   requireAuth,
-  requireRole(...CDS_ROLES),
+  requirePermission("equipe:ecriture"),
   validate(teamIdParams, "params"),
   validate(updateTeamSchema),
   async (req, res, next) => {
@@ -370,7 +367,7 @@ teamsRouter.patch(
 teamsRouter.delete(
   "/teams/:id",
   requireAuth,
-  requireRole(...CDS_ROLES),
+  requirePermission("equipe:ecriture"),
   validate(teamIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -422,14 +419,14 @@ teamsRouter.delete(
 
 /**
  * Recherche de travailleurs éligibles à un ajout dans l'équipe. Utilise `basePrisma` (hors RLS) :
- * `GET /workers` est automatiquement restreint à l'équipe de l'appelant pour un CHEF_EQUIPE, ce qui
+ * `GET /workers` est automatiquement restreint à l'équipe de l'appelant quand sa portée est « équipe », ce qui
  * le rendrait incapable d'y trouver un travailleur libre ou d'une autre équipe à ajouter à la sienne.
  * Le contrôle d'accès reste manuel ci-dessous (mêmes gardes que la mutation POST membres).
  */
 teamsRouter.get(
   "/teams/:id/eligible-workers",
   requireAuth,
-  requireRole(...TEAM_ROLES),
+  requirePermission("equipe:membres"),
   validate(teamIdParams, "params"),
   validate(eligibleWorkersQuery, "query"),
   async (req, res, next) => {
@@ -443,12 +440,10 @@ teamsRouter.get(
         siteId: team.siteId,
         deletedAt: null,
         status: WorkerStatus.ACTIVE,
-        // Un CHEF_EQUIPE ne peut jamais ajouter un travailleur d'une autre équipe (403 à la mutation
-        // POST /members) : autant ne pas le lister comme "éligible". CHEF_SERVICE/ADMIN gardent la
-        // vue complète du site, pour pouvoir transférer un travailleur entre équipes.
-        ...(req.user!.role === Role.CHEF_EQUIPE
-          ? { OR: [{ teamId: null }, { teamId: team.id }] }
-          : {}),
+        // Une portée « équipe » ne peut jamais ajouter un travailleur d'une autre équipe (403 à la mutation
+        // POST /members) : autant ne pas le lister comme "éligible". Les portées site et tous gardent la
+        // vue complète, pour pouvoir transférer un travailleur entre équipes.
+        ...(req.user!.scope === "EQUIPE" ? { OR: [{ teamId: null }, { teamId: team.id }] } : {}),
         ...(q
           ? {
               AND: [
@@ -482,7 +477,7 @@ teamsRouter.get(
 teamsRouter.post(
   "/teams/:id/members",
   requireAuth,
-  requireRole(...TEAM_ROLES),
+  requirePermission("equipe:membres"),
   validate(teamIdParams, "params"),
   validate(addMemberSchema),
   async (req, res, next) => {
@@ -502,7 +497,7 @@ teamsRouter.post(
         throw new ApiError(404, "NOT_FOUND", "MOC introuvable sur ce site");
       }
 
-      if (req.user!.role === Role.CHEF_EQUIPE) {
+      if (req.user!.scope === "EQUIPE") {
         if (worker.teamId && worker.teamId !== team.id) {
           throw new ApiError(
             403,
@@ -542,7 +537,7 @@ teamsRouter.post(
 teamsRouter.delete(
   "/teams/:id/members/:workerId",
   requireAuth,
-  requireRole(...TEAM_ROLES),
+  requirePermission("equipe:membres"),
   validate(memberParams, "params"),
   async (req, res, next) => {
     try {

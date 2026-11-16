@@ -1,0 +1,1354 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/activity-categories",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/activity-categories",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/activity-categories/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/activity-categories/:id",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/activity-categories/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/activity-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/activity-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/activity-requests/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/activity-requests/:id/cancel",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/activity-requests/:id/complement",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/activity-requests/:id/decision",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/activity-requests/bulk-decision",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/app-settings",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/app-settings/bio-validation-required",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings/icon",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/icon",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/icon-upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings/login-background",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-background",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-background/upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings/login-branch",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-branch",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-branch/upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings/login-leaf",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-leaf",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/login-leaf/upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/app-settings/map-key",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/app-settings/map-key",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/app-settings/map-key",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-log",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/forgot-password",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/mfa/setup",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/mfa/verify",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/reset-password",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/badges",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE", "CHEF_EQUIPE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/badges",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/badges/:id",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/badges/:id",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE", "CHEF_EQUIPE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/badges/:id",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/biometric/check",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/biometric/check-offline",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/biometric/templates",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/biometric/templates/sync",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/clarification-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/clarification-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/clarification-requests/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/clarification-requests/:id/answer",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/clarification-requests/:id/close",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/clarification-requests/:id/photo",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/clarification-requests/photo",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/kpis",
+    "auth": true,
+    "roles": ["ADMIN", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invoices",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invoices/:id/download",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invoices/:id/regenerate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invoices/download-all",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invoices/generate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/manifest.webmanifest",
+    "auth": false,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/me",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/notifications/:id/read",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notifications/push-subscribe",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/push-subscribe",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/read-all",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/unread-count",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/vapid-public-key",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/parcels",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/parcels",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/parcels/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/parcels/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/parcels/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/parcels/bulk-delete",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/payments/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/payments/:id/fail",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/payments/:period",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/:period/export",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/:period/regenerate-export",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/exports",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/exports/:id/download",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/generate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/import-status",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/import-status/columns",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pointages",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pointages/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pointages/:id/photo",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pointages/:id/photo",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pointages/:id/reject",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pointages/:id/resubmit",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pointages/:id/validate",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pointages/bulk-reject",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pointages/bulk-validate",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pointages/photo",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pointages/sync",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/presence",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/presence/sync",
+    "auth": true,
+    "roles": ["CHEF_EQUIPE", "CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/daily",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/daily/jobs/:jobId",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/daily/preview",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/export",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/preview",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/weekly/generate",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/weekly/jobs/:jobId",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sites",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sites",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/sites/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sites/:id",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sites/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sites/bulk-status",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sites/geo",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sub-activities",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sub-activities",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/sub-activities/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sub-activities/:id",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sub-activities/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sub-activities/bulk-deactivate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/system/backup",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/system/backup-upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/system/restore",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teams",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teams",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teams/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teams/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/teams/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teams/:id/eligible-workers",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teams/:id/members",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teams/:id/members/:workerId",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "CHEF_EQUIPE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teams/chef-candidates",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/units",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/units",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/units/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/units/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/users/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users/:id/deactivate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users/:id/reset-password",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users/bulk-deactivate",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/worker-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/worker-requests",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/worker-requests/:id",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/worker-requests/:id/cancel",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/worker-requests/:id/complement",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/worker-requests/:id/decision",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/worker-requests/bulk-decision",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/worker-requests/photo",
+    "auth": true,
+    "roles": ["CHEF_SERVICE", "ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workers",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/workers/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workers/:id",
+    "auth": true,
+    "roles": null,
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/workers/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/:id/photo",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/:id/photo-upload",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/bulk-delete",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/bulk-sexe",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/bulk-status",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/import",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workers/import/columns",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/zones",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/zones",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/zones/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/zones/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/zones/:id",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/zones/bulk-delete",
+    "auth": true,
+    "roles": ["ADMIN"],
+    "permissions": null,
+    "anyPermissions": null
+  }
+]

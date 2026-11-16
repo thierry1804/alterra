@@ -1,9 +1,9 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { Prisma, PresenceSource, Role } from "@prisma/client";
+import { Prisma, PresenceSource } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { syncPresenceBatch } from "../services/presence/sync.service.js";
 import { IMPOSSIBLE_SCOPE_FILTER } from "../middleware/prisma-rls.js";
@@ -33,13 +33,13 @@ const listPresenceQuery = z.object({
   take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-/** PresenceRecord n'est pas couvert par la RLS (middleware/prisma-rls.ts) : scope manuel par rôle. */
+/** PresenceRecord n'est pas couvert par la RLS (middleware/prisma-rls.ts) : scope manuel par portée. */
 function buildPresenceScopeWhere(req: Request): Prisma.PresenceRecordWhereInput {
-  if (req.user!.role === Role.CHEF_SERVICE) {
+  if (req.user!.scope === "SITE") {
     if (!req.user!.siteId) return IMPOSSIBLE_SCOPE_FILTER;
     return { worker: { siteId: req.user!.siteId } };
   }
-  if (req.user!.role === Role.CHEF_EQUIPE) {
+  if (req.user!.scope === "EQUIPE") {
     if (!req.user!.teamId) return IMPOSSIBLE_SCOPE_FILTER;
     return { worker: { teamId: req.user!.teamId } };
   }
@@ -49,7 +49,7 @@ function buildPresenceScopeWhere(req: Request): Prisma.PresenceRecordWhereInput 
 presenceRouter.post(
   "/presence/sync",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("presence:saisie"),
   validate(syncBatchSchema),
   async (req, res, next) => {
     try {
@@ -65,7 +65,7 @@ presenceRouter.post(
 presenceRouter.get(
   "/presence",
   requireAuth,
-  requireRole(Role.CHEF_EQUIPE, Role.CHEF_SERVICE, Role.ADMIN),
+  requirePermission("presence:lecture"),
   validate(listPresenceQuery, "query"),
   async (req, res, next) => {
     try {

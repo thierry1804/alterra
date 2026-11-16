@@ -11,10 +11,10 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
-enum Role {
-  ADMIN
-  CHEF_SERVICE
-  CHEF_EQUIPE
+enum AccessScope {
+  TOUS
+  SITE
+  EQUIPE
 }
 
 enum WorkerStatus {
@@ -109,7 +109,8 @@ model User {
   email             String?            @unique
   phone             String?            @unique
   passwordHash      String
-  role              Role
+  accessRoleId      String             @db.Uuid
+  accessRole        AccessRole         @relation(fields: [accessRoleId], references: [id])
   firstName         String
   lastName          String
   active            Boolean            @default(true)
@@ -128,7 +129,53 @@ model User {
   pushSubscriptions PushSubscription[]
 
   @@index([email])
-  @@index([role, siteId])
+  @@index([accessRoleId, siteId])
+}
+
+/// Rôle d'accès : un ensemble de groupes de permissions et une portée de données. Les rôles
+/// `isSystem` (Administrateur, Chef de service, Chef d'équipe) ne peuvent pas être supprimés.
+model AccessRole {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  description String?
+  isSystem    Boolean           @default(false)
+  scope       AccessScope
+  mfaRequired Boolean           @default(false)
+  groups      AccessRoleGroup[]
+  users       User[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+/// Paquet de permissions réutilisable par plusieurs rôles. Les clés viennent du catalogue du code
+/// (`services/access/permissions.catalog.ts`).
+model PermissionGroup {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  description String?
+  isSystem    Boolean           @default(false)
+  permissions GroupPermission[]
+  roles       AccessRoleGroup[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model GroupPermission {
+  groupId       String          @db.Uuid
+  group         PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permissionKey String
+
+  @@id([groupId, permissionKey])
+}
+
+model AccessRoleGroup {
+  roleId  String          @db.Uuid
+  role    AccessRole      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  groupId String          @db.Uuid
+  group   PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, groupId])
+  @@index([groupId])
 }
 
 model Site {

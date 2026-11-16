@@ -9,7 +9,7 @@ import ClarificationBanner from "./sync/ClarificationBanner";
 import BottomNav from "./nav/BottomNav";
 import MoreSheet from "./nav/MoreSheet";
 import NotificationBell from "./notifications/NotificationBell";
-import { navForRole } from "./nav/nav-config";
+import { navForUser } from "./nav/nav-config";
 import { useOpenClarificationsCount } from "../hooks/useOpenClarificationsCount";
 
 export default function AppShell() {
@@ -28,20 +28,13 @@ export default function AppShell() {
     setMoreOpen(false);
   }, [location.pathname]);
 
-  const { primary, more } = navForRole(user?.role);
+  const { primary, more } = navForUser(user);
   const openClarifications = useOpenClarificationsCount();
   const initials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
     : "";
 
-  const roleLabel =
-    user?.role === "CHEF_EQUIPE"
-      ? "Chef d'équipe"
-      : user?.role === "CHEF_SERVICE"
-        ? "Chef de service"
-        : user?.role === "ADMIN"
-          ? "Administration"
-          : "";
+  const roleLabel = user?.roleName ?? "";
 
   return (
     <div className="flex min-h-full flex-col">

@@ -1,9 +1,9 @@
 import { Router, raw } from "express";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -99,7 +99,7 @@ appSettingsRouter.get("/app-settings", async (_req, res, next) => {
 appSettingsRouter.patch(
   "/app-settings",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   validate(updateAppSettingSchema),
   async (req, res, next) => {
     try {
@@ -142,7 +142,7 @@ const EXT_BY_CONTENT_TYPE: Record<string, IconExtension> = {
 appSettingsRouter.post(
   "/app-settings/icon-upload",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   raw({ type: "image/*", limit: "2mb" }),
   async (req, res, next) => {
     try {
@@ -166,7 +166,7 @@ appSettingsRouter.post(
 appSettingsRouter.post(
   "/app-settings/icon",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   validate(confirmIconSchema),
   async (req, res, next) => {
     try {
@@ -256,7 +256,7 @@ function registerLoginAssetRoutes(slot: LoginAssetSlot) {
   appSettingsRouter.post(
     `/app-settings/${urlSegment}/upload`,
     requireAuth,
-    requireRole(Role.ADMIN),
+    requirePermission("parametres:ecriture"),
     raw({ type: "image/*", limit: "5mb" }),
     async (req, res, next) => {
       try {
@@ -280,7 +280,7 @@ function registerLoginAssetRoutes(slot: LoginAssetSlot) {
   appSettingsRouter.post(
     `/app-settings/${urlSegment}`,
     requireAuth,
-    requireRole(Role.ADMIN),
+    requirePermission("parametres:ecriture"),
     validate(confirmLoginAssetSchema),
     async (req, res, next) => {
       try {
@@ -360,7 +360,7 @@ const setMapKeySchema = z.object({
 appSettingsRouter.post(
   "/app-settings/map-key",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   validate(setMapKeySchema),
   async (req, res, next) => {
     try {
@@ -394,7 +394,7 @@ appSettingsRouter.post(
 appSettingsRouter.delete(
   "/app-settings/map-key",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   async (req, res, next) => {
     try {
       const before = await getAppSetting();
@@ -430,7 +430,7 @@ const setBioValidationRequiredSchema = z.object({
 appSettingsRouter.patch(
   "/app-settings/bio-validation-required",
   requireAuth,
-  requireRole(Role.ADMIN),
+  requirePermission("parametres:ecriture"),
   validate(setBioValidationRequiredSchema),
   async (req, res, next) => {
     try {

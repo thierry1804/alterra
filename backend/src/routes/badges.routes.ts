@@ -1,10 +1,10 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { normalizeNfcTagId } from "../lib/nfc-tag.js";
 import { requireAuth } from "../middleware/auth.js";
-import { requireRole } from "../middleware/rbac.js";
+import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -35,11 +35,11 @@ const updateBadgeSchema = z.object({
 });
 
 function buildBadgeScopeWhere(req: Request): Prisma.BadgeWhereInput {
-  if (req.user!.role === Role.CHEF_SERVICE) {
+  if (req.user!.scope === "SITE") {
     if (!req.user!.siteId) return IMPOSSIBLE_SCOPE_FILTER;
     return { worker: { siteId: req.user!.siteId } };
   }
-  if (req.user!.role === Role.CHEF_EQUIPE) {
+  if (req.user!.scope === "EQUIPE") {
     if (!req.user!.teamId) return IMPOSSIBLE_SCOPE_FILTER;
     return { worker: { teamId: req.user!.teamId } };
   }
@@ -49,7 +49,7 @@ function buildBadgeScopeWhere(req: Request): Prisma.BadgeWhereInput {
 badgesRouter.get(
   "/badges",
   requireAuth,
-  requireRole(Role.ADMIN, Role.CHEF_SERVICE, Role.CHEF_EQUIPE),
+  requirePermission("badge:lecture"),
   validate(listBadgesQuery, "query"),
   async (req, res, next) => {
     try {
@@ -63,7 +63,7 @@ badgesRouter.get(
       if (active === true) where.revokedAt = null;
       if (active === false) where.revokedAt = { not: null };
 
-      if (req.user!.role === Role.ADMIN) {
+      if (req.user!.scope === "TOUS") {
         if (siteId) where.worker = { ...(where.worker as Prisma.WorkerWhereInput), siteId };
         if (teamId) where.worker = { ...(where.worker as Prisma.WorkerWhereInput), teamId };
       }
@@ -104,7 +104,7 @@ badgesRouter.get(
 badgesRouter.get(
   "/badges/:id",
   requireAuth,
-  requireRole(Role.ADMIN, Role.CHEF_SERVICE, Role.CHEF_EQUIPE),
+  requirePermission("badge:lecture"),
   validate(badgeIdParams, "params"),
   async (req, res, next) => {
     try {
@@ -134,7 +134,7 @@ badgesRouter.get(
 badgesRouter.post(
   "/badges",
   requireAuth,
-  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
+  requirePermission("badge:ecriture"),
   validate(createBadgeSchema),
   async (req, res, next) => {
     try {
@@ -142,7 +142,7 @@ badgesRouter.post(
         where: { id: req.body.workerId, deletedAt: null },
       });
       if (!worker) throw new ApiError(404, "NOT_FOUND", "Travailleur introuvable");
-      if (req.user!.role === Role.CHEF_SERVICE && worker.siteId !== req.user!.siteId) {
+      if (req.user!.scope !== "TOUS" && worker.siteId !== req.user!.siteId) {
         throw new ApiError(403, "FORBIDDEN", "Travailleur hors périmètre site");
       }
 
@@ -203,7 +203,7 @@ badgesRouter.post(
 badgesRouter.patch(
   "/badges/:id",
   requireAuth,
-  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
+  requirePermission("badge:ecriture"),
   validate(badgeIdParams, "params"),
   validate(updateBadgeSchema),
   async (req, res, next) => {
@@ -257,7 +257,7 @@ badgesRouter.patch(
 badgesRouter.delete(
   "/badges/:id",
   requireAuth,
-  requireRole(Role.ADMIN, Role.CHEF_SERVICE),
+  requirePermission("badge:ecriture"),
   validate(badgeIdParams, "params"),
   async (req, res, next) => {
     try {

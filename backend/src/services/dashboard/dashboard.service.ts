@@ -1,4 +1,4 @@
-import { Role, Sexe } from "@prisma/client";
+import { Sexe } from "@prisma/client";
 import type { AppPrisma } from "../../lib/prisma.js";
 
 function startOfUtcDay(date: Date): Date {
@@ -204,7 +204,7 @@ export async function getDashboardSummary(
 
   const staleCds = await db.user.count({
     where: {
-      role: Role.CHEF_SERVICE,
+      accessRole: { scope: "SITE" },
       active: true,
       OR: [{ lastLoginAt: null }, { lastLoginAt: { lt: twentyFourHoursAgo } }],
       ...(siteId ? { siteId } : {}),
