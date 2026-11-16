@@ -20,7 +20,10 @@ const baseline: BaselineRoute[] = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "route-access.baseline.json"), "utf8"),
 );
 
-const ALL_ROLES = SYSTEM_ROLES.map((role) => role.code);
+const LEGACY_ROLES = SYSTEM_ROLES.filter((role) =>
+  ["ADMIN", "CHEF_SERVICE", "CHEF_EQUIPE"].includes(role.code),
+);
+const ALL_ROLES = LEGACY_ROLES.map((role) => role.code);
 
 const AUTHENTICATED_WITHOUT_PERMISSION = new Set([
   "GET /api/v1/me",
@@ -45,7 +48,7 @@ function routeKey(route: { method: string; path: string }): string {
 
 function effectiveRoles(route: RouteAccess): string[] | null {
   const holders = (predicate: (permissions: ReadonlySet<string>, mfa: boolean) => boolean) =>
-    SYSTEM_ROLES.filter((role) => predicate(systemRolePermissions(role.id), role.mfaRequired)).map(
+    LEGACY_ROLES.filter((role) => predicate(systemRolePermissions(role.id), role.mfaRequired)).map(
       (role) => role.code,
     );
   if (route.permissions) {

@@ -11,7 +11,15 @@ export interface SystemGroup {
 
 export interface SystemRole {
   id: string;
-  code: "ADMIN" | "CHEF_SERVICE" | "CHEF_EQUIPE";
+  code:
+    | "ADMIN"
+    | "CHEF_SERVICE"
+    | "CHEF_EQUIPE"
+    | "RESPONSABLE_TECHNIQUE"
+    | "FINANCE"
+    | "DG"
+    | "TRESORERIE"
+    | "CONSULTATION";
   name: string;
   description: string;
   scope: AccessScopeValue;
@@ -23,7 +31,7 @@ function groupId(n: number): string {
   return `00000000-0000-0000-000a-${String(n).padStart(12, "0")}`;
 }
 
-const SYSTEM_GROUPS: readonly SystemGroup[] = [
+export const SYSTEM_GROUPS: readonly SystemGroup[] = [
   { id: groupId(1), code: "G01", name: "Saisie des pointages", permissions: ["pointage:saisie"] },
   {
     id: groupId(2),
@@ -43,6 +51,13 @@ const SYSTEM_GROUPS: readonly SystemGroup[] = [
     name: "Pointages — correction",
     permissions: ["pointage:correction"],
   },
+  {
+    id: groupId(5),
+    code: "G05",
+    name: "Pointages — validation technique",
+    permissions: [],
+  },
+  { id: groupId(6), code: "G06", name: "Synthèses", permissions: [] },
   { id: groupId(7), code: "G07", name: "Tableau de bord", permissions: ["tableau_bord:lecture"] },
   {
     id: groupId(8),
@@ -152,6 +167,9 @@ const SYSTEM_GROUPS: readonly SystemGroup[] = [
     name: "Factures — génération",
     permissions: ["facture:generation"],
   },
+  { id: groupId(29), code: "G29", name: "Bordereaux — consultation", permissions: [] },
+  { id: groupId(31), code: "G31", name: "Bordereaux — validation finance", permissions: [] },
+  { id: groupId(32), code: "G32", name: "Bordereaux — validation DG", permissions: [] },
   {
     id: groupId(33),
     code: "G33",
@@ -190,6 +208,11 @@ export const SYSTEM_ROLE_IDS = {
   ADMIN: "00000000-0000-0000-000b-000000000001",
   CHEF_SERVICE: "00000000-0000-0000-000b-000000000002",
   CHEF_EQUIPE: "00000000-0000-0000-000b-000000000003",
+  RESPONSABLE_TECHNIQUE: "00000000-0000-0000-000b-000000000004",
+  FINANCE: "00000000-0000-0000-000b-000000000005",
+  DG: "00000000-0000-0000-000b-000000000006",
+  TRESORERIE: "00000000-0000-0000-000b-000000000007",
+  CONSULTATION: "00000000-0000-0000-000b-000000000008",
 } as const;
 
 export const SYSTEM_ROLES: readonly SystemRole[] = [
@@ -267,6 +290,51 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     scope: "EQUIPE",
     mfaRequired: false,
     groups: ["G01", "G39", "G02", "G08", "G10", "G12", "G16", "G21"],
+  },
+  {
+    id: SYSTEM_ROLE_IDS.RESPONSABLE_TECHNIQUE,
+    code: "RESPONSABLE_TECHNIQUE",
+    name: "Responsable technique forestier",
+    description: "Valide globalement les pointages, sans accès financier",
+    scope: "TOUS",
+    mfaRequired: false,
+    groups: ["G02", "G10", "G12", "G14", "G05", "G06"],
+  },
+  {
+    id: SYSTEM_ROLE_IDS.FINANCE,
+    code: "FINANCE",
+    name: "Finance",
+    description: "Première validation des bordereaux",
+    scope: "TOUS",
+    mfaRequired: true,
+    groups: ["G07", "G27", "G06", "G29", "G31"],
+  },
+  {
+    id: SYSTEM_ROLE_IDS.DG,
+    code: "DG",
+    name: "DG",
+    description: "Deuxième validation des bordereaux",
+    scope: "TOUS",
+    mfaRequired: true,
+    groups: ["G07", "G27", "G06", "G29", "G32"],
+  },
+  {
+    id: SYSTEM_ROLE_IDS.TRESORERIE,
+    code: "TRESORERIE",
+    name: "Trésorerie",
+    description: "Export vers MVola des bordereaux validés",
+    scope: "TOUS",
+    mfaRequired: true,
+    groups: ["G26", "G27", "G29"],
+  },
+  {
+    id: SYSTEM_ROLE_IDS.CONSULTATION,
+    code: "CONSULTATION",
+    name: "Consultation",
+    description: "Lecture et analyse, tous sites",
+    scope: "TOUS",
+    mfaRequired: false,
+    groups: ["G02", "G07", "G12", "G23", "G27", "G06", "G29"],
   },
 ];
 
