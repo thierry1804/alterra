@@ -147,6 +147,8 @@ export const PERMISSION_CATALOG = [
     actions: [
       { action: "lecture", label: "Voir les bordereaux" },
       { action: "generation", label: "Générer et régénérer un bordereau" },
+      { action: "valider_finance", label: "Première validation (finance)" },
+      { action: "valider_dg", label: "Deuxième validation (DG)" },
     ],
   },
   {

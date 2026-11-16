@@ -90,7 +90,8 @@ describe("roles of the cahier matrix", () => {
     expect(permissionsOfGroup("G06")).toEqual(["pointage:synthese"]);
     expect(permissionsOfGroup("G29")).toEqual(["bordereau:lecture"]);
     expect(permissionsOfGroup("G30")).toEqual(["bordereau:generation"]);
-    for (const code of ["G31", "G32"]) expect(permissionsOfGroup(code)).toEqual([]);
+    expect(permissionsOfGroup("G31")).toEqual(["bordereau:valider_finance"]);
+    expect(permissionsOfGroup("G32")).toEqual(["bordereau:valider_dg"]);
   });
 
   it("lets only the administrator generate bordereaux for now", () => {

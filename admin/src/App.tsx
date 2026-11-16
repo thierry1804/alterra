@@ -25,6 +25,7 @@ import AppLayout from "./components/layout/AppLayout";
 import PermissionGuard from "./components/layout/PermissionGuard";
 import AccessRolesPage from "./pages/AccessRoles";
 import ValidationTechniquePage from "./pages/ValidationTechnique";
+import BordereauxPage from "./pages/Bordereaux";
 import { Toaster } from "./components/ui/toaster";
 import { LoadingRow } from "./components/ui/feedback";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
@@ -92,6 +93,7 @@ export default function App() {
               <Route path="/map" element={guard("/map", <MapPage />)} />
               <Route path="/users" element={guard("/users", <UsersPage />)} />
               <Route path="/access" element={guard("/access", <AccessRolesPage />)} />
+              <Route path="/bordereaux" element={guard("/bordereaux", <BordereauxPage />)} />
               <Route path="/payments" element={guard("/payments", <PaymentsPage />)} />
               <Route path="/invoices" element={guard("/invoices", <InvoicesPage />)} />
               <Route path="/reports" element={guard("/reports", <ReportsPage />)} />

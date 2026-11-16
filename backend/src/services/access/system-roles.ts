@@ -185,8 +185,18 @@ export const SYSTEM_GROUPS: readonly SystemGroup[] = [
     name: "Bordereaux — génération",
     permissions: ["bordereau:generation"],
   },
-  { id: groupId(31), code: "G31", name: "Bordereaux — validation finance", permissions: [] },
-  { id: groupId(32), code: "G32", name: "Bordereaux — validation DG", permissions: [] },
+  {
+    id: groupId(31),
+    code: "G31",
+    name: "Bordereaux — validation finance",
+    permissions: ["bordereau:valider_finance"],
+  },
+  {
+    id: groupId(32),
+    code: "G32",
+    name: "Bordereaux — validation DG",
+    permissions: ["bordereau:valider_dg"],
+  },
   {
     id: groupId(33),
     code: "G33",

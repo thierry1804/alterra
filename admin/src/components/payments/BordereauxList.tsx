@@ -1,11 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../../lib/api";
+import { useBordereaux } from "../../hooks/useBordereaux";
 import { useCan } from "../../hooks/useCan";
-import {
-  BORDEREAU_STATUS_LABELS,
-  type BordereauRow,
-  type BordereauStatus,
-} from "../../lib/payments";
+import { BORDEREAU_STATUS_LABELS, type BordereauStatus } from "../../lib/payments";
 import { Badge } from "../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
@@ -25,18 +20,7 @@ function statusVariant(status: BordereauStatus): "default" | "success" | "warnin
 export default function BordereauxList({ periodIso, referenceYear, siteId }: BordereauxListProps) {
   const can = useCan();
   const allowed = can("bordereau:lecture");
-
-  const { data } = useQuery({
-    queryKey: ["bordereaux", periodIso, referenceYear, siteId],
-    queryFn: () =>
-      api
-        .get<{ data: BordereauRow[] }>("/bordereaux", {
-          params: { periodIso, referenceYear, siteId: siteId || undefined },
-        })
-        .then((r) => r.data.data),
-    enabled: allowed && !!periodIso,
-    refetchInterval: 15000,
-  });
+  const { data } = useBordereaux(periodIso, referenceYear, siteId);
 
   if (!allowed || !data || data.length === 0) return null;
 

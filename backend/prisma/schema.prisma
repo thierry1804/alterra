@@ -525,8 +525,18 @@ model Bordereau {
   createdById   String?         @db.Uuid
   createdAt     DateTime        @default(now())
   supersededAt  DateTime?
-  payments      Payment[]
-  pointages     Pointage[]
+
+  financeValidatedById String?    @db.Uuid
+  financeValidatedAt   DateTime?
+  dgValidatedById      String?    @db.Uuid
+  dgValidatedAt        DateTime?
+  returnReason         String?
+  returnedById         String?    @db.Uuid
+  returnedAt           DateTime?
+  /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
+  lines                Json?
+  payments             Payment[]
+  pointages            Pointage[]
 
   @@unique([siteId, periodIso, referenceYear, version])
   @@index([siteId, status])

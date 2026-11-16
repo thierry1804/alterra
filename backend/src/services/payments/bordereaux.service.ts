@@ -41,6 +41,9 @@ export async function listBordereaux(filters: ListBordereauxFilters) {
       version: bordereau.version,
       status: bordereau.status,
       createdAt: bordereau.createdAt,
+      financeValidatedAt: bordereau.financeValidatedAt,
+      dgValidatedAt: bordereau.dgValidatedAt,
+      returnReason: bordereau.returnReason,
       paymentCount: bordereau.payments.length,
       totalAmount: bordereau.payments
         .reduce((sum, payment) => sum.add(payment.amount), new Prisma.Decimal(0))

@@ -822,10 +822,10 @@ describe("Bordereau per site", () => {
     expect(res.body.bordereaux).toHaveLength(1);
   });
 
-  it("refuses to regenerate a bordereau that is already validated", async () => {
+  it("refuses to regenerate a bordereau that the DG already validated", async () => {
     vi.mocked(prisma.bordereau.findFirst).mockResolvedValue({
       id: MOCK_BORDEREAU_ID,
-      status: "FINANCE_VALIDATED",
+      status: "DG_VALIDATED",
       version: 1,
       number: 3,
     } as never);
@@ -838,6 +838,30 @@ describe("Bordereau per site", () => {
     expect(res.status).toBe(409);
     expect(res.body.code).toBe("PAY_CONFLICT");
     expect(prisma.bordereau.create).not.toHaveBeenCalled();
+  });
+
+  it("still lets a bordereau validated by the finance be regenerated", async () => {
+    vi.mocked(prisma.bordereau.findFirst)
+      .mockResolvedValueOnce({
+        id: "00000000-0000-4000-8000-0000000000c9",
+        status: "FINANCE_VALIDATED",
+        version: 1,
+        number: 3,
+      } as never)
+      .mockResolvedValueOnce({ version: 1 } as never);
+    vi.mocked(prisma.bordereau.create).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      version: 2,
+      number: 3,
+    } as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", siteId: MOCK_SITE_ID });
+
+    expect(res.status).toBe(201);
+    expect(res.body.bordereaux[0]).toEqual(expect.objectContaining({ version: 2 }));
   });
 
   it("regenerates by superseding the current version and freeing its pointages", async () => {

@@ -4,6 +4,7 @@ import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
 import { useSiteScope } from "../lib/site-scope";
+import { useBordereaux } from "../hooks/useBordereaux";
 import { useCan } from "../hooks/useCan";
 import {
   currentIsoWeekInput,
@@ -117,7 +118,10 @@ export default function PaymentsPage() {
     },
   });
 
-  const deletable = rows.length > 0 && rows.every((r) => r.status === "PENDING");
+  const { data: bordereaux } = useBordereaux(listPeriod, referenceYear, siteId);
+  const hasValidatedBordereau = (bordereaux ?? []).some((row) => row.status !== "GENERATED");
+  const deletable =
+    rows.length > 0 && rows.every((r) => r.status === "PENDING") && !hasValidatedBordereau;
 
   const deleteMutation = useMutation({
     mutationFn: () =>

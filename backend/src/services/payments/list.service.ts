@@ -93,6 +93,20 @@ export async function correctPaymentAmount(
     throw new ApiError(422, "INVALID_AMOUNT", "Le montant doit être positif");
   }
 
+  if (existing.bordereauId) {
+    const bordereau = await prisma.bordereau.findUnique({
+      where: { id: existing.bordereauId },
+      select: { status: true },
+    });
+    if (bordereau && bordereau.status !== "GENERATED") {
+      throw new ApiError(
+        409,
+        "BORDEREAU_LOCKED",
+        "Bordereau validé — renvoyez-le avant de corriger un paiement",
+      );
+    }
+  }
+
   return prisma.payment.update({
     where: { id },
     data: {

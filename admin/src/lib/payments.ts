@@ -139,9 +139,9 @@ export type BordereauStatus =
   "GENERATED" | "FINANCE_VALIDATED" | "DG_VALIDATED" | "EXPORTED" | "SUPERSEDED";
 
 export const BORDEREAU_STATUS_LABELS: Record<BordereauStatus, string> = {
-  GENERATED: "Généré",
-  FINANCE_VALIDATED: "Validé finance",
-  DG_VALIDATED: "Validé DG",
+  GENERATED: "À valider (finance)",
+  FINANCE_VALIDATED: "À valider (DG)",
+  DG_VALIDATED: "Validé",
   EXPORTED: "Exporté",
   SUPERSEDED: "Remplacé",
 };
@@ -159,10 +159,53 @@ export interface BordereauRow {
   createdAt: string;
   paymentCount: number;
   totalAmount: string;
+  financeValidatedAt: string | null;
+  dgValidatedAt: string | null;
+  returnReason: string | null;
 }
 
 export interface GenerateBordereauxResult {
   created: number;
   bordereaux: Array<{ siteCode: string; number: number; version: number; created: number }>;
   skippedSites: Array<{ siteCode: string; code: string; message: string }>;
+}
+
+export interface BordereauLine {
+  matricule: string;
+  workerName: string;
+  mvolaNumber: string;
+  amount: string;
+  description: string;
+  bioValid: boolean;
+}
+
+export interface BordereauVersion {
+  id: string;
+  version: number;
+  status: BordereauStatus;
+  createdAt: string;
+  createdBy: string | null;
+  supersededAt: string | null;
+  financeValidatedAt: string | null;
+  financeValidatedBy: string | null;
+  dgValidatedAt: string | null;
+  dgValidatedBy: string | null;
+  returnReason: string | null;
+  returnedAt: string | null;
+  returnedBy: string | null;
+}
+
+export interface BordereauDetail {
+  id: string;
+  siteId: string;
+  siteName: string;
+  siteCode: string;
+  periodIso: string;
+  referenceYear: number;
+  number: number;
+  version: number;
+  status: BordereauStatus;
+  lines: BordereauLine[];
+  totals: { gross: string; isi: string; net: string; isiRate: number };
+  versions: BordereauVersion[];
 }

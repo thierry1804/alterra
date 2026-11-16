@@ -4,6 +4,7 @@ import {
   Activity,
   ClipboardCheck,
   ClipboardList,
+  FileCheck,
   CreditCard,
   FileStack,
   FileText,
@@ -72,6 +73,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/badges",
     icon: IdCard,
     access: { all: ["badge:ecriture"] },
+    section: "Opérations",
+  },
+  {
+    label: "Bordereaux",
+    path: "/bordereaux",
+    icon: FileCheck,
+    access: { all: ["bordereau:lecture"] },
     section: "Opérations",
   },
   {

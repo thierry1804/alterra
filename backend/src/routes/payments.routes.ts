@@ -2,7 +2,7 @@ import { Router } from "express";
 import { PaymentCycle, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requirePermission } from "../middleware/rbac.js";
+import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
 import {
@@ -22,6 +22,13 @@ import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import type { AuthUser } from "../services/access/auth-user.js";
 import { listBordereaux } from "../services/payments/bordereaux.service.js";
+import {
+  buildBordereauWorkbook,
+  getBordereauDetail,
+  returnBordereau,
+  validateDg,
+  validateFinance,
+} from "../services/payments/bordereau-workflow.service.js";
 
 export const paymentsRouter = Router();
 
@@ -221,6 +228,90 @@ paymentsRouter.get(
           siteId: resolveSiteForUser(req.user!, query.siteId),
         }),
       );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const bordereauIdParams = z.object({ id: z.guid() });
+const returnBordereauSchema = z.object({ reason: z.string().trim().min(10).max(500) });
+
+paymentsRouter.get(
+  "/bordereaux/:id",
+  requireAuth,
+  requirePermission("bordereau:lecture"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      res.json(await getBordereauDetail(req.params.id as string, req.user!));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/bordereaux/:id/download",
+  requireAuth,
+  requirePermission("bordereau:lecture"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      const { buffer, filename } = await buildBordereauWorkbook(req.params.id as string, req.user!);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/bordereaux/:id/validate-finance",
+  requireAuth,
+  requirePermission("bordereau:valider_finance"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      await validateFinance(req.params.id as string, req.user!);
+      res.json({ status: "FINANCE_VALIDATED" });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/bordereaux/:id/validate-dg",
+  requireAuth,
+  requirePermission("bordereau:valider_dg"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      await validateDg(req.params.id as string, req.user!);
+      res.json({ status: "DG_VALIDATED" });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/bordereaux/:id/return",
+  requireAuth,
+  requireAnyPermission("bordereau:valider_finance", "bordereau:valider_dg"),
+  validate(bordereauIdParams, "params"),
+  validate(returnBordereauSchema),
+  async (req, res, next) => {
+    try {
+      const body = req.body as z.infer<typeof returnBordereauSchema>;
+      await returnBordereau(req.params.id as string, req.user!, body.reason);
+      res.json({ status: "GENERATED" });
     } catch (err) {
       next(err);
     }

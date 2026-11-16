@@ -1,4 +1,10 @@
-import { BioResult, PaymentCycle, PaymentStatus, Prisma } from "@prisma/client";
+import {
+  BioResult,
+  PaymentCycle,
+  PaymentStatus,
+  Prisma,
+  type BordereauStatus,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
@@ -6,6 +12,7 @@ import { buildMvolaDescription } from "./mvola-description.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import type { Db } from "../pointages/day-rule.js";
+import { snapshotLines } from "./bordereau-workflow.service.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -82,6 +89,8 @@ async function nextBordereauNumber(tx: Db, siteId: string): Promise<number> {
   return Math.max(lastBordereau?.number ?? 0, lastPayment?.bordereau ?? 0) + 1;
 }
 
+const REGENERABLE: BordereauStatus[] = ["GENERATED", "FINANCE_VALIDATED"];
+
 interface PeriodContext {
   shortPeriod: string;
   referenceYear: number;
@@ -126,7 +135,7 @@ async function generateForSite(
     select: { id: true },
   });
 
-  if (lockedPayment || (current && current.status !== "GENERATED")) {
+  if (lockedPayment || (current && !REGENERABLE.includes(current.status))) {
     throw new ApiError(
       409,
       "PAY_CONFLICT",
@@ -259,7 +268,11 @@ async function generateForSite(
         });
         await tx.bordereau.update({
           where: { id: current.id },
-          data: { status: "SUPERSEDED", supersededAt: new Date() },
+          data: {
+            status: "SUPERSEDED",
+            supersededAt: new Date(),
+            lines: await snapshotLines(current.id),
+          },
         });
       }
       await tx.payment.deleteMany({
@@ -505,6 +518,18 @@ export async function deletePaymentsBatch(
   const bordereauIds = [
     ...new Set(existing.flatMap((payment) => (payment.bordereauId ? [payment.bordereauId] : []))),
   ];
+
+  const validated = await prisma.bordereau.findFirst({
+    where: { id: { in: bordereauIds }, status: { not: "GENERATED" } },
+    select: { id: true },
+  });
+  if (validated) {
+    throw new ApiError(
+      409,
+      "BORDEREAU_LOCKED",
+      "Bordereau validé — renvoyez-le avant de le supprimer",
+    );
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.pointage.updateMany({
