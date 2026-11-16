@@ -4,6 +4,7 @@ import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { buildMvolaDescription } from "./mvola-description.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -105,7 +106,7 @@ export async function generatePayments(
 
   const pointages = await prisma.pointage.findMany({
     where: {
-      status: "VALIDATED",
+      ...BORDEREAU_ELIGIBLE,
       date: { gte: dateFrom, lte: dateTo },
     },
     include: {

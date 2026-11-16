@@ -55,9 +55,9 @@ export const SYSTEM_GROUPS: readonly SystemGroup[] = [
     id: groupId(5),
     code: "G05",
     name: "Pointages — validation technique",
-    permissions: [],
+    permissions: ["pointage:valider_technique"],
   },
-  { id: groupId(6), code: "G06", name: "Synthèses", permissions: [] },
+  { id: groupId(6), code: "G06", name: "Synthèses", permissions: ["pointage:synthese"] },
   { id: groupId(7), code: "G07", name: "Tableau de bord", permissions: ["tableau_bord:lecture"] },
   {
     id: groupId(8),
@@ -167,6 +167,12 @@ export const SYSTEM_GROUPS: readonly SystemGroup[] = [
     name: "Factures — génération",
     permissions: ["facture:generation"],
   },
+  {
+    id: groupId(40),
+    code: "G40",
+    name: "Pointages — montants",
+    permissions: ["pointage:voir_montants"],
+  },
   { id: groupId(29), code: "G29", name: "Bordereaux — consultation", permissions: [] },
   { id: groupId(31), code: "G31", name: "Bordereaux — validation finance", permissions: [] },
   { id: groupId(32), code: "G32", name: "Bordereaux — validation DG", permissions: [] },
@@ -257,6 +263,9 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
       "G36",
       "G37",
       "G38",
+      "G05",
+      "G06",
+      "G40",
     ],
   },
   {
@@ -280,6 +289,8 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
       "G17",
       "G19",
       "G22",
+      "G06",
+      "G40",
     ],
   },
   {
@@ -289,7 +300,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Saisie terrain pour son équipe",
     scope: "EQUIPE",
     mfaRequired: false,
-    groups: ["G01", "G39", "G02", "G08", "G10", "G12", "G16", "G21"],
+    groups: ["G01", "G39", "G02", "G08", "G10", "G12", "G16", "G21", "G40"],
   },
   {
     id: SYSTEM_ROLE_IDS.RESPONSABLE_TECHNIQUE,
@@ -307,7 +318,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Première validation des bordereaux",
     scope: "TOUS",
     mfaRequired: true,
-    groups: ["G07", "G27", "G06", "G29", "G31"],
+    groups: ["G07", "G27", "G06", "G29", "G31", "G40"],
   },
   {
     id: SYSTEM_ROLE_IDS.DG,
@@ -316,7 +327,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Deuxième validation des bordereaux",
     scope: "TOUS",
     mfaRequired: true,
-    groups: ["G07", "G27", "G06", "G29", "G32"],
+    groups: ["G07", "G27", "G06", "G29", "G32", "G40"],
   },
   {
     id: SYSTEM_ROLE_IDS.TRESORERIE,
@@ -334,7 +345,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Lecture et analyse, tous sites",
     scope: "TOUS",
     mfaRequired: false,
-    groups: ["G02", "G07", "G12", "G23", "G27", "G06", "G29"],
+    groups: ["G02", "G07", "G12", "G23", "G27", "G06", "G29", "G40"],
   },
 ];
 

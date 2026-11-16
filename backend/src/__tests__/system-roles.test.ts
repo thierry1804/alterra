@@ -59,7 +59,9 @@ describe("roles of the cahier matrix", () => {
   it("makes the consultation role strictly read-only", () => {
     const keys = permissionsOf("CONSULTATION");
     expect(keys.length).toBeGreaterThan(0);
-    expect(keys.filter((key) => !/:(lecture|analyse)$/.test(key))).toEqual([]);
+    expect(keys.filter((key) => !/:(lecture|analyse|synthese|voir_montants)$/.test(key))).toEqual(
+      [],
+    );
   });
 
   it("limits the trésorerie to exporting and reading invoices", () => {
@@ -74,21 +76,42 @@ describe("roles of the cahier matrix", () => {
     expect(role("DG").groups).toContain("G32");
   });
 
-  it("attaches the dedicated groups future tickets will fill", () => {
+  it("attaches the dedicated groups and fills the ones already built", () => {
     expect(role("RESPONSABLE_TECHNIQUE").groups).toEqual(expect.arrayContaining(["G05", "G06"]));
     expect(role("CONSULTATION").groups).toEqual(expect.arrayContaining(["G06", "G29"]));
     expect(role("TRESORERIE").groups).toContain("G29");
-    expect(
-      SYSTEM_GROUPS.filter((group) =>
-        ["G05", "G06", "G29", "G31", "G32"].includes(group.code),
-      ).every((group) => group.permissions.length === 0),
-    ).toBe(true);
+    const permissionsOfGroup = (code: string) =>
+      SYSTEM_GROUPS.find((group) => group.code === code)?.permissions;
+    expect(permissionsOfGroup("G05")).toEqual(["pointage:valider_technique"]);
+    expect(permissionsOfGroup("G06")).toEqual(["pointage:synthese"]);
+    for (const code of ["G29", "G31", "G32"]) expect(permissionsOfGroup(code)).toEqual([]);
   });
 
-  it("leaves the three original roles unchanged", () => {
-    expect(role("ADMIN").groups).toHaveLength(33);
-    expect(role("CHEF_SERVICE").groups).toHaveLength(13);
-    expect(role("CHEF_EQUIPE").groups).toHaveLength(8);
+  it("lets only the responsable technique and the administrator validate technically", () => {
+    const holders = SYSTEM_ROLES.filter((entry) =>
+      systemRolePermissions(entry.id).has("pointage:valider_technique"),
+    ).map((entry) => entry.code);
+    expect(holders.sort()).toEqual(["ADMIN", "RESPONSABLE_TECHNIQUE"]);
+  });
+
+  it("hides pointage amounts from the responsable technique and the trésorerie only", () => {
+    const hidden = SYSTEM_ROLES.filter(
+      (entry) => !systemRolePermissions(entry.id).has("pointage:voir_montants"),
+    ).map((entry) => entry.code);
+    expect(hidden.sort()).toEqual(["RESPONSABLE_TECHNIQUE", "TRESORERIE"]);
+  });
+
+  it("gives syntheses to everyone but the trésorerie and the chef d'équipe", () => {
+    const without = SYSTEM_ROLES.filter(
+      (entry) => !systemRolePermissions(entry.id).has("pointage:synthese"),
+    ).map((entry) => entry.code);
+    expect(without.sort()).toEqual(["CHEF_EQUIPE", "TRESORERIE"]);
+  });
+
+  it("keeps the original groups of the three first roles", () => {
+    expect(role("ADMIN").groups).toHaveLength(36);
+    expect(role("CHEF_SERVICE").groups).toHaveLength(15);
+    expect(role("CHEF_EQUIPE").groups).toHaveLength(9);
   });
 });
 

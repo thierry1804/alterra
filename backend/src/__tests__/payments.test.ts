@@ -246,6 +246,15 @@ describe("Payments API", () => {
       .set("Authorization", adminAuthHeader())
       .send({ periodIso: "2026-W29" });
 
+    expect(prisma.pointage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "VALIDATED",
+          technicalValidatedAt: { not: null },
+        }),
+      }),
+    );
+
     expect(res.status).toBe(201);
     expect(res.body.created).toBe(1);
     expect(res.body.periodIso).toBe("S29");

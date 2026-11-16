@@ -2,10 +2,12 @@ import { Router, raw } from "express";
 import { z } from "zod";
 import { PointageStatus } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
-import { requirePermission } from "../middleware/rbac.js";
+import { can, requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { syncPointageBatch } from "../services/pointages/sync.service.js";
 import { listPointages } from "../services/pointages/list.service.js";
+import { getPointageSynthesis } from "../services/pointages/synthesis.service.js";
+import { validateTechnical } from "../services/pointages/technical-validation.service.js";
 import { rejectPointage, validatePointage } from "../services/pointages/validation.service.js";
 import {
   attachPointagePhoto,
@@ -53,6 +55,30 @@ const listPointagesQuery = z.object({
   orderBy: z.enum(POINTAGE_SORT_FIELDS).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
 });
+
+const WEEK_ISO_PATTERN = /^\d{4}-W\d{2}$/;
+
+const synthesisQuery = z.object({
+  weekFrom: z.string().regex(WEEK_ISO_PATTERN).optional(),
+  weekTo: z.string().regex(WEEK_ISO_PATTERN).optional(),
+  siteId: z.guid().optional(),
+  subActivityId: z.guid().optional(),
+});
+
+const technicalValidationSchema = z.object({
+  weekIso: z.string().regex(WEEK_ISO_PATTERN),
+  siteId: z.guid().optional(),
+  subActivityId: z.guid().optional(),
+});
+
+function withoutAmounts<T extends { amount?: unknown; unitRateSnapshot?: unknown }>(
+  pointage: T,
+): Omit<T, "amount" | "unitRateSnapshot"> {
+  const copy = { ...pointage };
+  delete copy.amount;
+  delete copy.unitRateSnapshot;
+  return copy;
+}
 
 const pointageIdParams = z.object({ id: z.guid() });
 
@@ -130,8 +156,44 @@ pointagesRouter.get(
   validate(listPointagesQuery, "query"),
   async (req, res, next) => {
     try {
-      const filters = req.query as z.infer<typeof listPointagesQuery>;
+      const query = req.query as z.infer<typeof listPointagesQuery>;
+      const seesAmounts = can(req.user, "pointage:voir_montants");
+      const filters =
+        !seesAmounts && query.orderBy === "amount" ? { ...query, orderBy: undefined } : query;
       const result = await listPointages(filters);
+      res.json(seesAmounts ? result : { ...result, data: result.data.map(withoutAmounts) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+pointagesRouter.get(
+  "/pointages/synthese",
+  requireAuth,
+  requirePermission("pointage:synthese"),
+  validate(synthesisQuery, "query"),
+  async (req, res, next) => {
+    try {
+      res.json(await getPointageSynthesis(req.query as z.infer<typeof synthesisQuery>));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+pointagesRouter.post(
+  "/pointages/validate-technical",
+  requireAuth,
+  requirePermission("pointage:valider_technique"),
+  validate(technicalValidationSchema),
+  async (req, res, next) => {
+    try {
+      const result = await validateTechnical(req.body, {
+        userId: req.user!.sub,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
       res.json(result);
     } catch (err) {
       next(err);

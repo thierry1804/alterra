@@ -24,6 +24,7 @@ export interface Pointage {
   enteredById: string;
   validatedById: string | null;
   validatedAt: string | null;
+  technicalValidatedAt?: string | null;
   rejectionReason: string | null;
   createdByClientAt: string;
   syncedAt: string;

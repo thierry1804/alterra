@@ -24,6 +24,7 @@ import ProtectedRoute, { GuestRoute } from "./components/layout/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import PermissionGuard from "./components/layout/PermissionGuard";
 import AccessRolesPage from "./pages/AccessRoles";
+import ValidationTechniquePage from "./pages/ValidationTechnique";
 import { Toaster } from "./components/ui/toaster";
 import { LoadingRow } from "./components/ui/feedback";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
@@ -77,6 +78,10 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={guard("/", <Dashboard />)} />
               <Route path="/pointages" element={guard("/pointages", <PointagesPage />)} />
+              <Route
+                path="/validation-technique"
+                element={guard("/validation-technique", <ValidationTechniquePage />)}
+              />
               <Route path="/badges" element={guard("/badges", <BadgesPage />)} />
               <Route path="/sites" element={guard("/sites", <SitesPage />)} />
               <Route path="/zones" element={guard("/zones", <ZonesPage />)} />

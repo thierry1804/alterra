@@ -69,10 +69,16 @@ describe("route access", () => {
     expect(baseline.map(routeKey).filter((key) => !current.has(key))).toEqual([]);
   });
 
-  it("only adds the access administration routes", () => {
+  it("only adds the access administration and technical validation routes", () => {
     const before = new Set(baseline.map(routeKey));
+    const allowed = new Set([
+      "GET /api/v1/pointages/synthese",
+      "POST /api/v1/pointages/validate-technical",
+    ]);
     const added = routes.map(routeKey).filter((key) => !before.has(key));
-    expect(added.every((key) => key.includes("/api/v1/access/"))).toBe(true);
+    expect(added.filter((key) => !allowed.has(key) && !key.includes("/api/v1/access/"))).toEqual(
+      [],
+    );
   });
 
   it("gives the three system roles exactly the access they had", () => {

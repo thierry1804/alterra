@@ -1,7 +1,8 @@
-import { BioResult, PointageStatus } from "@prisma/client";
+import { BioResult } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
+import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
 
 export interface WeeklyPdfJobInput {
@@ -245,7 +246,7 @@ export async function buildWeeklyReportViewModel(
 
   const pointages = await prisma.pointage.findMany({
     where: {
-      status: PointageStatus.VALIDATED,
+      ...BORDEREAU_ELIGIBLE,
       date: { gte: period.dateFrom, lte: period.dateTo },
       worker: { siteId: input.siteId },
     },

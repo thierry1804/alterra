@@ -2,6 +2,7 @@ import type { AuthUser } from "./auth-store";
 import { canAccess, type Access } from "./permissions";
 import {
   Activity,
+  ClipboardCheck,
   ClipboardList,
   CreditCard,
   FileStack,
@@ -58,6 +59,13 @@ export const NAV_ITEMS: NavItem[] = [
     access: { any: ["pointage:valider_site", "pointage:correction"] },
     section: "Opérations",
     badge: "pointages",
+  },
+  {
+    label: "Validation technique",
+    path: "/validation-technique",
+    icon: ClipboardCheck,
+    access: { all: ["pointage:valider_technique"] },
+    section: "Opérations",
   },
   {
     label: "Badges NFC",

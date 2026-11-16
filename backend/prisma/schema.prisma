@@ -361,33 +361,35 @@ model Worker {
 }
 
 model Pointage {
-  id                String                 @id @default(uuid()) @db.Uuid
-  clientUuid        String                 @unique @db.Uuid // anti-doublon idempotence
-  workerId          String                 @db.Uuid
-  worker            Worker                 @relation(fields: [workerId], references: [id])
-  subActivityId     String                 @db.Uuid
-  subActivity       ActivitySubActivity    @relation(fields: [subActivityId], references: [id])
-  quantity          Decimal                @db.Decimal(10, 2)
-  unitRateSnapshot  Decimal                @db.Decimal(12, 2) // tarif figé à la saisie
-  amount            Decimal                @db.Decimal(12, 2) // = quantity * unitRateSnapshot
-  date              DateTime               @db.Date
-  parcelleId        String?                @db.Uuid // V2
-  parcelle          Parcelle?              @relation(fields: [parcelleId], references: [id])
-  geoLat            Float?
-  geoLng            Float?
-  photoKey          String?
-  notes             String?
-  status            PointageStatus         @default(PENDING)
-  enteredById       String                 @db.Uuid
-  validatedById     String?                @db.Uuid
-  validatedAt       DateTime?
-  rejectionReason   String?
-  bioCheckId        String?                @db.Uuid
-  createdByClientAt DateTime // horodatage côté PWA
-  syncedAt          DateTime               @default(now())
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  clarifications    ClarificationRequest[]
+  id                     String                 @id @default(uuid()) @db.Uuid
+  clientUuid             String                 @unique @db.Uuid // anti-doublon idempotence
+  workerId               String                 @db.Uuid
+  worker                 Worker                 @relation(fields: [workerId], references: [id])
+  subActivityId          String                 @db.Uuid
+  subActivity            ActivitySubActivity    @relation(fields: [subActivityId], references: [id])
+  quantity               Decimal                @db.Decimal(10, 2)
+  unitRateSnapshot       Decimal                @db.Decimal(12, 2) // tarif figé à la saisie
+  amount                 Decimal                @db.Decimal(12, 2) // = quantity * unitRateSnapshot
+  date                   DateTime               @db.Date
+  parcelleId             String?                @db.Uuid // V2
+  parcelle               Parcelle?              @relation(fields: [parcelleId], references: [id])
+  geoLat                 Float?
+  geoLng                 Float?
+  photoKey               String?
+  notes                  String?
+  status                 PointageStatus         @default(PENDING)
+  enteredById            String                 @db.Uuid
+  validatedById          String?                @db.Uuid
+  validatedAt            DateTime?
+  technicalValidatedById String?                @db.Uuid
+  technicalValidatedAt   DateTime?
+  rejectionReason        String?
+  bioCheckId             String?                @db.Uuid
+  createdByClientAt      DateTime // horodatage côté PWA
+  syncedAt               DateTime               @default(now())
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  clarifications         ClarificationRequest[]
   // Un seul pointage actif (non REJECTED) par (workerId, subActivityId, date) et, depuis le 2026-11-13, par
   // (workerId, date) : index partiels créés à la main dans les migrations pointage_active_slot_unique et
   // pointage_one_active_per_worker_day (Prisma ne supporte pas @@unique(... WHERE)).
@@ -395,6 +397,7 @@ model Pointage {
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])
+  @@index([status, technicalValidatedAt, date])
 }
 
 /// V2

@@ -18,6 +18,9 @@ export const PERMISSION_CATALOG = [
       { action: "saisie", label: "Saisir et synchroniser des pointages" },
       { action: "correction", label: "Corriger un pointage" },
       { action: "valider_site", label: "Valider ou rejeter (validation site)" },
+      { action: "valider_technique", label: "Validation technique globale" },
+      { action: "synthese", label: "Synthèses par activité et par semaine" },
+      { action: "voir_montants", label: "Voir les montants des pointages" },
     ],
   },
   {

@@ -1,10 +1,11 @@
-import { PaymentStatus, PointageStatus } from "@prisma/client";
+import { PaymentStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { htmlToPdfBuffer, renderActivityInvoiceHtml } from "../reports/pdf-render.service.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
 
 export interface ActivityInvoiceLine {
@@ -79,7 +80,7 @@ function fetchValidatedPointages(where: {
 }) {
   return prisma.pointage.findMany({
     where: {
-      status: PointageStatus.VALIDATED,
+      ...BORDEREAU_ELIGIBLE,
       date: { gte: where.dateFrom, lte: where.dateTo },
       workerId: { in: where.workerIds },
       ...(where.subActivityId ? { subActivityId: where.subActivityId } : {}),
