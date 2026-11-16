@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { isAxiosError } from "axios";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { api } from "../../lib/api";
 import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
@@ -34,7 +34,7 @@ interface BordereauDetailDrawerProps {
 }
 
 function formatAr(value: string | number): string {
-  return Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 0 });
+  return Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 }
 
 function formatDateTime(value: string | null): string {
@@ -103,6 +103,17 @@ export default function BordereauDetailDrawer({
     },
     onError,
   });
+
+  async function openInvoice(id: string) {
+    try {
+      const response = await api.get<Blob>(`/bordereaux/${id}/invoice`, { responseType: "blob" });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      onError(err);
+    }
+  }
 
   async function downloadVersion(id: string) {
     try {
@@ -244,15 +255,28 @@ export default function BordereauDetailDrawer({
                         </p>
                       )}
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void downloadVersion(version.id)}
-                    >
-                      <Download className="h-4 w-4" aria-hidden />
-                      Télécharger
-                    </Button>
+                    <div className="flex gap-2">
+                      {can("facture:lecture") && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void openInvoice(version.id)}
+                        >
+                          <FileText className="h-4 w-4" aria-hidden />
+                          Facture
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void downloadVersion(version.id)}
+                      >
+                        <Download className="h-4 w-4" aria-hidden />
+                        Bordereau (Excel)
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -13,6 +13,7 @@ import { writeAuditLog } from "../audit/audit.service.js";
 import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import type { Db } from "../pointages/day-rule.js";
 import { snapshotLines } from "./bordereau-workflow.service.js";
+import { ensureInvoiceQuietly } from "./bordereau-invoice.service.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -376,6 +377,10 @@ async function generateForSite(
       ip: ctx.ip,
       userAgent: ctx.userAgent,
     });
+  }
+
+  if (outcome.summary) {
+    await ensureInvoiceQuietly(outcome.summary.bordereauId);
   }
 
   return outcome;

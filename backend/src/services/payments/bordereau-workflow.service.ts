@@ -6,6 +6,8 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { can } from "../../middleware/rbac.js";
 import type { AuthUser } from "../access/auth-user.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { assertBordereauSite } from "./bordereau-access.js";
+import { ensureInvoiceQuietly, getInvoiceTotals } from "./bordereau-invoice.service.js";
 
 export interface BordereauLine {
   matricule: string;
@@ -17,13 +19,6 @@ export interface BordereauLine {
 }
 
 const SITE_SELECT = { select: { id: true, name: true, shortCode: true } } as const;
-
-export function assertBordereauSite(user: AuthUser, siteId: string): void {
-  if (user.scope === "TOUS") return;
-  if (!user.siteId || user.siteId !== siteId) {
-    throw new ApiError(403, "FORBIDDEN_SITE", "Ce site est hors de votre périmètre");
-  }
-}
 
 async function liveLines(bordereauId: string): Promise<BordereauLine[]> {
   const payments = await prisma.payment.findMany({
@@ -83,6 +78,7 @@ export async function getBordereauDetail(id: string, user: AuthUser) {
   assertBordereauSite(user, bordereau.siteId);
 
   const lines = await linesOf(bordereau);
+  const invoiceTotals = await getInvoiceTotals(bordereau.id);
   const versions = await prisma.bordereau.findMany({
     where: {
       siteId: bordereau.siteId,
@@ -112,7 +108,14 @@ export async function getBordereauDetail(id: string, user: AuthUser) {
     version: bordereau.version,
     status: bordereau.status,
     lines,
-    totals: totalsOf(lines),
+    totals: invoiceTotals
+      ? {
+          gross: invoiceTotals.gross,
+          isi: invoiceTotals.isi,
+          net: invoiceTotals.net,
+          isiRate: ISI_WITHHOLDING_RATE,
+        }
+      : totalsOf(lines),
     versions: versions.map((version) => ({
       id: version.id,
       version: version.version,
@@ -217,6 +220,7 @@ export async function validateDg(id: string, user: AuthUser) {
     { toStatus: "DG_VALIDATED" },
   );
   await run();
+  await ensureInvoiceQuietly(id);
 }
 
 export async function returnBordereau(id: string, user: AuthUser, reason: string) {

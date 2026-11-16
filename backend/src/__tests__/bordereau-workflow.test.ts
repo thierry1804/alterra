@@ -21,6 +21,12 @@ vi.mock("../lib/prisma.js", () => ({
       findMany: vi.fn(),
       count: vi.fn(),
     },
+    pointage: {
+      findMany: vi.fn(),
+    },
+    bordereauInvoice: {
+      findUnique: vi.fn(),
+    },
     user: {
       findMany: vi.fn(),
     },
@@ -89,6 +95,8 @@ describe("Bordereau validation workflow", () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([payment("300"), payment("300")] as never);
     vi.mocked(prisma.bordereau.findMany).mockResolvedValue([bordereau()] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([]);
   });
 
   it("lets the finance validate a generated bordereau and logs it", async () => {
@@ -250,6 +258,12 @@ describe("Bordereau validation workflow", () => {
 
   it("shows the lines, the 5 % and the net in the detail", async () => {
     vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereau() as never);
+    vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue({
+      gross: new Prisma.Decimal("600"),
+      isi: new Prisma.Decimal("30"),
+      net: new Prisma.Decimal("570"),
+      workerCount: 2,
+    } as never);
 
     const res = await request(createApp())
       .get(`/api/v1/bordereaux/${BORDEREAU_ID}`)

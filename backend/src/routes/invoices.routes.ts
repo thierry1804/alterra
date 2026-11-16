@@ -8,10 +8,8 @@ import { ApiError } from "../middleware/error-handler.js";
 
 import { prisma } from "../lib/prisma.js";
 import {
-  generateInvoicesForPeriod,
   listInvoices,
   listInvoicesForZip,
-  regenerateInvoice,
 } from "../services/payments/activity-invoices.service.js";
 import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
@@ -31,11 +29,6 @@ const downloadAllQuery = z.object({
 
 const invoiceIdParams = z.object({ id: z.guid() });
 
-const generateInvoicesSchema = z.object({
-  periodIso: z.string().min(2).max(16),
-  referenceYear: z.number().int().min(2000).max(2100).optional(),
-});
-
 invoicesRouter.get(
   "/invoices",
   requireAuth,
@@ -46,31 +39,6 @@ invoicesRouter.get(
       const query = req.query as z.infer<typeof listInvoicesQuery>;
       const data = await listInvoices(query);
       res.json({ data });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-invoicesRouter.post(
-  "/invoices/generate",
-  requireAuth,
-  requirePermission("facture:generation"),
-  validate(generateInvoicesSchema),
-  async (req, res, next) => {
-    try {
-      const body = req.body as z.infer<typeof generateInvoicesSchema>;
-      const created = await generateInvoicesForPeriod(
-        body.periodIso,
-        body.referenceYear,
-        req.user!.sub,
-        {
-          ip: req.ip,
-          userAgent:
-            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
-        },
-      );
-      res.status(201).json({ created });
     } catch (err) {
       next(err);
     }
@@ -129,25 +97,6 @@ invoicesRouter.get(
       }
 
       await archive.finalize();
-    } catch (err) {
-      next(err);
-    }
-  },
-);
-
-invoicesRouter.post(
-  "/invoices/:id/regenerate",
-  requireAuth,
-  requirePermission("facture:generation"),
-  validate(invoiceIdParams, "params"),
-  async (req, res, next) => {
-    try {
-      const updated = await regenerateInvoice(req.params.id, req.user!.sub, {
-        ip: req.ip,
-        userAgent:
-          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
-      });
-      res.json(updated);
     } catch (err) {
       next(err);
     }

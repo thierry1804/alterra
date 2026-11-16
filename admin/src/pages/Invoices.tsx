@@ -1,7 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { isAxiosError } from "axios";
-import { Archive, Download, FileText, Receipt, RefreshCw } from "lucide-react";
+import { Archive, Download, FileText } from "lucide-react";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { api } from "../lib/api";
 import { currentIsoWeekInput, periodToExportParam } from "../lib/payments";
@@ -18,7 +17,6 @@ function formatDateTime(iso: string): string {
 }
 
 export default function InvoicesPage() {
-  const queryClient = useQueryClient();
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -34,59 +32,9 @@ export default function InvoicesPage() {
           params: listPeriod ? { periodIso: listPeriod, referenceYear } : undefined,
         })
         .then((r) => r.data.data),
-    // Pas de websocket/push : on repolle pour voir vite les factures générées par un export MVola
-    // fait depuis un autre onglet/poste (page Paiements).
-    refetchInterval: 15000,
   });
 
   const rows = data ?? [];
-
-  // Permet le rattrapage : un export MVola existe pour cette période mais aucune facture n'a
-  // été générée (échec de la génération auto à l'export, ou export fait avant cette fonctionnalité).
-  const { data: exportedCount } = useQuery({
-    queryKey: ["invoices-exported-check", periodIso],
-    queryFn: () =>
-      api
-        .get<{ data: unknown[] }>("/payments", {
-          params: { periodIso, referenceYear, status: "EXPORTED" },
-        })
-        .then((r) => r.data.data.length),
-    enabled: !!periodIso,
-  });
-
-  const canGenerateManually = !!periodIso && !isLoading && rows.length === 0 && !!exportedCount;
-
-  const generateMutation = useMutation({
-    mutationFn: () =>
-      api.post("/invoices/generate", { periodIso, referenceYear: Number(referenceYear) }),
-    onSuccess: (res) => {
-      toast({
-        title: "Facture(s) générée(s)",
-        description: `${res.data.created.length} facture(s) créée(s)`,
-      });
-      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
-    },
-    onError: (err) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Génération échouée", description: String(message), variant: "destructive" });
-    },
-  });
-
-  const regenerateMutation = useMutation({
-    mutationFn: (invoiceId: string) => api.post(`/invoices/${invoiceId}/regenerate`),
-    onSuccess: () => {
-      toast({ title: "Facture régénérée" });
-      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
-    },
-    onError: (err) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({
-        title: "Régénération échouée",
-        description: String(message),
-        variant: "destructive",
-      });
-    },
-  });
 
   async function handleDownload(invoice: InvoiceRow) {
     setDownloadingId(invoice.id);
@@ -146,13 +94,13 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Factures"
-        description="Une facture PDF par activité et par période, générée automatiquement à chaque export MVola."
+        title="Factures — archives"
+        description="Anciennes factures (une par activité et par période), en lecture seule. Les nouvelles factures se consultent depuis chaque bordereau."
         help={
-          <ContextHelp id="invoices-admin" title="Factures par activité">
+          <ContextHelp id="invoices-admin" title="Factures — archives">
             <p>
-              Chaque export MVola (page Paiements) génère une facture par activité regroupant les
-              travailleurs validés de cette activité pour la période exportée.
+              Ces factures ont été créées avant la facture par bordereau. Elles restent consultables
+              mais ne sont plus modifiables ni régénérées.
             </p>
             <GlossaryTerm term="Semaine ISO">
               Format AAAA-Wnn (ex. 2026-W29) - période de paie hebdomadaire.
@@ -185,16 +133,6 @@ export default function InvoicesPage() {
             onClick={() => void handleDownloadAll()}
           />
         )}
-        {canGenerateManually && (
-          <Button
-            type="button"
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-          >
-            <Receipt className="h-4 w-4" />
-            {generateMutation.isPending ? "Génération…" : "Générer facture(s) pour cette période"}
-          </Button>
-        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-zinc-200">
@@ -223,7 +161,7 @@ export default function InvoicesPage() {
             {!isLoading && rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-6 text-center text-zinc-500">
-                  Aucune facture - générée automatiquement au prochain export MVola.
+                  Aucune facture archivée pour cette période.
                 </td>
               </tr>
             )}
@@ -245,14 +183,6 @@ export default function InvoicesPage() {
                 <td className="px-4 py-2 text-zinc-500">{formatDateTime(invoice.createdAt)}</td>
                 <td className="px-4 py-2 text-right">
                   <RowActions>
-                    <IconButton
-                      icon={RefreshCw}
-                      label="Régénérer cette facture"
-                      loading={
-                        regenerateMutation.isPending && regenerateMutation.variables === invoice.id
-                      }
-                      onClick={() => regenerateMutation.mutate(invoice.id)}
-                    />
                     <IconButton
                       icon={Download}
                       label="Télécharger le PDF"

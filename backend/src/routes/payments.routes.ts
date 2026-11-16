@@ -22,6 +22,7 @@ import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import type { AuthUser } from "../services/access/auth-user.js";
 import { listBordereaux } from "../services/payments/bordereaux.service.js";
+import { openInvoice, regenerateInvoice } from "../services/payments/bordereau-invoice.service.js";
 import {
   buildBordereauWorkbook,
   getBordereauDetail,
@@ -265,6 +266,39 @@ paymentsRouter.get(
       );
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/bordereaux/:id/invoice",
+  requireAuth,
+  requirePermission("facture:lecture"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      const { stream, filename } = await openInvoice(req.params.id as string, req.user!);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      stream.pipe(res);
+      stream.on("error", next);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/bordereaux/:id/invoice/regenerate",
+  requireAuth,
+  requirePermission("facture:generation"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      await regenerateInvoice(req.params.id as string, req.user!);
+      res.json({ regenerated: true });
     } catch (err) {
       next(err);
     }

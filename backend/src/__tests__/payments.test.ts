@@ -114,6 +114,13 @@ vi.mock("../lib/prisma.js", () => ({
   },
 }));
 
+vi.mock("../services/payments/bordereau-invoice.service.js", () => ({
+  ensureInvoiceQuietly: vi.fn().mockResolvedValue(undefined),
+  getInvoiceTotals: vi.fn().mockResolvedValue(null),
+  openInvoice: vi.fn(),
+  regenerateInvoice: vi.fn(),
+}));
+
 vi.mock("../lib/prisma-base.js", () => ({
   basePrisma: {
     auditLog: {
@@ -132,6 +139,7 @@ vi.mock("../services/storage/minio.js", () => ({
 import { prisma } from "../lib/prisma.js";
 import { basePrisma } from "../lib/prisma-base.js";
 import { minioClient } from "../services/storage/minio.js";
+import { ensureInvoiceQuietly } from "../services/payments/bordereau-invoice.service.js";
 
 function adminAuthHeader() {
   return `Bearer ${signAccessToken({
@@ -771,6 +779,7 @@ describe("Bordereau per site", () => {
         data: expect.objectContaining({ siteId: MOCK_SITE_ID, periodIso: "S29", version: 1 }),
       }),
     );
+    expect(ensureInvoiceQuietly).toHaveBeenCalledWith(MOCK_BORDEREAU_ID);
     expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: { in: [eligiblePointage.id] } },

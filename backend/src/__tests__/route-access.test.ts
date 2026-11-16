@@ -66,7 +66,13 @@ describe("route access", () => {
 
   it("keeps every route that existed before the RBAC migration", () => {
     const current = new Set(routes.map(routeKey));
-    expect(baseline.map(routeKey).filter((key) => !current.has(key))).toEqual([]);
+    const removedOnPurpose = new Set([
+      "POST /api/v1/invoices/generate",
+      "POST /api/v1/invoices/:id/regenerate",
+    ]);
+    expect(
+      baseline.map(routeKey).filter((key) => !current.has(key) && !removedOnPurpose.has(key)),
+    ).toEqual([]);
   });
 
   it("only adds the access administration and technical validation routes", () => {
@@ -77,6 +83,8 @@ describe("route access", () => {
       "GET /api/v1/bordereaux",
       "GET /api/v1/bordereaux/:id",
       "GET /api/v1/bordereaux/:id/download",
+      "GET /api/v1/bordereaux/:id/invoice",
+      "POST /api/v1/bordereaux/:id/invoice/regenerate",
       "POST /api/v1/bordereaux/:id/validate-finance",
       "POST /api/v1/bordereaux/:id/validate-dg",
       "POST /api/v1/bordereaux/:id/return",

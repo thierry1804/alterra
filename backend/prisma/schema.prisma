@@ -526,21 +526,37 @@ model Bordereau {
   createdAt     DateTime        @default(now())
   supersededAt  DateTime?
 
-  financeValidatedById String?    @db.Uuid
+  financeValidatedById String?           @db.Uuid
   financeValidatedAt   DateTime?
-  dgValidatedById      String?    @db.Uuid
+  dgValidatedById      String?           @db.Uuid
   dgValidatedAt        DateTime?
   returnReason         String?
-  returnedById         String?    @db.Uuid
+  returnedById         String?           @db.Uuid
   returnedAt           DateTime?
   /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
   lines                Json?
   payments             Payment[]
   pointages            Pointage[]
+  invoice              BordereauInvoice?
 
   @@unique([siteId, periodIso, referenceYear, version])
   @@index([siteId, status])
   @@index([periodIso, referenceYear])
+}
+
+/// Facture PDF d'une version de bordereau (relation 1-1). Le numéro affiché reprend celui du bordereau.
+/// Les montants sont stockés pour que le bordereau et la facture affichent exactement les mêmes totaux.
+model BordereauInvoice {
+  id          String    @id @default(uuid()) @db.Uuid
+  bordereauId String    @unique @db.Uuid
+  bordereau   Bordereau @relation(fields: [bordereauId], references: [id], onDelete: Cascade)
+  fileKey     String
+  workerCount Int
+  gross       Decimal   @db.Decimal(14, 2)
+  isi         Decimal   @db.Decimal(14, 2)
+  net         Decimal   @db.Decimal(14, 2)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 /// Un bordereau MVola généré pour une période : export initial (version 1) ou régénération
