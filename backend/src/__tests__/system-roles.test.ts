@@ -65,7 +65,11 @@ describe("roles of the cahier matrix", () => {
   });
 
   it("limits the trésorerie to exporting and reading invoices", () => {
-    expect(permissionsOf("TRESORERIE").sort()).toEqual(["facture:lecture", "paiement:export"]);
+    expect(permissionsOf("TRESORERIE").sort()).toEqual([
+      "bordereau:lecture",
+      "facture:lecture",
+      "paiement:export",
+    ]);
   });
 
   it("never lets one role hold both bordereau validations", () => {
@@ -84,7 +88,16 @@ describe("roles of the cahier matrix", () => {
       SYSTEM_GROUPS.find((group) => group.code === code)?.permissions;
     expect(permissionsOfGroup("G05")).toEqual(["pointage:valider_technique"]);
     expect(permissionsOfGroup("G06")).toEqual(["pointage:synthese"]);
-    for (const code of ["G29", "G31", "G32"]) expect(permissionsOfGroup(code)).toEqual([]);
+    expect(permissionsOfGroup("G29")).toEqual(["bordereau:lecture"]);
+    expect(permissionsOfGroup("G30")).toEqual(["bordereau:generation"]);
+    for (const code of ["G31", "G32"]) expect(permissionsOfGroup(code)).toEqual([]);
+  });
+
+  it("lets only the administrator generate bordereaux for now", () => {
+    const holders = SYSTEM_ROLES.filter((entry) =>
+      systemRolePermissions(entry.id).has("bordereau:generation"),
+    ).map((entry) => entry.code);
+    expect(holders).toEqual(["ADMIN"]);
   });
 
   it("lets only the responsable technique and the administrator validate technically", () => {
@@ -109,7 +122,7 @@ describe("roles of the cahier matrix", () => {
   });
 
   it("keeps the original groups of the three first roles", () => {
-    expect(role("ADMIN").groups).toHaveLength(36);
+    expect(role("ADMIN").groups).toHaveLength(38);
     expect(role("CHEF_SERVICE").groups).toHaveLength(15);
     expect(role("CHEF_EQUIPE").groups).toHaveLength(9);
   });

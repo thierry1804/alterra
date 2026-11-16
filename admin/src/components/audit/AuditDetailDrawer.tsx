@@ -207,39 +207,39 @@ export default function AuditDetailDrawer({ entry, open, onOpenChange }: AuditDe
         </SheetHeader>
 
         <SheetBody className="space-y-4">
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <dt className="text-zinc-500">IP</dt>
-            <dd>{entry.ip ?? "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-zinc-500">User-Agent</dt>
-            <dd className="truncate">{entry.userAgent ?? "-"}</dd>
-          </div>
-        </dl>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-zinc-500">IP</dt>
+              <dd>{entry.ip ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-zinc-500">User-Agent</dt>
+              <dd className="truncate">{entry.userAgent ?? "-"}</dd>
+            </div>
+          </dl>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <section>
-            <h3 className="mb-2 text-sm font-medium text-zinc-900">Avant</h3>
-            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs">
-              {entry.before ? (
-                <DiffTree own={entry.before} counterpart={entry.after} side="before" />
-              ) : (
-                <span className="text-zinc-500">-</span>
-              )}
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-2 text-sm font-medium text-zinc-900">Après</h3>
-            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs">
-              {entry.after ? (
-                <DiffTree own={entry.after} counterpart={entry.before} side="after" />
-              ) : (
-                <span className="text-zinc-500">-</span>
-              )}
-            </div>
-          </section>
-        </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <section>
+              <h3 className="mb-2 text-sm font-medium text-zinc-900">Avant</h3>
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs">
+                {entry.before ? (
+                  <DiffTree own={entry.before} counterpart={entry.after} side="before" />
+                ) : (
+                  <span className="text-zinc-500">-</span>
+                )}
+              </div>
+            </section>
+            <section>
+              <h3 className="mb-2 text-sm font-medium text-zinc-900">Après</h3>
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs">
+                {entry.after ? (
+                  <DiffTree own={entry.after} counterpart={entry.before} side="after" />
+                ) : (
+                  <span className="text-zinc-500">-</span>
+                )}
+              </div>
+            </section>
+          </div>
         </SheetBody>
       </SheetContent>
     </Sheet>

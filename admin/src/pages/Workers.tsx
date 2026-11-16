@@ -423,7 +423,12 @@ export default function WorkersPage() {
         description="Main-d'œuvre communautaire - référentiel travailleurs (MOC)."
         action={
           <div className="flex items-center gap-2">
-            <IconButton icon={Download} label="Exporter" loading={exporting} onClick={() => void handleExport()} />
+            <IconButton
+              icon={Download}
+              label="Exporter"
+              loading={exporting}
+              onClick={() => void handleExport()}
+            />
             <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
               Import Excel
             </Button>
@@ -751,150 +756,150 @@ export default function WorkersPage() {
             }}
           >
             <SheetBody className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="w-matricule">
-                  Matricule{" "}
-                  {matriculeGenerating && <span className="text-zinc-400">(génération…)</span>}
-                </Label>
-                <div className="relative">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="w-matricule">
+                    Matricule{" "}
+                    {matriculeGenerating && <span className="text-zinc-400">(génération…)</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="w-matricule"
+                      ref={matriculeInputRef}
+                      value={form.matricule}
+                      onChange={(e) => {
+                        matriculeEditedRef.current = true;
+                        setForm((f) => ({ ...f, matricule: e.target.value }));
+                      }}
+                      readOnly={matriculeLocked}
+                      className={cn("pr-9", matriculeLocked && "bg-zinc-50 text-zinc-600")}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
+                      onClick={() => {
+                        setMatriculeLocked(false);
+                        requestAnimationFrame(() => matriculeInputRef.current?.focus());
+                      }}
+                      aria-label="Modifier le matricule"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="w-mvola">MVola</Label>
                   <Input
-                    id="w-matricule"
-                    ref={matriculeInputRef}
-                    value={form.matricule}
-                    onChange={(e) => {
-                      matriculeEditedRef.current = true;
-                      setForm((f) => ({ ...f, matricule: e.target.value }));
-                    }}
-                    readOnly={matriculeLocked}
-                    className={cn("pr-9", matriculeLocked && "bg-zinc-50 text-zinc-600")}
+                    id="w-mvola"
+                    value={form.mvolaNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, mvolaNumber: e.target.value }))}
                     required
                   />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700"
-                    onClick={() => {
-                      setMatriculeLocked(false);
-                      requestAnimationFrame(() => matriculeInputRef.current?.focus());
-                    }}
-                    aria-label="Modifier le matricule"
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden />
-                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="w-first">Prénom</Label>
+                  <Input
+                    id="w-first"
+                    value={form.firstName}
+                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="w-last">Nom</Label>
+                  <Input
+                    id="w-last"
+                    value={form.lastName}
+                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                    required
+                  />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="w-mvola">MVola</Label>
+                <Label htmlFor="w-cin">N° CIN</Label>
                 <Input
-                  id="w-mvola"
-                  value={form.mvolaNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, mvolaNumber: e.target.value }))}
-                  required
+                  id="w-cin"
+                  value={form.cinNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, cinNumber: e.target.value }))}
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="w-first">Prénom</Label>
-                <Input
-                  id="w-first"
-                  value={form.firstName}
-                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w-last">Nom</Label>
-                <Input
-                  id="w-last"
-                  value={form.lastName}
-                  onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="w-cin">N° CIN</Label>
-              <Input
-                id="w-cin"
-                value={form.cinNumber}
-                onChange={(e) => setForm((f) => ({ ...f, cinNumber: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="w-site">Site</Label>
-                <select
-                  id="w-site"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={form.siteId}
-                  onChange={(e) => {
-                    const siteId = e.target.value;
-                    setForm((f) => ({ ...f, siteId }));
-                    if (!editing) void autofillMatricule(siteId);
-                  }}
-                  required
-                >
-                  {sites.map((site) => (
-                    <option key={site.id} value={site.id}>
-                      {site.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="w-hired">Embauche</Label>
-                <Input
-                  id="w-hired"
-                  type="date"
-                  value={form.hiredAt}
-                  onChange={(e) => setForm((f) => ({ ...f, hiredAt: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="w-sexe">Sexe</Label>
-                <select
-                  id="w-sexe"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={form.sexe}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      sexe: e.target.value as NonNullable<Worker["sexe"]> | "",
-                    }))
-                  }
-                >
-                  <option value="">Non renseigné</option>
-                  {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map(
-                    (sexe) => (
-                      <option key={sexe} value={sexe}>
-                        {WORKER_SEXE_LABELS[sexe]}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="w-site">Site</Label>
+                  <select
+                    id="w-site"
+                    className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
+                    value={form.siteId}
+                    onChange={(e) => {
+                      const siteId = e.target.value;
+                      setForm((f) => ({ ...f, siteId }));
+                      if (!editing) void autofillMatricule(siteId);
+                    }}
+                    required
+                  >
+                    {sites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name}
                       </option>
-                    ),
-                  )}
-                </select>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="w-hired">Embauche</Label>
+                  <Input
+                    id="w-hired"
+                    type="date"
+                    value={form.hiredAt}
+                    onChange={(e) => setForm((f) => ({ ...f, hiredAt: e.target.value }))}
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="w-status">Statut</Label>
-                <select
-                  id="w-status"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, status: e.target.value as Worker["status"] }))
-                  }
-                >
-                  {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
-                    <option key={status} value={status}>
-                      {WORKER_STATUS_LABELS[status]}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="w-sexe">Sexe</Label>
+                  <select
+                    id="w-sexe"
+                    className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
+                    value={form.sexe}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        sexe: e.target.value as NonNullable<Worker["sexe"]> | "",
+                      }))
+                    }
+                  >
+                    <option value="">Non renseigné</option>
+                    {(Object.keys(WORKER_SEXE_LABELS) as NonNullable<Worker["sexe"]>[]).map(
+                      (sexe) => (
+                        <option key={sexe} value={sexe}>
+                          {WORKER_SEXE_LABELS[sexe]}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="w-status">Statut</Label>
+                  <select
+                    id="w-status"
+                    className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, status: e.target.value as Worker["status"] }))
+                    }
+                  >
+                    {(Object.keys(WORKER_STATUS_LABELS) as Worker["status"][]).map((status) => (
+                      <option key={status} value={status}>
+                        {WORKER_STATUS_LABELS[status]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
             </SheetBody>
             <SheetFooter>
               <Button

@@ -173,7 +173,18 @@ export const SYSTEM_GROUPS: readonly SystemGroup[] = [
     name: "Pointages — montants",
     permissions: ["pointage:voir_montants"],
   },
-  { id: groupId(29), code: "G29", name: "Bordereaux — consultation", permissions: [] },
+  {
+    id: groupId(29),
+    code: "G29",
+    name: "Bordereaux — consultation",
+    permissions: ["bordereau:lecture"],
+  },
+  {
+    id: groupId(30),
+    code: "G30",
+    name: "Bordereaux — génération",
+    permissions: ["bordereau:generation"],
+  },
   { id: groupId(31), code: "G31", name: "Bordereaux — validation finance", permissions: [] },
   { id: groupId(32), code: "G32", name: "Bordereaux — validation DG", permissions: [] },
   {
@@ -266,6 +277,8 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
       "G05",
       "G06",
       "G40",
+      "G29",
+      "G30",
     ],
   },
   {

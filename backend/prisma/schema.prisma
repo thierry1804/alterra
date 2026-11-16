@@ -49,6 +49,14 @@ enum PaymentReconciliationStatus {
   NON_CONFIRME
 }
 
+enum BordereauStatus {
+  GENERATED
+  FINANCE_VALIDATED
+  DG_VALIDATED
+  EXPORTED
+  SUPERSEDED
+}
+
 enum PaymentCycle {
   WEEKLY
   DAILY
@@ -179,20 +187,21 @@ model AccessRoleGroup {
 }
 
 model Site {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String
-  shortCode String    @unique // MNK, ANT, ANJ, MGT, AMB
-  location  String?
-  geoLat    Float?
-  geoLng    Float?
-  active    Boolean   @default(true)
-  zones     Zone[]
-  teams     Team[]
-  workers   Worker[]
-  users     User[]
-  invoices  Invoice[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  shortCode  String      @unique // MNK, ANT, ANJ, MGT, AMB
+  location   String?
+  geoLat     Float?
+  geoLng     Float?
+  active     Boolean     @default(true)
+  zones      Zone[]
+  teams      Team[]
+  workers    Worker[]
+  users      User[]
+  invoices   Invoice[]
+  bordereaux Bordereau[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 /// V2
@@ -383,6 +392,8 @@ model Pointage {
   validatedAt            DateTime?
   technicalValidatedById String?                @db.Uuid
   technicalValidatedAt   DateTime?
+  bordereauId            String?                @db.Uuid
+  bordereau              Bordereau?             @relation(fields: [bordereauId], references: [id])
   rejectionReason        String?
   bioCheckId             String?                @db.Uuid
   createdByClientAt      DateTime // horodatage côté PWA
@@ -398,6 +409,7 @@ model Pointage {
   @@index([status, date])
   @@index([parcelleId, date])
   @@index([status, technicalValidatedAt, date])
+  @@index([bordereauId])
 }
 
 /// V2
@@ -486,6 +498,9 @@ model Payment {
   exportBatchId String?           @db.Uuid
   exportBatch   MvolaExportBatch? @relation(fields: [exportBatchId], references: [id])
 
+  bordereauId  String?    @db.Uuid
+  bordereauRef Bordereau? @relation(fields: [bordereauId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -493,6 +508,29 @@ model Payment {
   @@index([status, periodIso])
   @@index([referenceYear, periodIso])
   @@index([exportBatchId])
+  @@index([bordereauId])
+}
+
+/// Un bordereau = un site + une période (semaine Sxx ou jour Dxxx). Régénéré tant qu'il n'est pas
+/// validé : l'ancienne version passe SUPERSEDED (ses paiements sont supprimés, ses pointages libérés).
+model Bordereau {
+  id            String          @id @default(uuid()) @db.Uuid
+  siteId        String          @db.Uuid
+  site          Site            @relation(fields: [siteId], references: [id])
+  periodIso     String
+  referenceYear Int
+  version       Int             @default(1)
+  number        Int
+  status        BordereauStatus @default(GENERATED)
+  createdById   String?         @db.Uuid
+  createdAt     DateTime        @default(now())
+  supersededAt  DateTime?
+  payments      Payment[]
+  pointages     Pointage[]
+
+  @@unique([siteId, periodIso, referenceYear, version])
+  @@index([siteId, status])
+  @@index([periodIso, referenceYear])
 }
 
 /// Un bordereau MVola généré pour une période : export initial (version 1) ou régénération

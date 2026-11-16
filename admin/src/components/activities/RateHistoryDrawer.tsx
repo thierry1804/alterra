@@ -54,41 +54,41 @@ export default function RateHistoryDrawer({
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tarif</TableHead>
-              <TableHead>Unité</TableHead>
-              <TableHead>Validité</TableHead>
-              <TableHead>Statut</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={4} className="text-zinc-500">
-                  Chargement…
-                </TableCell>
+                <TableHead>Tarif</TableHead>
+                <TableHead>Unité</TableHead>
+                <TableHead>Validité</TableHead>
+                <TableHead>Statut</TableHead>
               </TableRow>
-            )}
-            {!isLoading &&
-              history.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{formatRate(row.unitRate)}</TableCell>
-                  <TableCell>{row.unit?.label}</TableCell>
-                  <TableCell>
-                    {formatDate(row.validFrom)}
-                    {row.validTo ? ` → ${formatDate(row.validTo)}` : " → en cours"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={row.active && !row.validTo ? "success" : "default"}>
-                      {row.validTo ? "Clôturé" : "Courant"}
-                    </Badge>
+            </TableHeader>
+            <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-zinc-500">
+                    Chargement…
                   </TableCell>
                 </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+              )}
+              {!isLoading &&
+                history.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{formatRate(row.unitRate)}</TableCell>
+                    <TableCell>{row.unit?.label}</TableCell>
+                    <TableCell>
+                      {formatDate(row.validFrom)}
+                      {row.validTo ? ` → ${formatDate(row.validTo)}` : " → en cours"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={row.active && !row.validTo ? "success" : "default"}>
+                        {row.validTo ? "Clôturé" : "Courant"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
         </SheetBody>
       </SheetContent>
     </Sheet>

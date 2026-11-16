@@ -190,12 +190,29 @@ export async function exportMvolaPayments(
       where: { id: { in: exportableIds } },
       data: { exportBatchId: batch.id },
     });
+
+    const exportedBordereaux = await prisma.payment.findMany({
+      where: { id: { in: exportableIds }, bordereauId: { not: null } },
+      select: { bordereauId: true },
+      distinct: ["bordereauId"],
+    });
+    await prisma.bordereau.updateMany({
+      where: {
+        id: { in: exportedBordereaux.map((row) => row.bordereauId as string) },
+        status: "GENERATED",
+      },
+      data: { status: "EXPORTED" },
+    });
   } catch (err) {
     // La revendication a déjà eu lieu : si le fichier ou le bordereau n'a pas pu être produit,
     // les lignes ne doivent pas rester bloquées en EXPORTED sans qu'aucun fichier n'existe réellement.
     await prisma.payment.updateMany({
       where: { id: { in: exportableIds }, status: PaymentStatus.EXPORTED, exportedAt },
       data: { status: PaymentStatus.PENDING, exportedAt: null, exportBatchId: null },
+    });
+    await prisma.bordereau.updateMany({
+      where: { status: "EXPORTED", payments: { some: { id: { in: exportableIds } } } },
+      data: { status: "GENERATED" },
     });
     if (batchId) {
       await prisma.mvolaExportBatch.deleteMany({ where: { id: batchId } }).catch(() => undefined);

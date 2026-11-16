@@ -5,13 +5,34 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { buildMvolaDescription } from "./mvola-description.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
+import type { Db } from "../pointages/day-rule.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
   cycle?: PaymentCycle;
   referenceYear?: number;
-  /** Confirme la régénération malgré des paiements PENDING déjà corrigés à la main. */
   force?: boolean;
+  siteId?: string;
+  userId?: string;
+  ip?: string;
+  userAgent?: string;
+}
+
+export interface GeneratedBordereauSummary {
+  bordereauId: string;
+  siteId: string;
+  siteCode: string;
+  number: number;
+  version: number;
+  created: number;
+  skippedZeroAmount: number;
+}
+
+export interface SkippedSite {
+  siteId: string;
+  siteCode: string;
+  code: string;
+  message: string;
 }
 
 export interface GeneratePaymentsResult {
@@ -19,6 +40,8 @@ export interface GeneratePaymentsResult {
   weekIso: string;
   created: number;
   skippedZeroAmount: number;
+  bordereaux: GeneratedBordereauSummary[];
+  skippedSites: SkippedSite[];
   payments: Array<{
     id: string;
     workerId: string;
@@ -45,51 +68,76 @@ async function isBioOkForWeek(
   return latestBioCheck?.result === BioResult.OK;
 }
 
-async function nextBordereauBySite(siteIds: Iterable<string>): Promise<Map<string, number>> {
-  const result = new Map<string, number>();
-  for (const siteId of siteIds) {
-    const last = await prisma.payment.findFirst({
-      where: { worker: { siteId } },
-      orderBy: { bordereau: "desc" },
-      select: { bordereau: true },
-    });
-    result.set(siteId, (last?.bordereau ?? 0) + 1);
-  }
-  return result;
+async function nextBordereauNumber(tx: Db, siteId: string): Promise<number> {
+  const lastBordereau = await tx.bordereau.findFirst({
+    where: { siteId },
+    orderBy: { number: "desc" },
+    select: { number: true },
+  });
+  const lastPayment = await tx.payment.findFirst({
+    where: { worker: { siteId } },
+    orderBy: { bordereau: "desc" },
+    select: { bordereau: true },
+  });
+  return Math.max(lastBordereau?.number ?? 0, lastPayment?.bordereau ?? 0) + 1;
 }
 
-export async function generatePayments(
-  input: GeneratePaymentsInput,
-): Promise<GeneratePaymentsResult> {
-  const resolved = resolvePeriod(input.periodIso, input.cycle, input.referenceYear);
-  const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo, cycle } = resolved;
-  const semaineIso = weekIso.split("-W")[1];
+interface PeriodContext {
+  shortPeriod: string;
+  referenceYear: number;
+  weekIso: string;
+  semaineIso: string;
+  dateFrom: Date;
+  dateTo: Date;
+  cycle: PaymentCycle;
+  bioValidationRequired: boolean;
+  force: boolean;
+  userId?: string;
+  ip?: string;
+  userAgent?: string;
+}
 
-  const appSetting = await prisma.appSetting.findUnique({ where: { id: "singleton" } });
-  const bioValidationRequired = appSetting?.bioValidationRequired ?? true;
+async function generateForSite(
+  ctx: PeriodContext,
+  site: { id: string; shortCode: string },
+): Promise<{
+  summary: GeneratedBordereauSummary | null;
+  payments: Array<Prisma.PaymentGetPayload<object>>;
+  skippedZeroAmount: number;
+}> {
+  const { shortPeriod, referenceYear } = ctx;
+  const periodWhere = { periodIso: shortPeriod, referenceYear, worker: { siteId: site.id } };
+
+  const current = await prisma.bordereau.findFirst({
+    where: {
+      siteId: site.id,
+      periodIso: shortPeriod,
+      referenceYear,
+      status: { not: "SUPERSEDED" },
+    },
+    orderBy: { version: "desc" },
+  });
 
   const lockedPayment = await prisma.payment.findFirst({
     where: {
-      periodIso: shortPeriod,
-      referenceYear,
+      ...periodWhere,
       status: { in: [PaymentStatus.EXPORTED, PaymentStatus.PAID] },
     },
     select: { id: true },
   });
 
-  if (lockedPayment) {
+  if (lockedPayment || (current && current.status !== "GENERATED")) {
     throw new ApiError(
       409,
       "PAY_CONFLICT",
-      "Un bordereau existe déjà pour cette période (exporté ou payé)",
+      "Un bordereau existe déjà pour ce site et cette période (validé, exporté ou payé)",
     );
   }
 
-  if (!input.force) {
+  if (!ctx.force) {
     const correctedCount = await prisma.payment.count({
       where: {
-        periodIso: shortPeriod,
-        referenceYear,
+        ...periodWhere,
         status: PaymentStatus.PENDING,
         correctionReason: { not: null },
       },
@@ -107,7 +155,9 @@ export async function generatePayments(
   const pointages = await prisma.pointage.findMany({
     where: {
       ...BORDEREAU_ELIGIBLE,
-      date: { gte: dateFrom, lte: dateTo },
+      date: { gte: ctx.dateFrom, lte: ctx.dateTo },
+      worker: { siteId: site.id },
+      OR: current ? [{ bordereauId: null }, { bordereauId: current.id }] : [{ bordereauId: null }],
     },
     include: {
       worker: {
@@ -121,6 +171,7 @@ export async function generatePayments(
     string,
     {
       amount: Prisma.Decimal;
+      pointageIds: string[];
       byActivity: Map<string, { shortLabel: string; code: string; amount: Prisma.Decimal }>;
       worker: (typeof pointages)[number]["worker"];
     }
@@ -130,6 +181,7 @@ export async function generatePayments(
     const current = aggregates.get(pointage.workerId);
     if (current) {
       current.amount = current.amount.add(pointage.amount);
+      current.pointageIds.push(pointage.id);
       const activityTotal = current.byActivity.get(pointage.subActivityId);
       if (activityTotal) {
         activityTotal.amount = activityTotal.amount.add(pointage.amount);
@@ -143,6 +195,7 @@ export async function generatePayments(
     } else {
       aggregates.set(pointage.workerId, {
         amount: new Prisma.Decimal(pointage.amount),
+        pointageIds: [pointage.id],
         byActivity: new Map([
           [
             pointage.subActivityId,
@@ -158,14 +211,13 @@ export async function generatePayments(
     }
   }
 
-  const siteIds = new Set(
-    Array.from(aggregates.values())
-      .filter((aggregate) => aggregate.amount.gt(0))
-      .map((aggregate) => aggregate.worker.siteId),
-  );
-  const bordereauBySite = await nextBordereauBySite(siteIds);
-
-  const toCreate: Prisma.PaymentCreateManyInput[] = [];
+  const drafts: Array<
+    Omit<Prisma.PaymentCreateManyInput, "bordereau" | "bordereauId" | "description"> & {
+      worker: (typeof pointages)[number]["worker"];
+      dominant: { shortLabel: string; code: string };
+      pointageIds: string[];
+    }
+  > = [];
   let skippedZeroAmount = 0;
 
   for (const [workerId, aggregate] of aggregates) {
@@ -174,56 +226,217 @@ export async function generatePayments(
       continue;
     }
 
-    const bioValid = await isBioOkForWeek(workerId, weekIso, bioValidationRequired);
-    const dominantActivity = Array.from(aggregate.byActivity.values()).sort((a, b) =>
+    const bioValid = await isBioOkForWeek(workerId, ctx.weekIso, ctx.bioValidationRequired);
+    const dominant = Array.from(aggregate.byActivity.values()).sort((a, b) =>
       b.amount.comparedTo(a.amount),
     )[0];
-    const bordereau = bordereauBySite.get(aggregate.worker.siteId)!;
 
-    toCreate.push({
+    drafts.push({
       workerId,
       periodIso: shortPeriod,
       referenceYear,
-      bordereau,
-      cycle,
+      cycle: ctx.cycle,
       amount: aggregate.amount,
-      description: buildMvolaDescription(
-        `${aggregate.worker.lastName} ${aggregate.worker.firstName}`,
-        dominantActivity.shortLabel,
-        semaineIso,
-        bordereau,
-        aggregate.worker.site.shortCode,
-        dominantActivity.code,
-        aggregate.worker.legacyMocId,
-      ),
       bioValid,
       status: PaymentStatus.PENDING,
+      worker: aggregate.worker,
+      dominant,
+      pointageIds: aggregate.pointageIds,
     });
   }
 
-  const createdPayments = await prisma.$transaction(async (tx) => {
-    await tx.payment.deleteMany({
-      where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
-    });
+  if (!current && drafts.length === 0) {
+    return { summary: null, payments: [], skippedZeroAmount };
+  }
 
-    if (toCreate.length === 0) {
-      return [];
+  let outcome: Awaited<ReturnType<typeof generateForSite>>;
+  try {
+    outcome = await prisma.$transaction(async (tx) => {
+      if (current) {
+        await tx.pointage.updateMany({
+          where: { bordereauId: current.id },
+          data: { bordereauId: null },
+        });
+        await tx.bordereau.update({
+          where: { id: current.id },
+          data: { status: "SUPERSEDED", supersededAt: new Date() },
+        });
+      }
+      await tx.payment.deleteMany({
+        where: { ...periodWhere, status: PaymentStatus.PENDING },
+      });
+
+      if (drafts.length === 0) {
+        return { summary: null, payments: [], skippedZeroAmount };
+      }
+
+      const lastVersion = await tx.bordereau.findFirst({
+        where: { siteId: site.id, periodIso: shortPeriod, referenceYear },
+        orderBy: { version: "desc" },
+        select: { version: true },
+      });
+      const number = current?.number ?? (await nextBordereauNumber(tx, site.id));
+      const bordereau = await tx.bordereau.create({
+        data: {
+          siteId: site.id,
+          periodIso: shortPeriod,
+          referenceYear,
+          version: (lastVersion?.version ?? 0) + 1,
+          number,
+          createdById: ctx.userId ?? null,
+        },
+      });
+
+      await tx.payment.createMany({
+        data: drafts.map((draft) => ({
+          workerId: draft.workerId,
+          periodIso: shortPeriod,
+          referenceYear,
+          cycle: ctx.cycle,
+          amount: draft.amount,
+          bioValid: draft.bioValid,
+          status: PaymentStatus.PENDING,
+          bordereau: number,
+          bordereauId: bordereau.id,
+          description: buildMvolaDescription(
+            `${draft.worker.lastName} ${draft.worker.firstName}`,
+            draft.dominant.shortLabel,
+            ctx.semaineIso,
+            number,
+            draft.worker.site.shortCode,
+            draft.dominant.code,
+            draft.worker.legacyMocId,
+          ),
+        })),
+      });
+
+      await tx.pointage.updateMany({
+        where: { id: { in: drafts.flatMap((draft) => draft.pointageIds) } },
+        data: { bordereauId: bordereau.id },
+      });
+
+      const payments = await tx.payment.findMany({
+        where: { bordereauId: bordereau.id },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return {
+        summary: {
+          bordereauId: bordereau.id,
+          siteId: site.id,
+          siteCode: site.shortCode,
+          number,
+          version: bordereau.version,
+          created: payments.length,
+          skippedZeroAmount,
+        },
+        payments,
+        skippedZeroAmount,
+      };
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiError(
+        409,
+        "PAY_CONFLICT",
+        "Un bordereau est déjà en cours de génération pour ce site",
+      );
     }
+    throw err;
+  }
 
-    await tx.payment.createMany({ data: toCreate });
-
-    return tx.payment.findMany({
-      where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING },
-      orderBy: { createdAt: "asc" },
+  if (outcome.summary) {
+    await writeAuditLog({
+      userId: ctx.userId ?? null,
+      action: current ? "REGENERATE_BORDEREAU" : "GENERATE_BORDEREAU",
+      entityType: "Bordereau",
+      entityId: outcome.summary.bordereauId,
+      before: current ? { bordereauId: current.id, version: current.version } : null,
+      after: {
+        siteId: site.id,
+        periodIso: shortPeriod,
+        referenceYear,
+        version: outcome.summary.version,
+        number: outcome.summary.number,
+        payments: outcome.summary.created,
+      },
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
     });
+  }
+
+  return outcome;
+}
+
+export async function generatePayments(
+  input: GeneratePaymentsInput,
+): Promise<GeneratePaymentsResult> {
+  const resolved = resolvePeriod(input.periodIso, input.cycle, input.referenceYear);
+  const { shortPeriod, referenceYear, weekIso, dateFrom, dateTo, cycle } = resolved;
+
+  const appSetting = await prisma.appSetting.findUnique({ where: { id: "singleton" } });
+  const ctx: PeriodContext = {
+    shortPeriod,
+    referenceYear,
+    weekIso,
+    semaineIso: weekIso.split("-W")[1],
+    dateFrom,
+    dateTo,
+    cycle,
+    bioValidationRequired: appSetting?.bioValidationRequired ?? true,
+    force: input.force ?? false,
+    userId: input.userId,
+    ip: input.ip,
+    userAgent: input.userAgent,
+  };
+
+  const sites = await prisma.site.findMany({
+    where: input.siteId ? { id: input.siteId } : { active: true },
+    select: { id: true, shortCode: true },
+    orderBy: { shortCode: "asc" },
   });
+
+  if (input.siteId && sites.length === 0) {
+    throw new ApiError(404, "SITE_NOT_FOUND", "Site introuvable");
+  }
+
+  const bordereaux: GeneratedBordereauSummary[] = [];
+  const skippedSites: SkippedSite[] = [];
+  const payments: Array<Prisma.PaymentGetPayload<object>> = [];
+  let skippedZeroAmount = 0;
+
+  for (const site of sites) {
+    try {
+      const result = await generateForSite(ctx, site);
+      skippedZeroAmount += result.skippedZeroAmount;
+      if (result.summary) {
+        bordereaux.push(result.summary);
+        payments.push(...result.payments);
+      }
+    } catch (err) {
+      if (input.siteId || !(err instanceof ApiError)) throw err;
+      skippedSites.push({
+        siteId: site.id,
+        siteCode: site.shortCode,
+        code: err.code,
+        message: err.message,
+      });
+    }
+  }
+
+  if (bordereaux.length === 0 && skippedSites.length > 0) {
+    const first = skippedSites[0];
+    throw new ApiError(409, first.code, first.message);
+  }
 
   return {
     periodIso: shortPeriod,
     weekIso,
-    created: createdPayments.length,
+    created: payments.length,
     skippedZeroAmount,
-    payments: createdPayments.map((payment) => ({
+    bordereaux,
+    skippedSites,
+    payments: payments.map((payment) => ({
       id: payment.id,
       workerId: payment.workerId,
       amount: payment.amount.toString(),
@@ -282,15 +495,33 @@ export async function deletePaymentsBatch(
 
   const existing = await prisma.payment.findMany({
     where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING, ...siteFilter },
-    select: { id: true },
+    select: { id: true, bordereauId: true },
   });
 
   if (existing.length === 0) {
     throw new ApiError(404, "PAY_NOT_FOUND", "Aucun bordereau en attente pour cette période");
   }
 
-  await prisma.payment.deleteMany({
-    where: { periodIso: shortPeriod, referenceYear, status: PaymentStatus.PENDING, ...siteFilter },
+  const bordereauIds = [
+    ...new Set(existing.flatMap((payment) => (payment.bordereauId ? [payment.bordereauId] : []))),
+  ];
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pointage.updateMany({
+      where: { bordereauId: { in: bordereauIds } },
+      data: { bordereauId: null },
+    });
+    await tx.payment.deleteMany({
+      where: {
+        periodIso: shortPeriod,
+        referenceYear,
+        status: PaymentStatus.PENDING,
+        ...siteFilter,
+      },
+    });
+    await tx.bordereau.deleteMany({
+      where: { id: { in: bordereauIds }, status: "GENERATED", payments: { none: {} } },
+    });
   });
 
   await writeAuditLog({

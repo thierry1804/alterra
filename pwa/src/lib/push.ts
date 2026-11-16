@@ -11,8 +11,14 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
-export async function enableWebPush(): Promise<"granted" | "denied" | "unsupported" | "unavailable"> {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+export async function enableWebPush(): Promise<
+  "granted" | "denied" | "unsupported" | "unavailable"
+> {
+  if (
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window) ||
+    !("Notification" in window)
+  ) {
     return "unsupported";
   }
 

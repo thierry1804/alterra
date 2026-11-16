@@ -612,90 +612,90 @@ export default function ZonesPage() {
           </SheetHeader>
 
           <SheetBody className="space-y-4">
-          {(dialogMode === "zone-create" || dialogMode === "zone-edit") && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="zone-name">Nom de la zone</Label>
-                  <Input
-                    id="zone-name"
-                    value={zoneForm.name}
-                    onChange={(e) => setZoneForm((f) => ({ ...f, name: e.target.value }))}
-                  />
+            {(dialogMode === "zone-create" || dialogMode === "zone-edit") && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="zone-name">Nom de la zone</Label>
+                    <Input
+                      id="zone-name"
+                      value={zoneForm.name}
+                      onChange={(e) => setZoneForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zone-code">Code (unique par site)</Label>
+                    <Input
+                      id="zone-code"
+                      value={zoneForm.code}
+                      onChange={(e) => setZoneForm((f) => ({ ...f, code: e.target.value }))}
+                      maxLength={20}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="zone-code">Code (unique par site)</Label>
-                  <Input
-                    id="zone-code"
-                    value={zoneForm.code}
-                    onChange={(e) => setZoneForm((f) => ({ ...f, code: e.target.value }))}
-                    maxLength={20}
+                  <Label>Polygone</Label>
+                  <PolygonDrawMap
+                    key={`zone-${editingZone?.id ?? "new"}`}
+                    value={zoneForm.geoPolygon}
+                    onChange={(geoPolygon) => setZoneForm((f) => ({ ...f, geoPolygon }))}
+                    center={mapCenter}
                   />
+                  <p className="text-xs text-zinc-500">
+                    Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
+                    point). Poignées pour éditer, icône poubelle pour effacer.
+                  </p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Polygone</Label>
-                <PolygonDrawMap
-                  key={`zone-${editingZone?.id ?? "new"}`}
-                  value={zoneForm.geoPolygon}
-                  onChange={(geoPolygon) => setZoneForm((f) => ({ ...f, geoPolygon }))}
-                  center={mapCenter}
-                />
-                <p className="text-xs text-zinc-500">
-                  Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
-                  point). Poignées pour éditer, icône poubelle pour effacer.
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {(dialogMode === "parcel-create" || dialogMode === "parcel-edit") && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            {(dialogMode === "parcel-create" || dialogMode === "parcel-edit") && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="parcel-name">Nom de la parcelle</Label>
+                    <Input
+                      id="parcel-name"
+                      value={parcelForm.name}
+                      onChange={(e) => setParcelForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="parcel-code">Code (unique par zone)</Label>
+                    <Input
+                      id="parcel-code"
+                      value={parcelForm.code}
+                      onChange={(e) => setParcelForm((f) => ({ ...f, code: e.target.value }))}
+                      maxLength={20}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="parcel-name">Nom de la parcelle</Label>
+                  <Label htmlFor="parcel-surface">Surface (ha)</Label>
                   <Input
-                    id="parcel-name"
-                    value={parcelForm.name}
-                    onChange={(e) => setParcelForm((f) => ({ ...f, name: e.target.value }))}
+                    id="parcel-surface"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={parcelForm.surfaceHa}
+                    onChange={(e) => setParcelForm((f) => ({ ...f, surfaceHa: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="parcel-code">Code (unique par zone)</Label>
-                  <Input
-                    id="parcel-code"
-                    value={parcelForm.code}
-                    onChange={(e) => setParcelForm((f) => ({ ...f, code: e.target.value }))}
-                    maxLength={20}
+                  <Label>Polygone</Label>
+                  <PolygonDrawMap
+                    key={`parcel-${editingParcel?.id ?? "new"}`}
+                    value={parcelForm.geoPolygon}
+                    onChange={(geoPolygon) => setParcelForm((f) => ({ ...f, geoPolygon }))}
+                    center={parcelMapCenter}
                   />
+                  <p className="text-xs text-zinc-500">
+                    Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
+                    point). Poignées pour éditer, icône poubelle pour effacer.
+                  </p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="parcel-surface">Surface (ha)</Label>
-                <Input
-                  id="parcel-surface"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={parcelForm.surfaceHa}
-                  onChange={(e) => setParcelForm((f) => ({ ...f, surfaceHa: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Polygone</Label>
-                <PolygonDrawMap
-                  key={`parcel-${editingParcel?.id ?? "new"}`}
-                  value={parcelForm.geoPolygon}
-                  onChange={(geoPolygon) => setParcelForm((f) => ({ ...f, geoPolygon }))}
-                  center={parcelMapCenter}
-                />
-                <p className="text-xs text-zinc-500">
-                  Icône polygone pour dessiner (clic sommet par sommet, terminer sur le premier
-                  point). Poignées pour éditer, icône poubelle pour effacer.
-                </p>
-              </div>
-            </div>
-          )}
+            )}
           </SheetBody>
 
           <SheetFooter>

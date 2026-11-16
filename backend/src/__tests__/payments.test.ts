@@ -1,20 +1,26 @@
 import ExcelJS from "exceljs";
 import xlsx from "node-xlsx";
 import { PaymentCycle, PaymentStatus, Prisma } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { buildMvolaDescription } from "../services/payments/mvola-description.js";
 import { exportMvolaPayments } from "../services/payments/mvola-export.service.js";
 import { resolvePeriod } from "../lib/period-iso.js";
-import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
+import { setRoleAccessLoader } from "../services/access/access.service.js";
+import {
+  SYSTEM_ROLE_IDS,
+  SYSTEM_ROLES,
+  systemRolePermissions,
+} from "../services/access/system-roles.js";
 
 const MOCK_ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const MOCK_WORKER_ID = "00000000-0000-4000-8000-000000000040";
 const MOCK_SITE_ID = "00000000-0000-4000-8000-000000000010";
 const MOCK_PAYMENT_ID = "00000000-0000-4000-8000-000000000080";
 const MOCK_ACTIVITY_ID = "00000000-0000-4000-8000-000000000090";
+const MOCK_BORDEREAU_ID = "00000000-0000-4000-8000-0000000000c0";
 
 const mockWorker = {
   id: MOCK_WORKER_ID,
@@ -80,6 +86,18 @@ vi.mock("../lib/prisma.js", () => ({
       updateMany: vi.fn(),
     },
     pointage: {
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    bordereau: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    site: {
       findMany: vi.fn(),
     },
     mvolaExportBatch: {
@@ -205,6 +223,18 @@ describe("Payments API", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
     );
+    vi.mocked(prisma.bordereau.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.bordereau.create).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      version: 1,
+      number: 1,
+    } as never);
+    vi.mocked(prisma.bordereau.updateMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.bordereau.deleteMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.site.findMany).mockResolvedValue([
+      { id: MOCK_SITE_ID, shortCode: "MNK" },
+    ] as never);
     vi.mocked(prisma.mvolaExportBatch.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.mvolaExportBatch.create).mockResolvedValue({
       id: "00000000-0000-4000-8000-0000000000b1",
@@ -655,5 +685,238 @@ describe("Payments API", () => {
     expect(res.status).toBe(200);
     expect(res.body.dejaTraite).toBe(1);
     expect(prisma.payment.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("Bordereau per site", () => {
+  const SITE_ROLE_ID = "00000000-0000-4000-8000-0000000000d1";
+  const OTHER_SITE_ID = "00000000-0000-4000-8000-000000000011";
+
+  const eligiblePointage = {
+    id: "00000000-0000-4000-8000-0000000000e1",
+    workerId: MOCK_WORKER_ID,
+    amount: new Prisma.Decimal("75000"),
+    quantity: new Prisma.Decimal("5"),
+    subActivityId: MOCK_ACTIVITY_ID,
+    subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
+    worker: mockWorker,
+  };
+
+  function useDefaultRoles() {
+    setRoleAccessLoader(async (roleId) => {
+      const role = SYSTEM_ROLES.find((entry) => entry.id === roleId);
+      if (!role) return null;
+      return {
+        roleId,
+        roleName: role.name,
+        scope: role.scope,
+        mfaRequired: role.mfaRequired,
+        permissions: systemRolePermissions(roleId),
+      };
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useDefaultRoles();
+    vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+      typeof fn === "function" ? fn(prisma as never) : fn,
+    );
+    vi.mocked(prisma.site.findMany).mockResolvedValue([
+      { id: MOCK_SITE_ID, shortCode: "MNK" },
+    ] as never);
+    vi.mocked(prisma.appSetting.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.bordereau.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.bordereau.create).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      version: 1,
+      number: 3,
+    } as never);
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.payment.count).mockResolvedValue(0);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.pointage.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([eligiblePointage] as never);
+    vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({ result: "OK" } as never);
+  });
+
+  afterAll(() => useDefaultRoles());
+
+  it("generates one bordereau for the requested site only and links its pointages", async () => {
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", siteId: MOCK_SITE_ID });
+
+    expect(res.status).toBe(201);
+    expect(res.body.bordereaux).toEqual([
+      expect.objectContaining({ siteId: MOCK_SITE_ID, siteCode: "MNK", number: 1, version: 1 }),
+    ]);
+    expect(prisma.site.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: MOCK_SITE_ID } }),
+    );
+    expect(prisma.pointage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          worker: { siteId: MOCK_SITE_ID },
+          OR: [{ bordereauId: null }],
+        }),
+      }),
+    );
+    expect(prisma.bordereau.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ siteId: MOCK_SITE_ID, periodIso: "S29", version: 1 }),
+      }),
+    );
+    expect(prisma.pointage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [eligiblePointage.id] } },
+        data: { bordereauId: MOCK_BORDEREAU_ID },
+      }),
+    );
+  });
+
+  it("generates a bordereau for each active site when no site is given", async () => {
+    vi.mocked(prisma.site.findMany).mockResolvedValue([
+      { id: MOCK_SITE_ID, shortCode: "MNK" },
+      { id: OTHER_SITE_ID, shortCode: "ANT" },
+    ] as never);
+    vi.mocked(prisma.pointage.findMany)
+      .mockResolvedValueOnce([eligiblePointage] as never)
+      .mockResolvedValueOnce([] as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29" });
+
+    expect(res.status).toBe(201);
+    expect(prisma.site.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { active: true } }),
+    );
+    expect(res.body.bordereaux).toHaveLength(1);
+    expect(res.body.skippedSites).toEqual([]);
+  });
+
+  it("keeps the other sites going when one site is locked", async () => {
+    vi.mocked(prisma.site.findMany).mockResolvedValue([
+      { id: MOCK_SITE_ID, shortCode: "MNK" },
+      { id: OTHER_SITE_ID, shortCode: "ANT" },
+    ] as never);
+    vi.mocked(prisma.payment.findFirst)
+      .mockResolvedValueOnce({ id: MOCK_PAYMENT_ID } as never)
+      .mockResolvedValue(null);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.skippedSites).toEqual([
+      expect.objectContaining({ siteCode: "MNK", code: "PAY_CONFLICT" }),
+    ]);
+    expect(res.body.bordereaux).toHaveLength(1);
+  });
+
+  it("refuses to regenerate a bordereau that is already validated", async () => {
+    vi.mocked(prisma.bordereau.findFirst).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      status: "FINANCE_VALIDATED",
+      version: 1,
+      number: 3,
+    } as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", siteId: MOCK_SITE_ID });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("PAY_CONFLICT");
+    expect(prisma.bordereau.create).not.toHaveBeenCalled();
+  });
+
+  it("regenerates by superseding the current version and freeing its pointages", async () => {
+    vi.mocked(prisma.bordereau.findFirst)
+      .mockResolvedValueOnce({
+        id: "00000000-0000-4000-8000-0000000000c9",
+        status: "GENERATED",
+        version: 1,
+        number: 3,
+      } as never)
+      .mockResolvedValueOnce({ version: 1 } as never);
+    vi.mocked(prisma.bordereau.create).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      version: 2,
+      number: 3,
+    } as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", siteId: MOCK_SITE_ID });
+
+    expect(res.status).toBe(201);
+    expect(prisma.bordereau.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "SUPERSEDED" }) }),
+    );
+    expect(prisma.pointage.updateMany).toHaveBeenCalledWith({
+      where: { bordereauId: "00000000-0000-4000-8000-0000000000c9" },
+      data: { bordereauId: null },
+    });
+    expect(res.body.bordereaux[0]).toEqual(expect.objectContaining({ version: 2, number: 3 }));
+  });
+
+  it("keeps a site-scoped role inside its own site", async () => {
+    setRoleAccessLoader(async (roleId) =>
+      roleId === SITE_ROLE_ID
+        ? {
+            roleId,
+            roleName: "Chef de site test",
+            scope: "SITE",
+            mfaRequired: false,
+            permissions: new Set(["bordereau:generation", "bordereau:lecture"]),
+          }
+        : null,
+    );
+    const header = `Bearer ${signAccessToken({
+      sub: MOCK_ADMIN_ID,
+      roleId: SITE_ROLE_ID,
+      siteId: MOCK_SITE_ID,
+      teamId: null,
+    })}`;
+
+    const forbidden = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", header)
+      .send({ periodIso: "2026-W29", siteId: OTHER_SITE_ID });
+    expect(forbidden.status).toBe(403);
+
+    const own = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", header)
+      .send({ periodIso: "2026-W29" });
+    expect(own.status).toBe(201);
+    expect(prisma.site.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: MOCK_SITE_ID } }),
+    );
+  });
+
+  it("refuses generation to a role without the bordereau permission", async () => {
+    const header = `Bearer ${signAccessToken({
+      sub: MOCK_ADMIN_ID,
+      roleId: SYSTEM_ROLE_IDS.FINANCE,
+      siteId: null,
+      teamId: null,
+    })}`;
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", header)
+      .send({ periodIso: "2026-W29" });
+    expect(res.status).toBe(403);
   });
 });

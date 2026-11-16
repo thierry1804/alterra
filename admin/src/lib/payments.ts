@@ -134,3 +134,35 @@ export function periodToExportParam(periodIso: string): string {
   if (match) return `S${Number(match[2])}`;
   return periodIso;
 }
+
+export type BordereauStatus =
+  "GENERATED" | "FINANCE_VALIDATED" | "DG_VALIDATED" | "EXPORTED" | "SUPERSEDED";
+
+export const BORDEREAU_STATUS_LABELS: Record<BordereauStatus, string> = {
+  GENERATED: "Généré",
+  FINANCE_VALIDATED: "Validé finance",
+  DG_VALIDATED: "Validé DG",
+  EXPORTED: "Exporté",
+  SUPERSEDED: "Remplacé",
+};
+
+export interface BordereauRow {
+  id: string;
+  siteId: string;
+  siteName: string;
+  siteCode: string;
+  periodIso: string;
+  referenceYear: number;
+  number: number;
+  version: number;
+  status: BordereauStatus;
+  createdAt: string;
+  paymentCount: number;
+  totalAmount: string;
+}
+
+export interface GenerateBordereauxResult {
+  created: number;
+  bordereaux: Array<{ siteCode: string; number: number; version: number; created: number }>;
+  skippedSites: Array<{ siteCode: string; code: string; message: string }>;
+}

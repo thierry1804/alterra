@@ -20,10 +20,21 @@ import {
 } from "../services/payments/list.service.js";
 import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
+import type { AuthUser } from "../services/access/auth-user.js";
+import { listBordereaux } from "../services/payments/bordereaux.service.js";
 
 export const paymentsRouter = Router();
 
+function resolveSiteForUser(user: AuthUser, requested?: string): string | undefined {
+  if (user.scope === "TOUS") return requested;
+  if (!user.siteId || (requested && requested !== user.siteId)) {
+    throw new ApiError(403, "FORBIDDEN_SITE", "Ce site est hors de votre périmètre");
+  }
+  return user.siteId;
+}
+
 const generateSchema = z.object({
+  siteId: z.guid().optional(),
   periodIso: z.string().min(2).max(16),
   cycle: z.enum(PaymentCycle).optional(),
   referenceYear: z.number().int().min(2000).max(2100).optional(),
@@ -175,13 +186,41 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/payments/generate",
   requireAuth,
-  requirePermission("paiement:generation"),
+  requirePermission("bordereau:generation"),
   validate(generateSchema),
   async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof generateSchema>;
-      const result = await generatePayments(body);
+      const result = await generatePayments({
+        ...body,
+        siteId: resolveSiteForUser(req.user!, body.siteId),
+        userId: req.user!.sub,
+        ip: req.ip,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
       res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/bordereaux",
+  requireAuth,
+  requirePermission("bordereau:lecture"),
+  validate(listPaymentsQuery, "query"),
+  async (req, res, next) => {
+    try {
+      const query = req.query as unknown as z.infer<typeof listPaymentsQuery>;
+      res.json(
+        await listBordereaux({
+          periodIso: query.periodIso,
+          referenceYear: query.referenceYear,
+          siteId: resolveSiteForUser(req.user!, query.siteId),
+        }),
+      );
     } catch (err) {
       next(err);
     }
@@ -201,7 +240,7 @@ paymentsRouter.delete(
       const result = await deletePaymentsBatch({
         periodIso: period,
         referenceYear: query.referenceYear,
-        siteId: query.siteId,
+        siteId: resolveSiteForUser(req.user!, query.siteId),
         userId: req.user!.sub,
         ip: req.ip,
         userAgent:

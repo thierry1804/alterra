@@ -10,9 +10,7 @@ export default function NotificationBell() {
       to="/notifications"
       className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-700 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
       aria-label={
-        unread > 0
-          ? `Notifications, ${unread} non lue${unread > 1 ? "s" : ""}`
-          : "Notifications"
+        unread > 0 ? `Notifications, ${unread} non lue${unread > 1 ? "s" : ""}` : "Notifications"
       }
     >
       <Bell className="h-5 w-5" strokeWidth={1.75} />

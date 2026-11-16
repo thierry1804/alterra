@@ -4,11 +4,18 @@ import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
 import { useSiteScope } from "../lib/site-scope";
-import { currentIsoWeekInput, periodToExportParam, type PaymentRow } from "../lib/payments";
+import { useCan } from "../hooks/useCan";
+import {
+  currentIsoWeekInput,
+  periodToExportParam,
+  type GenerateBordereauxResult,
+  type PaymentRow,
+} from "../lib/payments";
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
 import PaymentFlow from "../components/payments/PaymentFlow";
 import BordereauTable from "../components/payments/BordereauTable";
+import BordereauxList from "../components/payments/BordereauxList";
 import MvolaExportHistory from "../components/payments/MvolaExportHistory";
 import MvolaExportButton from "../components/payments/MvolaExportButton";
 import MvolaImportDialog from "../components/payments/MvolaImportDialog";
@@ -22,13 +29,13 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
   const [siteId] = useSiteScope();
+  const can = useCan();
+  const canGenerate = can("bordereau:generation");
   const [periodIso, setPeriodIso] = useState(currentIsoWeekInput());
   const [importOpen, setImportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [generateCorrectionsWarning, setGenerateCorrectionsWarning] = useState<string | null>(
-    null,
-  );
+  const [generateCorrectionsWarning, setGenerateCorrectionsWarning] = useState<string | null>(null);
 
   const listPeriod = useMemo(() => periodToExportParam(periodIso), [periodIso]);
   const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
@@ -69,18 +76,25 @@ export default function PaymentsPage() {
 
   const generateMutation = useMutation({
     mutationFn: (force?: boolean) =>
-      api.post("/payments/generate", {
+      api.post<GenerateBordereauxResult>("/payments/generate", {
         periodIso,
         referenceYear: Number(periodIso.match(/^(\d{4})-W/)?.[1]),
+        siteId: siteId || undefined,
         force,
       }),
     onSuccess: (res) => {
       setGenerateCorrectionsWarning(null);
+      const { bordereaux, skippedSites } = res.data;
+      const skipped =
+        skippedSites.length > 0
+          ? ` — ignoré : ${skippedSites.map((site) => site.siteCode).join(", ")}`
+          : "";
       toast({
-        title: "Bordereau généré",
-        description: `${res.data.created} ligne(s) créée(s)`,
+        title: bordereaux.length > 1 ? "Bordereaux générés" : "Bordereau généré",
+        description: `${bordereaux.length} bordereau(x), ${res.data.created} ligne(s) créée(s)${skipped}`,
       });
       void queryClient.invalidateQueries({ queryKey: ["payments"] });
+      void queryClient.invalidateQueries({ queryKey: ["bordereaux"] });
     },
     onError: (err) => {
       const code = isAxiosError(err) ? err.response?.data?.code : null;
@@ -157,7 +171,8 @@ export default function PaymentsPage() {
       const code = isAxiosError(err) ? err.response?.data?.code : null;
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
       toast({
-        title: code === "NO_PREVIOUS_EXPORT" ? "Aucun bordereau à régénérer" : "Régénération échouée",
+        title:
+          code === "NO_PREVIOUS_EXPORT" ? "Aucun bordereau à régénérer" : "Régénération échouée",
         description: String(message),
         variant: "destructive",
       });
@@ -233,13 +248,19 @@ export default function PaymentsPage() {
             className="w-40"
           />
         </div>
-        <Button
-          type="button"
-          onClick={() => generateMutation.mutate(undefined)}
-          disabled={generateMutation.isPending}
-        >
-          {generateMutation.isPending ? "Génération…" : "Générer bordereau"}
-        </Button>
+        {canGenerate && (
+          <Button
+            type="button"
+            onClick={() => generateMutation.mutate(undefined)}
+            disabled={generateMutation.isPending}
+          >
+            {generateMutation.isPending
+              ? "Génération…"
+              : siteId
+                ? "Générer le bordereau du site"
+                : "Générer pour tous les sites"}
+          </Button>
+        )}
         <MvolaExportButton
           periodIso={periodIso}
           siteId={siteId}
@@ -271,6 +292,8 @@ export default function PaymentsPage() {
       </div>
 
       <KpiCards stats={paymentStats} />
+
+      <BordereauxList periodIso={listPeriod} referenceYear={referenceYear} siteId={siteId} />
 
       <ConfirmDialog
         open={deleteConfirmOpen}

@@ -391,10 +391,7 @@ export default function ActivitiesPage() {
                 const isOpen = search.trim().length > 0 || expanded.has(category.id);
                 return (
                   <Fragment key={category.id}>
-                    <TableRow
-                      className="cursor-pointer"
-                      onClick={() => openEditCategory(category)}
-                    >
+                    <TableRow className="cursor-pointer" onClick={() => openEditCategory(category)}>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
@@ -761,11 +758,7 @@ export default function ActivitiesPage() {
               >
                 Annuler
               </Button>
-              <Button
-                type="submit"
-                className="flex-1"
-                disabled={saveSubActivityMutation.isPending}
-              >
+              <Button type="submit" className="flex-1" disabled={saveSubActivityMutation.isPending}>
                 Enregistrer
               </Button>
             </SheetFooter>

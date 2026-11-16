@@ -5,7 +5,16 @@ import { api } from "../lib/api";
 import FilterChips from "../components/ui/FilterChips";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
-import { Pencil, Power, PowerOff, Download, MapPin, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Pencil,
+  Power,
+  PowerOff,
+  Download,
+  MapPin,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -443,72 +452,73 @@ export default function SitesPage() {
             }}
           >
             <SheetBody>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="site-name">Nom</Label>
-                  <Input
-                    id="site-name"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="site-code">Code</Label>
-                  <Input
-                    id="site-code"
-                    value={form.shortCode}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, shortCode: e.target.value.toUpperCase() }))
-                    }
-                    disabled={!!editing}
-                    pattern="[A-Z]{2,3}"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="site-location">
-                    Localisation {geocoding && <span className="text-zinc-400">(recherche…)</span>}
-                  </Label>
-                  <div className="relative">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="site-name">Nom</Label>
                     <Input
-                      id="site-location"
-                      value={form.location}
-                      onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void handleLocationSearch();
-                        }
-                      }}
-                      className="pr-9"
+                      id="site-name"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      required
                     />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700 disabled:opacity-50"
-                      onClick={() => void handleLocationSearch()}
-                      disabled={geocoding || !form.location.trim()}
-                      aria-label="Chercher cette localisation sur la carte"
-                    >
-                      <Search className="h-4 w-4" aria-hidden />
-                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="site-code">Code</Label>
+                    <Input
+                      id="site-code"
+                      value={form.shortCode}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, shortCode: e.target.value.toUpperCase() }))
+                      }
+                      disabled={!!editing}
+                      pattern="[A-Z]{2,3}"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="site-location">
+                      Localisation{" "}
+                      {geocoding && <span className="text-zinc-400">(recherche…)</span>}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="site-location"
+                        value={form.location}
+                        onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleLocationSearch();
+                          }
+                        }}
+                        className="pr-9"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-zinc-500 hover:text-zinc-700 disabled:opacity-50"
+                        onClick={() => void handleLocationSearch()}
+                        disabled={geocoding || !form.location.trim()}
+                        aria-label="Chercher cette localisation sur la carte"
+                      >
+                        <Search className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Position (cliquer sur la carte pour choisir)</Label>
+                  <SitePickerMap
+                    value={
+                      form.geoLat != null && form.geoLng != null
+                        ? { lat: form.geoLat, lng: form.geoLng }
+                        : null
+                    }
+                    onPick={(lat, lng) => void handleMapPick(lat, lng)}
+                    className="h-72"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Position (cliquer sur la carte pour choisir)</Label>
-                <SitePickerMap
-                  value={
-                    form.geoLat != null && form.geoLng != null
-                      ? { lat: form.geoLat, lng: form.geoLng }
-                      : null
-                  }
-                  onPick={(lat, lng) => void handleMapPick(lat, lng)}
-                  className="h-72"
-                />
-              </div>
-            </div>
             </SheetBody>
             <SheetFooter>
               <Button

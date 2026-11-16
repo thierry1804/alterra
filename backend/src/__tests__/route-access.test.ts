@@ -74,6 +74,7 @@ describe("route access", () => {
     const allowed = new Set([
       "GET /api/v1/pointages/synthese",
       "POST /api/v1/pointages/validate-technical",
+      "GET /api/v1/bordereaux",
     ]);
     const added = routes.map(routeKey).filter((key) => !before.has(key));
     expect(added.filter((key) => !allowed.has(key) && !key.includes("/api/v1/access/"))).toEqual(

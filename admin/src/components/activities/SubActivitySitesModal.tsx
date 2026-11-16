@@ -177,105 +177,111 @@ export default function SubActivitySitesModal({
         </SheetHeader>
 
         <SheetBody className="space-y-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Site</TableHead>
-              <TableHead>Tarif</TableHead>
-              <TableHead className="w-40">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rowsQuery.isLoading && (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={3} className="text-zinc-500">
-                  Chargement…
-                </TableCell>
+                <TableHead>Site</TableHead>
+                <TableHead>Tarif</TableHead>
+                <TableHead className="w-40">Actions</TableHead>
               </TableRow>
-            )}
-            {!rowsQuery.isLoading && globalRow && (
-              <TableRow>
-                <TableCell>
-                  <Badge variant="success">Global (tous les autres sites)</Badge>
-                </TableCell>
-                <TableCell>
-                  <RateEditor
-                    value={globalRow.unitRate}
-                    saving={rateMutation.isPending}
-                    onSave={(unitRate) => rateMutation.mutate({ id: globalRow.id, unitRate })}
-                  />
-                </TableCell>
-                <TableCell>
-                  <RowActions>
-                    <IconButton icon={History} label="Historique" onClick={() => onHistory(null)} />
-                  </RowActions>
-                </TableCell>
-              </TableRow>
-            )}
-            {siteRows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{siteName(row.siteId)}</TableCell>
-                <TableCell>
-                  <RateEditor
-                    value={row.unitRate}
-                    saving={rateMutation.isPending}
-                    onSave={(unitRate) => rateMutation.mutate({ id: row.id, unitRate })}
-                  />
-                </TableCell>
-                <TableCell>
-                  <RowActions>
-                    <IconButton
-                      icon={History}
-                      label="Historique"
-                      onClick={() => onHistory(row.siteId)}
+            </TableHeader>
+            <TableBody>
+              {rowsQuery.isLoading && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-zinc-500">
+                    Chargement…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!rowsQuery.isLoading && globalRow && (
+                <TableRow>
+                  <TableCell>
+                    <Badge variant="success">Global (tous les autres sites)</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <RateEditor
+                      value={globalRow.unitRate}
+                      saving={rateMutation.isPending}
+                      onSave={(unitRate) => rateMutation.mutate({ id: globalRow.id, unitRate })}
                     />
-                    <IconButton
-                      icon={Power}
-                      label="Retirer la surcharge"
-                      variant="destructive"
-                      onClick={() => removeSiteMutation.mutate(row.id)}
+                  </TableCell>
+                  <TableCell>
+                    <RowActions>
+                      <IconButton
+                        icon={History}
+                        label="Historique"
+                        onClick={() => onHistory(null)}
+                      />
+                    </RowActions>
+                  </TableCell>
+                </TableRow>
+              )}
+              {siteRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{siteName(row.siteId)}</TableCell>
+                  <TableCell>
+                    <RateEditor
+                      value={row.unitRate}
+                      saving={rateMutation.isPending}
+                      onSave={(unitRate) => rateMutation.mutate({ id: row.id, unitRate })}
                     />
-                  </RowActions>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  </TableCell>
+                  <TableCell>
+                    <RowActions>
+                      <IconButton
+                        icon={History}
+                        label="Historique"
+                        onClick={() => onHistory(row.siteId)}
+                      />
+                      <IconButton
+                        icon={Power}
+                        label="Retirer la surcharge"
+                        variant="destructive"
+                        onClick={() => removeSiteMutation.mutate(row.id)}
+                      />
+                    </RowActions>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-        {availableSites.length > 0 && (
-          <div className="flex items-end gap-2 border-t border-zinc-200 pt-4">
-            <div className="flex-1 space-y-1">
-              <p className="text-xs font-medium text-zinc-600">Ajouter un site</p>
-              <Combobox
-                placeholder="Rechercher un site…"
-                options={availableSites.map((s) => ({
-                  value: s.id,
-                  label: `${s.name} (${s.shortCode})`,
-                }))}
-                value={newSiteId}
-                onChange={setNewSiteId}
+          {availableSites.length > 0 && (
+            <div className="flex items-end gap-2 border-t border-zinc-200 pt-4">
+              <div className="flex-1 space-y-1">
+                <p className="text-xs font-medium text-zinc-600">Ajouter un site</p>
+                <Combobox
+                  placeholder="Rechercher un site…"
+                  options={availableSites.map((s) => ({
+                    value: s.id,
+                    label: `${s.name} (${s.shortCode})`,
+                  }))}
+                  value={newSiteId}
+                  onChange={setNewSiteId}
+                />
+              </div>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Tarif"
+                value={newRate}
+                onChange={(e) => setNewRate(e.target.value)}
+                className="w-28"
               />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  !newSiteId || !newRate || Number(newRate) <= 0 || addSiteMutation.isPending
+                }
+                onClick={() => addSiteMutation.mutate()}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Ajouter
+              </Button>
             </div>
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Tarif"
-              value={newRate}
-              onChange={(e) => setNewRate(e.target.value)}
-              className="w-28"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!newSiteId || !newRate || Number(newRate) <= 0 || addSiteMutation.isPending}
-              onClick={() => addSiteMutation.mutate()}
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Ajouter
-            </Button>
-          </div>
-        )}
+          )}
         </SheetBody>
       </SheetContent>
     </Sheet>

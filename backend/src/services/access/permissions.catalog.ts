@@ -142,6 +142,14 @@ export const PERMISSION_CATALOG = [
     ],
   },
   {
+    resource: "bordereau",
+    label: "Bordereaux",
+    actions: [
+      { action: "lecture", label: "Voir les bordereaux" },
+      { action: "generation", label: "Générer et régénérer un bordereau" },
+    ],
+  },
+  {
     resource: "facture",
     label: "Factures",
     actions: [
