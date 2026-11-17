@@ -2,6 +2,7 @@ import { deleteSetting, getSetting, setSetting } from "../db/db";
 
 export const SETTING_DAY_SESSION = "daySession";
 export const SETTING_REFERENTIALS_SYNCED_AT = "referentialsSyncedAt";
+export const SETTING_GEO_SYNCED_AT = "geoSyncedAt";
 
 export interface DaySession {
   subActivityId: string;

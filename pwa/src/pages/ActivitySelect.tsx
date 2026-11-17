@@ -9,9 +9,14 @@ import PageHeader from "../components/ui/PageHeader";
 import Stepper from "../components/ui/Stepper";
 import StickyAction from "../components/ui/StickyAction";
 import Button from "../components/ui/Button";
-import { db } from "../db/db";
+import { db, getSetting } from "../db/db";
 import { useAuth } from "../hooks/useAuth";
-import { getDaySession, saveDaySession, todayIsoDate } from "../lib/day-session";
+import {
+  SETTING_GEO_SYNCED_AT,
+  getDaySession,
+  saveDaySession,
+  todayIsoDate,
+} from "../lib/day-session";
 import { syncReferentials } from "../sync/ReferentialSync";
 import { syncBiometricTemplatesFromServer } from "../services/biometric/TemplateCache";
 
@@ -51,6 +56,8 @@ export default function ActivitySelect() {
   );
   const allParcelles = useMemo(() => liveParcelles ?? [], [liveParcelles]);
   const siteHasParcelles = zones.some((z) => allParcelles.some((p) => p.zoneId === z.id));
+  const geoSyncedAt = useLiveQuery(async () => (await getSetting(SETTING_GEO_SYNCED_AT)) ?? "", []);
+  const geoMissing = geoSyncedAt === "";
   const [zoneId, setZoneId] = useState("");
   const [parcelleId, setParcelleId] = useState("");
   const zoneParcelles = useMemo(
@@ -128,6 +135,12 @@ export default function ActivitySelect() {
       return;
     }
 
+    if (geoMissing) {
+      setError(
+        "Les zones et parcelles ne sont pas encore chargées. Connectez-vous à internet une fois pour les télécharger.",
+      );
+      return;
+    }
     if (siteHasParcelles && (!zoneId || !parcelleId)) {
       setError("Choisissez la zone et la parcelle (ou la pépinière) avant de continuer.");
       return;
@@ -200,6 +213,13 @@ export default function ActivitySelect() {
           />
         </div>
       </div>
+
+      {geoMissing && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Les zones et parcelles ne sont pas encore chargées. Connectez-vous à internet une fois
+          pour les télécharger.
+        </p>
+      )}
 
       {siteHasParcelles && (
         <div className="grid grid-cols-1 gap-3">
@@ -333,7 +353,7 @@ export default function ActivitySelect() {
         <Button
           size="lg"
           className="w-full justify-between rounded-2xl shadow-lg"
-          disabled={!selectedActivity || (siteHasParcelles && !parcelleId)}
+          disabled={!selectedActivity || geoMissing || (siteHasParcelles && !parcelleId)}
           onClick={() => void handleContinue()}
         >
           <span className="flex w-full min-w-0 items-center justify-between gap-3">

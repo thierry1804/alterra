@@ -8,7 +8,7 @@ import {
   type WorkerRecord,
   type ZoneRecord,
 } from "../db/db";
-import { SETTING_REFERENTIALS_SYNCED_AT } from "../lib/day-session";
+import { SETTING_GEO_SYNCED_AT, SETTING_REFERENTIALS_SYNCED_AT } from "../lib/day-session";
 import { normalizeTagId } from "../lib/nfc";
 
 interface ApiWorker {
@@ -180,6 +180,7 @@ export async function syncReferentials(options: {
   );
 
   await setSetting(SETTING_REFERENTIALS_SYNCED_AT, new Date().toISOString());
+  await setSetting(SETTING_GEO_SYNCED_AT, new Date().toISOString());
 
   return {
     workers: workers.length,
