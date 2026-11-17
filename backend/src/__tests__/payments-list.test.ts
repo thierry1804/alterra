@@ -30,6 +30,8 @@ const mockPayment = {
   periodIso: "S29",
   cycle: "WEEKLY" as const,
   amount: new Prisma.Decimal("125000"),
+  isiAmount: new Prisma.Decimal("6250"),
+  netAmount: new Prisma.Decimal("118750"),
   originalAmount: null,
   description: "Rakoto Paiement MNK",
   bioValid: true,
@@ -59,6 +61,23 @@ describe("payments list service", () => {
     expect(result.periodIso).toBe("S29");
     expect(result.data).toHaveLength(1);
     expect(result.data[0].amount).toBe("125000");
+    expect(result.data[0].isiAmount).toBe("6250");
+    expect(result.data[0].netAmount).toBe("118750");
+  });
+
+  it("correctPaymentAmount refuses a payment that belongs to a bordereau", async () => {
+    vi.mocked(prisma.payment.findUniqueOrThrow).mockResolvedValue({
+      ...mockPayment,
+      bordereauId: "bordereau-1",
+    } as never);
+
+    await expect(
+      correctPaymentAmount("pay-1", {
+        amount: 130000,
+        correctionReason: "Correction manuelle admin",
+      }),
+    ).rejects.toMatchObject({ code: "CORRECTION_DISABLED" });
+    expect(prisma.payment.update).not.toHaveBeenCalled();
   });
 
   it("correctPaymentAmount updates PENDING payment", async () => {

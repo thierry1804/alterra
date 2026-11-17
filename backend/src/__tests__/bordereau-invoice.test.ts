@@ -75,6 +75,8 @@ function bordereau(overrides: Record<string, unknown> = {}) {
     number: 7,
     version: 2,
     status: "GENERATED",
+    isiRate: new Prisma.Decimal("0.05"),
+    isiRounding: "NONE",
     site: { name: "Manankazo", shortCode: "MNK" },
     ...overrides,
   };

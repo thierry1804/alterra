@@ -65,7 +65,7 @@ export default function PaymentsPage() {
       (r) => r.status === "PENDING" && r.bioValid && Number(r.amount) > 0,
     );
     const blocked = rows.filter((r) => r.status === "PENDING" && !r.bioValid);
-    const totalAmount = rows.reduce((sum, r) => sum + Number(r.amount), 0);
+    const totalAmount = rows.reduce((sum, r) => sum + Number(r.netAmount), 0);
     return {
       exported: rows.filter((r) => r.status === "EXPORTED").length,
       exportable: exportable.length,
@@ -209,7 +209,7 @@ export default function PaymentsPage() {
       },
       {
         key: "amount",
-        label: "Masse totale",
+        label: "Masse nette à payer",
         icon: CreditCard,
         displayValue: `${stats.totalAmount.toLocaleString("fr-MG")} Ar`,
       },

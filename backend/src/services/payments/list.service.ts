@@ -51,6 +51,8 @@ export async function listPayments(filters: ListPaymentsFilters) {
       periodIso: payment.periodIso,
       cycle: payment.cycle,
       amount: payment.amount.toString(),
+      isiAmount: payment.isiAmount.toString(),
+      netAmount: payment.netAmount.toString(),
       originalAmount: payment.originalAmount?.toString() ?? null,
       description: payment.description,
       bioValid: payment.bioValid,
@@ -81,6 +83,14 @@ export async function correctPaymentAmount(
 
   const existing = await prisma.payment.findUniqueOrThrow({ where: { id } });
 
+  if (existing.bordereauId) {
+    throw new ApiError(
+      409,
+      "CORRECTION_DISABLED",
+      "Ce paiement appartient à un bordereau : corrigez le pointage à la source, puis régénérez le bordereau",
+    );
+  }
+
   if (existing.status !== PaymentStatus.PENDING) {
     throw new ApiError(
       422,
@@ -91,20 +101,6 @@ export async function correctPaymentAmount(
 
   if (input.amount <= 0) {
     throw new ApiError(422, "INVALID_AMOUNT", "Le montant doit être positif");
-  }
-
-  if (existing.bordereauId) {
-    const bordereau = await prisma.bordereau.findUnique({
-      where: { id: existing.bordereauId },
-      select: { status: true },
-    });
-    if (bordereau && bordereau.status !== "GENERATED") {
-      throw new ApiError(
-        409,
-        "BORDEREAU_LOCKED",
-        "Bordereau validé — renvoyez-le avant de corriger un paiement",
-      );
-    }
   }
 
   return prisma.payment.update({

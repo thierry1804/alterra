@@ -61,6 +61,8 @@ const mockPayment = {
   bordereau: 12,
   cycle: PaymentCycle.WEEKLY,
   amount: new Prisma.Decimal("125000"),
+  isiAmount: new Prisma.Decimal("6250"),
+  netAmount: new Prisma.Decimal("118750"),
   description: "Jean Rakoto TROUAISON S29 12 MNK ACT01 84",
   bioValid: true,
   status: PaymentStatus.PENDING,
@@ -257,6 +259,7 @@ describe("Payments API", () => {
         workerId: MOCK_WORKER_ID,
         amount: new Prisma.Decimal("75000"),
         quantity: new Prisma.Decimal("5"),
+        unitRateSnapshot: new Prisma.Decimal("15000"),
         subActivityId: MOCK_ACTIVITY_ID,
         subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
         worker: mockWorker,
@@ -265,6 +268,7 @@ describe("Payments API", () => {
         workerId: MOCK_WORKER_ID,
         amount: new Prisma.Decimal("50000"),
         quantity: new Prisma.Decimal("7"),
+        unitRateSnapshot: new Prisma.Decimal("7142.857"),
         subActivityId: MOCK_ACTIVITY_ID,
         subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
         worker: mockWorker,
@@ -296,7 +300,20 @@ describe("Payments API", () => {
     expect(res.status).toBe(201);
     expect(res.body.created).toBe(1);
     expect(res.body.periodIso).toBe("S29");
-    expect(prisma.payment.createMany).toHaveBeenCalled();
+    expect(prisma.payment.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          amount: new Prisma.Decimal("125000"),
+          isiAmount: new Prisma.Decimal("6250"),
+          netAmount: new Prisma.Decimal("118750"),
+        }),
+      ],
+    });
+    expect(prisma.bordereau.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isiRounding: "UNIT" }),
+      }),
+    );
   });
 
   it("POST /payments/generate returns PAY_CONFLICT when exported exists", async () => {
@@ -338,6 +355,7 @@ describe("Payments API", () => {
         workerId: MOCK_WORKER_ID,
         amount: new Prisma.Decimal("75000"),
         quantity: new Prisma.Decimal("5"),
+        unitRateSnapshot: new Prisma.Decimal("15000"),
         subActivityId: MOCK_ACTIVITY_ID,
         subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
         worker: mockWorker,
@@ -460,7 +478,7 @@ describe("Payments API", () => {
     );
   });
 
-  it("exportMvolaPayments writes the 5 spec columns (téléphone, description, période, montant, bio)", async () => {
+  it("exportMvolaPayments writes 3 columns with the net amount and no biometric column", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
     vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
 
@@ -469,16 +487,11 @@ describe("Payments API", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(result.buffer);
     const sheet = workbook.getWorksheet("Paiements")!;
-    const header = [1, 2, 3, 4, 5].map((c) => sheet.getRow(1).getCell(c).value);
-    expect(header).toEqual([
-      "Numéro téléphone",
-      "Description",
-      "Période",
-      "Montant",
-      "Bio Validée",
-    ]);
-    expect(sheet.getRow(2).getCell(3).value).toBe("S29");
-    expect(sheet.getRow(2).getCell(5).value).toBe("OUI");
+    expect(sheet.columnCount).toBe(3);
+    const header = [1, 2, 3].map((c) => sheet.getRow(1).getCell(c).value);
+    expect(header).toEqual(["Numéro téléphone", "Description", "Montant"]);
+    expect(sheet.getRow(2).getCell(3).value).toBe(118750);
+    expect(result.totalAmount).toBe("118750");
   });
 
   it("GET /payments/:period/export scopes to siteId when a site is selected", async () => {
@@ -643,7 +656,7 @@ describe("Payments API", () => {
         "'0341234567",
         "Transfert d'argent",
         "jean rakoto trouaison s29 12 mnk act01 84",
-        "- 125000.00",
+        "- 118750.00",
       ],
     ]);
 
@@ -705,6 +718,7 @@ describe("Bordereau per site", () => {
     workerId: MOCK_WORKER_ID,
     amount: new Prisma.Decimal("75000"),
     quantity: new Prisma.Decimal("5"),
+    unitRateSnapshot: new Prisma.Decimal("15000"),
     subActivityId: MOCK_ACTIVITY_ID,
     subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
     worker: mockWorker,

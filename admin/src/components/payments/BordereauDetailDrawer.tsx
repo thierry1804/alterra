@@ -193,7 +193,7 @@ export default function BordereauDetailDrawer({
                   <p className="text-base font-semibold">{formatAr(data.totals.gross)} Ar</p>
                 </div>
                 <div className="rounded-md border border-zinc-200 p-3">
-                  <p className="text-xs text-muted">ISI {data.totals.isiRate * 100} %</p>
+                  <p className="text-xs text-muted">ISI {data.totals.isiRate} %</p>
                   <p className="text-base font-semibold">{formatAr(data.totals.isi)} Ar</p>
                 </div>
                 <div className="rounded-md border border-zinc-200 p-3">
@@ -202,7 +202,8 @@ export default function BordereauDetailDrawer({
                 </div>
               </div>
               <p className="text-xs text-muted">
-                Le net est indicatif : la règle d'arrondi reste à confirmer par la finance.
+                L'ISI et l'arrondi suivent les réglages de l'application (Paramètres) au moment de
+                la génération.
               </p>
 
               <Table>

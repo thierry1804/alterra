@@ -198,7 +198,7 @@ export async function reconcileMvolaReleve(
     touched.add(payment.id);
     const montantAttendu = new Prisma.Decimal(montantReleve);
 
-    if (montantAttendu.equals(payment.amount)) {
+    if (montantAttendu.equals(payment.netAmount)) {
       await writePayment({
         where: { id: payment.id },
         data: {
@@ -215,7 +215,7 @@ export async function reconcileMvolaReleve(
         paymentId: payment.id,
         worker: workerLabel(payment),
         reference: row.reference,
-        montant: payment.amount.toString(),
+        montant: payment.netAmount.toString(),
       });
     } else {
       await writePayment({
@@ -232,7 +232,7 @@ export async function reconcileMvolaReleve(
         worker: workerLabel(payment),
         reference: row.reference,
         montantReleve,
-        montantAttendu: payment.amount.toString(),
+        montantAttendu: payment.netAmount.toString(),
       });
       result.ecartMontant += 1;
     }
@@ -272,7 +272,7 @@ export async function reconcileMvolaReleve(
       worker: workerLabel(payment),
       periodIso: payment.periodIso,
       bordereau: payment.bordereau,
-      montant: payment.amount.toString(),
+      montant: payment.netAmount.toString(),
     });
   }
 

@@ -38,7 +38,7 @@ export default function BordereauxList({ periodIso, referenceYear, siteId }: Bor
             <TableHead className="text-right">Version</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="text-right">Paiements</TableHead>
-            <TableHead className="text-right">Montant (Ar)</TableHead>
+            <TableHead className="text-right">Brut (Ar)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

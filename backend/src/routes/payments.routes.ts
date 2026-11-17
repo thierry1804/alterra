@@ -405,6 +405,7 @@ paymentsRouter.get(
       res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
       res.setHeader("X-ALTERRA-Exported-Count", String(result.exportedCount));
       res.setHeader("X-ALTERRA-Excluded-Count", String(result.excludedCount));
+      res.setHeader("X-ALTERRA-Exported-Total", result.totalAmount);
       res.send(result.buffer);
     } catch (err) {
       next(err);
@@ -438,6 +439,7 @@ paymentsRouter.post(
       res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
       res.setHeader("X-ALTERRA-Exported-Count", String(result.exportedCount));
       res.setHeader("X-ALTERRA-Version", String(result.version));
+      res.setHeader("X-ALTERRA-Exported-Total", result.totalAmount);
       res.send(result.buffer);
     } catch (err) {
       next(err);

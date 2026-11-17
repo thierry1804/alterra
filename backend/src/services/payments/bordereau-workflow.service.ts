@@ -1,19 +1,21 @@
 import ExcelJS from "exceljs";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
+import { ratePercentLabel } from "../../lib/isi.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { can } from "../../middleware/rbac.js";
 import type { AuthUser } from "../access/auth-user.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { assertBordereauSite } from "./bordereau-access.js";
-import { ensureInvoiceQuietly, getInvoiceTotals } from "./bordereau-invoice.service.js";
+import { ensureInvoiceQuietly } from "./bordereau-invoice.service.js";
 
 export interface BordereauLine {
   matricule: string;
   workerName: string;
   mvolaNumber: string;
   amount: string;
+  isiAmount: string;
+  netAmount: string;
   description: string;
   bioValid: boolean;
 }
@@ -33,6 +35,8 @@ async function liveLines(bordereauId: string): Promise<BordereauLine[]> {
     workerName: `${payment.worker.lastName} ${payment.worker.firstName}`,
     mvolaNumber: payment.worker.mvolaNumber,
     amount: payment.amount.toString(),
+    isiAmount: payment.isiAmount.toString(),
+    netAmount: payment.netAmount.toString(),
     description: payment.description,
     bioValid: payment.bioValid,
   }));
@@ -48,14 +52,18 @@ async function linesOf(bordereau: { id: string; lines: Prisma.JsonValue | null }
   return bordereau.lines as unknown as BordereauLine[];
 }
 
-function totalsOf(lines: BordereauLine[]) {
+function totalsOf(lines: BordereauLine[], isiRate: Prisma.Decimal.Value) {
   const gross = lines.reduce((sum, line) => sum.add(line.amount), new Prisma.Decimal(0));
-  const isi = gross.mul(ISI_WITHHOLDING_RATE);
+  const isi = lines.reduce((sum, line) => sum.add(line.isiAmount ?? 0), new Prisma.Decimal(0));
+  const net = lines.reduce(
+    (sum, line) => sum.add(line.netAmount ?? line.amount),
+    new Prisma.Decimal(0),
+  );
   return {
     gross: gross.toString(),
     isi: isi.toString(),
-    net: gross.sub(isi).toString(),
-    isiRate: ISI_WITHHOLDING_RATE,
+    net: net.toString(),
+    isiRate: ratePercentLabel(isiRate),
   };
 }
 
@@ -78,7 +86,6 @@ export async function getBordereauDetail(id: string, user: AuthUser) {
   assertBordereauSite(user, bordereau.siteId);
 
   const lines = await linesOf(bordereau);
-  const invoiceTotals = await getInvoiceTotals(bordereau.id);
   const versions = await prisma.bordereau.findMany({
     where: {
       siteId: bordereau.siteId,
@@ -108,14 +115,7 @@ export async function getBordereauDetail(id: string, user: AuthUser) {
     version: bordereau.version,
     status: bordereau.status,
     lines,
-    totals: invoiceTotals
-      ? {
-          gross: invoiceTotals.gross,
-          isi: invoiceTotals.isi,
-          net: invoiceTotals.net,
-          isiRate: ISI_WITHHOLDING_RATE,
-        }
-      : totalsOf(lines),
+    totals: totalsOf(lines, bordereau.isiRate),
     versions: versions.map((version) => ({
       id: version.id,
       version: version.version,

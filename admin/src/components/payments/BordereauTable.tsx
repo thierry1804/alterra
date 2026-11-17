@@ -8,7 +8,7 @@ import {
   formatPaymentAmount,
   paymentStatusVariant,
 } from "../../lib/payments";
-import { Ban, Pencil, X } from "lucide-react";
+import { Ban, X } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton, RowActions } from "../ui/IconButton";
@@ -24,9 +24,6 @@ interface BordereauTableProps {
 }
 
 export default function BordereauTable({ rows, loading, onCorrected }: BordereauTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
   const [failingId, setFailingId] = useState<string | null>(null);
   const [failReason, setFailReason] = useState("");
 
@@ -45,34 +42,6 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
     },
   });
 
-  const correctMutation = useMutation({
-    mutationFn: ({
-      id,
-      amount,
-      correctionReason,
-    }: {
-      id: string;
-      amount: number;
-      correctionReason: string;
-    }) => api.patch(`/payments/${id}`, { amount, correctionReason }),
-    onSuccess: () => {
-      toast({ title: "Montant corrigé" });
-      setEditingId(null);
-      setReason("");
-      onCorrected();
-    },
-    onError: (err) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
-      toast({ title: "Correction échouée", description: String(message), variant: "destructive" });
-    },
-  });
-
-  function startEdit(row: PaymentRow) {
-    setEditingId(row.id);
-    setAmount(row.amount);
-    setReason("");
-  }
-
   return (
     <div className="rounded-lg border border-zinc-200">
       <Table>
@@ -81,7 +50,9 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
             <TableHead>MOC</TableHead>
             <TableHead>MVola</TableHead>
             <TableHead>Description</TableHead>
-            <TableHead>Montant</TableHead>
+            <TableHead className="text-right">Brut</TableHead>
+            <TableHead className="text-right">ISI</TableHead>
+            <TableHead className="text-right">Net à payer</TableHead>
             <TableHead>Bio</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead>Rapprochement MVola</TableHead>
@@ -91,7 +62,7 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
         <TableBody>
           {loading && (
             <TableRow>
-              <TableCell colSpan={8} className="text-zinc-500">
+              <TableCell colSpan={10} className="text-zinc-500">
                 Chargement…
               </TableCell>
             </TableRow>
@@ -106,19 +77,14 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                 <TableCell className="max-w-[200px] truncate" title={row.description}>
                   {row.description}
                 </TableCell>
-                <TableCell>
-                  {editingId === row.id ? (
-                    <Input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="h-8 w-28"
-                    />
-                  ) : (
-                    formatPaymentAmount(row.amount)
-                  )}
+                <TableCell className="whitespace-nowrap text-right">
+                  {formatPaymentAmount(row.amount)}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right">
+                  {formatPaymentAmount(row.isiAmount)}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right font-medium">
+                  {formatPaymentAmount(row.netAmount)}
                 </TableCell>
                 <TableCell>
                   <Badge variant={row.bioValid ? "success" : "danger"}>
@@ -186,49 +152,12 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                       </div>
                     </div>
                   )}
-                  {row.status === "PENDING" && editingId !== row.id && (
-                    <RowActions>
-                      <IconButton
-                        icon={Pencil}
-                        label="Corriger le montant"
-                        variant="brand"
-                        onClick={() => startEdit(row)}
-                      />
-                    </RowActions>
-                  )}
-                  {editingId === row.id && (
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Motif (min. 10 car.)"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={reason.trim().length < 10 || correctMutation.isPending}
-                          onClick={() =>
-                            correctMutation.mutate({
-                              id: row.id,
-                              amount: Number(amount),
-                              correctionReason: reason.trim(),
-                            })
-                          }
-                        >
-                          OK
-                        </Button>
-                        <IconButton icon={X} label="Annuler" onClick={() => setEditingId(null)} />
-                      </div>
-                    </div>
-                  )}
                 </TableCell>
               </TableRow>
             ))}
           {!loading && rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-zinc-500">
+              <TableCell colSpan={10} className="text-zinc-500">
                 Aucune ligne pour cette période.
               </TableCell>
             </TableRow>

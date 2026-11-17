@@ -15,6 +15,8 @@ export interface PaymentRow {
   periodIso: string;
   cycle: string;
   amount: string;
+  isiAmount: string;
+  netAmount: string;
   originalAmount: string | null;
   description: string;
   bioValid: boolean;
@@ -206,6 +208,6 @@ export interface BordereauDetail {
   version: number;
   status: BordereauStatus;
   lines: BordereauLine[];
-  totals: { gross: string; isi: string; net: string; isiRate: number };
+  totals: { gross: string; isi: string; net: string; isiRate: string };
   versions: BordereauVersion[];
 }

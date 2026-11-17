@@ -37,6 +37,7 @@ export default function MvolaExportButton({
 
       const exportedCount = response.headers["x-alterra-exported-count"];
       const excludedCount = response.headers["x-alterra-excluded-count"];
+      const exportedTotal = response.headers["x-alterra-exported-total"];
       const disposition = response.headers["content-disposition"] as string | undefined;
       const filenameMatch = disposition?.match(/filename="(.+)"/);
       const filename = filenameMatch?.[1] ?? `ALTERRA_MVola_${exportPeriod}.xlsx`;
@@ -50,7 +51,7 @@ export default function MvolaExportButton({
 
       toast({
         title: "Export MVola terminé",
-        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${excludedCount ? `, ${excludedCount} exclue(s)` : ""}`,
+        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${exportedTotal ? `, total net ${Number(exportedTotal).toLocaleString("fr-FR")} Ar` : ""}${excludedCount ? `, ${excludedCount} exclue(s)` : ""}`,
       });
       onExported();
     } catch (err) {

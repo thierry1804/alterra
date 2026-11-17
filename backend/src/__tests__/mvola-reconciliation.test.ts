@@ -38,6 +38,8 @@ function payment(overrides: Partial<Record<string, unknown>>) {
     periodIso: "S26",
     bordereau: 93,
     amount: new Prisma.Decimal("698800"),
+    isiAmount: new Prisma.Decimal("0"),
+    netAmount: new Prisma.Decimal("698800"),
     worker: worker({}),
     ...overrides,
   };

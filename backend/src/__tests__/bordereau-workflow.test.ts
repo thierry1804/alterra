@@ -67,14 +67,18 @@ function bordereau(overrides: Record<string, unknown> = {}) {
     returnedById: null,
     returnedAt: null,
     lines: null,
+    isiRate: new Prisma.Decimal("0.05"),
+    isiRounding: "UNIT",
     site: { id: SITE_ID, name: "Manankazo", shortCode: "MNK" },
     ...overrides,
   };
 }
 
-function payment(amount: string) {
+function payment(amount: string, isi: string) {
   return {
     amount: new Prisma.Decimal(amount),
+    isiAmount: new Prisma.Decimal(isi),
+    netAmount: new Prisma.Decimal(amount).sub(isi),
     description: "Mnk-01 Moc REBOUCHAGE S47 18 MNK ACT01",
     bioValid: true,
     worker: {
@@ -92,7 +96,10 @@ describe("Bordereau validation workflow", () => {
     vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
     vi.mocked(prisma.bordereau.updateMany).mockResolvedValue({ count: 1 });
     vi.mocked(prisma.payment.count).mockResolvedValue(3);
-    vi.mocked(prisma.payment.findMany).mockResolvedValue([payment("300"), payment("300")] as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      payment("300", "15"),
+      payment("300", "15"),
+    ] as never);
     vi.mocked(prisma.bordereau.findMany).mockResolvedValue([bordereau()] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([]);
     vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue(null);
@@ -258,20 +265,13 @@ describe("Bordereau validation workflow", () => {
 
   it("shows the lines, the 5 % and the net in the detail", async () => {
     vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereau() as never);
-    vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue({
-      gross: new Prisma.Decimal("600"),
-      isi: new Prisma.Decimal("30"),
-      net: new Prisma.Decimal("570"),
-      workerCount: 2,
-    } as never);
-
     const res = await request(createApp())
       .get(`/api/v1/bordereaux/${BORDEREAU_ID}`)
       .set("Authorization", financeHeader());
 
     expect(res.status).toBe(200);
     expect(res.body.lines).toHaveLength(2);
-    expect(res.body.totals).toEqual({ gross: "600", isi: "30", net: "570", isiRate: 0.05 });
+    expect(res.body.totals).toEqual({ gross: "600", isi: "30", net: "570", isiRate: "5" });
     expect(res.body.versions[0]).toEqual(
       expect.objectContaining({ version: 1, status: "GENERATED" }),
     );

@@ -14,6 +14,7 @@ import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import type { Db } from "../pointages/day-rule.js";
 import { snapshotLines } from "./bordereau-workflow.service.js";
 import { ensureInvoiceQuietly } from "./bordereau-invoice.service.js";
+import { getIsiSettings, isiLineKey, lineIsi, type IsiSettings } from "../../lib/isi.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -101,6 +102,7 @@ interface PeriodContext {
   dateTo: Date;
   cycle: PaymentCycle;
   bioValidationRequired: boolean;
+  isi: IsiSettings;
   force: boolean;
   userId?: string;
   ip?: string;
@@ -182,6 +184,7 @@ async function generateForSite(
     {
       amount: Prisma.Decimal;
       pointageIds: string[];
+      lines: Map<string, Prisma.Decimal>;
       byActivity: Map<string, { shortLabel: string; code: string; amount: Prisma.Decimal }>;
       worker: (typeof pointages)[number]["worker"];
     }
@@ -192,6 +195,11 @@ async function generateForSite(
     if (current) {
       current.amount = current.amount.add(pointage.amount);
       current.pointageIds.push(pointage.id);
+      const lineKey = isiLineKey(pointage);
+      current.lines.set(
+        lineKey,
+        (current.lines.get(lineKey) ?? new Prisma.Decimal(0)).add(pointage.amount),
+      );
       const activityTotal = current.byActivity.get(pointage.subActivityId);
       if (activityTotal) {
         activityTotal.amount = activityTotal.amount.add(pointage.amount);
@@ -206,6 +214,7 @@ async function generateForSite(
       aggregates.set(pointage.workerId, {
         amount: new Prisma.Decimal(pointage.amount),
         pointageIds: [pointage.id],
+        lines: new Map([[isiLineKey(pointage), new Prisma.Decimal(pointage.amount)]]),
         byActivity: new Map([
           [
             pointage.subActivityId,
@@ -222,7 +231,12 @@ async function generateForSite(
   }
 
   const drafts: Array<
-    Omit<Prisma.PaymentCreateManyInput, "bordereau" | "bordereauId" | "description"> & {
+    Omit<
+      Prisma.PaymentCreateManyInput,
+      "bordereau" | "bordereauId" | "description" | "isiAmount" | "netAmount"
+    > & {
+      isiAmount: Prisma.Decimal;
+      netAmount: Prisma.Decimal;
       worker: (typeof pointages)[number]["worker"];
       dominant: { shortLabel: string; code: string };
       pointageIds: string[];
@@ -241,12 +255,19 @@ async function generateForSite(
       b.amount.comparedTo(a.amount),
     )[0];
 
+    const isiAmount = [...aggregate.lines.values()].reduce(
+      (sum, lineAmount) => sum.add(lineIsi(lineAmount, ctx.isi)),
+      new Prisma.Decimal(0),
+    );
+
     drafts.push({
       workerId,
       periodIso: shortPeriod,
       referenceYear,
       cycle: ctx.cycle,
       amount: aggregate.amount,
+      isiAmount,
+      netAmount: aggregate.amount.sub(isiAmount),
       bioValid,
       status: PaymentStatus.PENDING,
       worker: aggregate.worker,
@@ -297,6 +318,8 @@ async function generateForSite(
           referenceYear,
           version: (lastVersion?.version ?? 0) + 1,
           number,
+          isiRate: ctx.isi.rate,
+          isiRounding: ctx.isi.rounding,
           createdById: ctx.userId ?? null,
         },
       });
@@ -308,6 +331,8 @@ async function generateForSite(
           referenceYear,
           cycle: ctx.cycle,
           amount: draft.amount,
+          isiAmount: draft.isiAmount,
+          netAmount: draft.netAmount,
           bioValid: draft.bioValid,
           status: PaymentStatus.PENDING,
           bordereau: number,
@@ -402,6 +427,7 @@ export async function generatePayments(
     dateTo,
     cycle,
     bioValidationRequired: appSetting?.bioValidationRequired ?? true,
+    isi: await getIsiSettings(),
     force: input.force ?? false,
     userId: input.userId,
     ip: input.ip,

@@ -49,6 +49,11 @@ enum PaymentReconciliationStatus {
   NON_CONFIRME
 }
 
+enum IsiRounding {
+  UNIT
+  NONE
+}
+
 enum BordereauStatus {
   GENERATED
   FINANCE_VALIDATED
@@ -477,7 +482,9 @@ model Payment {
   referenceYear    Int? // année de la période : Sxx et Dxxx se répètent chaque année
   bordereau        Int // compteur par site, alloué à la génération
   cycle            PaymentCycle
-  amount           Decimal       @db.Decimal(12, 2)
+  amount           Decimal       @db.Decimal(12, 2) // brut
+  isiAmount        Decimal       @default(0) @db.Decimal(14, 2)
+  netAmount        Decimal       @default(0) @db.Decimal(14, 2) // montant réellement envoyé à MVola
   description      String // "Prénom Paiement Code_site"
   bioValid         Boolean
   status           PaymentStatus @default(PENDING)
@@ -533,6 +540,9 @@ model Bordereau {
   returnReason         String?
   returnedById         String?           @db.Uuid
   returnedAt           DateTime?
+  /// Taux et arrondi figés à la génération : un bordereau validé garde ses règles si le réglage change.
+  isiRate              Decimal           @default(0.05) @db.Decimal(6, 4)
+  isiRounding          IsiRounding       @default(UNIT)
   /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
   lines                Json?
   payments             Payment[]
@@ -723,8 +733,8 @@ model PasswordReset {
 
 /// Ligne unique (id fixe "singleton") — nom, icône et habillage de l'écran de connexion, modifiables depuis l'Admin.
 model AppSetting {
-  id                    String   @id @default("singleton")
-  appName               String   @default("ALTERRA")
+  id                    String      @id @default("singleton")
+  appName               String      @default("ALTERRA")
   iconKey               String?
   loginBackgroundKey    String?
   loginBranchKey        String?
@@ -732,6 +742,9 @@ model AppSetting {
   mapTilerKey           String?
   /// Contrôle biométrique pas encore fiable sur le terrain — permet à l'admin de désactiver
   /// temporairement son exigence pour la validation des pointages (réactiver dès que prêt).
-  bioValidationRequired Boolean  @default(true)
-  updatedAt             DateTime @updatedAt
+  bioValidationRequired Boolean     @default(true)
+  /// Retenue ISI sur les travailleurs informels (fraction : 0.05 = 5 %) et règle d'arrondi de l'ISI par ligne.
+  isiRate               Decimal     @default(0.05) @db.Decimal(6, 4)
+  isiRounding           IsiRounding @default(UNIT)
+  updatedAt             DateTime    @updatedAt
 }

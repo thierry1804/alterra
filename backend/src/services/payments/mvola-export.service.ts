@@ -1,18 +1,12 @@
 import ExcelJS from "exceljs";
 import type { Payment, Worker } from "@prisma/client";
-import { PaymentReconciliationStatus, PaymentStatus } from "@prisma/client";
+import { PaymentReconciliationStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { isValidMvolaNumber } from "./mvola-description.js";
-
-/**
- * Format du fichier MVola (docs/cadrage/mvola-format.md §3.2) : `spec5` = 5 colonnes de la spécification
- * (défaut) ; `compact3` = 3 colonnes (téléphone, description, montant) si MVola refuse les colonnes internes.
- */
-const MVOLA_EXPORT_FORMAT = process.env.MVOLA_EXPORT_FORMAT === "compact3" ? "compact3" : "spec5";
 
 export interface ExportMvolaResult {
   filename: string;
@@ -21,6 +15,7 @@ export interface ExportMvolaResult {
   minioKey: string;
   excludedCount: number;
   version: number;
+  totalAmount: string;
 }
 
 function formatExportTimestamp(date = new Date()): string {
@@ -30,38 +25,31 @@ function formatExportTimestamp(date = new Date()): string {
 
 type PaymentWithWorker = Payment & { worker: Worker };
 
+function sumNet(payments: PaymentWithWorker[]): string {
+  return payments
+    .reduce((sum, payment) => sum.add(payment.netAmount), new Prisma.Decimal(0))
+    .toString();
+}
+
 /** Construit le classeur MVola (mêmes colonnes pour un export initial et une régénération). */
 async function buildMvolaWorkbook(
   payments: PaymentWithWorker[],
-  shortPeriod: string,
   includeHeader: boolean | undefined,
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Paiements");
 
-  const compact = MVOLA_EXPORT_FORMAT === "compact3";
-  sheet.columns = compact
-    ? [
-        { header: "Numéro téléphone", key: "phone", width: 18 },
-        { header: "Description", key: "description", width: 32 },
-        { header: "Montant", key: "amount", width: 12 },
-      ]
-    : [
-        { header: "Numéro téléphone", key: "phone", width: 18 },
-        { header: "Description", key: "description", width: 32 },
-        { header: "Période", key: "period", width: 10 },
-        { header: "Montant", key: "amount", width: 12 },
-        { header: "Bio Validée", key: "bio", width: 12 },
-      ];
+  sheet.columns = [
+    { header: "Numéro téléphone", key: "phone", width: 18 },
+    { header: "Description", key: "description", width: 32 },
+    { header: "Montant", key: "amount", width: 12 },
+  ];
 
   for (const payment of payments) {
     const row = sheet.addRow({
       phone: payment.worker.mvolaNumber,
       description: payment.description,
-      period: shortPeriod,
-      amount: Math.round(Number(payment.amount)),
-      // Seules les lignes bio OK sont exportables (RG-03) : la colonne vaut toujours OUI.
-      bio: "OUI",
+      amount: Number(payment.netAmount),
     });
     row.getCell("phone").numFmt = "@";
   }
@@ -107,7 +95,9 @@ export async function exportMvolaPayments(
     include: { worker: true },
   });
 
-  const exportable = pendingPayments.filter((payment) => payment.bioValid && payment.amount.gt(0));
+  const exportable = pendingPayments.filter(
+    (payment) => payment.bioValid && payment.netAmount.gt(0),
+  );
   const excludedCount = pendingPayments.length - exportable.length;
 
   if (exportable.length === 0) {
@@ -158,7 +148,7 @@ export async function exportMvolaPayments(
   let batchId: string | undefined;
 
   try {
-    buffer = await buildMvolaWorkbook(exportable, shortPeriod, options.includeHeader);
+    buffer = await buildMvolaWorkbook(exportable, options.includeHeader);
     filename = `ALTERRA_MVola_${shortPeriod}_${formatExportTimestamp()}.xlsx`;
     minioKey = `mvola/${filename}`;
 
@@ -237,6 +227,7 @@ export async function exportMvolaPayments(
     minioKey,
     excludedCount,
     version,
+    totalAmount: sumNet(exportable),
   };
 }
 
@@ -305,7 +296,7 @@ export async function regenerateMvolaExport(
     );
   }
 
-  const buffer = await buildMvolaWorkbook(eligible, shortPeriod, options.includeHeader);
+  const buffer = await buildMvolaWorkbook(eligible, options.includeHeader);
   const filename = `ALTERRA_MVola_${shortPeriod}_v${previousBatch.version + 1}_${formatExportTimestamp()}.xlsx`;
   const minioKey = `mvola/${filename}`;
 
@@ -360,5 +351,6 @@ export async function regenerateMvolaExport(
     minioKey,
     excludedCount: 0,
     version,
+    totalAmount: sumNet(eligible),
   };
 }

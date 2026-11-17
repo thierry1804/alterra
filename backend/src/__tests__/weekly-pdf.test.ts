@@ -25,6 +25,7 @@ vi.mock("../lib/prisma.js", () => ({
     pointage: { findMany: vi.fn() },
     biometricCheck: { findMany: vi.fn() },
     payment: { findMany: vi.fn() },
+    appSetting: { findUnique: vi.fn() },
   },
 }));
 

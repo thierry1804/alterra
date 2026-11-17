@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
-import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
+import { INVOICE_CLIENT } from "../../lib/invoice-client.js";
+import { isiLineKey, lineIsi, ratePercentLabel, type IsiSettings } from "../../lib/isi.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { getReportStream } from "../storage/presigned-url.service.js";
@@ -114,7 +115,7 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
     }
   >();
   for (const pointage of pointages) {
-    const key = `${pointage.workerId}|${pointage.subActivityId}|${pointage.unitRateSnapshot.toString()}`;
+    const key = isiLineKey(pointage);
     const entry = grouped.get(key);
     if (entry) {
       entry.quantity = entry.quantity.add(pointage.quantity);
@@ -136,7 +137,10 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
     }
   }
 
-  const rate = new Prisma.Decimal(ISI_WITHHOLDING_RATE);
+  const isiSettings: IsiSettings = {
+    rate: new Prisma.Decimal(bordereau.isiRate),
+    rounding: bordereau.isiRounding,
+  };
   const byCategory = new Map<string, typeof grouped extends Map<string, infer V> ? V[] : never>();
   for (const entry of grouped.values()) {
     const list = byCategory.get(entry.category.code) ?? [];
@@ -162,9 +166,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
             ),
         )
         .map((entry) => {
-          const lineIsi = entry.amount.mul(rate);
+          const lineIsiValue = lineIsi(entry.amount, isiSettings);
           subtotal = subtotal.add(entry.amount);
-          isiSubtotal = isiSubtotal.add(lineIsi);
+          isiSubtotal = isiSubtotal.add(lineIsiValue);
           workerIds.add(entry.workerId);
           rowNumber += 1;
           return {
@@ -176,8 +180,8 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
             unit: entry.unit,
             unitPrice: formatMoney(entry.unitRate),
             amount: formatMoney(entry.amount),
-            isiAmount: formatMoney(lineIsi),
-            netAmount: formatMoney(entry.amount.sub(lineIsi)),
+            isiAmount: formatMoney(lineIsiValue),
+            netAmount: formatMoney(entry.amount.sub(lineIsiValue)),
           };
         });
       gross = gross.add(subtotal);
@@ -185,7 +189,7 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
       return {
         code,
         label: entries[0].category.label,
-        isiRate: String(Number(ISI_WITHHOLDING_RATE) * 100),
+        isiRate: ratePercentLabel(bordereau.isiRate),
         lines,
         subtotal: formatMoney(subtotal),
         isiSubtotal: formatMoney(isiSubtotal),
@@ -212,7 +216,7 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
         isi: formatMoney(isi),
         net: formatMoney(net),
       },
-      isiRate: String(Number(ISI_WITHHOLDING_RATE) * 100),
+      isiRate: ratePercentLabel(bordereau.isiRate),
     },
     totals: {
       gross: gross.toString(),
@@ -263,22 +267,6 @@ export async function ensureInvoiceQuietly(bordereauId: string): Promise<void> {
   } catch (err) {
     console.error("bordereau invoice generation failed", bordereauId, err);
   }
-}
-
-export async function getInvoiceTotals(
-  bordereauId: string,
-): Promise<BordereauInvoiceTotals | null> {
-  const stored = await prisma.bordereauInvoice.findUnique({ where: { bordereauId } });
-  if (stored) {
-    return {
-      gross: stored.gross.toString(),
-      isi: stored.isi.toString(),
-      net: stored.net.toString(),
-      workerCount: stored.workerCount,
-    };
-  }
-  const data = await buildInvoiceData(bordereauId);
-  return data ? data.totals : null;
 }
 
 export async function openInvoice(bordereauId: string, user: AuthUser) {

@@ -8,7 +8,3 @@ export const INVOICE_CLIENT = {
   addressLine1: "BAT KUBE D 2EME ETAGE, ZONE GALAXY ANDRAHARO",
   addressLine2: "101 ANTANANARIVO MADAGASCAR",
 };
-
-/** Retenue appliquée sur chaque ligne ("ISI 5%" du modèle de référence) — calculée à l'affichage,
- * jamais stockée : le format de référence l'exprime lui-même comme une formule, pas une donnée. */
-export const ISI_WITHHOLDING_RATE = 0.05;

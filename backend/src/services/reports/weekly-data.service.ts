@@ -3,7 +3,11 @@ import { prisma } from "../../lib/prisma.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
-import { INVOICE_CLIENT, ISI_WITHHOLDING_RATE } from "../../lib/invoice-client.js";
+import { INVOICE_CLIENT } from "../../lib/invoice-client.js";
+import { Prisma } from "@prisma/client";
+import { getIsiSettings, lineIsi, type IsiSettings } from "../../lib/isi.js";
+
+const LEGACY_REPORT_ISI: IsiSettings = { rate: new Prisma.Decimal("0.05"), rounding: "NONE" };
 
 export interface WeeklyPdfJobInput {
   siteId: string;
@@ -133,6 +137,7 @@ export interface InvoiceActivitiesContext {
 export function buildInvoiceActivities(
   pointages: InvoicePointage[],
   context: InvoiceActivitiesContext,
+  isi: IsiSettings = LEGACY_REPORT_ISI,
 ): WeeklyInvoiceActivity[] {
   const categories = new Map<
     string,
@@ -191,7 +196,13 @@ export function buildInvoiceActivities(
   return [...categories.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([code, category]) => {
-      const isiSubtotal = category.subtotal * ISI_WITHHOLDING_RATE;
+      const sortedLines = [...category.lines.values()].sort(
+        (a, b) =>
+          a.subActivityLabel.localeCompare(b.subActivityLabel) ||
+          a.workerName.localeCompare(b.workerName),
+      );
+      const lineIsis = sortedLines.map((line) => Number(lineIsi(line.amount, isi)));
+      const isiSubtotal = lineIsis.reduce((sum, value) => sum + value, 0);
       return {
         code,
         label: category.label,
@@ -201,28 +212,22 @@ export function buildInvoiceActivities(
         subtotal: formatAmount({ toString: () => String(category.subtotal) }),
         isiSubtotal: formatAmount({ toString: () => String(isiSubtotal) }),
         netSubtotal: formatAmount({ toString: () => String(category.subtotal - isiSubtotal) }),
-        lines: [...category.lines.values()]
-          .sort(
-            (a, b) =>
-              a.subActivityLabel.localeCompare(b.subActivityLabel) ||
-              a.workerName.localeCompare(b.workerName),
-          )
-          .map((line, index) => {
-            const isiAmount = line.amount * ISI_WITHHOLDING_RATE;
-            return {
-              rowNumber: index + 1,
-              matricule: line.matricule,
-              cinNumber: line.cinNumber,
-              workerName: line.workerName,
-              subActivityLabel: line.subActivityLabel,
-              quantity: line.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 }),
-              unit: line.unit,
-              unitRate: formatAmount({ toString: () => String(line.unitRate) }),
-              amount: formatAmount({ toString: () => String(line.amount) }),
-              isiAmount: formatAmount({ toString: () => String(isiAmount) }),
-              netAmount: formatAmount({ toString: () => String(line.amount - isiAmount) }),
-            };
-          }),
+        lines: sortedLines.map((line, index) => {
+          const isiAmount = lineIsis[index];
+          return {
+            rowNumber: index + 1,
+            matricule: line.matricule,
+            cinNumber: line.cinNumber,
+            workerName: line.workerName,
+            subActivityLabel: line.subActivityLabel,
+            quantity: line.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 }),
+            unit: line.unit,
+            unitRate: formatAmount({ toString: () => String(line.unitRate) }),
+            amount: formatAmount({ toString: () => String(line.amount) }),
+            isiAmount: formatAmount({ toString: () => String(isiAmount) }),
+            netAmount: formatAmount({ toString: () => String(line.amount - isiAmount) }),
+          };
+        }),
       };
     });
 }
@@ -306,11 +311,15 @@ export async function buildWeeklyReportViewModel(
   }
 
   const weekNumber = String(Number(period.weekIso.split("-W")[1]));
-  const invoiceActivities = buildInvoiceActivities(pointages, {
-    siteShortCode: site.shortCode,
-    weekNumber,
-    year: String(period.referenceYear),
-  });
+  const invoiceActivities = buildInvoiceActivities(
+    pointages,
+    {
+      siteShortCode: site.shortCode,
+      weekNumber,
+      year: String(period.referenceYear),
+    },
+    await getIsiSettings(),
+  );
 
   const byDay: WeeklyReportDay[] = [...dayMap.entries()].map(([date, activitiesMap]) => ({
     date,

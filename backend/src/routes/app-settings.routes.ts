@@ -1,4 +1,5 @@
 import { Router, raw } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
@@ -70,6 +71,8 @@ async function getAppSetting() {
     loginLeafKey: row?.loginLeafKey ?? null,
     mapTilerKey: row?.mapTilerKey ?? null,
     bioValidationRequired: row?.bioValidationRequired ?? true,
+    isiRate: row ? new Prisma.Decimal(row.isiRate) : new Prisma.Decimal("0.05"),
+    isiRounding: row?.isiRounding ?? ("UNIT" as const),
     updatedAt: row?.updatedAt ?? null,
   };
 }
@@ -84,6 +87,8 @@ function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
     loginLeafUpdatedAt: settings.updatedAt,
     mapTilerKeyConfigured: Boolean(settings.mapTilerKey),
     bioValidationRequired: settings.bioValidationRequired,
+    isiRatePercent: Number(settings.isiRate.mul(100).toDecimalPlaces(2).toString()),
+    isiRounding: settings.isiRounding,
   };
 }
 
@@ -458,6 +463,56 @@ appSettingsRouter.patch(
         settingsResponse({
           ...before,
           bioValidationRequired: updated.bioValidationRequired,
+          updatedAt: updated.updatedAt,
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const setIsiSchema = z.object({
+  ratePercent: z.number().min(0).max(100).multipleOf(0.01),
+  rounding: z.enum(["UNIT", "NONE"]),
+});
+
+appSettingsRouter.patch(
+  "/app-settings/isi",
+  requireAuth,
+  requirePermission("parametres:ecriture"),
+  validate(setIsiSchema),
+  async (req, res, next) => {
+    try {
+      const { ratePercent, rounding } = req.body as z.infer<typeof setIsiSchema>;
+      const rate = new Prisma.Decimal(ratePercent).div(100);
+      const before = await getAppSetting();
+
+      const updated = await prisma.appSetting.upsert({
+        where: { id: SETTINGS_ID },
+        create: { id: SETTINGS_ID, isiRate: rate, isiRounding: rounding },
+        update: { isiRate: rate, isiRounding: rounding },
+      });
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "AppSetting",
+        entityId: SETTINGS_ID,
+        before: {
+          isiRatePercent: Number(before.isiRate.mul(100).toString()),
+          isiRounding: before.isiRounding,
+        },
+        after: { isiRatePercent: ratePercent, isiRounding: updated.isiRounding },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json(
+        settingsResponse({
+          ...before,
+          isiRate: new Prisma.Decimal(updated.isiRate),
+          isiRounding: updated.isiRounding,
           updatedAt: updated.updatedAt,
         }),
       );

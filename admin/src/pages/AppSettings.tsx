@@ -10,6 +10,7 @@ import {
   LOGIN_LEAF_URL,
 } from "../hooks/useAppSettings";
 import PageHeader from "../components/shared/PageHeader";
+import IsiSettingsCard from "../components/settings/IsiSettingsCard";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -25,6 +26,8 @@ interface AppSettingsResponse {
   loginLeafUpdatedAt: string | null;
   mapTilerKeyConfigured: boolean;
   bioValidationRequired: boolean;
+  isiRatePercent: number;
+  isiRounding: "UNIT" | "NONE";
 }
 
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
@@ -457,6 +460,12 @@ export default function AppSettingsPage() {
                   onCheckedChange={(checked) => setBioValidationRequiredMutation.mutate(checked)}
                 />
               </div>
+
+              <IsiSettingsCard
+                ratePercent={data?.isiRatePercent}
+                rounding={data?.isiRounding}
+                loading={isLoading}
+              />
             </div>
 
             <aside
