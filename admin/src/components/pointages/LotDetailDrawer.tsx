@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useCan } from "../../hooks/useCan";
-import { toDateInput, weekEnd, weekLabel, weekStart } from "../../lib/iso-week";
-import type { SynthesisRow } from "../../lib/synthese";
+import { toDateInput, weekEnd, weekLabel, weekStart } from "../../lib/week-iso";
+import type { SynthesisRow } from "../../lib/synthesis";
 import {
   POINTAGE_STATUS_LABELS,
   formatPointageAmount,
@@ -53,7 +53,7 @@ export default function LotDetailDrawer({ lot, onClose, onValidate }: LotDetailD
   const canValidate = can("pointage:valider_technique");
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["synthese-detail", lot?.weekIso, lot?.siteId, lot?.subActivityId],
+    queryKey: ["synthesis-detail", lot?.weekIso, lot?.siteId, lot?.subActivityId],
     enabled: lot !== null,
     queryFn: () =>
       fetchAllCursorPages<Pointage>((cursor) =>

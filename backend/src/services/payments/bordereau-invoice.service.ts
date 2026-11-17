@@ -8,6 +8,7 @@ import { BUCKETS, minioClient } from "../storage/minio.js";
 import { getReportStream } from "../storage/presigned-url.service.js";
 import { htmlToPdfBuffer, renderBordereauInvoiceHtml } from "../reports/pdf-render.service.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { logger } from "../../lib/logger.js";
 import type { AuthUser } from "../access/auth-user.js";
 import { assertBordereauSite } from "./bordereau-access.js";
 
@@ -265,7 +266,7 @@ export async function ensureInvoiceQuietly(bordereauId: string): Promise<void> {
   try {
     await ensureInvoice(bordereauId);
   } catch (err) {
-    console.error("bordereau invoice generation failed", bordereauId, err);
+    logger.error({ err, bordereauId }, "bordereau invoice generation failed");
   }
 }
 

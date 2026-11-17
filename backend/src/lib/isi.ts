@@ -6,7 +6,7 @@ export interface IsiSettings {
   rounding: IsiRounding;
 }
 
-export const DEFAULT_ISI_SETTINGS: IsiSettings = {
+const DEFAULT_ISI_SETTINGS: IsiSettings = {
   rate: new Prisma.Decimal("0.05"),
   rounding: "UNIT",
 };

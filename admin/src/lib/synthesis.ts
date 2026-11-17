@@ -25,7 +25,7 @@ export interface SynthesisResponse {
   rows: SynthesisRow[];
 }
 
-export const syntheseApi = {
+export const synthesisApi = {
   get: (params: { weekFrom: string; weekTo: string; siteId?: string; subActivityId?: string }) =>
     api.get<SynthesisResponse>("/pointages/synthese", { params }).then((r) => r.data),
   validateTechnical: (body: { weekIso: string; siteId: string; subActivityId: string }) =>

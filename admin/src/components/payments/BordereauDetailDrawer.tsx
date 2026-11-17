@@ -7,8 +7,8 @@ import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
 import {
   BORDEREAU_STATUS_LABELS,
+  bordereauStatusVariant,
   type BordereauDetail,
-  type BordereauStatus,
 } from "../../lib/payments";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -39,12 +39,6 @@ function formatAr(value: string | number): string {
 
 function formatDateTime(value: string | null): string {
   return value ? new Date(value).toLocaleString("fr-FR") : "—";
-}
-
-function statusVariant(status: BordereauStatus): "default" | "success" | "info" {
-  if (status === "EXPORTED" || status === "DG_VALIDATED") return "success";
-  if (status === "FINANCE_VALIDATED") return "info";
-  return "default";
 }
 
 type PendingAction = "finance" | "dg" | null;
@@ -159,7 +153,7 @@ export default function BordereauDetailDrawer({
           {data && (
             <div className="space-y-5">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={statusVariant(data.status)}>
+                <Badge variant={bordereauStatusVariant(data.status)}>
                   {BORDEREAU_STATUS_LABELS[data.status]}
                 </Badge>
                 {current?.financeValidatedAt && (
@@ -241,7 +235,7 @@ export default function BordereauDetailDrawer({
                     <div className="space-y-0.5">
                       <p className="font-medium">
                         Version {version.version}{" "}
-                        <Badge variant={statusVariant(version.status)}>
+                        <Badge variant={bordereauStatusVariant(version.status)}>
                           {BORDEREAU_STATUS_LABELS[version.status]}
                         </Badge>
                       </p>

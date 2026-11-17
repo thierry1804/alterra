@@ -4,8 +4,8 @@ import { isAxiosError } from "axios";
 import { ClipboardCheck } from "lucide-react";
 import { api } from "../lib/api";
 import { useCan } from "../hooks/useCan";
-import { recentWeeks, weekLabel } from "../lib/iso-week";
-import { syntheseApi, type SynthesisRow } from "../lib/synthese";
+import { recentWeeks, weekLabel } from "../lib/week-iso";
+import { synthesisApi, type SynthesisRow } from "../lib/synthesis";
 import type { ActivitySubActivity, Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
 import { Badge } from "../components/ui/badge";
@@ -40,7 +40,7 @@ function rowKey(row: SynthesisRow): string {
   return `${row.weekIso}|${row.siteId}|${row.subActivityId}`;
 }
 
-export default function ValidationTechniquePage() {
+export default function TechnicalValidationPage() {
   const can = useCan();
   const queryClient = useQueryClient();
   const [siteId, setSiteId] = useState("");
@@ -71,11 +71,11 @@ export default function ValidationTechniquePage() {
       ),
   });
 
-  const queryKey = ["synthese", siteId, weekFrom, weekTo, subActivityId];
+  const queryKey = ["synthesis", siteId, weekFrom, weekTo, subActivityId];
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () =>
-      syntheseApi.get({
+      synthesisApi.get({
         weekFrom,
         weekTo,
         siteId: siteId || undefined,
@@ -101,7 +101,7 @@ export default function ValidationTechniquePage() {
 
   const validateMutation = useMutation({
     mutationFn: (row: SynthesisRow) =>
-      syntheseApi.validateTechnical({
+      synthesisApi.validateTechnical({
         weekIso: row.weekIso,
         siteId: row.siteId,
         subActivityId: row.subActivityId,
@@ -112,7 +112,7 @@ export default function ValidationTechniquePage() {
         description: `${res.validated} pointage(s) validé(s)`,
       });
       setPending(null);
-      void queryClient.invalidateQueries({ queryKey: ["synthese"] });
+      void queryClient.invalidateQueries({ queryKey: ["synthesis"] });
     },
     onError: (err) => {
       toast({

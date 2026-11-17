@@ -4,10 +4,10 @@ import { FileCheck } from "lucide-react";
 import { api } from "../lib/api";
 import {
   BORDEREAU_STATUS_LABELS,
+  bordereauStatusVariant,
   currentIsoWeekInput,
   periodToExportParam,
   type BordereauRow,
-  type BordereauStatus,
 } from "../lib/payments";
 import type { Site } from "../lib/referentials";
 import PageHeader from "../components/shared/PageHeader";
@@ -29,12 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-
-function statusVariant(status: BordereauStatus): "default" | "success" | "info" {
-  if (status === "EXPORTED" || status === "DG_VALIDATED") return "success";
-  if (status === "FINANCE_VALIDATED") return "info";
-  return "default";
-}
 
 const COLUMN_COUNT = 8;
 
@@ -164,7 +158,7 @@ export default function BordereauxPage() {
                   <TableCell className="text-right">{row.number}</TableCell>
                   <TableCell className="text-right">{row.version}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(row.status)}>
+                    <Badge variant={bordereauStatusVariant(row.status)}>
                       {BORDEREAU_STATUS_LABELS[row.status]}
                     </Badge>
                   </TableCell>

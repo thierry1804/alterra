@@ -1,6 +1,6 @@
 import { useBordereaux } from "../../hooks/useBordereaux";
 import { useCan } from "../../hooks/useCan";
-import { BORDEREAU_STATUS_LABELS, type BordereauStatus } from "../../lib/payments";
+import { BORDEREAU_STATUS_LABELS, bordereauStatusVariant } from "../../lib/payments";
 import { Badge } from "../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
@@ -8,13 +8,6 @@ interface BordereauxListProps {
   periodIso: string;
   referenceYear?: string;
   siteId: string;
-}
-
-function statusVariant(status: BordereauStatus): "default" | "success" | "warning" | "info" {
-  if (status === "EXPORTED") return "success";
-  if (status === "DG_VALIDATED") return "success";
-  if (status === "FINANCE_VALIDATED") return "info";
-  return "default";
 }
 
 export default function BordereauxList({ periodIso, referenceYear, siteId }: BordereauxListProps) {
@@ -50,7 +43,7 @@ export default function BordereauxList({ periodIso, referenceYear, siteId }: Bor
               <TableCell className="text-right">{bordereau.number}</TableCell>
               <TableCell className="text-right">{bordereau.version}</TableCell>
               <TableCell>
-                <Badge variant={statusVariant(bordereau.status)}>
+                <Badge variant={bordereauStatusVariant(bordereau.status)}>
                   {BORDEREAU_STATUS_LABELS[bordereau.status]}
                 </Badge>
               </TableCell>

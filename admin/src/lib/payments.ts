@@ -148,6 +148,12 @@ export const BORDEREAU_STATUS_LABELS: Record<BordereauStatus, string> = {
   SUPERSEDED: "Remplacé",
 };
 
+export function bordereauStatusVariant(status: BordereauStatus): "default" | "success" | "info" {
+  if (status === "EXPORTED" || status === "DG_VALIDATED") return "success";
+  if (status === "FINANCE_VALIDATED") return "info";
+  return "default";
+}
+
 export interface BordereauRow {
   id: string;
   siteId: string;
