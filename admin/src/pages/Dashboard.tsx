@@ -8,6 +8,7 @@ import WorkforceChart from "../components/dashboard/WorkforceChart";
 import GenderBreakdownChart from "../components/dashboard/GenderBreakdownChart";
 import GenderRatioBarChart from "../components/dashboard/GenderRatioBarChart";
 import AlertsBlock from "../components/dashboard/AlertsBlock";
+import CostsSection from "../components/dashboard/CostsSection";
 import TodoStrip from "../components/dashboard/TodoStrip";
 import PageHeader from "../components/shared/PageHeader";
 import { useAuth } from "../hooks/useAuth";
@@ -96,6 +97,7 @@ export default function Dashboard() {
             isAdmin={hasPermission(user, "demande:decider")}
           />
           <KpiCards kpis={data.kpis} />
+          {hasPermission(user, "pointage:voir_montants") && <CostsSection siteId={siteId} />}
           <div className="grid gap-4 xl:grid-cols-2">
             <PresenceChart data={data.presenceLast7Days} />
             <WorkforceChart data={data.workforceTrend} />

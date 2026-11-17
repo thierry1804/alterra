@@ -22,7 +22,7 @@ interface KpiCardsProps {
 const dashboardItems = [
   {
     key: "activeWorkers" as const,
-    label: "Effectifs actifs",
+    label: "Travailleurs inscrits",
     icon: Users,
     format: (value: number) => String(value),
   },
