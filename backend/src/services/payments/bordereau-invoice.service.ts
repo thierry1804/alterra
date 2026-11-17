@@ -198,6 +198,53 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
       };
     });
 
+  const adjustments = await prisma.paymentAdjustment.findMany({
+    where: { bordereauId },
+    include: {
+      payment: {
+        select: {
+          workerId: true,
+          worker: { select: { matricule: true, cinNumber: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  if (adjustments.length > 0) {
+    let adjustmentSubtotal = new Prisma.Decimal(0);
+    let adjustmentIsi = new Prisma.Decimal(0);
+    const adjustmentLines: BordereauInvoiceLine[] = adjustments.map((adjustment) => {
+      const adjustmentLineIsi = lineIsi(adjustment.amount, isiSettings);
+      adjustmentSubtotal = adjustmentSubtotal.add(adjustment.amount);
+      adjustmentIsi = adjustmentIsi.add(adjustmentLineIsi);
+      workerIds.add(adjustment.payment.workerId);
+      rowNumber += 1;
+      return {
+        rowNumber,
+        matricule: adjustment.payment.worker.matricule,
+        cinNumber: adjustment.payment.worker.cinNumber ?? "",
+        designation: `Ajustement manuel — ${adjustment.reason}`,
+        quantity: "",
+        unit: "",
+        unitPrice: "",
+        amount: formatMoney(adjustment.amount),
+        isiAmount: formatMoney(adjustmentLineIsi),
+        netAmount: formatMoney(adjustment.amount.sub(adjustmentLineIsi)),
+      };
+    });
+    activities.push({
+      code: "AJ",
+      label: "Ajustements manuels",
+      isiRate: ratePercentLabel(bordereau.isiRate),
+      lines: adjustmentLines,
+      subtotal: formatMoney(adjustmentSubtotal),
+      isiSubtotal: formatMoney(adjustmentIsi),
+      netSubtotal: formatMoney(adjustmentSubtotal.sub(adjustmentIsi)),
+    });
+    gross = gross.add(adjustmentSubtotal);
+    isi = isi.add(adjustmentIsi);
+  }
+
   const net = gross.sub(isi);
   const now = new Date();
   return {
@@ -262,9 +309,9 @@ export async function ensureInvoice(bordereauId: string, options: { force?: bool
   });
 }
 
-export async function ensureInvoiceQuietly(bordereauId: string): Promise<void> {
+export async function ensureInvoiceQuietly(bordereauId: string, force = false): Promise<void> {
   try {
-    await ensureInvoice(bordereauId);
+    await ensureInvoice(bordereauId, { force });
   } catch (err) {
     logger.error({ err, bordereauId }, "bordereau invoice generation failed");
   }

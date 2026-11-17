@@ -505,8 +505,9 @@ model Payment {
   exportBatchId String?           @db.Uuid
   exportBatch   MvolaExportBatch? @relation(fields: [exportBatchId], references: [id])
 
-  bordereauId  String?    @db.Uuid
-  bordereauRef Bordereau? @relation(fields: [bordereauId], references: [id])
+  bordereauId  String?             @db.Uuid
+  bordereauRef Bordereau?          @relation(fields: [bordereauId], references: [id])
+  adjustments  PaymentAdjustment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -533,28 +534,46 @@ model Bordereau {
   createdAt     DateTime        @default(now())
   supersededAt  DateTime?
 
-  financeValidatedById String?            @db.Uuid
+  financeValidatedById String?             @db.Uuid
   financeValidatedAt   DateTime?
-  dgValidatedById      String?            @db.Uuid
+  dgValidatedById      String?             @db.Uuid
   dgValidatedAt        DateTime?
   returnReason         String?
-  returnedById         String?            @db.Uuid
+  returnedById         String?             @db.Uuid
   returnedAt           DateTime?
   exportedAt           DateTime?
-  exportedById         String?            @db.Uuid
+  exportedById         String?             @db.Uuid
   /// Taux et arrondi figés à la génération : un bordereau validé garde ses règles si le réglage change.
-  isiRate              Decimal            @default(0.05) @db.Decimal(6, 4)
-  isiRounding          IsiRounding        @default(UNIT)
+  isiRate              Decimal             @default(0.05) @db.Decimal(6, 4)
+  isiRounding          IsiRounding         @default(UNIT)
   /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
   lines                Json?
   payments             Payment[]
   pointages            Pointage[]
   invoice              BordereauInvoice?
   exportBatches        MvolaExportBatch[]
+  adjustments          PaymentAdjustment[]
 
   @@unique([siteId, periodIso, referenceYear, version])
   @@index([siteId, status])
   @@index([periodIso, referenceYear])
+}
+
+/// Ajustement manuel (positif ou négatif) d'un paiement, possible tant que le bordereau n'est pas
+/// validé par la finance. Il entre dans le brut, l'ISI, le net, la facture et le fichier MVola.
+model PaymentAdjustment {
+  id          String    @id @default(uuid()) @db.Uuid
+  paymentId   String    @db.Uuid
+  payment     Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  bordereauId String    @db.Uuid
+  bordereau   Bordereau @relation(fields: [bordereauId], references: [id], onDelete: Cascade)
+  amount      Decimal   @db.Decimal(12, 2)
+  reason      String
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+
+  @@index([paymentId])
+  @@index([bordereauId])
 }
 
 /// Facture PDF d'une version de bordereau (relation 1-1). Le numéro affiché reprend celui du bordereau.

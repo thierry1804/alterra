@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { isAxiosError } from "axios";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Pencil } from "lucide-react";
 import { api } from "../../lib/api";
 import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
@@ -11,6 +11,8 @@ import {
   bordereauStatusVariant,
   type BordereauDetail,
 } from "../../lib/payments";
+import PaymentAdjustDialog, { type AdjustablePayment } from "./PaymentAdjustDialog";
+import { IconButton } from "../ui/IconButton";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import ConfirmDialog from "../ui/ConfirmDialog";
@@ -53,6 +55,7 @@ export default function BordereauDetailDrawer({
   const [pending, setPending] = useState<PendingAction>(null);
   const [returnOpen, setReturnOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [adjusting, setAdjusting] = useState<AdjustablePayment | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["bordereau", bordereauId],
@@ -124,6 +127,7 @@ export default function BordereauDetailDrawer({
 
   const status = data?.status;
   const canFinance = can("bordereau:valider_finance") && status === "GENERATED";
+  const canAdjust = can("paiement:correction") && status === "GENERATED";
   const canDg = can("bordereau:valider_dg") && status === "FINANCE_VALIDATED";
   const canReturn =
     (can("bordereau:valider_finance") && status === "GENERATED") ||
@@ -204,6 +208,7 @@ export default function BordereauDetailDrawer({
                     <TableHead>Travailleur</TableHead>
                     <TableHead>Téléphone</TableHead>
                     <TableHead className="text-right">Montant (Ar)</TableHead>
+                    {canAdjust && <TableHead className="w-12" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -215,7 +220,36 @@ export default function BordereauDetailDrawer({
                         <TableCell className="whitespace-nowrap">{line.matricule}</TableCell>
                         <TableCell>{line.workerName}</TableCell>
                         <TableCell className="whitespace-nowrap">{line.mvolaNumber}</TableCell>
-                        <TableCell className="text-right">{formatAr(line.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          {formatAr(line.amount)}
+                          {line.adjustments?.map((adjustment) => (
+                            <p key={adjustment.id} className="text-xs text-muted">
+                              Ajustement {Number(adjustment.amount) > 0 ? "+" : ""}
+                              {formatAr(adjustment.amount)} — {adjustment.reason}
+                            </p>
+                          ))}
+                        </TableCell>
+                        {canAdjust && (
+                          <TableCell>
+                            {line.paymentId && (
+                              <IconButton
+                                icon={Pencil}
+                                label="Ajuster le montant"
+                                variant="brand"
+                                onClick={() =>
+                                  setAdjusting({
+                                    paymentId: line.paymentId as string,
+                                    title: `${line.workerName} (${line.matricule})`,
+                                    amount: line.amount,
+                                    isiAmount: line.isiAmount ?? "0",
+                                    netAmount: line.netAmount ?? line.amount,
+                                    adjustments: line.adjustments ?? [],
+                                  })
+                                }
+                              />
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -311,6 +345,15 @@ export default function BordereauDetailDrawer({
         busy={validateMutation.isPending}
         onConfirm={() => pending && validateMutation.mutate(pending)}
         onOpenChange={(open) => !open && setPending(null)}
+      />
+
+      <PaymentAdjustDialog
+        payment={adjusting}
+        onClose={() => setAdjusting(null)}
+        onChanged={() => {
+          refreshAll();
+          void queryClient.invalidateQueries({ queryKey: ["payments"] });
+        }}
       />
 
       <Dialog open={returnOpen} onOpenChange={setReturnOpen}>

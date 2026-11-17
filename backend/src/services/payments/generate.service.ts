@@ -35,6 +35,7 @@ export interface GeneratedBordereauSummary {
   version: number;
   created: number;
   skippedZeroAmount: number;
+  droppedAdjustments: number;
 }
 
 export interface SkippedSite {
@@ -283,6 +284,14 @@ async function generateForSite(
   let outcome: Awaited<ReturnType<typeof generateForSite>>;
   try {
     outcome = await prisma.$transaction(async (tx) => {
+      const carried = current
+        ? await tx.paymentAdjustment.findMany({
+            where: { bordereauId: current.id },
+            include: { payment: { select: { workerId: true } } },
+            orderBy: { createdAt: "asc" },
+          })
+        : [];
+
       if (current) {
         await tx.pointage.updateMany({
           where: { bordereauId: current.id },
@@ -354,6 +363,48 @@ async function generateForSite(
         data: { bordereauId: bordereau.id },
       });
 
+      const createdPayments = await tx.payment.findMany({
+        where: { bordereauId: bordereau.id },
+      });
+      let droppedAdjustments = 0;
+      for (const adjustment of carried) {
+        const target = createdPayments.find(
+          (payment) => payment.workerId === adjustment.payment.workerId,
+        );
+        if (!target) {
+          droppedAdjustments += 1;
+          continue;
+        }
+        const gross = target.amount.add(adjustment.amount);
+        const isi = target.isiAmount.add(lineIsi(adjustment.amount, ctx.isi));
+        const net = gross.sub(isi);
+        if (!gross.gt(0) || !net.gt(0)) {
+          droppedAdjustments += 1;
+          continue;
+        }
+        await tx.paymentAdjustment.create({
+          data: {
+            paymentId: target.id,
+            bordereauId: bordereau.id,
+            amount: adjustment.amount,
+            reason: adjustment.reason,
+            createdById: adjustment.createdById,
+          },
+        });
+        await tx.payment.update({
+          where: { id: target.id },
+          data: {
+            amount: gross,
+            isiAmount: isi,
+            netAmount: net,
+            originalAmount: target.originalAmount ?? target.amount,
+          },
+        });
+        target.amount = gross;
+        target.isiAmount = isi;
+        target.netAmount = net;
+      }
+
       const payments = await tx.payment.findMany({
         where: { bordereauId: bordereau.id },
         orderBy: { createdAt: "asc" },
@@ -368,6 +419,7 @@ async function generateForSite(
           version: bordereau.version,
           created: payments.length,
           skippedZeroAmount,
+          droppedAdjustments,
         },
         payments,
         skippedZeroAmount,

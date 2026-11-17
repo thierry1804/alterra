@@ -14,6 +14,7 @@ vi.mock("../lib/prisma.js", () => ({
     bordereau: { findUnique: vi.fn() },
     bordereauInvoice: { findUnique: vi.fn(), upsert: vi.fn() },
     pointage: { findMany: vi.fn() },
+    paymentAdjustment: { findMany: vi.fn() },
   },
 }));
 
@@ -87,6 +88,7 @@ describe("Bordereau invoice", () => {
     vi.clearAllMocks();
     vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
     vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereau() as never);
+    vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.bordereauInvoice.upsert).mockImplementation((async (args: {
       create: Record<string, unknown>;
@@ -124,6 +126,30 @@ describe("Bordereau invoice", () => {
     expect(data!.viewModel.totals).toEqual(
       expect.objectContaining({ gross: "275", isi: "13,75", net: "261,25" }),
     );
+  });
+
+  it("adds the manual adjustments as their own lines and counts them in the totals", async () => {
+    vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([
+      {
+        amount: new Prisma.Decimal("-50"),
+        reason: "Retenue pour matériel perdu",
+        payment: { workerId: "w1", worker: { matricule: "MOC-Alpha", cinNumber: null } },
+      },
+    ] as never);
+
+    const data = await buildInvoiceData(BORDEREAU_ID);
+
+    const adjustments = data!.viewModel.activities.find((activity) => activity.code === "AJ")!;
+    expect(adjustments.lines).toHaveLength(1);
+    expect(adjustments.lines[0]).toEqual(
+      expect.objectContaining({
+        designation: "Ajustement manuel — Retenue pour matériel perdu",
+        amount: "-50",
+        isiAmount: "-2,5",
+        netAmount: "-47,5",
+      }),
+    );
+    expect(data!.totals).toEqual({ gross: "225", isi: "11.25", net: "213.75", workerCount: 2 });
   });
 
   it("returns nothing when no pointage is linked", async () => {

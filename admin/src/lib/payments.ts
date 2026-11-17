@@ -17,6 +17,8 @@ export interface PaymentRow {
   amount: string;
   isiAmount: string;
   netAmount: string;
+  bordereauStatus: BordereauStatus | null;
+  adjustments: Array<{ id: string; amount: string; reason: string }>;
   originalAmount: string | null;
   description: string;
   bioValid: boolean;
@@ -174,11 +176,21 @@ export interface BordereauRow {
 
 export interface GenerateBordereauxResult {
   created: number;
-  bordereaux: Array<{ siteCode: string; number: number; version: number; created: number }>;
+  bordereaux: Array<{
+    siteCode: string;
+    number: number;
+    version: number;
+    created: number;
+    droppedAdjustments: number;
+  }>;
   skippedSites: Array<{ siteCode: string; code: string; message: string }>;
 }
 
 export interface BordereauLine {
+  paymentId?: string;
+  adjustments?: Array<{ id: string; amount: string; reason: string }>;
+  isiAmount?: string;
+  netAmount?: string;
   matricule: string;
   workerName: string;
   mvolaNumber: string;

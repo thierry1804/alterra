@@ -13,11 +13,13 @@ export interface BordereauLine {
   matricule: string;
   workerName: string;
   mvolaNumber: string;
+  paymentId?: string;
   amount: string;
   isiAmount: string;
   netAmount: string;
   description: string;
   bioValid: boolean;
+  adjustments?: Array<{ id: string; amount: string; reason: string }>;
 }
 
 const SITE_SELECT = { select: { id: true, name: true, shortCode: true } } as const;
@@ -27,10 +29,15 @@ async function liveLines(bordereauId: string): Promise<BordereauLine[]> {
     where: { bordereauId },
     include: {
       worker: { select: { matricule: true, firstName: true, lastName: true, mvolaNumber: true } },
+      adjustments: {
+        select: { id: true, amount: true, reason: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
     orderBy: [{ worker: { lastName: "asc" } }, { worker: { firstName: "asc" } }],
   });
   return payments.map((payment) => ({
+    paymentId: payment.id,
     matricule: payment.worker.matricule,
     workerName: `${payment.worker.lastName} ${payment.worker.firstName}`,
     mvolaNumber: payment.worker.mvolaNumber,
@@ -39,6 +46,11 @@ async function liveLines(bordereauId: string): Promise<BordereauLine[]> {
     netAmount: payment.netAmount.toString(),
     description: payment.description,
     bioValid: payment.bioValid,
+    adjustments: payment.adjustments.map((adjustment) => ({
+      id: adjustment.id,
+      amount: adjustment.amount.toString(),
+      reason: adjustment.reason,
+    })),
   }));
 }
 

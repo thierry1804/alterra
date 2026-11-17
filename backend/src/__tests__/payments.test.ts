@@ -65,6 +65,7 @@ const mockPayment = {
   netAmount: new Prisma.Decimal("118750"),
   bordereauId: MOCK_BORDEREAU_ID,
   bordereauRef: { id: MOCK_BORDEREAU_ID, status: "DG_VALIDATED" },
+  adjustments: [],
   description: "Jean Rakoto TROUAISON S29 12 MNK ACT01 84",
   bioValid: true,
   status: PaymentStatus.PENDING,
@@ -104,6 +105,10 @@ vi.mock("../lib/prisma.js", () => ({
     },
     site: {
       findMany: vi.fn(),
+    },
+    paymentAdjustment: {
+      findMany: vi.fn(),
+      create: vi.fn(),
     },
     mvolaExportBatch: {
       findFirst: vi.fn(),
@@ -236,6 +241,7 @@ describe("Payments API", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
     );
+    vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.bordereau.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.bordereau.create).mockResolvedValue({
       id: MOCK_BORDEREAU_ID,
@@ -803,6 +809,7 @@ describe("Bordereau per site", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
       typeof fn === "function" ? fn(prisma as never) : fn,
     );
+    vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.site.findMany).mockResolvedValue([
       { id: MOCK_SITE_ID, shortCode: "MNK" },
     ] as never);
@@ -974,6 +981,70 @@ describe("Bordereau per site", () => {
       data: { bordereauId: null },
     });
     expect(res.body.bordereaux[0]).toEqual(expect.objectContaining({ version: 2, number: 3 }));
+  });
+
+  it("carries the manual adjustments over to the regenerated version", async () => {
+    vi.mocked(prisma.bordereau.findFirst)
+      .mockResolvedValueOnce({
+        id: "00000000-0000-4000-8000-0000000000c9",
+        status: "GENERATED",
+        version: 1,
+        number: 3,
+      } as never)
+      .mockResolvedValueOnce({ version: 1 } as never);
+    vi.mocked(prisma.bordereau.create).mockResolvedValue({
+      id: MOCK_BORDEREAU_ID,
+      version: 2,
+      number: 3,
+    } as never);
+    vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([
+      {
+        amount: new Prisma.Decimal("-500"),
+        reason: "Retenue pour matériel perdu",
+        createdById: MOCK_ADMIN_ID,
+        payment: { workerId: MOCK_WORKER_ID },
+      },
+      {
+        amount: new Prisma.Decimal("100"),
+        reason: "Prime pour un travailleur absent",
+        createdById: MOCK_ADMIN_ID,
+        payment: { workerId: "00000000-0000-4000-8000-00000000ffff" },
+      },
+    ] as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      {
+        ...mockPayment,
+        amount: new Prisma.Decimal("125000"),
+        isiAmount: new Prisma.Decimal("6250"),
+        netAmount: new Prisma.Decimal("118750"),
+        originalAmount: null,
+      },
+    ] as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29", siteId: MOCK_SITE_ID });
+
+    expect(res.status).toBe(201);
+    expect(prisma.paymentAdjustment.create).toHaveBeenCalledTimes(1);
+    expect(prisma.paymentAdjustment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        bordereauId: MOCK_BORDEREAU_ID,
+        amount: new Prisma.Decimal("-500"),
+        reason: "Retenue pour matériel perdu",
+      }),
+    });
+    expect(prisma.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          amount: new Prisma.Decimal("124500"),
+          isiAmount: new Prisma.Decimal("6225"),
+          netAmount: new Prisma.Decimal("118275"),
+        }),
+      }),
+    );
+    expect(res.body.bordereaux[0].droppedAdjustments).toBe(1);
   });
 
   it("keeps a site-scoped role inside its own site", async () => {

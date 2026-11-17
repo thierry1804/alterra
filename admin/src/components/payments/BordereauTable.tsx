@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import type { PaymentRow } from "../../lib/payments";
@@ -8,7 +8,7 @@ import {
   formatPaymentAmount,
   paymentStatusVariant,
 } from "../../lib/payments";
-import { Ban, X } from "lucide-react";
+import { Ban, Pencil, X } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton, RowActions } from "../ui/IconButton";
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { toast } from "../../hooks/use-toast";
 import { useCan } from "../../hooks/useCan";
 import { api } from "../../lib/api";
+import PaymentAdjustDialog, { type AdjustablePayment } from "./PaymentAdjustDialog";
 
 interface BordereauTableProps {
   rows: PaymentRow[];
@@ -27,6 +28,8 @@ interface BordereauTableProps {
 export default function BordereauTable({ rows, loading, onCorrected }: BordereauTableProps) {
   const can = useCan();
   const canFail = can("paiement:correction");
+  const queryClient = useQueryClient();
+  const [adjusting, setAdjusting] = useState<AdjustablePayment | null>(null);
   const [failingId, setFailingId] = useState<string | null>(null);
   const [failReason, setFailReason] = useState("");
 
@@ -82,6 +85,11 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right">
                   {formatPaymentAmount(row.amount)}
+                  {row.adjustments.length > 0 && (
+                    <p className="text-xs text-muted">
+                      dont {row.adjustments.length} ajustement(s)
+                    </p>
+                  )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right">
                   {formatPaymentAmount(row.isiAmount)}
@@ -155,6 +163,28 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                       </div>
                     </div>
                   )}
+                  {canFail &&
+                    row.status === "PENDING" &&
+                    row.bordereauStatus === "GENERATED" &&
+                    failingId !== row.id && (
+                      <RowActions>
+                        <IconButton
+                          icon={Pencil}
+                          label="Ajuster le montant"
+                          variant="brand"
+                          onClick={() =>
+                            setAdjusting({
+                              paymentId: row.id,
+                              title: `${row.worker.firstName} ${row.worker.lastName}`,
+                              amount: row.amount,
+                              isiAmount: row.isiAmount,
+                              netAmount: row.netAmount,
+                              adjustments: row.adjustments,
+                            })
+                          }
+                        />
+                      </RowActions>
+                    )}
                 </TableCell>
               </TableRow>
             ))}
@@ -167,6 +197,15 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
           )}
         </TableBody>
       </Table>
+      <PaymentAdjustDialog
+        payment={adjusting}
+        onClose={() => setAdjusting(null)}
+        onChanged={() => {
+          onCorrected();
+          void queryClient.invalidateQueries({ queryKey: ["bordereaux"] });
+          void queryClient.invalidateQueries({ queryKey: ["bordereau"] });
+        }}
+      />
     </div>
   );
 }

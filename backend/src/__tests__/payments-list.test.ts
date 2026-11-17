@@ -22,7 +22,7 @@ vi.mock("../lib/prisma.js", () => ({
 }));
 
 import { prisma } from "../lib/prisma.js";
-import { correctPaymentAmount, listPayments } from "../services/payments/list.service.js";
+import { listPayments } from "../services/payments/list.service.js";
 
 const mockPayment = {
   id: "pay-1",
@@ -33,6 +33,10 @@ const mockPayment = {
   isiAmount: new Prisma.Decimal("6250"),
   netAmount: new Prisma.Decimal("118750"),
   originalAmount: null,
+  bordereauRef: { status: "GENERATED" },
+  adjustments: [
+    { id: "adj-1", amount: new Prisma.Decimal("-500"), reason: "Retenue exceptionnelle" },
+  ],
   description: "Rakoto Paiement MNK",
   bioValid: true,
   status: PaymentStatus.PENDING,
@@ -63,39 +67,9 @@ describe("payments list service", () => {
     expect(result.data[0].amount).toBe("125000");
     expect(result.data[0].isiAmount).toBe("6250");
     expect(result.data[0].netAmount).toBe("118750");
-  });
-
-  it("correctPaymentAmount refuses a payment that belongs to a bordereau", async () => {
-    vi.mocked(prisma.payment.findUniqueOrThrow).mockResolvedValue({
-      ...mockPayment,
-      bordereauId: "bordereau-1",
-    } as never);
-
-    await expect(
-      correctPaymentAmount("pay-1", {
-        amount: 130000,
-        correctionReason: "Correction manuelle admin",
-      }),
-    ).rejects.toMatchObject({ code: "CORRECTION_DISABLED" });
-    expect(prisma.payment.update).not.toHaveBeenCalled();
-  });
-
-  it("correctPaymentAmount updates PENDING payment", async () => {
-    vi.mocked(prisma.payment.findUniqueOrThrow).mockResolvedValue(mockPayment as never);
-    vi.mocked(prisma.payment.update).mockResolvedValue(mockPayment as never);
-
-    await correctPaymentAmount("pay-1", {
-      amount: 130000,
-      correctionReason: "Correction manuelle admin",
-    });
-
-    expect(prisma.payment.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          amount: 130000,
-          correctionReason: "Correction manuelle admin",
-        }),
-      }),
-    );
+    expect(result.data[0].bordereauStatus).toBe("GENERATED");
+    expect(result.data[0].adjustments).toEqual([
+      { id: "adj-1", amount: "-500", reason: "Retenue exceptionnelle" },
+    ]);
   });
 });

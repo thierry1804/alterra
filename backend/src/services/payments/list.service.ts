@@ -29,6 +29,11 @@ export async function listPayments(filters: ListPaymentsFilters) {
   const payments = await prisma.payment.findMany({
     where,
     include: {
+      bordereauRef: { select: { status: true } },
+      adjustments: {
+        select: { id: true, amount: true, reason: true },
+        orderBy: { createdAt: "asc" },
+      },
       worker: {
         select: {
           id: true,
@@ -53,6 +58,12 @@ export async function listPayments(filters: ListPaymentsFilters) {
       amount: payment.amount.toString(),
       isiAmount: payment.isiAmount.toString(),
       netAmount: payment.netAmount.toString(),
+      bordereauStatus: payment.bordereauRef?.status ?? null,
+      adjustments: payment.adjustments.map((adjustment) => ({
+        id: adjustment.id,
+        amount: adjustment.amount.toString(),
+        reason: adjustment.reason,
+      })),
       originalAmount: payment.originalAmount?.toString() ?? null,
       description: payment.description,
       bioValid: payment.bioValid,
@@ -69,62 +80,6 @@ export async function listPayments(filters: ListPaymentsFilters) {
   };
 }
 
-export async function correctPaymentAmount(
-  id: string,
-  input: { amount: number; correctionReason: string },
-) {
-  if (input.correctionReason.trim().length < 10) {
-    throw new ApiError(
-      422,
-      "CORRECTION_REASON_REQUIRED",
-      "Correction reason must be at least 10 characters",
-    );
-  }
-
-  const existing = await prisma.payment.findUniqueOrThrow({ where: { id } });
-
-  if (existing.bordereauId) {
-    throw new ApiError(
-      409,
-      "CORRECTION_DISABLED",
-      "Ce paiement appartient à un bordereau : corrigez le pointage à la source, puis régénérez le bordereau",
-    );
-  }
-
-  if (existing.status !== PaymentStatus.PENDING) {
-    throw new ApiError(
-      422,
-      "PAYMENT_NOT_EDITABLE",
-      "Seuls les paiements PENDING peuvent être modifiés",
-    );
-  }
-
-  if (input.amount <= 0) {
-    throw new ApiError(422, "INVALID_AMOUNT", "Le montant doit être positif");
-  }
-
-  return prisma.payment.update({
-    where: { id },
-    data: {
-      amount: input.amount,
-      correctionReason: input.correctionReason.trim(),
-      originalAmount: existing.originalAmount ?? existing.amount,
-    },
-    include: {
-      worker: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          mvolaNumber: true,
-          matricule: true,
-        },
-      },
-    },
-  });
-}
-
-/** Marque comme échoué un paiement exporté que MVola n'a pas exécuté (relevé sans la ligne, virement rejeté). */
 export async function markPaymentFailed(
   id: string,
   input: { failureReason: string; userId: string; ip?: string; userAgent?: string },

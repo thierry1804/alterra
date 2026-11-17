@@ -69,6 +69,7 @@ describe("route access", () => {
     const removedOnPurpose = new Set([
       "POST /api/v1/invoices/generate",
       "POST /api/v1/invoices/:id/regenerate",
+      "PATCH /api/v1/payments/:id",
     ]);
     expect(
       baseline.map(routeKey).filter((key) => !current.has(key) && !removedOnPurpose.has(key)),
@@ -81,6 +82,8 @@ describe("route access", () => {
       "GET /api/v1/pointages/synthese",
       "POST /api/v1/pointages/validate-technical",
       "GET /api/v1/bordereaux",
+      "POST /api/v1/payments/:id/adjustments",
+      "DELETE /api/v1/payments/adjustments/:id",
       "GET /api/v1/bordereaux/export-queue",
       "POST /api/v1/bordereaux/:id/export",
       "PATCH /api/v1/app-settings/isi",

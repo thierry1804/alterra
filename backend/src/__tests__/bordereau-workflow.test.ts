@@ -76,6 +76,8 @@ function bordereau(overrides: Record<string, unknown> = {}) {
 
 function payment(amount: string, isi: string) {
   return {
+    id: "00000000-0000-4000-8000-0000000000a1",
+    adjustments: [],
     amount: new Prisma.Decimal(amount),
     isiAmount: new Prisma.Decimal(isi),
     netAmount: new Prisma.Decimal(amount).sub(isi),

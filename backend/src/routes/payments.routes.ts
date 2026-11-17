@@ -13,7 +13,6 @@ import {
 import { reconcileMvolaReleve } from "../services/payments/mvola-reconciliation.service.js";
 import { detectMvolaReleveColumns } from "../services/payments/mvola-releve-parser.service.js";
 import {
-  correctPaymentAmount,
   getMvolaExportFile,
   listMvolaExports,
   listPayments,
@@ -24,6 +23,10 @@ import { ApiError } from "../middleware/error-handler.js";
 import type { AuthUser } from "../services/access/auth-user.js";
 import { listBordereaux, listExportQueue } from "../services/payments/bordereaux.service.js";
 import { openInvoice, regenerateInvoice } from "../services/payments/bordereau-invoice.service.js";
+import {
+  addAdjustment,
+  removeAdjustment,
+} from "../services/payments/payment-adjustment.service.js";
 import {
   buildBordereauWorkbook,
   getBordereauDetail,
@@ -92,9 +95,13 @@ const listPaymentsQuery = z.object({
 
 const paymentIdParams = z.object({ id: z.guid() });
 
-const correctPaymentSchema = z.object({
-  amount: z.coerce.number().positive(),
-  correctionReason: z.string().min(10),
+const adjustmentSchema = z.object({
+  amount: z
+    .number()
+    .finite()
+    .refine((value) => value !== 0, "Le montant ne peut pas être nul")
+    .refine((value) => Math.abs(value) <= 1_000_000_000, "Montant trop élevé"),
+  reason: z.string().trim().min(10, "Motif requis (10 caractères minimum)").max(500),
 });
 
 paymentsRouter.get(
@@ -113,17 +120,32 @@ paymentsRouter.get(
   },
 );
 
-paymentsRouter.patch(
-  "/payments/:id",
+paymentsRouter.post(
+  "/payments/:id/adjustments",
   requireAuth,
   requirePermission("paiement:correction"),
   validate(paymentIdParams, "params"),
-  validate(correctPaymentSchema),
+  validate(adjustmentSchema),
   async (req, res, next) => {
     try {
-      const body = req.body as z.infer<typeof correctPaymentSchema>;
-      const payment = await correctPaymentAmount(req.params.id, body);
-      res.json(payment);
+      const body = req.body as z.infer<typeof adjustmentSchema>;
+      const adjustment = await addAdjustment(req.params.id as string, req.user!, body);
+      res.status(201).json({ id: adjustment.id });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.delete(
+  "/payments/adjustments/:id",
+  requireAuth,
+  requirePermission("paiement:correction"),
+  validate(paymentIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      await removeAdjustment(req.params.id as string, req.user!);
+      res.status(204).end();
     } catch (err) {
       next(err);
     }

@@ -87,13 +87,14 @@ export default function PaymentsPage() {
     onSuccess: (res) => {
       setGenerateCorrectionsWarning(null);
       const { bordereaux, skippedSites } = res.data;
+      const dropped = bordereaux.reduce((sum, item) => sum + item.droppedAdjustments, 0);
       const skipped =
         skippedSites.length > 0
           ? ` — ignoré : ${skippedSites.map((site) => site.siteCode).join(", ")}`
           : "";
       toast({
         title: bordereaux.length > 1 ? "Bordereaux générés" : "Bordereau généré",
-        description: `${bordereaux.length} bordereau(x), ${res.data.created} ligne(s) créée(s)${skipped}`,
+        description: `${bordereaux.length} bordereau(x), ${res.data.created} ligne(s) créée(s)${skipped}${dropped > 0 ? ` — ${dropped} ajustement(s) non repris (travailleur sans paiement)` : ""}`,
       });
       void queryClient.invalidateQueries({ queryKey: ["payments"] });
       void queryClient.invalidateQueries({ queryKey: ["bordereaux"] });
