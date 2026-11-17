@@ -63,6 +63,8 @@ const mockPayment = {
   amount: new Prisma.Decimal("125000"),
   isiAmount: new Prisma.Decimal("6250"),
   netAmount: new Prisma.Decimal("118750"),
+  bordereauId: MOCK_BORDEREAU_ID,
+  bordereauRef: { id: MOCK_BORDEREAU_ID, status: "DG_VALIDATED" },
   description: "Jean Rakoto TROUAISON S29 12 MNK ACT01 84",
   bioValid: true,
   status: PaymentStatus.PENDING,
@@ -92,6 +94,7 @@ vi.mock("../lib/prisma.js", () => ({
       updateMany: vi.fn(),
     },
     bordereau: {
+      findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
@@ -552,18 +555,73 @@ describe("Payments API", () => {
     expect(deleteArgs.where).not.toHaveProperty("worker");
   });
 
-  it("GET /payments/:period/export rejects when no exportable lines", async () => {
+  it("GET /payments/:period/export refuses the whole bordereau when a line is blocked", async () => {
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       { ...mockPayment, bioValid: false },
     ] as never);
 
-    const app = createApp();
-    const res = await request(app)
+    const res = await request(createApp())
       .get("/api/v1/payments/S29/export")
       .set("Authorization", adminAuthHeader());
 
     expect(res.status).toBe(422);
-    expect(res.body.code).toBe("NO_EXPORTABLE_PAYMENTS");
+    expect(res.body.code).toBe("EXPORT_BLOCKED");
+    expect(res.body.details.lines[0].reason).toBe("Biométrie non validée");
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("GET /payments/:period/export refuses a bordereau that is not fully validated", async () => {
+    for (const status of ["GENERATED", "FINANCE_VALIDATED"]) {
+      vi.mocked(prisma.payment.findMany).mockResolvedValue([
+        { ...mockPayment, bordereauRef: { id: MOCK_BORDEREAU_ID, status } },
+      ] as never);
+
+      const res = await request(createApp())
+        .get("/api/v1/payments/S29/export")
+        .set("Authorization", adminAuthHeader());
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("BORDEREAU_NOT_VALIDATED");
+    }
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+    expect(minioClient.putObject).not.toHaveBeenCalled();
+  });
+
+  it("GET /payments/:period/export asks for one bordereau at a time", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      mockPayment,
+      { ...mockPayment, id: "other", bordereauId: "00000000-0000-4000-8000-0000000000c1" },
+    ] as never);
+
+    const res = await request(createApp())
+      .get("/api/v1/payments/S29/export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe("SITE_REQUIRED");
+  });
+
+  it("marks the bordereau as exported with the author and the date", async () => {
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const res = await request(createApp())
+      .get("/api/v1/payments/S29/export")
+      .set("Authorization", adminAuthHeader());
+
+    expect(res.status).toBe(200);
+    expect(prisma.bordereau.update).toHaveBeenCalledWith({
+      where: { id: MOCK_BORDEREAU_ID },
+      data: expect.objectContaining({ status: "EXPORTED", exportedById: MOCK_ADMIN_ID }),
+    });
+    expect(prisma.mvolaExportBatch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ bordereauId: MOCK_BORDEREAU_ID }),
+    });
+    expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "EXPORT_BORDEREAU", entityType: "Bordereau" }),
+      }),
+    );
   });
 
   it("POST /payments/:period/regenerate-export rejects when no previous export exists", async () => {
@@ -965,5 +1023,145 @@ describe("Bordereau per site", () => {
       .set("Authorization", header)
       .send({ periodIso: "2026-W29" });
     expect(res.status).toBe(403);
+  });
+});
+
+describe("Export access for the treasury", () => {
+  function header(roleId: string) {
+    return `Bearer ${signAccessToken({
+      sub: MOCK_ADMIN_ID,
+      roleId,
+      siteId: null,
+      teamId: null,
+    })}`;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(basePrisma.auditLog.create).mockResolvedValue({ id: BigInt(1) } as never);
+    vi.mocked(prisma.mvolaExportBatch.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.mvolaExportBatch.create).mockResolvedValue({
+      id: "00000000-0000-4000-8000-0000000000b1",
+      version: 1,
+    } as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.bordereau.update).mockResolvedValue({} as never);
+  });
+
+  function bordereauRow(status: string) {
+    return {
+      id: MOCK_BORDEREAU_ID,
+      siteId: MOCK_SITE_ID,
+      periodIso: "S29",
+      referenceYear: 2026,
+      status,
+    };
+  }
+
+  it("lets the treasury export a bordereau validated by the DG", async () => {
+    vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereauRow("DG_VALIDATED") as never);
+
+    const res = await request(createApp())
+      .post(`/api/v1/bordereaux/${MOCK_BORDEREAU_ID}/export`)
+      .set("Authorization", header(SYSTEM_ROLE_IDS.TRESORERIE));
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("spreadsheetml");
+    expect(res.headers["x-alterra-exported-total"]).toBe("118750");
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          periodIso: "S29",
+          referenceYear: 2026,
+          worker: { siteId: MOCK_SITE_ID },
+        }),
+      }),
+    );
+  });
+
+  it("refuses a bordereau that is not validated or already exported", async () => {
+    for (const [status, code] of [
+      ["GENERATED", "BORDEREAU_NOT_VALIDATED"],
+      ["FINANCE_VALIDATED", "BORDEREAU_NOT_VALIDATED"],
+      ["EXPORTED", "ALREADY_EXPORTED"],
+    ]) {
+      vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereauRow(status) as never);
+      const res = await request(createApp())
+        .post(`/api/v1/bordereaux/${MOCK_BORDEREAU_ID}/export`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.TRESORERIE));
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe(code);
+    }
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("keeps the export to the roles that hold the export permission", async () => {
+    vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereauRow("DG_VALIDATED") as never);
+    for (const roleId of [
+      SYSTEM_ROLE_IDS.FINANCE,
+      SYSTEM_ROLE_IDS.DG,
+      SYSTEM_ROLE_IDS.CONSULTATION,
+      SYSTEM_ROLE_IDS.CHEF_SERVICE,
+    ]) {
+      const res = await request(createApp())
+        .post(`/api/v1/bordereaux/${MOCK_BORDEREAU_ID}/export`)
+        .set("Authorization", header(roleId));
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it("lists only validated and exported bordereaux in the export queue", async () => {
+    vi.mocked(prisma.bordereau.findMany).mockResolvedValue([
+      {
+        id: MOCK_BORDEREAU_ID,
+        siteId: MOCK_SITE_ID,
+        site: { name: "Manankazo", shortCode: "MNK" },
+        periodIso: "S29",
+        referenceYear: 2026,
+        number: 12,
+        version: 1,
+        status: "DG_VALIDATED",
+        exportedAt: null,
+        invoice: { net: new Prisma.Decimal("118750") },
+        exportBatches: [],
+        payments: [
+          {
+            netAmount: new Prisma.Decimal("118750"),
+            bioValid: true,
+            worker: { matricule: "MOC-001", mvolaNumber: "0341234567" },
+          },
+          {
+            netAmount: new Prisma.Decimal("1000"),
+            bioValid: false,
+            worker: { matricule: "MOC-002", mvolaNumber: "0341234568" },
+          },
+        ],
+      },
+    ] as never);
+
+    const res = await request(createApp())
+      .get("/api/v1/bordereaux/export-queue")
+      .set("Authorization", header(SYSTEM_ROLE_IDS.TRESORERIE));
+
+    expect(res.status).toBe(200);
+    expect(prisma.bordereau.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: { in: ["DG_VALIDATED", "EXPORTED"] } }),
+      }),
+    );
+    expect(res.body.data[0]).toEqual(
+      expect.objectContaining({
+        number: 12,
+        totalNet: "119750",
+        invoiceNet: "118750",
+        blockedLines: [{ matricule: "MOC-002", reason: "Biométrie non validée" }],
+      }),
+    );
+
+    const refused = await request(createApp())
+      .get("/api/v1/bordereaux/export-queue")
+      .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
+    expect(refused.status).toBe(403);
   });
 });

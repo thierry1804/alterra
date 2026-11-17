@@ -533,21 +533,24 @@ model Bordereau {
   createdAt     DateTime        @default(now())
   supersededAt  DateTime?
 
-  financeValidatedById String?           @db.Uuid
+  financeValidatedById String?            @db.Uuid
   financeValidatedAt   DateTime?
-  dgValidatedById      String?           @db.Uuid
+  dgValidatedById      String?            @db.Uuid
   dgValidatedAt        DateTime?
   returnReason         String?
-  returnedById         String?           @db.Uuid
+  returnedById         String?            @db.Uuid
   returnedAt           DateTime?
+  exportedAt           DateTime?
+  exportedById         String?            @db.Uuid
   /// Taux et arrondi figés à la génération : un bordereau validé garde ses règles si le réglage change.
-  isiRate              Decimal           @default(0.05) @db.Decimal(6, 4)
-  isiRounding          IsiRounding       @default(UNIT)
+  isiRate              Decimal            @default(0.05) @db.Decimal(6, 4)
+  isiRounding          IsiRounding        @default(UNIT)
   /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
   lines                Json?
   payments             Payment[]
   pointages            Pointage[]
   invoice              BordereauInvoice?
+  exportBatches        MvolaExportBatch[]
 
   @@unique([siteId, periodIso, referenceYear, version])
   @@index([siteId, status])
@@ -584,10 +587,14 @@ model MvolaExportBatch {
   createdById   String?  @db.Uuid
   createdAt     DateTime @default(now())
 
+  bordereauId String?    @db.Uuid
+  bordereau   Bordereau? @relation(fields: [bordereauId], references: [id], onDelete: SetNull)
+
   payments Payment[]
 
   @@unique([periodIso, referenceYear, version])
   @@index([periodIso, referenceYear])
+  @@index([bordereauId])
 }
 
 /// V2

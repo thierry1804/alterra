@@ -2,7 +2,9 @@ import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Download } from "lucide-react";
 import { api } from "../../lib/api";
+import { downloadBlob, filenameFromDisposition } from "../../lib/download";
 import { periodToExportParam } from "../../lib/payments";
+import { useCan } from "../../hooks/useCan";
 import { Button } from "../ui/button";
 import { toast } from "../../hooks/use-toast";
 
@@ -19,68 +21,79 @@ export default function MvolaExportButton({
   disabled,
   onExported,
 }: MvolaExportButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const can = useCan();
   const [includeHeader, setIncludeHeader] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  if (!can("paiement:export")) return null;
 
   async function handleExport() {
     setLoading(true);
     try {
       const exportPeriod = periodToExportParam(periodIso);
-      const response = await api.get(`/payments/${exportPeriod}/export`, {
+      const response = await api.get<Blob>(`/payments/${exportPeriod}/export`, {
         responseType: "blob",
         params: {
           referenceYear: periodIso.match(/^(\d{4})-W/)?.[1],
-          includeHeader,
+          includeHeader: includeHeader ? "true" : "false",
           siteId: siteId || undefined,
         },
       });
 
       const exportedCount = response.headers["x-alterra-exported-count"];
-      const excludedCount = response.headers["x-alterra-excluded-count"];
       const exportedTotal = response.headers["x-alterra-exported-total"];
-      const disposition = response.headers["content-disposition"] as string | undefined;
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? `ALTERRA_MVola_${exportPeriod}.xlsx`;
-
-      const url = URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(
+        response.data,
+        filenameFromDisposition(
+          response.headers["content-disposition"],
+          `ALTERRA_MVola_${exportPeriod}.xlsx`,
+        ),
+      );
 
       toast({
         title: "Export MVola terminé",
-        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${exportedTotal ? `, total net ${Number(exportedTotal).toLocaleString("fr-FR")} Ar` : ""}${excludedCount ? `, ${excludedCount} exclue(s)` : ""}`,
+        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${exportedTotal ? `, total net ${Number(exportedTotal).toLocaleString("fr-FR")} Ar` : ""}`,
       });
       onExported();
     } catch (err) {
-      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur export";
-      toast({ title: "Export échoué", description: String(message), variant: "destructive" });
+      let message = "Erreur export";
+      if (isAxiosError(err)) {
+        const data = err.response?.data;
+        if (data instanceof Blob) {
+          try {
+            message = (JSON.parse(await data.text()) as { message?: string }).message ?? message;
+          } catch {
+            message = "Erreur export";
+          }
+        } else {
+          message = data?.message ?? message;
+        }
+      }
+      toast({ title: "Export échoué", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <>
       <label className="flex items-center gap-2 text-sm text-zinc-700">
         <input
           type="checkbox"
           checked={includeHeader}
           onChange={(event) => setIncludeHeader(event.target.checked)}
         />
-        Inclure l&apos;en-tête
+        Inclure l'en-tête
       </label>
       <Button
         type="button"
         variant="outline"
-        disabled={disabled || loading}
         onClick={() => void handleExport()}
+        disabled={disabled || loading}
       >
-        <Download className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
+        <Download className="h-4 w-4" />
         {loading ? "Export…" : "Export MVola"}
       </Button>
-    </div>
+    </>
   );
 }

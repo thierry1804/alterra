@@ -15,6 +15,7 @@ import { IconButton, RowActions } from "../ui/IconButton";
 import { Input } from "../ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { toast } from "../../hooks/use-toast";
+import { useCan } from "../../hooks/useCan";
 import { api } from "../../lib/api";
 
 interface BordereauTableProps {
@@ -24,6 +25,8 @@ interface BordereauTableProps {
 }
 
 export default function BordereauTable({ rows, loading, onCorrected }: BordereauTableProps) {
+  const can = useCan();
+  const canFail = can("paiement:correction");
   const [failingId, setFailingId] = useState<string | null>(null);
   const [failReason, setFailReason] = useState("");
 
@@ -116,7 +119,7 @@ export default function BordereauTable({ rows, loading, onCorrected }: Bordereau
                   )}
                 </TableCell>
                 <TableCell>
-                  {row.status === "EXPORTED" && failingId !== row.id && (
+                  {canFail && row.status === "EXPORTED" && failingId !== row.id && (
                     <RowActions>
                       <IconButton
                         icon={Ban}

@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileCheck,
+  FileSpreadsheet,
   CreditCard,
   FileStack,
   FileText,
@@ -80,6 +81,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/bordereaux",
     icon: FileCheck,
     access: { all: ["bordereau:lecture"] },
+    section: "Opérations",
+  },
+  {
+    label: "Export MVola",
+    path: "/export-mvola",
+    icon: FileSpreadsheet,
+    access: { all: ["paiement:export"] },
     section: "Opérations",
   },
   {

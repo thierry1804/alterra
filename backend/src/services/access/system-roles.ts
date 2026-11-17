@@ -147,14 +147,15 @@ export const SYSTEM_GROUPS: readonly SystemGroup[] = [
     id: groupId(25),
     code: "G25",
     name: "Paiements — gestion",
-    permissions: [
-      "paiement:generation",
-      "paiement:correction",
-      "paiement:suppression",
-      "paiement:import_statut",
-    ],
+    permissions: ["paiement:generation", "paiement:correction", "paiement:suppression"],
   },
   { id: groupId(26), code: "G26", name: "Export MVola", permissions: ["paiement:export"] },
+  {
+    id: groupId(41),
+    code: "G41",
+    name: "Retour MVola — import",
+    permissions: ["paiement:import_statut"],
+  },
   {
     id: groupId(27),
     code: "G27",
@@ -289,6 +290,9 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
       "G40",
       "G29",
       "G30",
+      "G31",
+      "G32",
+      "G41",
     ],
   },
   {
@@ -359,7 +363,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Export vers MVola des bordereaux validés",
     scope: "TOUS",
     mfaRequired: true,
-    groups: ["G26", "G27", "G29"],
+    groups: ["G26", "G27", "G29", "G41"],
   },
   {
     id: SYSTEM_ROLE_IDS.CONSULTATION,

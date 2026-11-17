@@ -64,17 +64,19 @@ describe("roles of the cahier matrix", () => {
     );
   });
 
-  it("limits the trésorerie to exporting and reading invoices", () => {
+  it("limits the trésorerie to exporting, the MVola return and reading invoices", () => {
     expect(permissionsOf("TRESORERIE").sort()).toEqual([
       "bordereau:lecture",
       "facture:lecture",
       "paiement:export",
+      "paiement:import_statut",
     ]);
   });
 
-  it("never lets one role hold both bordereau validations", () => {
+  it("lets only the administrator hold both bordereau validations", () => {
     for (const entry of SYSTEM_ROLES) {
-      expect(entry.groups.includes("G31") && entry.groups.includes("G32")).toBe(false);
+      const both = entry.groups.includes("G31") && entry.groups.includes("G32");
+      expect(both).toBe(entry.code === "ADMIN");
     }
     expect(role("FINANCE").groups).toContain("G31");
     expect(role("DG").groups).toContain("G32");
@@ -123,7 +125,7 @@ describe("roles of the cahier matrix", () => {
   });
 
   it("keeps the original groups of the three first roles", () => {
-    expect(role("ADMIN").groups).toHaveLength(38);
+    expect(role("ADMIN").groups).toHaveLength(SYSTEM_GROUPS.length);
     expect(role("CHEF_SERVICE").groups).toHaveLength(15);
     expect(role("CHEF_EQUIPE").groups).toHaveLength(9);
   });

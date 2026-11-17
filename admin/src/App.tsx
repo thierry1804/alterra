@@ -26,6 +26,7 @@ import PermissionGuard from "./components/layout/PermissionGuard";
 import AccessRolesPage from "./pages/AccessRoles";
 import TechnicalValidationPage from "./pages/TechnicalValidation";
 import BordereauxPage from "./pages/Bordereaux";
+import MvolaExportPage from "./pages/MvolaExport";
 import { Toaster } from "./components/ui/toaster";
 import { LoadingRow } from "./components/ui/feedback";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
@@ -94,6 +95,7 @@ export default function App() {
               <Route path="/users" element={guard("/users", <UsersPage />)} />
               <Route path="/access" element={guard("/access", <AccessRolesPage />)} />
               <Route path="/bordereaux" element={guard("/bordereaux", <BordereauxPage />)} />
+              <Route path="/export-mvola" element={guard("/export-mvola", <MvolaExportPage />)} />
               <Route path="/payments" element={guard("/payments", <PaymentsPage />)} />
               <Route path="/invoices" element={guard("/invoices", <InvoicesPage />)} />
               <Route path="/reports" element={guard("/reports", <ReportsPage />)} />

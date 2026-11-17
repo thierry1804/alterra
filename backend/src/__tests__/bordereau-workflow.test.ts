@@ -185,13 +185,9 @@ describe("Bordereau validation workflow", () => {
     expect(prisma.bordereau.updateMany).not.toHaveBeenCalled();
   });
 
-  it("keeps validation to the finance and the DG roles", async () => {
+  it("keeps validation to the finance, the DG and the administrator", async () => {
     vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereau() as never);
-    for (const roleId of [
-      SYSTEM_ROLE_IDS.ADMIN,
-      SYSTEM_ROLE_IDS.CONSULTATION,
-      SYSTEM_ROLE_IDS.TRESORERIE,
-    ]) {
+    for (const roleId of [SYSTEM_ROLE_IDS.CONSULTATION, SYSTEM_ROLE_IDS.TRESORERIE]) {
       const res = await request(createApp())
         .post(`/api/v1/bordereaux/${BORDEREAU_ID}/validate-finance`)
         .set("Authorization", header(roleId, FINANCE_USER));

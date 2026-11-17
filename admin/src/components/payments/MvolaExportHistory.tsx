@@ -1,68 +1,70 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { api } from "../../lib/api";
-import type { MvolaExportEntry } from "../../lib/payments";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { TableQueryError } from "../ui/QueryError";
-import { IconButton, RowActions } from "../ui/IconButton";
-import { Badge } from "../ui/badge";
+import { downloadBlob } from "../../lib/download";
+import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
+import { Badge } from "../ui/badge";
+import { IconButton } from "../ui/IconButton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
-interface MvolaExportHistoryProps {
-  refreshKey?: number;
-  /** Filtre optionnel sur la période affichée — sans filtre, toutes les périodes sont listées. */
-  periodIso?: string;
-  referenceYear?: string;
+interface MvolaExportBatchRow {
+  id: string;
+  createdAt: string;
+  userEmail: string | null;
+  periodIso: string;
+  referenceYear: number | null;
+  version: number;
+  isCurrent: boolean;
+  exportedCount: number;
+  filename: string;
 }
 
-/** Bordereaux MVola (export initial + régénérations) : qui, quand, quelle version, combien de lignes. */
+interface MvolaExportHistoryProps {
+  periodIso: string;
+  referenceYear?: string;
+  refreshKey?: number;
+}
+
 export default function MvolaExportHistory({
-  refreshKey,
   periodIso,
   referenceYear,
+  refreshKey,
 }: MvolaExportHistoryProps) {
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const can = useCan();
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["payments-exports", refreshKey, periodIso, referenceYear],
+  const { data } = useQuery({
+    queryKey: ["payments-exports", periodIso, referenceYear, refreshKey],
     queryFn: () =>
       api
-        .get<{ data: MvolaExportEntry[] }>("/payments/exports", {
-          params: periodIso ? { periodIso, referenceYear } : undefined,
+        .get<{ data: MvolaExportBatchRow[] }>("/payments/exports", {
+          params: { periodIso, referenceYear },
         })
         .then((r) => r.data.data),
+    enabled: can("paiement:lecture") && !!periodIso,
   });
 
-  async function handleDownload(entry: MvolaExportEntry) {
-    setDownloadingId(entry.id);
+  if (!can("paiement:lecture")) return null;
+
+  const batches = data ?? [];
+
+  async function download(batch: MvolaExportBatchRow) {
     try {
-      const response = await api.get(`/payments/exports/${entry.id}/download`, {
+      const response = await api.get<Blob>(`/payments/exports/${batch.id}/download`, {
         responseType: "blob",
       });
-      const disposition = response.headers["content-disposition"] as string | undefined;
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? entry.filename ?? "export-mvola.xlsx";
-
-      const url = URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(response.data, batch.filename);
     } catch {
       toast({
         title: "Téléchargement échoué",
-        description: "Impossible de récupérer ce fichier d'export.",
+        description: "Impossible de récupérer le fichier.",
         variant: "destructive",
       });
-    } finally {
-      setDownloadingId(null);
     }
   }
 
   return (
-    <section className="space-y-2">
+    <div className="space-y-2">
       <h2 className="text-sm font-semibold text-zinc-900">Historique des exports MVola</h2>
       <div className="rounded-lg border border-zinc-200">
         <Table>
@@ -78,59 +80,41 @@ export default function MvolaExportHistory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-zinc-500">
-                  Chargement…
-                </TableCell>
-              </TableRow>
-            )}
-            {isError && (
-              <TableQueryError
-                colSpan={7}
-                what="l'historique des exports"
-                onRetry={() => void refetch()}
-              />
-            )}
-            {!isLoading && !isError && (data ?? []).length === 0 && (
+            {batches.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-zinc-500">
                   Aucun export pour le moment.
                 </TableCell>
               </TableRow>
             )}
-            {(data ?? []).map((entry) => (
-              <TableRow key={entry.id}>
+            {batches.map((batch) => (
+              <TableRow key={batch.id}>
                 <TableCell className="whitespace-nowrap">
-                  {new Date(entry.createdAt).toLocaleString("fr-FR")}
+                  {new Date(batch.createdAt).toLocaleString("fr-FR")}
                 </TableCell>
-                <TableCell>{entry.periodIso ?? "-"}</TableCell>
+                <TableCell>{batch.periodIso}</TableCell>
                 <TableCell>
-                  <span className="alterra-num">v{entry.version}</span>
-                  {entry.isCurrent && (
-                    <Badge variant="success" className="ml-2">
-                      Actuel
-                    </Badge>
-                  )}
+                  v{batch.version} {batch.isCurrent && <Badge variant="success">Actuelle</Badge>}
                 </TableCell>
-                <TableCell>{entry.exportedCount ?? "-"}</TableCell>
-                <TableCell className="font-mono text-xs">{entry.filename ?? "-"}</TableCell>
-                <TableCell>{entry.userEmail ?? "-"}</TableCell>
+                <TableCell>{batch.exportedCount}</TableCell>
+                <TableCell className="max-w-[260px] truncate" title={batch.filename}>
+                  {batch.filename}
+                </TableCell>
+                <TableCell>{batch.userEmail ?? "-"}</TableCell>
                 <TableCell>
-                  <RowActions>
+                  {can("paiement:export") && (
                     <IconButton
                       icon={Download}
-                      label="Télécharger ce fichier d'export"
-                      loading={downloadingId === entry.id}
-                      onClick={() => void handleDownload(entry)}
+                      label="Télécharger ce fichier"
+                      onClick={() => void download(batch)}
                     />
-                  </RowActions>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-    </section>
+    </div>
   );
 }

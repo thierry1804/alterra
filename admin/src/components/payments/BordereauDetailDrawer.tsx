@@ -5,6 +5,7 @@ import { Download, FileText } from "lucide-react";
 import { api } from "../../lib/api";
 import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
+import { downloadBlob, filenameFromDisposition } from "../../lib/download";
 import {
   BORDEREAU_STATUS_LABELS,
   bordereauStatusVariant,
@@ -112,14 +113,10 @@ export default function BordereauDetailDrawer({
   async function downloadVersion(id: string) {
     try {
       const response = await api.get<Blob>(`/bordereaux/${id}/download`, { responseType: "blob" });
-      const disposition = String(response.headers["content-disposition"] ?? "");
-      const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "bordereau.xlsx";
-      const url = URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(
+        response.data,
+        filenameFromDisposition(response.headers["content-disposition"], "bordereau.xlsx"),
+      );
     } catch (err) {
       onError(err);
     }

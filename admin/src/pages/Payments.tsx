@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
+import { downloadBlob, filenameFromDisposition } from "../lib/download";
 import { useSiteScope } from "../lib/site-scope";
 import { useBordereaux } from "../hooks/useBordereaux";
 import { useCan } from "../hooks/useCan";
@@ -149,22 +150,18 @@ export default function PaymentsPage() {
   async function handleRegenerate() {
     setRegenerating(true);
     try {
-      const response = await api.post(`/payments/${listPeriod}/regenerate-export`, null, {
+      const response = await api.post<Blob>(`/payments/${listPeriod}/regenerate-export`, null, {
         responseType: "blob",
-        params: { referenceYear },
+        params: { referenceYear, siteId: siteId || undefined },
       });
-      const disposition = response.headers["content-disposition"] as string | undefined;
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? `ALTERRA_MVola_${listPeriod}_regenere.xlsx`;
       const version = response.headers["x-alterra-version"];
-
-      const url = URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(url);
-
+      downloadBlob(
+        response.data,
+        filenameFromDisposition(
+          response.headers["content-disposition"],
+          `ALTERRA_MVola_${listPeriod}_regenere.xlsx`,
+        ),
+      );
       toast({
         title: "Bordereau régénéré",
         description: version ? `Nouvelle version v${version}` : undefined,
@@ -172,12 +169,24 @@ export default function PaymentsPage() {
       void refetch();
       void queryClient.invalidateQueries({ queryKey: ["payments-exports"] });
     } catch (err) {
-      const code = isAxiosError(err) ? err.response?.data?.code : null;
-      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      let code: string | null = null;
+      let message = "Erreur";
+      if (isAxiosError(err)) {
+        const data = err.response?.data;
+        const body =
+          data instanceof Blob
+            ? ((await data.text().then((text) => JSON.parse(text))) as {
+                code?: string;
+                message?: string;
+              })
+            : (data as { code?: string; message?: string } | undefined);
+        code = body?.code ?? null;
+        message = body?.message ?? message;
+      }
       toast({
         title:
           code === "NO_PREVIOUS_EXPORT" ? "Aucun bordereau à régénérer" : "Régénération échouée",
-        description: String(message),
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -271,19 +280,23 @@ export default function PaymentsPage() {
           disabled={stats.exportable === 0}
           onExported={() => void refetch()}
         />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void handleRegenerate()}
-          disabled={regenerating}
-        >
-          <RefreshCw className={`h-4 w-4 ${regenerating ? "animate-spin" : ""}`} />
-          {regenerating ? "Régénération…" : "Régénérer le bordereau"}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
-          Import retour MVola
-        </Button>
-        {deletable && (
+        {can("paiement:export") && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleRegenerate()}
+            disabled={regenerating}
+          >
+            <RefreshCw className={`h-4 w-4 ${regenerating ? "animate-spin" : ""}`} />
+            {regenerating ? "Régénération…" : "Régénérer le bordereau"}
+          </Button>
+        )}
+        {can("paiement:import_statut") && (
+          <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
+            Import retour MVola
+          </Button>
+        )}
+        {can("paiement:suppression") && deletable && (
           <Button
             type="button"
             variant="destructive"

@@ -7,6 +7,8 @@ import { ApiError } from "../../middleware/error-handler.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { isValidMvolaNumber } from "./mvola-description.js";
+import { assertBordereauSite } from "./bordereau-access.js";
+import type { AuthUser } from "../access/auth-user.js";
 
 export interface ExportMvolaResult {
   filename: string;
@@ -92,22 +94,51 @@ export async function exportMvolaPayments(
       status: PaymentStatus.PENDING,
       ...(options.siteId ? { worker: { siteId: options.siteId } } : {}),
     },
-    include: { worker: true },
+    include: { worker: true, bordereauRef: { select: { id: true, status: true } } },
   });
 
-  const exportable = pendingPayments.filter(
-    (payment) => payment.bioValid && payment.netAmount.gt(0),
-  );
-  const excludedCount = pendingPayments.length - exportable.length;
+  if (pendingPayments.length === 0) {
+    throw new ApiError(422, "NO_EXPORTABLE_PAYMENTS", "Aucune ligne à exporter pour cette période");
+  }
 
-  if (exportable.length === 0) {
+  if (pendingPayments.some((payment) => payment.bordereauRef?.status !== "DG_VALIDATED")) {
     throw new ApiError(
-      422,
-      "NO_EXPORTABLE_PAYMENTS",
-      "Aucune ligne exportable (bio OK requise, montant > 0)",
-      { excludedCount },
+      409,
+      "BORDEREAU_NOT_VALIDATED",
+      "Seul un bordereau validé par la finance puis par le DG peut être exporté",
     );
   }
+
+  const bordereauIds = new Set(pendingPayments.map((payment) => payment.bordereauId));
+  if (bordereauIds.size > 1) {
+    throw new ApiError(
+      422,
+      "SITE_REQUIRED",
+      "Plusieurs bordereaux sont à exporter : exportez un bordereau à la fois",
+    );
+  }
+  const bordereauId = pendingPayments[0].bordereauId as string;
+
+  const blocked = pendingPayments.filter(
+    (payment) => !payment.bioValid || !payment.netAmount.gt(0),
+  );
+  if (blocked.length > 0) {
+    throw new ApiError(
+      422,
+      "EXPORT_BLOCKED",
+      "Des lignes du bordereau ne peuvent pas être exportées (biométrie non validée ou montant nul) : le bordereau doit être exporté en entier",
+      {
+        lines: blocked.map((payment) => ({
+          workerId: payment.workerId,
+          matricule: payment.worker.matricule,
+          reason: payment.bioValid ? "Montant nul" : "Biométrie non validée",
+        })),
+      },
+    );
+  }
+
+  const exportable = pendingPayments;
+  const excludedCount = 0;
 
   const invalidMvola = exportable.filter(
     (payment) => !isValidMvolaNumber(payment.worker.mvolaNumber),
@@ -167,6 +198,7 @@ export async function exportMvolaPayments(
         exportedCount: exportable.length,
         excludedCount,
         createdById: options.userId,
+        bordereauId,
       },
     });
     batchId = batch.id;
@@ -176,17 +208,9 @@ export async function exportMvolaPayments(
       data: { exportBatchId: batch.id },
     });
 
-    const exportedBordereaux = await prisma.payment.findMany({
-      where: { id: { in: exportableIds }, bordereauId: { not: null } },
-      select: { bordereauId: true },
-      distinct: ["bordereauId"],
-    });
-    await prisma.bordereau.updateMany({
-      where: {
-        id: { in: exportedBordereaux.map((row) => row.bordereauId as string) },
-        status: "GENERATED",
-      },
-      data: { status: "EXPORTED" },
+    await prisma.bordereau.update({
+      where: { id: bordereauId },
+      data: { status: "EXPORTED", exportedAt, exportedById: options.userId },
     });
   } catch (err) {
     // La revendication a déjà eu lieu : si le fichier ou le bordereau n'a pas pu être produit,
@@ -196,8 +220,8 @@ export async function exportMvolaPayments(
       data: { status: PaymentStatus.PENDING, exportedAt: null, exportBatchId: null },
     });
     await prisma.bordereau.updateMany({
-      where: { status: "EXPORTED", payments: { some: { id: { in: exportableIds } } } },
-      data: { status: "GENERATED" },
+      where: { id: bordereauId, status: "EXPORTED" },
+      data: { status: "DG_VALIDATED", exportedAt: null, exportedById: null },
     });
     if (batchId) {
       await prisma.mvolaExportBatch.deleteMany({ where: { id: batchId } }).catch(() => undefined);
@@ -220,6 +244,17 @@ export async function exportMvolaPayments(
     userAgent: options.userAgent,
   });
 
+  await writeAuditLog({
+    userId: options.userId,
+    action: "EXPORT_BORDEREAU",
+    entityType: "Bordereau",
+    entityId: bordereauId,
+    before: { status: "DG_VALIDATED" },
+    after: { status: "EXPORTED", filename, exportedCount: exportable.length },
+    ip: options.ip,
+    userAgent: options.userAgent,
+  });
+
   return {
     filename,
     buffer,
@@ -229,6 +264,39 @@ export async function exportMvolaPayments(
     version,
     totalAmount: sumNet(exportable),
   };
+}
+
+export async function exportBordereau(
+  bordereauId: string,
+  options: {
+    userId: string;
+    actor?: AuthUser;
+    ip?: string;
+    userAgent?: string;
+    includeHeader?: boolean;
+  },
+): Promise<ExportMvolaResult> {
+  const bordereau = await prisma.bordereau.findUnique({ where: { id: bordereauId } });
+  if (!bordereau) throw new ApiError(404, "NOT_FOUND", "Bordereau introuvable");
+  if (options.actor) assertBordereauSite(options.actor, bordereau.siteId);
+  if (bordereau.status === "EXPORTED") {
+    throw new ApiError(409, "ALREADY_EXPORTED", "Ce bordereau a déjà été exporté");
+  }
+  if (bordereau.status !== "DG_VALIDATED") {
+    throw new ApiError(
+      409,
+      "BORDEREAU_NOT_VALIDATED",
+      "Seul un bordereau validé par la finance puis par le DG peut être exporté",
+    );
+  }
+  return exportMvolaPayments(bordereau.periodIso, {
+    userId: options.userId,
+    ip: options.ip,
+    userAgent: options.userAgent,
+    includeHeader: options.includeHeader,
+    referenceYear: bordereau.referenceYear,
+    siteId: bordereau.siteId,
+  });
 }
 
 /**
@@ -245,6 +313,7 @@ export async function regenerateMvolaExport(
     userAgent?: string;
     referenceYear?: number;
     includeHeader?: boolean;
+    siteId?: string;
   },
 ): Promise<ExportMvolaResult> {
   const { shortPeriod, referenceYear } = resolvePeriod(periodIso, undefined, options.referenceYear);
@@ -269,6 +338,7 @@ export async function regenerateMvolaExport(
       periodIso: shortPeriod,
       referenceYear,
       status: { in: [PaymentStatus.EXPORTED, PaymentStatus.FAILED] },
+      ...(options.siteId ? { worker: { siteId: options.siteId } } : {}),
     },
     include: { worker: true },
   });
@@ -315,6 +385,10 @@ export async function regenerateMvolaExport(
       exportedCount: eligible.length,
       excludedCount: 0,
       createdById: options.userId,
+      bordereauId:
+        new Set(eligible.map((payment) => payment.bordereauId)).size === 1
+          ? eligible[0].bordereauId
+          : null,
     },
   });
 

@@ -81,6 +81,8 @@ describe("route access", () => {
       "GET /api/v1/pointages/synthese",
       "POST /api/v1/pointages/validate-technical",
       "GET /api/v1/bordereaux",
+      "GET /api/v1/bordereaux/export-queue",
+      "POST /api/v1/bordereaux/:id/export",
       "PATCH /api/v1/app-settings/isi",
       "GET /api/v1/bordereaux/:id",
       "GET /api/v1/bordereaux/:id/download",

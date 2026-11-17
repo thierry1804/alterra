@@ -6,6 +6,7 @@ import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
 import {
+  exportBordereau,
   exportMvolaPayments,
   regenerateMvolaExport,
 } from "../services/payments/mvola-export.service.js";
@@ -21,7 +22,7 @@ import {
 import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import type { AuthUser } from "../services/access/auth-user.js";
-import { listBordereaux } from "../services/payments/bordereaux.service.js";
+import { listBordereaux, listExportQueue } from "../services/payments/bordereaux.service.js";
 import { openInvoice, regenerateInvoice } from "../services/payments/bordereau-invoice.service.js";
 import {
   buildBordereauWorkbook,
@@ -236,7 +237,58 @@ paymentsRouter.get(
 );
 
 const bordereauIdParams = z.object({ id: z.guid() });
+const exportQueueQuery = z.object({
+  periodIso: z.string().min(2).max(16).optional(),
+  referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+});
 const returnBordereauSchema = z.object({ reason: z.string().trim().min(10).max(500) });
+
+paymentsRouter.get(
+  "/bordereaux/export-queue",
+  requireAuth,
+  requirePermission("paiement:export"),
+  validate(exportQueueQuery, "query"),
+  async (req, res, next) => {
+    try {
+      res.json(
+        await listExportQueue(req.user!, req.query as unknown as z.infer<typeof exportQueueQuery>),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.post(
+  "/bordereaux/:id/export",
+  requireAuth,
+  requirePermission("paiement:export"),
+  validate(bordereauIdParams, "params"),
+  validate(exportQuerySchema, "query"),
+  async (req, res, next) => {
+    try {
+      const query = req.query as z.infer<typeof exportQuerySchema>;
+      const result = await exportBordereau(req.params.id as string, {
+        userId: req.user!.sub,
+        actor: req.user!,
+        ip: req.ip,
+        userAgent:
+          typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        includeHeader: query.includeHeader === "true",
+      });
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.setHeader("X-ALTERRA-Exported-Count", String(result.exportedCount));
+      res.setHeader("X-ALTERRA-Exported-Total", result.totalAmount);
+      res.send(result.buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 paymentsRouter.get(
   "/bordereaux/:id",
@@ -430,6 +482,7 @@ paymentsRouter.post(
           typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
         referenceYear: query.referenceYear,
         includeHeader: query.includeHeader === "true",
+        siteId: resolveSiteForUser(req.user!, query.siteId),
       });
 
       res.setHeader(

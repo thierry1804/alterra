@@ -217,3 +217,21 @@ export interface BordereauDetail {
   totals: { gross: string; isi: string; net: string; isiRate: string };
   versions: BordereauVersion[];
 }
+
+export interface ExportQueueRow {
+  id: string;
+  siteId: string;
+  siteName: string;
+  siteCode: string;
+  periodIso: string;
+  referenceYear: number;
+  number: number;
+  version: number;
+  status: BordereauStatus;
+  exportedAt: string | null;
+  paymentCount: number;
+  totalNet: string;
+  invoiceNet: string | null;
+  blockedLines: Array<{ matricule: string; reason: string }>;
+  batches: Array<{ id: string; version: number; filename: string; createdAt: string }>;
+}
