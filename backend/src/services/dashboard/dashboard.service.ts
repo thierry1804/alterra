@@ -64,6 +64,9 @@ export interface DashboardSummary {
     pendingPointages: number;
     pendingPaymentsCount: number;
     pendingPaymentsAmount: number;
+    pendingTechnicalPointages: number;
+    bordereauxToValidate: number;
+    bordereauxToExport: number;
   };
   presenceLast7Days: Array<{
     date: string;
@@ -80,9 +83,16 @@ export interface DashboardSummary {
   genderBySite: GenderByGroup[];
 }
 
+export interface DashboardViewer {
+  userId?: string;
+  canValidateFinance: boolean;
+  canValidateDg: boolean;
+}
+
 export async function getDashboardSummary(
-  db: Pick<AppPrisma, "worker" | "pointage" | "payment" | "user" | "team" | "site">,
+  db: Pick<AppPrisma, "worker" | "pointage" | "payment" | "user" | "team" | "site" | "bordereau">,
   siteId?: string,
+  viewer: DashboardViewer = { canValidateFinance: false, canValidateDg: false },
 ): Promise<DashboardSummary> {
   const workerWhere = {
     status: "ACTIVE" as const,
@@ -115,13 +125,38 @@ export async function getDashboardSummary(
   });
 
   const paymentAgg = await db.payment.aggregate({
-    where: { status: "PENDING", ...paymentScope },
-    _sum: { amount: true },
+    where: {
+      status: "PENDING",
+      bordereauRef: { status: "DG_VALIDATED" },
+      ...paymentScope,
+    },
+    _sum: { netAmount: true },
     _count: true,
   });
 
-  const pendingPaymentsAmount = Number(paymentAgg._sum.amount ?? 0);
+  const pendingPaymentsAmount = Number(paymentAgg._sum.netAmount ?? 0);
   const pendingPaymentsCount = paymentAgg._count;
+
+  const bordereauSite = siteId ? { siteId } : {};
+  const pendingTechnicalPointages = await db.pointage.count({
+    where: { status: "VALIDATED", technicalValidatedAt: null, ...pointageScope },
+  });
+  const financeToValidate = viewer.canValidateFinance
+    ? await db.bordereau.count({ where: { status: "GENERATED", ...bordereauSite } })
+    : 0;
+  const dgToValidate = viewer.canValidateDg
+    ? await db.bordereau.count({
+        where: {
+          status: "FINANCE_VALIDATED",
+          ...(viewer.userId ? { financeValidatedById: { not: viewer.userId } } : {}),
+          ...bordereauSite,
+        },
+      })
+    : 0;
+  const bordereauxToValidate = financeToValidate + dgToValidate;
+  const bordereauxToExport = await db.bordereau.count({
+    where: { status: "DG_VALIDATED", ...bordereauSite },
+  });
 
   const today = startOfUtcDay(new Date());
   const presenceLast7Days: DashboardSummary["presenceLast7Days"] = [];
@@ -283,6 +318,9 @@ export async function getDashboardSummary(
       pendingPointages,
       pendingPaymentsCount,
       pendingPaymentsAmount,
+      pendingTechnicalPointages,
+      bordereauxToValidate,
+      bordereauxToExport,
     },
     presenceLast7Days,
     workforceTrend,

@@ -31,7 +31,7 @@ export interface NavItem {
   access: Access;
   section?: string;
   /** Compteur affiché dans le menu (ce qui attend un geste). */
-  badge?: "requests" | "pointages" | "payments";
+  badge?: "requests" | "pointages" | "payments" | "technical" | "bordereaux" | "export";
 }
 
 export const NAV_SECTIONS = ["Pilotage", "Opérations", "Référentiels", "Administration"] as const;
@@ -68,6 +68,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ClipboardCheck,
     access: { all: ["pointage:valider_technique"] },
     section: "Opérations",
+    badge: "technical",
   },
   {
     label: "Badges NFC",
@@ -82,6 +83,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: FileCheck,
     access: { all: ["bordereau:lecture"] },
     section: "Opérations",
+    badge: "bordereaux",
   },
   {
     label: "Export MVola",
@@ -89,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: FileSpreadsheet,
     access: { all: ["paiement:export"] },
     section: "Opérations",
+    badge: "export",
   },
   {
     label: "Paiements",

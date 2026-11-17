@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -33,7 +33,13 @@ import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 import { useAppSettings } from "./hooks/useAppSettings";
 import AppSettingsPage from "./pages/AppSettings";
 
-const queryClient = new QueryClient({
+const queryClient: QueryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: 1,

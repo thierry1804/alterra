@@ -2,7 +2,7 @@ import { Router } from "express";
 
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { requirePermission } from "../middleware/rbac.js";
+import { can, requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error-handler.js";
@@ -26,7 +26,11 @@ dashboardRouter.get(
       const scopedSiteId =
         req.user!.scope !== "TOUS" ? (req.user!.siteId ?? query.siteId) : query.siteId;
 
-      const summary = await getDashboardSummary(prisma, scopedSiteId ?? undefined);
+      const summary = await getDashboardSummary(prisma, scopedSiteId ?? undefined, {
+        userId: req.user!.sub,
+        canValidateFinance: can(req.user, "bordereau:valider_finance"),
+        canValidateDg: can(req.user, "bordereau:valider_dg"),
+      });
       res.json(summary);
     } catch (err) {
       next(err);

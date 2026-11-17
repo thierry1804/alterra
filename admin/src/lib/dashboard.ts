@@ -24,6 +24,9 @@ export interface DashboardSummary {
     pendingPointages: number;
     pendingPaymentsCount: number;
     pendingPaymentsAmount: number;
+    pendingTechnicalPointages: number;
+    bordereauxToValidate: number;
+    bordereauxToExport: number;
   };
   presenceLast7Days: Array<{
     date: string;

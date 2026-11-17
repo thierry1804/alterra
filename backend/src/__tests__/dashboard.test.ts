@@ -13,9 +13,12 @@ function createMockPrisma(overrides: Partial<Record<string, unknown>> = {}) {
     },
     payment: {
       aggregate: vi.fn().mockResolvedValue({
-        _sum: { amount: 125000 },
+        _sum: { netAmount: 125000 },
         _count: 3,
       }),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    bordereau: {
       count: vi.fn().mockResolvedValue(0),
     },
     user: {
@@ -69,5 +72,57 @@ describe("getDashboardSummary", () => {
     expect(prisma.worker.count).toHaveBeenCalledWith({
       where: { status: "ACTIVE", deletedAt: null, siteId },
     });
+  });
+
+  it("counts only DG-validated unexported lines as ready to export, in net", async () => {
+    const prisma = createMockPrisma();
+
+    const summary = await getDashboardSummary(prisma as never);
+
+    expect(prisma.payment.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "PENDING",
+          bordereauRef: { status: "DG_VALIDATED" },
+        }),
+        _sum: { netAmount: true },
+      }),
+    );
+    expect(summary.kpis.pendingPaymentsAmount).toBe(125000);
+  });
+
+  it("counts the bordereaux waiting for the viewer's own validation", async () => {
+    const prisma = createMockPrisma();
+    vi.mocked(prisma.bordereau.count).mockResolvedValue(2);
+
+    const none = await getDashboardSummary(prisma as never);
+    expect(none.kpis.bordereauxToValidate).toBe(0);
+
+    const finance = await getDashboardSummary(prisma as never, undefined, {
+      canValidateFinance: true,
+      canValidateDg: false,
+    });
+    expect(finance.kpis.bordereauxToValidate).toBe(2);
+    expect(prisma.bordereau.count).toHaveBeenCalledWith({ where: { status: "GENERATED" } });
+
+    await getDashboardSummary(prisma as never, undefined, {
+      userId: "u1",
+      canValidateFinance: false,
+      canValidateDg: true,
+    });
+    expect(prisma.bordereau.count).toHaveBeenCalledWith({
+      where: { status: "FINANCE_VALIDATED", financeValidatedById: { not: "u1" } },
+    });
+  });
+
+  it("counts pointages waiting for the technical validation", async () => {
+    const prisma = createMockPrisma();
+
+    const summary = await getDashboardSummary(prisma as never);
+
+    expect(prisma.pointage.count).toHaveBeenCalledWith({
+      where: { status: "VALIDATED", technicalValidatedAt: null },
+    });
+    expect(summary.kpis.pendingTechnicalPointages).toBe(5);
   });
 });

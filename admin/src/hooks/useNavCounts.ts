@@ -14,11 +14,14 @@ export interface NavCounts {
   requests: number;
   pointages: number;
   payments: number;
+  technical: number;
+  bordereaux: number;
+  export: number;
 }
 
 const REFRESH_MS = 60_000;
 
-/** Ce qui attend un geste : demandes en attente, pointages à valider, lignes de paiement non exportées. */
+/** Ce qui attend un geste : demandes, pointages à valider, validations techniques, bordereaux à valider ou à exporter. */
 export function useNavCounts(): NavCounts {
   const { user } = useAuth();
   const decidesRequests = hasPermission(user, "demande:decider");
@@ -54,5 +57,8 @@ export function useNavCounts(): NavCounts {
     requests: requests.data ?? 0,
     pointages: kpis.data?.kpis.pendingPointages ?? 0,
     payments: kpis.data?.kpis.pendingPaymentsCount ?? 0,
+    technical: kpis.data?.kpis.pendingTechnicalPointages ?? 0,
+    bordereaux: kpis.data?.kpis.bordereauxToValidate ?? 0,
+    export: kpis.data?.kpis.bordereauxToExport ?? 0,
   };
 }
