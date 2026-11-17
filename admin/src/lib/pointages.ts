@@ -12,6 +12,14 @@ export interface Pointage {
   clientUuid: string;
   workerId: string;
   subActivityId: string;
+  parcelleId?: string | null;
+  parcelle?: {
+    id: string;
+    code: string | null;
+    name: string;
+    kind: "PARCELLE" | "PEPINIERE";
+    zone: { id: string; name: string; code: string | null };
+  } | null;
   quantity: string;
   unitRateSnapshot: string;
   amount: string;
@@ -58,4 +66,10 @@ export function pointageStatusVariant(
 
 export function formatPointageAmount(amount: string | number): string {
   return `${Number(amount).toLocaleString("fr-MG")} Ar`;
+}
+
+export function parcelleLabel(parcelle: Pointage["parcelle"]): string {
+  if (!parcelle) return "";
+  const place = parcelle.kind === "PEPINIERE" ? "Pépinière" : "Parcelle";
+  return `${parcelle.zone.name} · ${place} ${parcelle.code ?? parcelle.name}`;
 }

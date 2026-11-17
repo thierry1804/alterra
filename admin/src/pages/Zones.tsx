@@ -5,9 +5,19 @@ import { api } from "../lib/api";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useSiteScope } from "../lib/site-scope";
 import type { Site } from "../lib/referentials";
-import { geoPolygonCenter, type GeoPolygon, type Parcelle, type Zone } from "../lib/geo";
+import {
+  geoPolygonCenter,
+  type GeoPolygon,
+  type Parcelle,
+  type ParcelleKind,
+  type Zone,
+} from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
-import { Plus, Pencil, Trash2, Download, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Layers, Upload } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import { Select } from "../components/ui/select";
+import ParcelImportSheet from "../components/geo/ParcelImportSheet";
+import { useCan } from "../hooks/useCan";
 import { Button } from "../components/ui/button";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { Input } from "../components/ui/input";
@@ -53,6 +63,7 @@ interface ZoneForm {
 }
 
 interface ParcelForm {
+  kind: ParcelleKind;
   name: string;
   code: string;
   surfaceHa: string;
@@ -60,10 +71,18 @@ interface ParcelForm {
 }
 
 const emptyZoneForm: ZoneForm = { name: "", code: "", geoPolygon: null };
-const emptyParcelForm: ParcelForm = { name: "", code: "", surfaceHa: "", geoPolygon: null };
+const emptyParcelForm: ParcelForm = {
+  kind: "PARCELLE",
+  name: "",
+  code: "",
+  surfaceHa: "",
+  geoPolygon: null,
+};
 
 export default function ZonesPage() {
   const queryClient = useQueryClient();
+  const can = useCan();
+  const [importOpen, setImportOpen] = useState(false);
   const [siteId, setSiteId] = useSiteScope();
   const [expandedZones, setExpandedZones] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -221,6 +240,7 @@ export default function ZonesPage() {
 
       const surfaceHa = parcelForm.surfaceHa.trim() ? Number(parcelForm.surfaceHa) : undefined;
       const payload = {
+        kind: parcelForm.kind,
         name: parcelForm.name.trim(),
         code: parcelForm.code.trim() || null,
         surfaceHa,
@@ -326,6 +346,7 @@ export default function ZonesPage() {
     setEditingParcel(parcel);
     setParentZoneId(parcel.zoneId);
     setParcelForm({
+      kind: parcel.kind,
       name: parcel.name,
       code: parcel.code ?? "",
       surfaceHa: parcel.surfaceHa ?? "",
@@ -359,6 +380,13 @@ export default function ZonesPage() {
         description="Hiérarchie géographique Site → Zone → Parcelle (GeoJSON)."
         action={
           <div className="flex items-center gap-2">
+            {can("parcelle:ecriture") && can("zone:ecriture") && (
+              <IconButton
+                icon={Upload}
+                label="Importer un fichier CSV"
+                onClick={() => setImportOpen(true)}
+              />
+            )}
             <IconButton icon={Download} label="Exporter" onClick={handleExport} />
             <Button type="button" onClick={openZoneCreate} disabled={!effectiveSiteId}>
               Nouvelle zone
@@ -563,7 +591,10 @@ export default function ZonesPage() {
                             aria-label={`Sélectionner ${parcel.name}`}
                           />
                         </TableCell>
-                        <TableCell className="pl-10 text-zinc-700">{parcel.name}</TableCell>
+                        <TableCell className="pl-10 text-zinc-700">
+                          {parcel.name}{" "}
+                          {parcel.kind === "PEPINIERE" && <Badge variant="info">Pépinière</Badge>}
+                        </TableCell>
                         <TableCell>{parcel.code ?? "-"}</TableCell>
                         <TableCell>
                           {parcel.surfaceHa
@@ -671,6 +702,19 @@ export default function ZonesPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="parcel-kind">Type</Label>
+                  <Select
+                    id="parcel-kind"
+                    value={parcelForm.kind}
+                    onChange={(e) =>
+                      setParcelForm((f) => ({ ...f, kind: e.target.value as ParcelleKind }))
+                    }
+                  >
+                    <option value="PARCELLE">Parcelle</option>
+                    <option value="PEPINIERE">Pépinière</option>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="parcel-surface">Surface (ha)</Label>
                   <Input
                     id="parcel-surface"
@@ -735,6 +779,7 @@ export default function ZonesPage() {
           if (!open) setDeleteConfirm(null);
         }}
       />
+      <ParcelImportSheet open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

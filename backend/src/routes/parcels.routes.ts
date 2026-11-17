@@ -8,7 +8,9 @@ import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
+import { importParcelsCsv } from "../services/geo/parcel-import.service.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
+import { canSeeSite, visibleSiteId } from "../lib/visible-site.js";
 
 export const parcelsRouter = Router();
 
@@ -34,6 +36,7 @@ const createParcelSchema = z.object({
   name: z.string().min(1).max(120),
   code: parcelCodeSchema.optional(),
   surfaceHa: z.number().positive().optional(),
+  kind: z.enum(["PARCELLE", "PEPINIERE"]).optional(),
   geoPolygon: geoPolygonSchema,
 });
 
@@ -41,6 +44,7 @@ const updateParcelSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   code: parcelCodeSchema.optional(),
   surfaceHa: z.number().positive().nullable().optional(),
+  kind: z.enum(["PARCELLE", "PEPINIERE"]).optional(),
   geoPolygon: geoPolygonSchema,
 });
 
@@ -51,7 +55,12 @@ parcelsRouter.get(
   validate(listParcelsQuery, "query"),
   async (req, res, next) => {
     try {
-      const { zoneId, siteId } = req.query as z.infer<typeof listParcelsQuery>;
+      const { zoneId, siteId: requested } = req.query as z.infer<typeof listParcelsQuery>;
+      const siteId = visibleSiteId(req.user!, requested);
+      if (siteId === null) {
+        res.json({ data: [] });
+        return;
+      }
       const where: Prisma.ParcelleWhereInput = {};
       if (zoneId) where.zoneId = zoneId;
       if (siteId) where.zone = { siteId };
@@ -62,6 +71,34 @@ parcelsRouter.get(
         orderBy: [{ zoneId: "asc" }, { name: "asc" }],
       });
       res.json({ data: parcelles });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const importParcelsSchema = z.object({
+  csv: z.string().min(1).max(1_500_000),
+  dryRun: z.boolean().optional(),
+});
+
+parcelsRouter.post(
+  "/parcels/import",
+  requireAuth,
+  requirePermission("zone:ecriture", "parcelle:ecriture"),
+  validate(importParcelsSchema),
+  async (req, res, next) => {
+    try {
+      const body = req.body as z.infer<typeof importParcelsSchema>;
+      res.json(
+        await importParcelsCsv(body.csv, {
+          dryRun: body.dryRun ?? false,
+          userId: req.user!.sub,
+          ip: req.ip,
+          userAgent:
+            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        }),
+      );
     } catch (err) {
       next(err);
     }
@@ -79,7 +116,9 @@ parcelsRouter.get(
         where: { id: req.params.id },
         include: { zone: true },
       });
-      if (!parcelle) throw new ApiError(404, "NOT_FOUND", "Parcelle introuvable");
+      if (!parcelle || !canSeeSite(req.user!, parcelle.zone.siteId)) {
+        throw new ApiError(404, "NOT_FOUND", "Parcelle introuvable");
+      }
       res.json(parcelle);
     } catch (err) {
       next(err);
@@ -103,6 +142,7 @@ parcelsRouter.post(
           name: req.body.name.trim(),
           code: req.body.code ?? undefined,
           surfaceHa: req.body.surfaceHa,
+          kind: req.body.kind,
           geoPolygon: req.body.geoPolygon ?? undefined,
         },
       });

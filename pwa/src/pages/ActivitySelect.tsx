@@ -40,6 +40,28 @@ export default function ActivitySelect() {
   const date = todayIsoDate();
   const [subActivityId, setSubActivityId] = useState("");
   const selectedActivity = activities.find((a) => a.id === subActivityId);
+  const liveZones = useLiveQuery(() => db.zones.toArray(), []);
+  const liveParcelles = useLiveQuery(() => db.parcelles.toArray(), []);
+  const zones = useMemo(
+    () =>
+      (liveZones ?? [])
+        .filter((z) => !user?.siteId || z.siteId === user.siteId)
+        .sort((a, b) => a.name.localeCompare(b.name, "fr", { numeric: true })),
+    [liveZones, user?.siteId],
+  );
+  const allParcelles = useMemo(() => liveParcelles ?? [], [liveParcelles]);
+  const siteHasParcelles = zones.some((z) => allParcelles.some((p) => p.zoneId === z.id));
+  const [zoneId, setZoneId] = useState("");
+  const [parcelleId, setParcelleId] = useState("");
+  const zoneParcelles = useMemo(
+    () =>
+      allParcelles
+        .filter((p) => p.zoneId === zoneId)
+        .sort((a, b) =>
+          (a.code ?? a.name).localeCompare(b.code ?? b.name, "fr", { numeric: true }),
+        ),
+    [allParcelles, zoneId],
+  );
   const [defaultQuantity, setDefaultQuantity] = useState("1");
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -52,6 +74,8 @@ export default function ActivitySelect() {
       if (existing) {
         setSubActivityId(existing.subActivityId);
         setLastUsedId(existing.subActivityId);
+        setZoneId(existing.zoneId ?? "");
+        setParcelleId(existing.parcelleId ?? "");
         setDefaultQuantity(String(existing.defaultQuantity));
       }
       setLoading(false);
@@ -104,8 +128,15 @@ export default function ActivitySelect() {
       return;
     }
 
+    if (siteHasParcelles && (!zoneId || !parcelleId)) {
+      setError("Choisissez la zone et la parcelle (ou la pépinière) avant de continuer.");
+      return;
+    }
+
     await saveDaySession({
       subActivityId,
+      zoneId: zoneId || undefined,
+      parcelleId: parcelleId || undefined,
       date,
       defaultQuantity: quantity,
     });
@@ -169,6 +200,57 @@ export default function ActivitySelect() {
           />
         </div>
       </div>
+
+      {siteHasParcelles && (
+        <div className="grid grid-cols-1 gap-3">
+          <div className="space-y-1">
+            <label htmlFor="zone-select" className="text-xs font-semibold text-zinc-600">
+              Zone
+            </label>
+            <select
+              id="zone-select"
+              value={zoneId}
+              onChange={(event) => {
+                setError(null);
+                setZoneId(event.target.value);
+                setParcelleId("");
+              }}
+              className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-base"
+            >
+              <option value="">Choisir la zone</option>
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="parcelle-select" className="text-xs font-semibold text-zinc-600">
+              Parcelle ou pépinière
+            </label>
+            <select
+              id="parcelle-select"
+              value={parcelleId}
+              disabled={!zoneId}
+              onChange={(event) => {
+                setError(null);
+                setParcelleId(event.target.value);
+              }}
+              className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-base disabled:bg-zinc-50"
+            >
+              <option value="">Choisir la parcelle</option>
+              {zoneParcelles.map((parcelle) => (
+                <option key={parcelle.id} value={parcelle.id}>
+                  {parcelle.kind === "PEPINIERE" ? "Pépinière" : "Parcelle"}{" "}
+                  {parcelle.code ?? parcelle.name}
+                  {parcelle.code ? ` — ${parcelle.name}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Activité</p>
@@ -251,7 +333,7 @@ export default function ActivitySelect() {
         <Button
           size="lg"
           className="w-full justify-between rounded-2xl shadow-lg"
-          disabled={!selectedActivity}
+          disabled={!selectedActivity || (siteHasParcelles && !parcelleId)}
           onClick={() => void handleContinue()}
         >
           <span className="flex w-full min-w-0 items-center justify-between gap-3">

@@ -312,6 +312,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
       "G09",
       "G10",
       "G12",
+      "G14",
       "G16",
       "G17",
       "G19",
@@ -327,7 +328,7 @@ export const SYSTEM_ROLES: readonly SystemRole[] = [
     description: "Saisie terrain pour son équipe",
     scope: "EQUIPE",
     mfaRequired: false,
-    groups: ["G01", "G39", "G02", "G08", "G10", "G12", "G16", "G21", "G40"],
+    groups: ["G01", "G39", "G02", "G08", "G10", "G12", "G14", "G16", "G21", "G40"],
   },
   {
     id: SYSTEM_ROLE_IDS.RESPONSABLE_TECHNIQUE,

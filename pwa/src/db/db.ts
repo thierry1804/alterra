@@ -92,6 +92,22 @@ export interface SettingRecord {
   value: string;
 }
 
+export interface ZoneRecord {
+  id: string;
+  siteId: string;
+  name: string;
+  code: string | null;
+}
+
+export interface ParcelleRecord {
+  id: string;
+  zoneId: string;
+  siteId: string;
+  name: string;
+  code: string | null;
+  kind: "PARCELLE" | "PEPINIERE";
+}
+
 export interface BadgeRecord {
   nfcTagId: string;
   workerId: string;
@@ -145,6 +161,8 @@ class AlterraDB extends Dexie {
   settings!: Table<SettingRecord, string>;
   meta!: Table<MetaRecord, string>;
   badges!: Table<BadgeRecord, string>;
+  zones!: Table<ZoneRecord, string>;
+  parcelles!: Table<ParcelleRecord, string>;
   presenceLog!: Table<PresenceLogRecord, string>;
   biometricTemplates!: Table<BiometricTemplateRecord, string>;
   biometricOfflineChecks!: Table<BiometricOfflineCheckRecord, string>;
@@ -218,6 +236,11 @@ class AlterraDB extends Dexie {
 
     this.version(5).stores({
       requestsOutbox: "clientUuid, kind, status, createdAt",
+    });
+
+    this.version(6).stores({
+      zones: "id, siteId",
+      parcelles: "id, zoneId, siteId",
     });
   }
 }

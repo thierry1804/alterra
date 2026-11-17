@@ -92,6 +92,7 @@ const correctionSchema = z.object({
   subActivityId: z.guid().optional(),
   date: z.coerce.date().optional(),
   photoKey: z.string().min(1).optional(),
+  parcelleId: z.guid().optional(),
   correctionReason: z.string().min(10),
 });
 
@@ -107,6 +108,7 @@ const resubmitSchema = z.object({
   subActivityId: z.guid().optional(),
   date: z.coerce.date().optional(),
   photoKey: z.string().min(1).optional(),
+  parcelleId: z.guid().optional(),
   resubmitReason: z.string().min(10),
 });
 

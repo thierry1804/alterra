@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import type { AccessScope } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { DAY_RULE_DB_ERROR, dayConflictMessage, findDayConflict } from "./day-rule.js";
+import { createParcelleChecker } from "./parcelle-rule.js";
 
 export interface SyncPointageItem {
   clientUuid: string;
@@ -89,6 +90,7 @@ export async function syncPointageBatch(
 ): Promise<SyncPointageResult[]> {
   const enteredById = actor.id;
   const results: SyncPointageResult[] = [];
+  const parcelleChecker = createParcelleChecker();
 
   for (const item of batch) {
     try {
@@ -122,6 +124,16 @@ export async function syncPointageBatch(
             actor.scope === "EQUIPE"
               ? "Ce travailleur n'appartient pas à votre équipe"
               : "Ce travailleur n'appartient pas à votre site",
+        });
+        continue;
+      }
+
+      const parcelleRejection = await parcelleChecker.check(item.parcelleId, worker.siteId);
+      if (parcelleRejection) {
+        results.push({
+          clientUuid: item.clientUuid,
+          status: "rejected",
+          reason: parcelleRejection,
         });
         continue;
       }

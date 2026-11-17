@@ -67,8 +67,15 @@ vi.mock("../lib/prisma.js", () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    parcelle: {
+      findUnique: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
     worker: {
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi
+        .fn()
+        .mockResolvedValue({ siteId: "00000000-0000-4000-8000-000000000010" }),
     },
     biometricCheck: {
       findFirst: vi.fn(),

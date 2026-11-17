@@ -5,6 +5,8 @@ export const SETTING_REFERENTIALS_SYNCED_AT = "referentialsSyncedAt";
 
 export interface DaySession {
   subActivityId: string;
+  zoneId?: string;
+  parcelleId?: string;
   date: string;
   defaultQuantity: number;
 }

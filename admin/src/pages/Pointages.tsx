@@ -11,6 +11,7 @@ import {
   POINTAGE_STATUS_LABELS,
   formatPointageAmount,
   pointageStatusVariant,
+  parcelleLabel,
 } from "../lib/pointages";
 import type { ActivitySubActivity, Worker } from "../lib/referentials";
 import { formatDate } from "../lib/referentials";
@@ -189,6 +190,7 @@ export default function PointagesPage() {
           { header: "Date", accessor: (p) => formatDate(p.date) },
           { header: "MOC", accessor: (p) => workerLabel(p.workerId) },
           { header: "Activité", accessor: (p) => activityLabel(p.subActivityId) },
+          { header: "Zone / parcelle", accessor: (p) => parcelleLabel(p.parcelle) },
           { header: "Quantité", accessor: (p) => Number(p.quantity) },
           { header: "Montant (Ar)", accessor: (p) => Number(p.amount) },
           { header: "Statut", accessor: (p) => POINTAGE_STATUS_LABELS[p.status] },
@@ -475,6 +477,11 @@ export default function PointagesPage() {
                   </TableCell>
                   <TableCell className="text-zinc-600">
                     {activityLabel(pointage.subActivityId)}
+                    {pointage.parcelle && (
+                      <span className="block text-xs text-zinc-500">
+                        {parcelleLabel(pointage.parcelle)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell numeric>{pointage.quantity}</TableCell>
                   <TableCell numeric className="font-medium text-zinc-900">

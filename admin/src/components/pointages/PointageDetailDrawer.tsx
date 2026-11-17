@@ -8,6 +8,7 @@ import {
   POINTAGE_STATUS_LABELS,
   formatPointageAmount,
   pointageStatusVariant,
+  parcelleLabel,
 } from "../../lib/pointages";
 import type { ActivitySubActivity, Worker } from "../../lib/referentials";
 import { formatDate } from "../../lib/referentials";
@@ -231,6 +232,9 @@ export default function PointageDetailDrawer({
               {subActivity?.label ?? pointage.subActivityId} · {pointage.quantity}{" "}
               {subActivity?.unit?.label ?? ""}
             </p>
+            {pointage.parcelle && (
+              <p className="text-sm text-zinc-600">{parcelleLabel(pointage.parcelle)}</p>
+            )}
           </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm">

@@ -168,6 +168,7 @@ export default function BatchEntry() {
             clientUuid,
             workerId: worker.id,
             subActivityId: session.subActivityId,
+            parcelleId: session.parcelleId,
             quantity: parseDecimal(value.quantity),
             date: session.date,
             createdByClientAt: nowIso,

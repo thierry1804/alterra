@@ -9,6 +9,7 @@ import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
+import { canSeeSite, visibleSiteId } from "../lib/visible-site.js";
 
 export const zonesRouter = Router();
 
@@ -48,7 +49,12 @@ zonesRouter.get(
   validate(listZonesQuery, "query"),
   async (req, res, next) => {
     try {
-      const { siteId } = req.query as z.infer<typeof listZonesQuery>;
+      const requested = (req.query as z.infer<typeof listZonesQuery>).siteId;
+      const siteId = visibleSiteId(req.user!, requested);
+      if (siteId === null) {
+        res.json({ data: [] });
+        return;
+      }
       const zones = await prisma.zone.findMany({
         where: siteId ? { siteId } : {},
         include: { _count: { select: { parcelles: true } } },
@@ -72,7 +78,9 @@ zonesRouter.get(
         where: { id: req.params.id },
         include: { parcelles: { orderBy: { name: "asc" } } },
       });
-      if (!zone) throw new ApiError(404, "NOT_FOUND", "Zone introuvable");
+      if (!zone || !canSeeSite(req.user!, zone.siteId)) {
+        throw new ApiError(404, "NOT_FOUND", "Zone introuvable");
+      }
       res.json(zone);
     } catch (err) {
       next(err);

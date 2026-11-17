@@ -1,5 +1,13 @@
 import { api } from "../lib/api";
-import { db, setSetting, type ActivityRecord, type BadgeRecord, type WorkerRecord } from "../db/db";
+import {
+  db,
+  setSetting,
+  type ActivityRecord,
+  type BadgeRecord,
+  type ParcelleRecord,
+  type WorkerRecord,
+  type ZoneRecord,
+} from "../db/db";
 import { SETTING_REFERENTIALS_SYNCED_AT } from "../lib/day-session";
 import { normalizeTagId } from "../lib/nfc";
 
@@ -30,6 +38,7 @@ export interface ReferentialSyncResult {
   workers: number;
   activities: number;
   badges: number;
+  parcelles: number;
 }
 
 export async function syncReferentials(options: {
@@ -41,6 +50,7 @@ export async function syncReferentials(options: {
       workers: await db.workers.count(),
       activities: await db.activities.count(),
       badges: await db.badges.count(),
+      parcelles: await db.parcelles.count(),
     };
   }
 
@@ -119,16 +129,62 @@ export async function syncReferentials(options: {
     workerId: badge.workerId,
   }));
 
-  await db.transaction("rw", db.workers, db.activities, db.badges, async () => {
-    await db.workers.clear();
-    await db.activities.clear();
-    await db.badges.clear();
-    if (workers.length > 0) await db.workers.bulkPut(workers);
-    if (activities.length > 0) await db.activities.bulkPut(activities);
-    if (badges.length > 0) await db.badges.bulkPut(badges);
-  });
+  const geoParams: Record<string, string> = {};
+  if (options.siteId) geoParams.siteId = options.siteId;
+
+  const zonesResponse = await api.get<{
+    data: Array<{ id: string; siteId: string; name: string; code: string | null }>;
+  }>("/zones", { params: geoParams });
+  const zones: ZoneRecord[] = zonesResponse.data.data.map((zone) => ({
+    id: zone.id,
+    siteId: zone.siteId,
+    name: zone.name,
+    code: zone.code,
+  }));
+
+  const parcelsResponse = await api.get<{
+    data: Array<{
+      id: string;
+      zoneId: string;
+      name: string;
+      code: string | null;
+      kind: "PARCELLE" | "PEPINIERE";
+      zone?: { siteId: string };
+    }>;
+  }>("/parcels", { params: geoParams });
+  const siteByZone = new Map(zones.map((zone) => [zone.id, zone.siteId]));
+  const parcelles: ParcelleRecord[] = parcelsResponse.data.data.map((parcel) => ({
+    id: parcel.id,
+    zoneId: parcel.zoneId,
+    siteId: parcel.zone?.siteId ?? siteByZone.get(parcel.zoneId) ?? "",
+    name: parcel.name,
+    code: parcel.code,
+    kind: parcel.kind,
+  }));
+
+  await db.transaction(
+    "rw",
+    [db.workers, db.activities, db.badges, db.zones, db.parcelles],
+    async () => {
+      await db.workers.clear();
+      await db.activities.clear();
+      await db.badges.clear();
+      await db.zones.clear();
+      await db.parcelles.clear();
+      if (zones.length > 0) await db.zones.bulkPut(zones);
+      if (parcelles.length > 0) await db.parcelles.bulkPut(parcelles);
+      if (workers.length > 0) await db.workers.bulkPut(workers);
+      if (activities.length > 0) await db.activities.bulkPut(activities);
+      if (badges.length > 0) await db.badges.bulkPut(badges);
+    },
+  );
 
   await setSetting(SETTING_REFERENTIALS_SYNCED_AT, new Date().toISOString());
 
-  return { workers: workers.length, activities: activities.length, badges: badges.length };
+  return {
+    workers: workers.length,
+    activities: activities.length,
+    badges: badges.length,
+    parcelles: parcelles.length,
+  };
 }

@@ -58,8 +58,17 @@ export interface PointageListItem {
   bioCheck: PointageBioCheckSummary | null;
   /** MOC concerné : évite au client d'appeler GET /workers/:id pour chaque ligne. */
   worker: Worker;
+  parcelle: ParcelleSummary | null;
   /** Qui a saisi — non accessible via GET /users (permission utilisateur:lecture), donc résolu ici. */
   enteredBy: EnteredBySummary | null;
+}
+
+export interface ParcelleSummary {
+  id: string;
+  code: string | null;
+  name: string;
+  kind: string;
+  zone: { id: string; name: string; code: string | null };
 }
 
 export interface EnteredBySummary {
@@ -130,7 +139,18 @@ export async function listPointages(filters: ListPointagesFilters) {
   const pointages = await prisma.pointage.findMany({
     where,
     take: take + 1,
-    include: { worker: true },
+    include: {
+      worker: true,
+      parcelle: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          kind: true,
+          zone: { select: { id: true, name: true, code: true } },
+        },
+      },
+    },
     ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
     orderBy: buildOrderBy(filters.orderBy, filters.dir ?? "asc"),
   });

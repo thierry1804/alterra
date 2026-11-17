@@ -40,6 +40,10 @@ const AUTHENTICATED_WITHOUT_PERMISSION = new Set([
 const KNOWN_ROLE_GAINS: Record<string, string[]> = {
   "PATCH /api/v1/pointages/:id/photo": ["ADMIN"],
   "PATCH /api/v1/pointages/:id/resubmit": ["ADMIN"],
+  "GET /api/v1/zones": ["CHEF_EQUIPE", "CHEF_SERVICE"],
+  "GET /api/v1/zones/:id": ["CHEF_EQUIPE", "CHEF_SERVICE"],
+  "GET /api/v1/parcels": ["CHEF_EQUIPE", "CHEF_SERVICE"],
+  "GET /api/v1/parcels/:id": ["CHEF_EQUIPE", "CHEF_SERVICE"],
 };
 
 function routeKey(route: { method: string; path: string }): string {
@@ -94,6 +98,7 @@ describe("route access", () => {
       "POST /api/v1/bordereaux/:id/validate-finance",
       "POST /api/v1/bordereaux/:id/validate-dg",
       "POST /api/v1/bordereaux/:id/return",
+      "POST /api/v1/parcels/import",
     ]);
     const added = routes.map(routeKey).filter((key) => !before.has(key));
     expect(added.filter((key) => !allowed.has(key) && !key.includes("/api/v1/access/"))).toEqual(

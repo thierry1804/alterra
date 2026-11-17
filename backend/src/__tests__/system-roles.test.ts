@@ -126,8 +126,8 @@ describe("roles of the cahier matrix", () => {
 
   it("keeps the original groups of the three first roles", () => {
     expect(role("ADMIN").groups).toHaveLength(SYSTEM_GROUPS.length);
-    expect(role("CHEF_SERVICE").groups).toHaveLength(15);
-    expect(role("CHEF_EQUIPE").groups).toHaveLength(9);
+    expect(role("CHEF_SERVICE").groups).toHaveLength(16);
+    expect(role("CHEF_EQUIPE").groups).toHaveLength(10);
   });
 });
 

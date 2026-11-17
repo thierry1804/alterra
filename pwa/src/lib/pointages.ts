@@ -16,6 +16,8 @@ export interface Pointage {
   id: string;
   workerId: string;
   subActivityId: string;
+  parcelleId?: string | null;
+  parcelle?: { id: string; code: string | null; name: string } | null;
   quantity: string;
   amount: string;
   date: string;

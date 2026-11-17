@@ -4,12 +4,14 @@ import { basePrisma } from "../../lib/prisma-base.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { getRequestContext } from "../../middleware/prisma-rls.js";
 import { DAY_RULE_DB_ERROR, dayConflictMessage, findDayConflict, type Db } from "./day-rule.js";
+import { createParcelleChecker } from "./parcelle-rule.js";
 
 export interface PointageEditInput {
   quantity?: number;
   subActivityId?: string;
   date?: Date;
   photoKey?: string;
+  parcelleId?: string;
 }
 
 function toJson(value: unknown): Prisma.InputJsonValue | undefined {
@@ -32,6 +34,19 @@ async function buildEditData(
   }
 
   if (input.date !== undefined) updateData.date = input.date;
+
+  if (input.parcelleId !== undefined || before.status === "REJECTED") {
+    const worker = await prisma.worker.findUniqueOrThrow({
+      where: { id: before.workerId },
+      select: { siteId: true },
+    });
+    const rejection = await createParcelleChecker().check(
+      input.parcelleId ?? before.parcelleId,
+      worker.siteId,
+    );
+    if (rejection) throw new ApiError(422, "PARCELLE_INVALID", rejection);
+    if (input.parcelleId !== undefined) updateData.parcelleId = input.parcelleId;
+  }
   if (input.photoKey?.startsWith("pointages/")) updateData.photoKey = input.photoKey;
 
   let unitRate = Number(before.unitRateSnapshot);

@@ -29,6 +29,7 @@ function formatDate(value: string): string {
 interface EditDraft {
   quantity: string;
   subActivityId: string;
+  parcelleId: string;
   date: string;
   resubmitReason: string;
   photoBlob: Blob | null;
@@ -39,6 +40,18 @@ export default function MyPointages() {
   const { user } = useAuth();
   const liveActivities = useLiveQuery(() => db.activities.filter((a) => a.active).toArray(), []);
   const activities = useMemo(() => liveActivities ?? [], [liveActivities]);
+  const liveParcelles = useLiveQuery(() => db.parcelles.toArray(), []);
+  const liveZones = useLiveQuery(() => db.zones.toArray(), []);
+  const parcelleOptions = useMemo(() => {
+    const zoneNames = new Map((liveZones ?? []).map((z) => [z.id, z.name]));
+    return (liveParcelles ?? [])
+      .filter((p) => !user?.siteId || p.siteId === user.siteId)
+      .map((p) => ({
+        id: p.id,
+        label: `${zoneNames.get(p.zoneId) ?? ""} · ${p.kind === "PEPINIERE" ? "Pépinière" : "Parcelle"} ${p.code ?? p.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
+  }, [liveParcelles, liveZones, user?.siteId]);
 
   const [pointages, setPointages] = useState<Pointage[]>([]);
   const [workersMap, setWorkersMap] = useState<Map<string, WorkerSummary>>(new Map());
@@ -129,6 +142,7 @@ export default function MyPointages() {
       drafts[pointage.id] ?? {
         quantity: pointage.quantity,
         subActivityId: pointage.subActivityId,
+        parcelleId: pointage.parcelleId ?? "",
         date: pointage.date.slice(0, 10),
         resubmitReason: "",
         photoBlob: null,
@@ -146,6 +160,10 @@ export default function MyPointages() {
 
   async function handleResubmit(pointage: Pointage) {
     const draft = draftFor(pointage);
+    if (parcelleOptions.length > 0 && !draft.parcelleId) {
+      setError("Choisissez la zone et la parcelle (ou la pépinière) avant de renvoyer.");
+      return;
+    }
     if (draft.resubmitReason.trim().length < 10) {
       setError("Expliquez la correction en au moins 10 caractères.");
       return;
@@ -160,6 +178,7 @@ export default function MyPointages() {
       await api.patch(`/pointages/${pointage.id}/resubmit`, {
         quantity: Number(draft.quantity),
         subActivityId: draft.subActivityId,
+        parcelleId: draft.parcelleId || undefined,
         date: draft.date,
         photoKey,
         resubmitReason: draft.resubmitReason.trim(),
@@ -342,6 +361,24 @@ export default function MyPointages() {
                         ))}
                       </select>
                     </div>
+
+                    {parcelleOptions.length > 0 && (
+                      <div className="space-y-1">
+                        <label className="text-xs text-zinc-600">Zone et parcelle</label>
+                        <select
+                          value={draft.parcelleId}
+                          onChange={(e) => updateDraft(pointage, { parcelleId: e.target.value })}
+                          className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                        >
+                          <option value="">Choisir la parcelle</option>
+                          {parcelleOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <PhotoCapture
                       label="Photo"

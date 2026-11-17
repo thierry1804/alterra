@@ -13,8 +13,11 @@ export interface Zone {
   _count?: { parcelles: number };
 }
 
+export type ParcelleKind = "PARCELLE" | "PEPINIERE";
+
 export interface Parcelle {
   id: string;
+  kind: ParcelleKind;
   zoneId: string;
   name: string;
   code: string | null;
