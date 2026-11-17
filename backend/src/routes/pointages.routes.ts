@@ -63,6 +63,10 @@ const synthesisQuery = z.object({
   weekTo: z.string().regex(WEEK_ISO_PATTERN).optional(),
   siteId: z.guid().optional(),
   subActivityId: z.guid().optional(),
+  categoryId: z.guid().optional(),
+  group: z.enum(["TO_VALIDATE", "PENDING_SITE", "VALIDATED", "ALL"]).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 const technicalValidationSchema = z.object({
@@ -177,7 +181,7 @@ pointagesRouter.get(
   validate(synthesisQuery, "query"),
   async (req, res, next) => {
     try {
-      res.json(await getPointageSynthesis(req.query as z.infer<typeof synthesisQuery>));
+      res.json(await getPointageSynthesis(req.query as z.infer<typeof synthesisQuery>, req.user!));
     } catch (err) {
       next(err);
     }

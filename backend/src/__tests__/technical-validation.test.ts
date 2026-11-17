@@ -8,17 +8,13 @@ import {
   SYSTEM_ROLE_IDS,
   systemRolePermissions,
 } from "../services/access/system-roles.js";
-import {
-  aggregateSynthesis,
-  type SynthesisActivityInfo,
-  type SynthesisSiteInfo,
-  type SynthesisSourceRow,
-} from "../services/pointages/synthesis.service.js";
 
 vi.mock("../lib/prisma.js", () => {
   const db = {
     pointage: { findMany: vi.fn(), updateMany: vi.fn() },
     site: { findMany: vi.fn() },
+    activityCategory: { findMany: vi.fn() },
+    $queryRaw: vi.fn(),
     biometricCheck: { findMany: vi.fn() },
     user: { findMany: vi.fn() },
   };
@@ -30,18 +26,22 @@ import { prisma } from "../lib/prisma.js";
 import { basePrisma as auditClient } from "../lib/prisma-base.js";
 
 const TECHNICAL_ROLE_ID = "00000000-0000-4000-8000-0000000000c1";
+const SITE_ROLE_ID = "00000000-0000-4000-8000-0000000000c3";
 const MASKED_ROLE_ID = "00000000-0000-4000-8000-0000000000c2";
 const SITE_ID = "00000000-0000-4000-8000-000000000010";
 const OTHER_SITE_ID = "00000000-0000-4000-8000-000000000011";
 const ACTIVITY_ID = "00000000-0000-4000-8000-000000000020";
 const WORKER_A = "00000000-0000-4000-8000-0000000000a1";
-const WORKER_B = "00000000-0000-4000-8000-0000000000a2";
 
-function customRole(roleId: string, permissions: string[]): RoleAccess {
+function customRole(
+  roleId: string,
+  permissions: string[],
+  scope: RoleAccess["scope"] = "TOUS",
+): RoleAccess {
   return {
     roleId,
     roleName: "Test",
-    scope: "TOUS",
+    scope,
     mfaRequired: false,
     permissions: new Set(permissions),
   };
@@ -63,110 +63,16 @@ function useRoles(...extra: RoleAccess[]) {
   });
 }
 
-function header(roleId: string, sub = "00000000-0000-4000-8000-000000000001") {
-  return `Bearer ${signAccessToken({ sub, roleId, siteId: null, teamId: null })}`;
+function header(
+  roleId: string,
+  sub = "00000000-0000-4000-8000-000000000001",
+  siteId: string | null = null,
+  teamId: string | null = null,
+) {
+  return `Bearer ${signAccessToken({ sub, roleId, siteId, teamId })}`;
 }
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
-
-function row(overrides: Partial<SynthesisSourceRow> = {}): SynthesisSourceRow {
-  return {
-    date: day("2026-11-17"),
-    workerId: WORKER_A,
-    siteId: SITE_ID,
-    subActivityId: ACTIVITY_ID,
-    quantity: "10",
-    amount: "4000",
-    status: "VALIDATED",
-    technicalValidatedAt: null,
-    ...overrides,
-  };
-}
-
-const activities = new Map<string, SynthesisActivityInfo>([
-  [
-    ACTIVITY_ID,
-    { label: "Trouaison 40cm x 40cm", categoryLabel: "Préparation du sol", unit: "trou" },
-  ],
-]);
-const sites = new Map<string, SynthesisSiteInfo>([
-  [SITE_ID, { code: "MNK", name: "Manankazo" }],
-  [OTHER_SITE_ID, { code: "ANT", name: "Antsampanana" }],
-]);
-
-describe("aggregateSynthesis", () => {
-  it("counts distinct people, sums quantity and cost per week, site and activity", () => {
-    const result = aggregateSynthesis(
-      [
-        row(),
-        row({ date: day("2026-11-18"), quantity: "5.5", amount: "2200.50" }),
-        row({ workerId: WORKER_B, quantity: "4", amount: "1600" }),
-      ],
-      activities,
-      sites,
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      weekIso: "2026-W47",
-      siteCode: "MNK",
-      activityLabel: "Trouaison 40cm x 40cm",
-      unit: "trou",
-      people: 2,
-      pointages: 3,
-      quantity: 19.5,
-      cost: 7800.5,
-    });
-  });
-
-  it("splits the status buckets and keeps rejected pointages out of the totals", () => {
-    const [summary] = aggregateSynthesis(
-      [
-        row({ status: "PENDING" }),
-        row({ status: "NEEDS_CLARIFICATION", workerId: WORKER_B }),
-        row({ status: "VALIDATED" }),
-        row({ status: "VALIDATED", technicalValidatedAt: day("2026-11-19") }),
-        row({ status: "REJECTED", amount: "99999", quantity: "99" }),
-      ],
-      activities,
-      sites,
-    );
-
-    expect(summary).toMatchObject({
-      pendingSite: 2,
-      toValidate: 1,
-      validatedTechnical: 1,
-      rejected: 1,
-      pointages: 4,
-      cost: 16000,
-      quantity: 40,
-    });
-  });
-
-  it("puts Sunday in the ISO week that started on the previous Monday", () => {
-    const result = aggregateSynthesis(
-      [row({ date: day("2026-11-22") }), row({ date: day("2026-11-23") })],
-      activities,
-      sites,
-    );
-
-    expect(result.map((entry) => entry.weekIso)).toEqual(["2026-W48", "2026-W47"]);
-  });
-
-  it("separates sites and sorts recent weeks first, then site, then activity", () => {
-    const result = aggregateSynthesis(
-      [row({ date: day("2026-11-10") }), row({ siteId: OTHER_SITE_ID }), row()],
-      activities,
-      sites,
-    );
-
-    expect(result.map((entry) => `${entry.weekIso} ${entry.siteCode}`)).toEqual([
-      "2026-W47 ANT",
-      "2026-W47 MNK",
-      "2026-W46 MNK",
-    ]);
-  });
-});
 
 describe("technical validation routes", () => {
   beforeEach(() => {
@@ -236,24 +142,54 @@ describe("technical validation routes", () => {
     expect(prisma.pointage.updateMany).not.toHaveBeenCalled();
   });
 
-  it("returns the synthesis for the requested weeks", async () => {
-    vi.mocked(prisma.pointage.findMany).mockResolvedValue([
-      {
-        date: day("2026-11-17"),
-        workerId: WORKER_A,
-        subActivityId: ACTIVITY_ID,
-        quantity: "10",
-        amount: "4000",
-        status: "VALIDATED",
-        technicalValidatedAt: null,
-        worker: { siteId: SITE_ID },
-        subActivity: {
-          label: "Trouaison 40cm x 40cm",
-          unit: { label: "trou" },
-          category: { label: "Préparation du sol" },
-        },
-      },
+  const lotRecord = {
+    week_iso: "2026-W47",
+    site_id: SITE_ID,
+    sub_id: ACTIVITY_ID,
+    site_code: "MNK",
+    site_name: "Manankazo",
+    activity_label: "Trouaison 40cm x 40cm",
+    category_label: "Préparation du sol",
+    unit_label: "trou",
+    people: 2,
+    quantity: "19.5",
+    cost: "7800.5",
+    pointages: 3,
+    pending_site: 1,
+    to_validate: 2,
+    validated_technical: 0,
+    rejected: 0,
+  };
+  const summaryRecord = {
+    lots_to_validate: 1,
+    lots_pending_site: 1,
+    lots_validated: 0,
+    lots_all: 1,
+    cost: "7800.5",
+    pending_site: BigInt(1),
+    to_validate: BigInt(2),
+    validated_technical: BigInt(0),
+  };
+
+  function sqlValues(call: unknown[]): unknown[] {
+    const flatten = (value: unknown): unknown[] =>
+      value && typeof value === "object" && "values" in value
+        ? (value as { values: unknown[] }).values.flatMap(flatten)
+        : [value];
+    return call.slice(1).flatMap(flatten);
+  }
+
+  function mockSynthesisQueries(rows: unknown[] = [lotRecord]) {
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce(rows as never)
+      .mockResolvedValueOnce([summaryRecord] as never);
+    vi.mocked(prisma.activityCategory.findMany).mockResolvedValue([
+      { id: "cat-1", label: "Préparation du sol" },
     ] as never);
+  }
+
+  it("returns the synthesis with counts, totals and categories", async () => {
+    mockSynthesisQueries();
 
     const res = await request(createApp())
       .get("/api/v1/pointages/synthese")
@@ -266,16 +202,68 @@ describe("technical validation routes", () => {
       expect.objectContaining({
         weekIso: "2026-W47",
         siteCode: "MNK",
-        people: 1,
-        cost: 4000,
-        toValidate: 1,
+        unit: "trou",
+        people: 2,
+        quantity: 19.5,
+        cost: 7800.5,
+        toValidate: 2,
       }),
     ]);
-    expect(prisma.pointage.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { date: { gte: day("2026-11-09"), lte: day("2026-11-22") } },
-      }),
-    );
+    expect(res.body.counts).toEqual({ TO_VALIDATE: 1, PENDING_SITE: 1, VALIDATED: 0, ALL: 1 });
+    expect(res.body.totals).toEqual({
+      cost: 7800.5,
+      pendingSite: 1,
+      toValidate: 2,
+      validatedTechnical: 0,
+    });
+    expect(res.body.categories).toEqual([{ id: "cat-1", label: "Préparation du sol" }]);
+    expect(res.body.hasMore).toBe(false);
+    expect(res.body.nextOffset).toBeNull();
+    expect(prisma.pointage.findMany).not.toHaveBeenCalled();
+  });
+
+  it("pages the lots with an offset", async () => {
+    mockSynthesisQueries([lotRecord, lotRecord, lotRecord]);
+
+    const res = await request(createApp())
+      .get("/api/v1/pointages/synthese")
+      .query({ take: 2, offset: 4 })
+      .set("Authorization", header(TECHNICAL_ROLE_ID));
+
+    expect(res.body.rows).toHaveLength(2);
+    expect(res.body.hasMore).toBe(true);
+    expect(res.body.nextOffset).toBe(6);
+    const values = sqlValues(vi.mocked(prisma.$queryRaw).mock.calls[0]);
+    expect(values).toContain(3);
+    expect(values).toContain(4);
+  });
+
+  it("always applies the site scope of the user, on top of the site asked for", async () => {
+    useRoles(customRole(SITE_ROLE_ID, ["pointage:lecture", "pointage:synthese"], "SITE"));
+    mockSynthesisQueries();
+
+    const res = await request(createApp())
+      .get("/api/v1/pointages/synthese")
+      .query({ siteId: OTHER_SITE_ID })
+      .set("Authorization", header(SITE_ROLE_ID, undefined, SITE_ID));
+
+    expect(res.status).toBe(200);
+    const values = sqlValues(vi.mocked(prisma.$queryRaw).mock.calls[0]);
+    expect(values.filter((value) => value === SITE_ID)).toHaveLength(1);
+    expect(values.filter((value) => value === OTHER_SITE_ID)).toHaveLength(1);
+  });
+
+  it("answers an empty synthesis, without querying, to a scoped user who has no site", async () => {
+    useRoles(customRole(SITE_ROLE_ID, ["pointage:lecture", "pointage:synthese"], "SITE"));
+
+    const res = await request(createApp())
+      .get("/api/v1/pointages/synthese")
+      .set("Authorization", header(SITE_ROLE_ID));
+
+    expect(res.status).toBe(200);
+    expect(res.body.rows).toEqual([]);
+    expect(res.body.counts.ALL).toBe(0);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
   });
 
   it("refuses the synthesis to a role without the permission", async () => {

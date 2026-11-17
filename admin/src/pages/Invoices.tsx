@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { Archive, Download, FileText } from "lucide-react";
 import { IconButton, RowActions } from "../components/ui/IconButton";
 import { api } from "../lib/api";
 import { currentIsoWeekInput, periodToExportParam } from "../lib/payments";
 import { formatInvoiceAmount, type InvoiceRow } from "../lib/invoices";
-import PageHeader from "../components/shared/PageHeader";
+import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -24,17 +24,27 @@ export default function InvoicesPage() {
   const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
   const listPeriod = periodIso ? periodToExportParam(periodIso) : "";
 
-  const { data, isLoading } = useQuery({
+  const invoicesQuery = useInfiniteQuery({
     queryKey: ["invoices", listPeriod],
-    queryFn: () =>
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
       api
-        .get<{ data: InvoiceRow[] }>("/invoices", {
-          params: listPeriod ? { periodIso: listPeriod, referenceYear } : undefined,
+        .get<{ data: InvoiceRow[]; nextCursor: string | null; hasMore: boolean }>("/invoices", {
+          params: {
+            periodIso: listPeriod || undefined,
+            referenceYear: listPeriod ? referenceYear : undefined,
+            cursor: pageParam,
+          },
         })
-        .then((r) => r.data.data),
+        .then((r) => r.data),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
+  const { isLoading } = invoicesQuery;
 
-  const rows = data ?? [];
+  const rows = useMemo(
+    () => invoicesQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [invoicesQuery.data],
+  );
 
   async function handleDownload(invoice: InvoiceRow) {
     setDownloadingId(invoice.id);
@@ -196,6 +206,12 @@ export default function InvoicesPage() {
           </tbody>
         </table>
       </div>
+
+      <LoadMoreButton
+        hasMore={!!invoicesQuery.hasNextPage}
+        loading={invoicesQuery.isFetchingNextPage}
+        onClick={() => void invoicesQuery.fetchNextPage()}
+      />
     </div>
   );
 }

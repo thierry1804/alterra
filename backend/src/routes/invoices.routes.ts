@@ -19,6 +19,8 @@ export const invoicesRouter = Router();
 const listInvoicesQuery = z.object({
   periodIso: z.string().min(1).max(16).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  cursor: z.guid().optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 // periodIso obligatoire ici : sans filtre, l'archive téléchargerait toutes les factures jamais générées.
@@ -37,8 +39,7 @@ invoicesRouter.get(
   async (req, res, next) => {
     try {
       const query = req.query as z.infer<typeof listInvoicesQuery>;
-      const data = await listInvoices(query);
-      res.json({ data });
+      res.json(await listInvoices(query));
     } catch (err) {
       next(err);
     }

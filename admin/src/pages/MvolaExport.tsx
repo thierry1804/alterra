@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Download, FileSpreadsheet } from "lucide-react";
@@ -7,12 +7,13 @@ import { downloadBlob, filenameFromDisposition } from "../lib/download";
 import { periodToExportParam, type ExportQueueRow } from "../lib/payments";
 import { useCan } from "../hooks/useCan";
 import { toast } from "../hooks/use-toast";
-import PageHeader from "../components/shared/PageHeader";
+import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import MvolaImportDialog from "../components/payments/MvolaImportDialog";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { EmptyState } from "../components/ui/EmptyState";
+import FilterChips from "../components/ui/FilterChips";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { TableQueryError } from "../components/ui/QueryError";
@@ -27,6 +28,15 @@ import {
 } from "../components/ui/table";
 
 const COLUMN_COUNT = 9;
+
+type QueueGroup = "TO_EXPORT" | "EXPORTED" | "ALL";
+
+interface ExportQueuePage {
+  data: ExportQueueRow[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  counts: Record<QueueGroup, number>;
+}
 
 function formatAr(value: string | number): string {
   return Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
@@ -57,22 +67,39 @@ export default function MvolaExportPage() {
   const [toExport, setToExport] = useState<ExportQueueRow | null>(null);
   const [toReissue, setToReissue] = useState<ExportQueueRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [group, setGroup] = useState<QueueGroup>("TO_EXPORT");
 
   const listPeriod = useMemo(() => (periodIso ? periodToExportParam(periodIso) : ""), [periodIso]);
   const referenceYear = periodIso.match(/^(\d{4})-W/)?.[1];
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["export-queue", listPeriod, referenceYear],
-    queryFn: () =>
+  const queueQuery = useInfiniteQuery({
+    queryKey: ["export-queue", listPeriod, referenceYear, group],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
       api
-        .get<{ data: ExportQueueRow[] }>("/bordereaux/export-queue", {
-          params: listPeriod ? { periodIso: listPeriod, referenceYear } : undefined,
+        .get<ExportQueuePage>("/bordereaux/export-queue", {
+          params: {
+            periodIso: listPeriod || undefined,
+            referenceYear: listPeriod ? referenceYear : undefined,
+            group,
+            cursor: pageParam,
+          },
         })
-        .then((r) => r.data.data),
+        .then((r) => r.data),
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
     refetchInterval: 15000,
   });
+  const { isLoading, isError, refetch } = queueQuery;
 
-  const rows = data ?? [];
+  const rows = useMemo(
+    () => queueQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [queueQuery.data],
+  );
+  const counts: Record<QueueGroup, number> = queueQuery.data?.pages[0]?.counts ?? {
+    TO_EXPORT: 0,
+    EXPORTED: 0,
+    ALL: 0,
+  };
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["export-queue"] });
@@ -178,6 +205,17 @@ export default function MvolaExportPage() {
         )}
       </div>
 
+      <FilterChips
+        label="Statut des bordereaux"
+        value={group}
+        onChange={setGroup}
+        options={[
+          { value: "TO_EXPORT", label: `À exporter (${counts.TO_EXPORT})` },
+          { value: "EXPORTED", label: `Exportés (${counts.EXPORTED})` },
+          { value: "ALL", label: `Tous (${counts.ALL})` },
+        ]}
+      />
+
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
         <Table>
           <TableHeader>
@@ -207,8 +245,16 @@ export default function MvolaExportPage() {
                 <TableCell colSpan={COLUMN_COUNT} className="p-0">
                   <EmptyState
                     icon={FileSpreadsheet}
-                    title="Aucun bordereau à exporter"
-                    hint="Un bordereau apparaît ici dès que la finance et le DG l'ont validé."
+                    title={
+                      counts.ALL === 0
+                        ? "Aucun bordereau à exporter"
+                        : "Aucun bordereau ne correspond à ce statut"
+                    }
+                    hint={
+                      counts.ALL === 0
+                        ? "Un bordereau apparaît ici dès que la finance et le DG l'ont validé."
+                        : "Choisissez un autre statut, par exemple « Tous »."
+                    }
                   />
                 </TableCell>
               </TableRow>
@@ -286,6 +332,12 @@ export default function MvolaExportPage() {
           </TableBody>
         </Table>
       </div>
+
+      <LoadMoreButton
+        hasMore={!!queueQuery.hasNextPage}
+        loading={queueQuery.isFetchingNextPage}
+        onClick={() => void queueQuery.fetchNextPage()}
+      />
 
       <ConfirmDialog
         open={toExport !== null}

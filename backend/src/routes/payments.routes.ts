@@ -93,6 +93,15 @@ const listPaymentsQuery = z.object({
   siteId: z.guid().optional(),
 });
 
+const listBordereauxQuery = z.object({
+  periodIso: z.string().min(2).max(16).optional(),
+  referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  siteId: z.guid().optional(),
+  group: z.enum(["TO_VALIDATE", "TO_EXPORT", "EXPORTED", "ALL"]).optional(),
+  cursor: z.guid().optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 const paymentIdParams = z.object({ id: z.guid() });
 
 const adjustmentSchema = z.object({
@@ -241,15 +250,18 @@ paymentsRouter.get(
   "/bordereaux",
   requireAuth,
   requirePermission("bordereau:lecture"),
-  validate(listPaymentsQuery, "query"),
+  validate(listBordereauxQuery, "query"),
   async (req, res, next) => {
     try {
-      const query = req.query as unknown as z.infer<typeof listPaymentsQuery>;
+      const query = req.query as unknown as z.infer<typeof listBordereauxQuery>;
       res.json(
         await listBordereaux({
           periodIso: query.periodIso,
           referenceYear: query.referenceYear,
           siteId: resolveSiteForUser(req.user!, query.siteId),
+          group: query.group,
+          cursor: query.cursor,
+          take: query.take,
         }),
       );
     } catch (err) {
@@ -262,6 +274,9 @@ const bordereauIdParams = z.object({ id: z.guid() });
 const exportQueueQuery = z.object({
   periodIso: z.string().min(2).max(16).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  group: z.enum(["TO_EXPORT", "EXPORTED", "ALL"]).optional(),
+  cursor: z.guid().optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
 });
 const returnBordereauSchema = z.object({ reason: z.string().trim().min(10).max(500) });
 

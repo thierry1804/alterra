@@ -102,6 +102,7 @@ vi.mock("../lib/prisma.js", () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
+      groupBy: vi.fn().mockResolvedValue([]),
     },
     site: {
       findMany: vi.fn(),
@@ -1183,6 +1184,9 @@ describe("Export access for the treasury", () => {
   });
 
   it("lists only validated and exported bordereaux in the export queue", async () => {
+    vi.mocked(prisma.bordereau.groupBy).mockResolvedValue([
+      { status: "DG_VALIDATED", _count: { _all: 1 } },
+    ] as never);
     vi.mocked(prisma.bordereau.findMany).mockResolvedValue([
       {
         id: MOCK_BORDEREAU_ID,

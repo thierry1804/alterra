@@ -417,6 +417,7 @@ model Pointage {
   // (workerId, date) : index partiels créés à la main dans les migrations pointage_active_slot_unique et
   // pointage_one_active_per_worker_day (Prisma ne supporte pas @@unique(... WHERE)).
 
+  @@index([date])
   @@index([workerId, date])
   @@index([status, date])
   @@index([parcelleId, date])

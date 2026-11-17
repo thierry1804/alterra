@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { ClipboardCheck } from "lucide-react";
 import { api } from "../lib/api";
 import { useCan } from "../hooks/useCan";
 import { recentWeeks, weekLabel } from "../lib/week-iso";
-import { synthesisApi, type SynthesisRow } from "../lib/synthesis";
+import { synthesisApi, type SynthesisRow, type SynthesisStatusGroup } from "../lib/synthesis";
 import type { ActivitySubActivity, Site } from "../lib/referentials";
-import PageHeader from "../components/shared/PageHeader";
+import PageHeader, { LoadMoreButton } from "../components/shared/PageHeader";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
@@ -15,6 +15,7 @@ import { Select } from "../components/ui/select";
 import { Combobox } from "../components/ui/combobox";
 import LotDetailDrawer from "../components/pointages/LotDetailDrawer";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import FilterChips from "../components/ui/FilterChips";
 import { EmptyState } from "../components/ui/EmptyState";
 import { TableQueryError } from "../components/ui/QueryError";
 import { TableRowsSkeleton } from "../components/ui/skeleton";
@@ -47,6 +48,8 @@ export default function TechnicalValidationPage() {
   const [weekFrom, setWeekFrom] = useState(WEEK_OPTIONS[3]);
   const [weekTo, setWeekTo] = useState(WEEK_OPTIONS[0]);
   const [subActivityId, setSubActivityId] = useState("");
+  const [status, setStatus] = useState<SynthesisStatusGroup>("TO_VALIDATE");
+  const [categoryId, setCategoryId] = useState("");
   const [pending, setPending] = useState<SynthesisRow | null>(null);
   const [detail, setDetail] = useState<SynthesisRow | null>(null);
 
@@ -71,33 +74,41 @@ export default function TechnicalValidationPage() {
       ),
   });
 
-  const queryKey = ["synthesis", siteId, weekFrom, weekTo, subActivityId];
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey,
-    queryFn: () =>
+  const synthesisQuery = useInfiniteQuery({
+    queryKey: ["synthesis", siteId, weekFrom, weekTo, subActivityId, categoryId, status],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
       synthesisApi.get({
         weekFrom,
         weekTo,
         siteId: siteId || undefined,
         subActivityId: subActivityId || undefined,
+        categoryId: categoryId || undefined,
+        group: status,
+        offset: pageParam,
       }),
+    getNextPageParam: (last) => last.nextOffset ?? undefined,
   });
+  const { isLoading, isError, refetch } = synthesisQuery;
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
-
-  const totals = useMemo(
-    () =>
-      rows.reduce(
-        (acc, row) => ({
-          cost: acc.cost + row.cost,
-          pendingSite: acc.pendingSite + row.pendingSite,
-          toValidate: acc.toValidate + row.toValidate,
-          validated: acc.validated + row.validatedTechnical,
-        }),
-        { cost: 0, pendingSite: 0, toValidate: 0, validated: 0 },
-      ),
-    [rows],
+  const firstPage = synthesisQuery.data?.pages[0];
+  const rows = useMemo(
+    () => synthesisQuery.data?.pages.flatMap((page) => page.rows) ?? [],
+    [synthesisQuery.data],
   );
+  const statusCounts = firstPage?.counts ?? {
+    TO_VALIDATE: 0,
+    PENDING_SITE: 0,
+    VALIDATED: 0,
+    ALL: 0,
+  };
+  const totals = firstPage?.totals ?? {
+    cost: 0,
+    pendingSite: 0,
+    toValidate: 0,
+    validatedTechnical: 0,
+  };
+  const categories = firstPage?.categories ?? [];
 
   const validateMutation = useMutation({
     mutationFn: (row: SynthesisRow) =>
@@ -201,10 +212,39 @@ export default function TechnicalValidationPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <FilterChips
+          label="Statut des lots"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: "TO_VALIDATE", label: `À valider (${statusCounts.TO_VALIDATE})` },
+            { value: "PENDING_SITE", label: `En attente du site (${statusCounts.PENDING_SITE})` },
+            { value: "VALIDATED", label: `Déjà validés (${statusCounts.VALIDATED})` },
+            { value: "ALL", label: `Tous (${statusCounts.ALL})` },
+          ]}
+        />
+        <div className="space-y-1">
+          <Label htmlFor="vt-category">Activité</Label>
+          <Select
+            id="vt-category"
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+          >
+            <option value="">Toutes les activités</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-2 text-sm">
         <Badge variant="warning">{formatNumber(totals.pendingSite)} en attente du site</Badge>
         <Badge variant="info">{formatNumber(totals.toValidate)} à valider</Badge>
-        <Badge variant="success">{formatNumber(totals.validated)} validés</Badge>
+        <Badge variant="success">{formatNumber(totals.validatedTechnical)} validés</Badge>
         <Badge variant="brand">Coût : {formatNumber(totals.cost)} Ar</Badge>
       </div>
 
@@ -238,8 +278,16 @@ export default function TechnicalValidationPage() {
                 <TableCell colSpan={COLUMN_COUNT} className="p-0">
                   <EmptyState
                     icon={ClipboardCheck}
-                    title="Aucun pointage sur cette période"
-                    hint="Élargissez les semaines ou changez de sous-activité."
+                    title={
+                      statusCounts.ALL === 0
+                        ? "Aucun pointage sur cette période"
+                        : "Aucun lot ne correspond à ce filtre"
+                    }
+                    hint={
+                      statusCounts.ALL === 0
+                        ? "Élargissez les semaines ou changez de sous-activité."
+                        : "Choisissez un autre statut, par exemple « Tous »."
+                    }
                   />
                 </TableCell>
               </TableRow>
@@ -286,6 +334,12 @@ export default function TechnicalValidationPage() {
           </TableBody>
         </Table>
       </div>
+
+      <LoadMoreButton
+        hasMore={!!synthesisQuery.hasNextPage}
+        loading={synthesisQuery.isFetchingNextPage}
+        onClick={() => void synthesisQuery.fetchNextPage()}
+      />
 
       <LotDetailDrawer
         lot={detail}
