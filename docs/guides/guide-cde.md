@@ -38,6 +38,8 @@ Identique au CDS : Chrome → `app.alterra.mg` → **Ajouter à l'écran d'accue
 | Saisie lot | `/batch` | Quantités par MOC    |
 | Sync       | `/sync`  | État file d'attente  |
 
+Autres écrans selon le profil : **Présence NFC** (`/nfc`, scan des badges), **Mes pointages** (`/my-pointages`, suivi et rectification des rejets), **Équipe** (`/teams`), **Précisions** (`/clarifications`, réponses aux questions du CDS) et **Notifications** (`/notifications`).
+
 `[Capture : navigation CDE trois onglets]`
 
 ---
@@ -137,10 +139,16 @@ Procédure détaillée : `docs/qa/offline-pilot.md`
 
 Si le CDS ou l'admin rejette un pointage :
 
-1. Onglet **Sync** → section **Rejetés**
-2. Lire le motif
-3. Corriger en resaisissant un lot (nouvelle date ou quantité)
-4. **Abandonner** l'ancien rejet si doublon
+1. Onglet **Mes pointages** → repérer le pointage rejeté et lire le motif
+2. **Rectifier** : corriger la quantité, l'activité, la date ou la photo, et saisir un motif (10 caractères minimum)
+3. Le pointage corrigé repart en validation chez le CDS
+4. Seules vos propres saisies rejetées peuvent être rectifiées
+
+Un lot refusé à la synchronisation (ex. doublon) apparaît dans **Sync → Rejetés** : lire le motif, resaisir si besoin, puis **Abandonner** l'ancien rejet.
+
+## 8 bis. Précisions demandées par le CDS
+
+Quand le CDS pose une question sur un pointage, elle apparaît dans **Précisions** et dans les notifications. Répondre par texte (3 caractères minimum), avec une photo si elle est demandée. La réponse peut être envoyée hors ligne : elle part à la prochaine synchronisation.
 
 ---
 
@@ -172,6 +180,9 @@ Si le CDS ou l'admin rejette un pointage :
 ## 11. Règles métier
 
 - Une session = une date + une activité
+- Date de saisie : jour courant et 3 jours précédents au maximum. Le serveur refuse aussi une date future ou plus ancienne, calculée à partir du moment de saisie sur le téléphone (un lot saisi hors ligne reste valide)
+- Un MOC ne peut avoir qu'un seul pointage actif par jour : une seule équipe et une seule activité (l'activité peut changer d'un jour à l'autre)
+- Vous ne pouvez pointer que les MOC de votre équipe
 - Les montants affichés sont **prévisionnels** (validation CDS requise)
 - Photo : max 5 Mo côté serveur — la PWA compresse avant envoi
 
