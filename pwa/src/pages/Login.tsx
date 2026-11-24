@@ -28,7 +28,12 @@ export default function Login() {
       const nextPath = await login(email, password);
       navigate(nextPath);
     } catch (err) {
-      if (isAxiosError(err) && err.response?.data?.code === "MFA_REQUIRED") {
+      const code = isAxiosError(err) ? err.response?.data?.code : undefined;
+      if (code === "MFA_ENROLLMENT_REQUIRED") {
+        setError(
+          "Ce rôle exige la double authentification : activez-la d'abord dans l'application d'administration.",
+        );
+      } else if (code === "MFA_REQUIRED") {
         setError("Ce compte nécessite MFA - utilisez l'administration web.");
       } else {
         setError("Email ou mot de passe incorrect.");

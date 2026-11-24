@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { SYSTEM_ROLE_IDS } from "../services/access/system-roles.js";
-import { decodeTokenHeader, signAccessToken } from "../lib/jwt.js";
+import { decodeTokenHeader, signAccessToken, signEnrollmentToken } from "../lib/jwt.js";
 import { resetRedisForTests } from "../lib/redis.js";
 import { encryptMfaSecret, clearPendingMfaForTests } from "../services/auth/mfa.service.js";
 import { generateSecret, generateSync } from "otplib";
@@ -54,7 +54,7 @@ vi.mock("../lib/prisma.js", () => {
 import { prisma } from "../lib/prisma.js";
 
 function adminAuthHeader() {
-  return `Bearer ${signAccessToken({ sub: mockUser.id, roleId: mockUser.accessRoleId, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
+  return `Bearer ${signAccessToken({ sub: mockUser.id, roleId: SYSTEM_ROLE_IDS.ADMIN, siteId: mockUser.siteId, teamId: mockUser.teamId })}`;
 }
 
 describe("auth endpoints", () => {
@@ -65,6 +65,8 @@ describe("auth endpoints", () => {
     refreshTokenState = { revokedAt: null };
     mockUser.passwordHash = await argon2.hash(TEST_PASSWORD, { type: argon2.argon2id });
     mockUser.mfaSecret = null;
+    // Rôle sans MFA par défaut : les tests de session ne passent pas par l'activation de l'authentificateur.
+    mockUser.accessRoleId = SYSTEM_ROLE_IDS.CHEF_SERVICE;
 
     vi.mocked(prisma.user.findUnique).mockImplementation(async ({ where }) => {
       if ("email" in where && where.email === mockUser.email) return { ...mockUser };
@@ -240,6 +242,7 @@ describe("auth endpoints", () => {
 
   it("POST /auth/login requires MFA when admin has mfaSecret set", async () => {
     const secret = generateSecret();
+    mockUser.accessRoleId = SYSTEM_ROLE_IDS.ADMIN;
     mockUser.mfaSecret = encryptMfaSecret(secret);
 
     const app = createApp();
@@ -258,5 +261,99 @@ describe("auth endpoints", () => {
 
     expect(withMfa.status).toBe(200);
     expect(withMfa.body.accessToken).toBeTypeOf("string");
+  });
+
+  describe("activation obligatoire de la MFA", () => {
+    const login = () =>
+      request(createApp())
+        .post("/api/v1/auth/login")
+        .send({ email: "admin@alterra.mg", password: TEST_PASSWORD });
+
+    beforeEach(() => {
+      mockUser.accessRoleId = SYSTEM_ROLE_IDS.ADMIN;
+      mockUser.mfaSecret = null;
+    });
+
+    it("refuse la session d'un rôle qui exige la MFA sans second facteur, et remet un jeton d'activation", async () => {
+      const res = await login();
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("MFA_ENROLLMENT_REQUIRED");
+      expect(res.body.details.enrollmentToken).toBeTypeOf("string");
+      expect(res.body.accessToken).toBeUndefined();
+      expect(res.headers["set-cookie"]).toBeUndefined();
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+
+    it("ne remet pas de jeton d'activation avec un mauvais mot de passe", async () => {
+      const res = await request(createApp())
+        .post("/api/v1/auth/login")
+        .send({ email: "admin@alterra.mg", password: "mauvais-mot-de-passe" });
+      expect(res.status).toBe(401);
+      expect(res.body.details).toBeUndefined();
+    });
+
+    it("n'exige pas l'activation pour un rôle sans MFA", async () => {
+      mockUser.accessRoleId = SYSTEM_ROLE_IDS.CHEF_SERVICE;
+      expect((await login()).status).toBe(200);
+    });
+
+    it("le jeton d'activation ne donne accès à aucune route de l'API", async () => {
+      const token = (await login()).body.details.enrollmentToken as string;
+      const res = await request(createApp())
+        .get("/api/v1/me")
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(401);
+    });
+
+    it("un jeton d'accès ordinaire n'ouvre pas l'activation", async () => {
+      const res = await request(createApp())
+        .post("/api/v1/auth/mfa/enroll/setup")
+        .set("Authorization", adminAuthHeader());
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe("INVALID_ENROLLMENT_TOKEN");
+    });
+
+    it("active l'authentificateur puis ouvre la session", async () => {
+      const token = (await login()).body.details.enrollmentToken as string;
+      const app = createApp();
+
+      const setup = await request(app)
+        .post("/api/v1/auth/mfa/enroll/setup")
+        .set("Authorization", `Bearer ${token}`);
+      expect(setup.status).toBe(200);
+      expect(setup.body.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
+
+      const secret = new URL(setup.body.otpauthUrl).searchParams.get("secret")!;
+      const bad = await request(app)
+        .post("/api/v1/auth/mfa/enroll/verify")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ code: "000000" });
+      expect(bad.status).toBe(401);
+      expect(bad.body.code).toBe("INVALID_MFA_CODE");
+
+      const ok = await request(app)
+        .post("/api/v1/auth/mfa/enroll/verify")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ code: generateSync({ secret }) });
+      expect(ok.status).toBe(200);
+      expect(ok.body.accessToken).toBeTypeOf("string");
+      expect(ok.body.user.roleName).toBeTypeOf("string");
+      expect(ok.headers["set-cookie"]?.[0]).toContain("HttpOnly");
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ mfaSecret: expect.any(String) }),
+        }),
+      );
+    });
+
+    it("refuse l'activation quand la MFA est déjà active", async () => {
+      mockUser.mfaSecret = encryptMfaSecret(generateSecret());
+      const res = await request(createApp())
+        .post("/api/v1/auth/mfa/enroll/setup")
+        .set("Authorization", `Bearer ${signEnrollmentToken(mockUser.id)}`);
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("MFA_ALREADY_ACTIVE");
+    });
   });
 });

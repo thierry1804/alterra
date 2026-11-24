@@ -1,8 +1,9 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import argon2 from "argon2";
 import { z } from "zod";
 import { basePrisma, prisma } from "../lib/prisma.js";
-import { signAccessToken } from "../lib/jwt.js";
+import { signAccessToken, signEnrollmentToken, verifyEnrollmentToken } from "../lib/jwt.js";
 import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMfaRole } from "../middleware/rbac.js";
@@ -47,6 +48,53 @@ const mfaVerifySchema = z.object({
   code: z.string().length(6),
 });
 
+/** Utilisateur identifié par le jeton d'enrôlement MFA (Authorization: Bearer …), pas par un jeton d'accès. */
+async function enrollmentUser(req: Request) {
+  const header = req.headers.authorization;
+  const userId = header?.startsWith("Bearer ")
+    ? verifyEnrollmentToken(header.slice("Bearer ".length))
+    : null;
+  if (!userId) {
+    throw new ApiError(
+      401,
+      "INVALID_ENROLLMENT_TOKEN",
+      "Session d'activation expirée : reconnectez-vous",
+    );
+  }
+  const user = await basePrisma.user.findUnique({ where: { id: userId } });
+  if (!user || !user.active || !user.email) {
+    throw new ApiError(
+      401,
+      "INVALID_ENROLLMENT_TOKEN",
+      "Session d'activation expirée : reconnectez-vous",
+    );
+  }
+  const access = await getRoleAccess(user.accessRoleId);
+  if (!access) throw new ApiError(500, "ROLE_NOT_FOUND", "Rôle introuvable");
+  if (!access.mfaRequired || user.mfaSecret) {
+    throw new ApiError(409, "MFA_ALREADY_ACTIVE", "La double authentification est déjà active");
+  }
+  return { user, access, email: user.email };
+}
+
+/** Ouvre la session : jeton d'accès, cookie de rafraîchissement, dernière connexion. */
+async function openSession(
+  req: Request,
+  res: Response,
+  user: NonNullable<Awaited<ReturnType<typeof basePrisma.user.findUnique>>>,
+  access: NonNullable<Awaited<ReturnType<typeof getRoleAccess>>>,
+) {
+  const accessToken = signAccessToken({
+    sub: user.id,
+    roleId: user.accessRoleId,
+    siteId: user.siteId,
+    teamId: user.teamId,
+  });
+  await issueRefreshToken(user.id, res, req.headers["user-agent"]);
+  await basePrisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  return { accessToken, user: buildSessionUser(user, access) };
+}
+
 let dummyHash: Promise<string> | null = null;
 function getDummyHash(): Promise<string> {
   dummyHash ??= argon2.hash("alterra-dummy-password", { type: argon2.argon2id });
@@ -69,6 +117,17 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
     const access = await getRoleAccess(user.accessRoleId);
     if (!access) throw new ApiError(500, "ROLE_NOT_FOUND", "Rôle introuvable");
 
+    // Rôle qui exige la MFA mais compte sans second facteur : pas de session tant qu'il n'est pas activé.
+    if (access.mfaRequired && !user.mfaSecret) {
+      await clearLoginFailures(email);
+      throw new ApiError(
+        403,
+        "MFA_ENROLLMENT_REQUIRED",
+        "Votre rôle exige la double authentification : activez-la pour continuer",
+        { enrollmentToken: signEnrollmentToken(user.id) },
+      );
+    }
+
     if (access.mfaRequired && user.mfaSecret) {
       if (!mfaCode) {
         throw new ApiError(401, "MFA_REQUIRED", "MFA code required for admin login");
@@ -80,20 +139,7 @@ authRouter.post("/auth/login", validate(loginSchema), async (req, res, next) => 
     }
 
     await clearLoginFailures(email);
-    const accessToken = signAccessToken({
-      sub: user.id,
-      roleId: user.accessRoleId,
-      siteId: user.siteId,
-      teamId: user.teamId,
-    });
-    await issueRefreshToken(user.id, res, req.headers["user-agent"]);
-
-    await basePrisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-
-    res.json({
-      accessToken,
-      user: buildSessionUser(user, access),
-    });
+    res.json(await openSession(req, res, user, access));
   } catch (err) {
     next(err);
   }
@@ -156,6 +202,38 @@ authRouter.post(
     }
   },
 );
+
+authRouter.post("/auth/mfa/enroll/setup", async (req, res, next) => {
+  try {
+    const { user, email } = await enrollmentUser(req);
+    await assertLoginNotLocked(email);
+    const { otpauthUrl, qrCodeDataUrl } = await setupMfa(user.id, email);
+    res.json({ otpauthUrl, qrCodeDataUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
+authRouter.post("/auth/mfa/enroll/verify", validate(mfaVerifySchema), async (req, res, next) => {
+  try {
+    const { user, access, email } = await enrollmentUser(req);
+    await assertLoginNotLocked(email);
+    try {
+      await activateMfa(user.id, req.body.code);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "INVALID_MFA_CODE") {
+        await recordLoginFailure(email);
+      }
+      throw err;
+    }
+    await clearLoginFailures(email);
+    // Le compte vient de prouver le mot de passe (jeton d'enrôlement) et la possession du second facteur.
+    const activated = await basePrisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    res.json(await openSession(req, res, activated, access));
+  } catch (err) {
+    next(err);
+  }
+});
 
 authRouter.post("/auth/mfa/setup", requireAuth, requireMfaRole(), async (req, res, next) => {
   try {

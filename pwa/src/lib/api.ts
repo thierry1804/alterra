@@ -8,7 +8,7 @@ export const api = axios.create({
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-const AUTH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"];
+const AUTH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout", "/auth/mfa/enroll"];
 
 function isAuthPath(url: string | undefined): boolean {
   if (!url) return false;
