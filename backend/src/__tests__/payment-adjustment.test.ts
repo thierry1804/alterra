@@ -55,7 +55,7 @@ function payment(overrides: Record<string, unknown> = {}) {
       siteId: SITE_ID,
       status: "GENERATED",
       isiRate: new Prisma.Decimal("0.05"),
-      isiRounding: "UNIT",
+      amountDecimals: 0,
     },
     ...overrides,
   };

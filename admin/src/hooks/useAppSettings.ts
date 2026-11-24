@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api } from "../lib/api";
+import { setAmountDecimals } from "../lib/money";
 
 export interface AppSettings {
   appName: string;
@@ -8,6 +10,8 @@ export interface AppSettings {
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
   mapTilerKeyConfigured: boolean;
+  /** Nombre de décimales des montants de paiement (0 à 2). */
+  amountDecimals: number;
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -17,6 +21,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   loginBranchUpdatedAt: null,
   loginLeafUpdatedAt: null,
   mapTilerKeyConfigured: false,
+  amountDecimals: 0,
 };
 
 export const APP_ICON_URL = "/api/v1/app-settings/icon";
@@ -37,6 +42,10 @@ export function useAppSettings() {
   });
 
   const settings = data ?? DEFAULT_APP_SETTINGS;
+
+  useEffect(() => {
+    if (data) setAmountDecimals(data.amountDecimals);
+  }, [data]);
 
   return {
     ...settings,

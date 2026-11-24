@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import CommandPalette from "./CommandPalette";
+import { useAmountDecimals } from "../../lib/money";
 
 export default function AppLayout() {
   // Menu replié en icônes sur tablette ; l'utilisateur garde la main avec le bouton.
@@ -10,6 +11,8 @@ export default function AppLayout() {
     () => window.matchMedia("(max-width: 1023px)").matches,
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Les montants se formatent via un module partagé : un changement du nombre de décimales redessine la page.
+  const amountDecimals = useAmountDecimals();
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 1023px)");
@@ -36,7 +39,7 @@ export default function AppLayout() {
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenPalette={() => setPaletteOpen(true)} />
-        <main className="flex-1 overflow-auto bg-surface/40 p-5">
+        <main key={amountDecimals} className="flex-1 overflow-auto bg-surface/40 p-5">
           <Outlet />
         </main>
       </div>

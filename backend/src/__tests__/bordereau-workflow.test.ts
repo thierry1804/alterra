@@ -68,7 +68,7 @@ function bordereau(overrides: Record<string, unknown> = {}) {
     returnedAt: null,
     lines: null,
     isiRate: new Prisma.Decimal("0.05"),
-    isiRounding: "UNIT",
+    amountDecimals: 0,
     site: { id: SITE_ID, name: "Manankazo", shortCode: "MNK" },
     ...overrides,
   };

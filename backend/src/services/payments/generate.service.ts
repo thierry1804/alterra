@@ -14,7 +14,7 @@ import { BORDEREAU_ELIGIBLE } from "../pointages/eligibility.js";
 import type { Db } from "../pointages/day-rule.js";
 import { snapshotLines } from "./bordereau-workflow.service.js";
 import { ensureInvoiceQuietly } from "./bordereau-invoice.service.js";
-import { getIsiSettings, isiLineKey, lineIsi, type IsiSettings } from "../../lib/isi.js";
+import { getIsiSettings, isiLineKey, lineGross, lineIsi, type IsiSettings } from "../../lib/isi.js";
 
 export interface GeneratePaymentsInput {
   periodIso: string;
@@ -256,8 +256,14 @@ async function generateForSite(
       b.amount.comparedTo(a.amount),
     )[0];
 
-    const isiAmount = [...aggregate.lines.values()].reduce(
-      (sum, lineAmount) => sum.add(lineIsi(lineAmount, ctx.isi)),
+    // Chaque ligne (travailleur × activité × tarif) est arrondie au réglage, puis son ISI calculé et arrondi :
+    // le brut, l'ISI et le net du paiement sont ainsi des sommes exactes de lignes, sans écart de centimes.
+    const grossLines = [...aggregate.lines.values()].map((lineAmount) =>
+      lineGross(lineAmount, ctx.isi),
+    );
+    const grossAmount = grossLines.reduce((sum, line) => sum.add(line), new Prisma.Decimal(0));
+    const isiAmount = grossLines.reduce(
+      (sum, line) => sum.add(lineIsi(line, ctx.isi)),
       new Prisma.Decimal(0),
     );
 
@@ -266,9 +272,9 @@ async function generateForSite(
       periodIso: shortPeriod,
       referenceYear,
       cycle: ctx.cycle,
-      amount: aggregate.amount,
+      amount: grossAmount,
       isiAmount,
-      netAmount: aggregate.amount.sub(isiAmount),
+      netAmount: grossAmount.sub(isiAmount),
       bioValid,
       status: PaymentStatus.PENDING,
       worker: aggregate.worker,
@@ -328,7 +334,7 @@ async function generateForSite(
           version: (lastVersion?.version ?? 0) + 1,
           number,
           isiRate: ctx.isi.rate,
-          isiRounding: ctx.isi.rounding,
+          amountDecimals: ctx.isi.decimals,
           createdById: ctx.userId ?? null,
         },
       });

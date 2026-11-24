@@ -7,7 +7,7 @@ import { INVOICE_CLIENT } from "../../lib/invoice-client.js";
 import { Prisma } from "@prisma/client";
 import { getIsiSettings, lineIsi, type IsiSettings } from "../../lib/isi.js";
 
-const LEGACY_REPORT_ISI: IsiSettings = { rate: new Prisma.Decimal("0.05"), rounding: "NONE" };
+const LEGACY_REPORT_ISI: IsiSettings = { rate: new Prisma.Decimal("0.05"), decimals: 2 };
 
 export interface WeeklyPdfJobInput {
   siteId: string;

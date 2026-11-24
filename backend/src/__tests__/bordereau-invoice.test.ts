@@ -84,7 +84,7 @@ function bordereau(overrides: Record<string, unknown> = {}) {
     version: 2,
     status: "GENERATED",
     isiRate: new Prisma.Decimal("0.05"),
-    isiRounding: "NONE",
+    amountDecimals: 2,
     site: { name: "Manankazo", shortCode: "MNK" },
     ...overrides,
   };
@@ -127,7 +127,11 @@ describe("Bordereau invoice", () => {
     const plants = data!.viewModel.activities[0];
     expect(plants.lines).toHaveLength(1);
     expect(plants.lines[0]).toEqual(
-      expect.objectContaining({ designation: "Repiquage S47", amount: "200", isiAmount: "10" }),
+      expect.objectContaining({
+        designation: "Repiquage S47",
+        amount: "200,00",
+        isiAmount: "10,00",
+      }),
     );
   });
 
@@ -138,8 +142,30 @@ describe("Bordereau invoice", () => {
     const soil = data!.viewModel.activities[1];
     expect(soil.lines[0].isiAmount).toBe("3,75");
     expect(data!.viewModel.totals).toEqual(
-      expect.objectContaining({ gross: "275", isi: "13,75", net: "261,25" }),
+      expect.objectContaining({ gross: "275,00", isi: "13,75", net: "261,25" }),
     );
+  });
+
+  it("rounds every line to the configured number of decimals and keeps the totals exact", async () => {
+    vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(
+      bordereau({ amountDecimals: 0 }) as never,
+    );
+
+    const data = await buildInvoiceData(BORDEREAU_ID);
+
+    // 75 x 5 % = 3,75 devient 4 sur la ligne : le total est la somme des lignes arrondies.
+    expect(data!.viewModel.activities[1].lines[0]).toEqual(
+      expect.objectContaining({ amount: "75", isiAmount: "4", netAmount: "71" }),
+    );
+    expect(data!.totals).toEqual({ gross: "275", isi: "14", net: "261", workerCount: 2 });
+    expect(data!.viewModel.totals).toEqual(
+      expect.objectContaining({ gross: "275", isi: "14", net: "261" }),
+    );
+  });
+
+  it("shows the decimals even when the amount is whole, with 2 decimals", async () => {
+    const data = await buildInvoiceData(BORDEREAU_ID);
+    expect(data!.viewModel.activities[0].lines[0].amount).toBe("200,00");
   });
 
   it("adds the manual adjustments as their own lines and counts them in the totals", async () => {
@@ -158,9 +184,9 @@ describe("Bordereau invoice", () => {
     expect(adjustments.lines[0]).toEqual(
       expect.objectContaining({
         designation: "Ajustement manuel — Retenue pour matériel perdu",
-        amount: "-50",
-        isiAmount: "-2,5",
-        netAmount: "-47,5",
+        amount: "-50,00",
+        isiAmount: "-2,50",
+        netAmount: "-47,50",
       }),
     );
     expect(data!.totals).toEqual({ gross: "225", isi: "11.25", net: "213.75", workerCount: 2 });

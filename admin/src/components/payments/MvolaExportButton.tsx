@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatAr } from "../../lib/money";
 import { isAxiosError } from "axios";
 import { Download } from "lucide-react";
 import { api } from "../../lib/api";
@@ -52,7 +53,7 @@ export default function MvolaExportButton({
 
       toast({
         title: "Export MVola terminé",
-        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${exportedTotal ? `, total net ${Number(exportedTotal).toLocaleString("fr-FR")} Ar` : ""}`,
+        description: `${exportedCount ?? "?"} ligne(s) exportée(s)${exportedTotal ? `, total net ${formatAr(exportedTotal)}` : ""}`,
       });
       onExported();
     } catch (err) {

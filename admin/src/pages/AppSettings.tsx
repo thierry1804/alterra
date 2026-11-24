@@ -27,7 +27,7 @@ interface AppSettingsResponse {
   mapTilerKeyConfigured: boolean;
   bioValidationRequired: boolean;
   isiRatePercent: number;
-  isiRounding: "UNIT" | "NONE";
+  amountDecimals: number;
 }
 
 const ICON_MAX_BYTES = 2 * 1024 * 1024;
@@ -463,7 +463,7 @@ export default function AppSettingsPage() {
 
               <IsiSettingsCard
                 ratePercent={data?.isiRatePercent}
-                rounding={data?.isiRounding}
+                decimals={data?.amountDecimals}
                 loading={isLoading}
               />
             </div>

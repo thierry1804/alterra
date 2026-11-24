@@ -1,3 +1,4 @@
+import { formatAr } from "./money";
 export type PaymentStatus = "PENDING" | "EXPORTED" | "PAID" | "FAILED";
 
 export interface PaymentWorker {
@@ -119,7 +120,7 @@ export function paymentStatusVariant(
 }
 
 export function formatPaymentAmount(amount: string | number): string {
-  return `${Number(amount).toLocaleString("fr-MG")} Ar`;
+  return formatAr(amount);
 }
 
 /** ISO week input helper — e.g. 2026-W29 */

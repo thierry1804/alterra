@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { formatAr } from "../../lib/money";
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Trash2 } from "lucide-react";
@@ -25,13 +26,9 @@ interface PaymentAdjustDialogProps {
   onChanged: () => void;
 }
 
-function formatAr(value: string | number): string {
-  return `${Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} Ar`;
-}
-
 function signed(value: string | number): string {
   const number = Number(value);
-  return `${number > 0 ? "+" : ""}${number.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} Ar`;
+  return `${number > 0 ? "+" : ""}${formatAr(number)}`;
 }
 
 function messageOf(err: unknown): string {

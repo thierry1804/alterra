@@ -1,3 +1,4 @@
+import { formatAr } from "./money";
 export interface InvoiceRow {
   id: string;
   number: number | null;
@@ -12,5 +13,5 @@ export interface InvoiceRow {
 }
 
 export function formatInvoiceAmount(amount: string | number): string {
-  return `${Number(amount).toLocaleString("fr-MG")} Ar`;
+  return formatAr(amount);
 }

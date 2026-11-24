@@ -321,8 +321,54 @@ describe("Payments API", () => {
     });
     expect(prisma.bordereau.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ isiRounding: "UNIT" }),
+        data: expect.objectContaining({ amountDecimals: 0 }),
       }),
+    );
+  });
+
+  it("POST /payments/generate rounds every line to the configured decimals before summing", async () => {
+    vi.mocked(prisma.appSetting.findUnique).mockResolvedValue({
+      isiRate: new Prisma.Decimal("0.05"),
+      amountDecimals: 1,
+    } as never);
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue(null);
+    const line = (amount: string, rate: string) => ({
+      workerId: MOCK_WORKER_ID,
+      amount: new Prisma.Decimal(amount),
+      quantity: new Prisma.Decimal("1"),
+      unitRateSnapshot: new Prisma.Decimal(rate),
+      subActivityId: MOCK_ACTIVITY_ID,
+      subActivity: { shortLabel: "trouaison", category: { code: "ACT02" } },
+      worker: mockWorker,
+    });
+    // Deux tarifs = deux lignes : 100,04 -> 100,0 (ISI 5,0) et 100,06 -> 100,1 (ISI 5,0 : 5,005 arrondi).
+    vi.mocked(prisma.pointage.findMany).mockResolvedValue([
+      line("100.04", "10.004"),
+      line("100.06", "10.006"),
+    ] as never);
+    vi.mocked(prisma.biometricCheck.findFirst).mockResolvedValue({ result: "OK" } as never);
+    vi.mocked(prisma.payment.count).mockResolvedValue(0);
+    vi.mocked(prisma.payment.deleteMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.payment.createMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([mockPayment] as never);
+
+    const res = await request(createApp())
+      .post("/api/v1/payments/generate")
+      .set("Authorization", adminAuthHeader())
+      .send({ periodIso: "2026-W29" });
+
+    expect(res.status).toBe(201);
+    expect(prisma.payment.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          amount: new Prisma.Decimal("200.1"),
+          isiAmount: new Prisma.Decimal("10"),
+          netAmount: new Prisma.Decimal("190.1"),
+        }),
+      ],
+    });
+    expect(prisma.bordereau.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ amountDecimals: 1 }) }),
     );
   });
 
@@ -469,6 +515,44 @@ describe("Payments API", () => {
     expect(sheet.rowCount).toBe(2);
     expect(sheet.getRow(1).getCell(1).value).toBe("Numéro téléphone");
     expect(sheet.getRow(2).getCell(1).value).toBe(mockWorker.mvolaNumber);
+  });
+
+  it("exportMvolaPayments writes the net with the configured number of decimals", async () => {
+    vi.mocked(prisma.appSetting.findUnique).mockResolvedValue({
+      isiRate: new Prisma.Decimal("0.05"),
+      amountDecimals: 2,
+    } as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      { ...mockPayment, netAmount: new Prisma.Decimal("118750") },
+    ] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.buffer);
+    const cell = workbook.getWorksheet("Paiements")!.getRow(1).getCell(3);
+    expect(cell.value).toBe(118750);
+    expect(cell.numFmt).toBe("0.00");
+  });
+
+  it("exportMvolaPayments never hides the decimals of an amount that already has some", async () => {
+    vi.mocked(prisma.appSetting.findUnique).mockResolvedValue({
+      isiRate: new Prisma.Decimal("0.05"),
+      amountDecimals: 0,
+    } as never);
+    vi.mocked(prisma.payment.findMany).mockResolvedValue([
+      { ...mockPayment, netAmount: new Prisma.Decimal("118750.5") },
+    ] as never);
+    vi.mocked(prisma.payment.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await exportMvolaPayments("S29", { userId: MOCK_ADMIN_ID });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.buffer);
+    const cell = workbook.getWorksheet("Paiements")!.getRow(1).getCell(3);
+    expect(cell.value).toBe(118750.5);
+    expect(cell.numFmt).toBe("0.0");
   });
 
   it("exportMvolaPayments only reads the requested year (referenceYear in the filter)", async () => {

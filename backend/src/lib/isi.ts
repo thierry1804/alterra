@@ -1,28 +1,56 @@
-import { Prisma, type IsiRounding } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 
+/** Taux d'ISI et nombre de décimales des montants de paiement (0 à 2), figés sur le bordereau à sa génération. */
 export interface IsiSettings {
   rate: Prisma.Decimal;
-  rounding: IsiRounding;
+  decimals: number;
 }
+
+export const MAX_AMOUNT_DECIMALS = 2;
 
 const DEFAULT_ISI_SETTINGS: IsiSettings = {
   rate: new Prisma.Decimal("0.05"),
-  rounding: "UNIT",
+  decimals: 0,
 };
+
+export function clampDecimals(value: number): number {
+  return Number.isInteger(value) ? Math.min(Math.max(value, 0), MAX_AMOUNT_DECIMALS) : 0;
+}
 
 export async function getIsiSettings(): Promise<IsiSettings> {
   const row = await prisma.appSetting.findUnique({
     where: { id: "singleton" },
-    select: { isiRate: true, isiRounding: true },
+    select: { isiRate: true, amountDecimals: true },
   });
   if (!row) return DEFAULT_ISI_SETTINGS;
-  return { rate: new Prisma.Decimal(row.isiRate), rounding: row.isiRounding };
+  return { rate: new Prisma.Decimal(row.isiRate), decimals: clampDecimals(row.amountDecimals) };
 }
 
+/** Réglages tels que figés sur un bordereau. */
+export function isiSettingsOf(bordereau: {
+  isiRate: Prisma.Decimal.Value;
+  amountDecimals: number;
+}): IsiSettings {
+  return {
+    rate: new Prisma.Decimal(bordereau.isiRate),
+    decimals: clampDecimals(bordereau.amountDecimals),
+  };
+}
+
+/** Arrondi commercial (0,5 vers le haut) au nombre de décimales réglé. */
+export function roundAmount(amount: Prisma.Decimal.Value, decimals: number): Prisma.Decimal {
+  return new Prisma.Decimal(amount).toDecimalPlaces(decimals, Prisma.Decimal.ROUND_HALF_UP);
+}
+
+/** Montant brut d'une ligne (travailleur × activité × tarif) arrondi au réglage. */
+export function lineGross(amount: Prisma.Decimal.Value, settings: IsiSettings): Prisma.Decimal {
+  return roundAmount(amount, settings.decimals);
+}
+
+/** ISI d'une ligne, calculé sur son brut arrondi puis arrondi à son tour. */
 export function lineIsi(amount: Prisma.Decimal.Value, settings: IsiSettings): Prisma.Decimal {
-  const raw = new Prisma.Decimal(amount).mul(settings.rate);
-  return raw.toDecimalPlaces(settings.rounding === "UNIT" ? 0 : 2, Prisma.Decimal.ROUND_HALF_UP);
+  return roundAmount(new Prisma.Decimal(amount).mul(settings.rate), settings.decimals);
 }
 
 export function isiLineKey(pointage: {

@@ -1,4 +1,5 @@
 import { useBordereaux } from "../../hooks/useBordereaux";
+import { formatAmount } from "../../lib/money";
 import { useCan } from "../../hooks/useCan";
 import { BORDEREAU_STATUS_LABELS, bordereauStatusVariant } from "../../lib/payments";
 import { Badge } from "../ui/badge";
@@ -48,9 +49,7 @@ export default function BordereauxList({ periodIso, referenceYear, siteId }: Bor
                 </Badge>
               </TableCell>
               <TableCell className="text-right">{bordereau.paymentCount}</TableCell>
-              <TableCell className="text-right">
-                {Number(bordereau.totalAmount).toLocaleString("fr-FR")}
-              </TableCell>
+              <TableCell className="text-right">{formatAmount(bordereau.totalAmount)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

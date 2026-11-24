@@ -44,7 +44,7 @@ function pointage(
     amount: new Prisma.Decimal(amount),
     bordereauId,
     worker: { siteId },
-    bordereau: { isiRate: new Prisma.Decimal("0.05"), isiRounding: "UNIT" as const },
+    bordereau: { isiRate: new Prisma.Decimal("0.05"), amountDecimals: 0 },
     subActivity: { category },
   };
 }

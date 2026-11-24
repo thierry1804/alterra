@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import type { Payment, Worker } from "@prisma/client";
 import { PaymentReconciliationStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { getIsiSettings } from "../../lib/isi.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -47,6 +48,16 @@ async function buildMvolaWorkbook(
     { header: "Montant", key: "amount", width: 12 },
   ];
 
+  // Décimales affichées dans Excel : le réglage de Paramètres, sans jamais masquer celles d'un montant déjà généré.
+  const configured = await getIsiSettings()
+    .then((settings) => settings.decimals)
+    .catch(() => 0);
+  const decimals = payments.reduce(
+    (max, payment) => Math.max(max, payment.netAmount.decimalPlaces()),
+    configured,
+  );
+  const amountFormat = decimals > 0 ? `0.${"0".repeat(decimals)}` : "0";
+
   for (const payment of payments) {
     const row = sheet.addRow({
       phone: payment.worker.mvolaNumber,
@@ -54,6 +65,7 @@ async function buildMvolaWorkbook(
       amount: Number(payment.netAmount),
     });
     row.getCell("phone").numFmt = "@";
+    row.getCell("amount").numFmt = amountFormat;
   }
 
   if (!includeHeader) {

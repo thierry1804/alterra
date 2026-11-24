@@ -10,19 +10,26 @@ import { Select } from "../ui/select";
 
 interface IsiSettingsCardProps {
   ratePercent: number | undefined;
-  rounding: "UNIT" | "NONE" | undefined;
+  decimals: number | undefined;
   loading: boolean;
 }
 
-export default function IsiSettingsCard({ ratePercent, rounding, loading }: IsiSettingsCardProps) {
+const DECIMAL_OPTIONS = [
+  { value: 0, label: "0 : montants arrondis à l'Ariary", example: "118 750" },
+  { value: 1, label: "1 décimale", example: "118 750,5" },
+  { value: 2, label: "2 décimales", example: "118 750,50" },
+] as const;
+
+/** Taux d'ISI et nombre de décimales des montants de paiement. Un seul réglage pilote le calcul, les écrans, les factures et le fichier MVola. */
+export default function IsiSettingsCard({ ratePercent, decimals, loading }: IsiSettingsCardProps) {
   const queryClient = useQueryClient();
   const [rateInput, setRateInput] = useState("5");
-  const [roundingInput, setRoundingInput] = useState<"UNIT" | "NONE">("UNIT");
+  const [decimalsInput, setDecimalsInput] = useState(0);
 
   useEffect(() => {
     if (ratePercent !== undefined) setRateInput(String(ratePercent));
-    if (rounding) setRoundingInput(rounding);
-  }, [ratePercent, rounding]);
+    if (decimals !== undefined) setDecimalsInput(decimals);
+  }, [ratePercent, decimals]);
 
   const parsedRate = Number(rateInput.replace(",", "."));
   const rateValid =
@@ -31,13 +38,13 @@ export default function IsiSettingsCard({ ratePercent, rounding, loading }: IsiS
     parsedRate >= 0 &&
     parsedRate <= 100 &&
     Math.abs(parsedRate * 100 - Math.round(parsedRate * 100)) < 1e-9;
-  const unchanged = parsedRate === ratePercent && roundingInput === rounding;
+  const unchanged = parsedRate === ratePercent && decimalsInput === decimals;
 
   const mutation = useMutation({
     mutationFn: () =>
-      api.patch("/app-settings/isi", { ratePercent: parsedRate, rounding: roundingInput }),
+      api.patch("/app-settings/isi", { ratePercent: parsedRate, decimals: decimalsInput }),
     onSuccess: () => {
-      toast({ title: "Retenue ISI enregistrée" });
+      toast({ title: "Montants et ISI enregistrés" });
       void queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     },
     onError: (err) => {
@@ -46,10 +53,12 @@ export default function IsiSettingsCard({ ratePercent, rounding, loading }: IsiS
     },
   });
 
+  const example = DECIMAL_OPTIONS.find((option) => option.value === decimalsInput)?.example;
+
   return (
     <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
       <div>
-        <h2 className="text-base font-semibold text-zinc-900">Retenue ISI et arrondi</h2>
+        <h2 className="text-base font-semibold text-zinc-900">Retenue ISI et décimales</h2>
         <p className="mt-1 text-sm text-zinc-700">
           Taxe appliquée aux travailleurs informels, déduite du montant payé. Le net à payer figure
           sur la facture, dans le bordereau et dans le fichier envoyé à MVola.
@@ -70,15 +79,18 @@ export default function IsiSettingsCard({ ratePercent, rounding, loading }: IsiS
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="isi-rounding">Arrondi</Label>
+          <Label htmlFor="amount-decimals">Décimales des montants</Label>
           <Select
-            id="isi-rounding"
-            value={roundingInput}
+            id="amount-decimals"
+            value={decimalsInput}
             disabled={loading}
-            onChange={(event) => setRoundingInput(event.target.value as "UNIT" | "NONE")}
+            onChange={(event) => setDecimalsInput(Number(event.target.value))}
           >
-            <option value="UNIT">Arrondir l'ISI à l'Ar (ligne par ligne)</option>
-            <option value="NONE">Garder les décimales (2 chiffres)</option>
+            {DECIMAL_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </Select>
         </div>
         <Button
@@ -95,10 +107,26 @@ export default function IsiSettingsCard({ ratePercent, rounding, loading }: IsiS
           Le taux doit être compris entre 0 et 100, avec deux décimales au plus.
         </p>
       )}
+
+      <div className="rounded-md bg-surface-muted px-3 py-2 text-xs text-zinc-700">
+        <p className="font-medium text-zinc-900">
+          Où s&apos;applique ce réglage (exemple : {example} Ar)
+        </p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>
+            Calcul : chaque ligne (travailleur, activité, tarif) est arrondie, puis l&apos;ISI est
+            calculé dessus et arrondi à son tour ; brut, ISI et net sont des sommes exactes de
+            lignes.
+          </li>
+          <li>Écrans : bordereaux, paiements, ajustements et export MVola.</li>
+          <li>Documents : facture PDF et colonne « Montant » du fichier Excel MVola.</li>
+        </ul>
+      </div>
+
       <p className="text-xs text-zinc-500">
-        S'applique aux bordereaux générés ensuite. Un bordereau déjà généré garde le taux et
-        l'arrondi de sa génération ; une régénération avant la validation du DG reprend les réglages
-        actuels.
+        S&apos;applique aux bordereaux générés ensuite. Un bordereau déjà généré garde le taux et
+        les décimales de sa génération ; une régénération avant la validation du DG reprend les
+        réglages actuels. La finance doit valider la règle avant le premier paiement réel.
       </p>
     </div>
   );

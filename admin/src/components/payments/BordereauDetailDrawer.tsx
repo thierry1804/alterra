@@ -5,6 +5,7 @@ import { Download, FileText, Pencil } from "lucide-react";
 import { api } from "../../lib/api";
 import { useCan } from "../../hooks/useCan";
 import { toast } from "../../hooks/use-toast";
+import { formatAmount as formatAr } from "../../lib/money";
 import { downloadBlob, filenameFromDisposition } from "../../lib/download";
 import {
   BORDEREAU_STATUS_LABELS,
@@ -35,10 +36,6 @@ import {
 interface BordereauDetailDrawerProps {
   bordereauId: string | null;
   onClose: () => void;
-}
-
-function formatAr(value: string | number): string {
-  return Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 }
 
 function formatDateTime(value: string | null): string {

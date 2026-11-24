@@ -553,7 +553,10 @@ model Bordereau {
   exportedById         String?             @db.Uuid
   /// Taux et arrondi figés à la génération : un bordereau validé garde ses règles si le réglage change.
   isiRate              Decimal             @default(0.05) @db.Decimal(6, 4)
+  /// Obsolète : remplacé par amountDecimals (UNIT = 0 décimale, NONE = 2). Conservé pour ne pas détruire de données.
   isiRounding          IsiRounding         @default(UNIT)
+  /// Décimales des montants (ISI, brut, net) figées à la génération.
+  amountDecimals       Int                 @default(0)
   /// Instantané des lignes, écrit quand la version est remplacée (ses paiements sont alors supprimés).
   lines                Json?
   payments             Payment[]
@@ -799,6 +802,9 @@ model AppSetting {
   bioValidationRequired Boolean     @default(true)
   /// Retenue ISI sur les travailleurs informels (fraction : 0.05 = 5 %) et règle d'arrondi de l'ISI par ligne.
   isiRate               Decimal     @default(0.05) @db.Decimal(6, 4)
+  /// Obsolète : remplacé par amountDecimals (UNIT = 0 décimale, NONE = 2). Conservé pour ne pas détruire de données.
   isiRounding           IsiRounding @default(UNIT)
+  /// Nombre de décimales des montants de paiement (0 à 2) : arrondi de l'ISI, du brut et du net, et affichage.
+  amountDecimals        Int         @default(0)
   updatedAt             DateTime    @updatedAt
 }

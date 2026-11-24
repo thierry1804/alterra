@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatAmount as formatAr } from "../lib/money";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Download, FileSpreadsheet } from "lucide-react";
@@ -36,10 +37,6 @@ interface ExportQueuePage {
   nextCursor: string | null;
   hasMore: boolean;
   counts: Record<QueueGroup, number>;
-}
-
-function formatAr(value: string | number): string {
-  return Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 }
 
 function errorMessage(err: unknown): string {

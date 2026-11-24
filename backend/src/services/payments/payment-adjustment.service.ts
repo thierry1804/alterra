@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { lineIsi, type IsiSettings } from "../../lib/isi.js";
+import { isiSettingsOf, lineGross, lineIsi, type IsiSettings } from "../../lib/isi.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import type { AuthUser } from "../access/auth-user.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -11,9 +11,9 @@ const REASON_MIN_LENGTH = 10;
 
 function settingsOf(bordereau: {
   isiRate: Prisma.Decimal.Value;
-  isiRounding: IsiSettings["rounding"];
+  amountDecimals: number;
 }): IsiSettings {
-  return { rate: new Prisma.Decimal(bordereau.isiRate), rounding: bordereau.isiRounding };
+  return isiSettingsOf(bordereau);
 }
 
 async function loadAdjustablePayment(paymentId: string, actor: AuthUser) {
@@ -42,8 +42,10 @@ function applyTo(
   amount: Prisma.Decimal,
   settings: IsiSettings,
 ) {
-  const gross = payment.amount.add(amount);
-  const isi = payment.isiAmount.add(lineIsi(amount, settings));
+  // Même règle que la génération : l'ajustement est arrondi au réglage, puis son ISI calculé dessus.
+  const adjustment = lineGross(amount, settings);
+  const gross = payment.amount.add(adjustment);
+  const isi = payment.isiAmount.add(lineIsi(adjustment, settings));
   return { gross, isi, net: gross.sub(isi) };
 }
 

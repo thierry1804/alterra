@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatAr } from "../lib/money";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
@@ -221,7 +222,7 @@ export default function PaymentsPage() {
         key: "amount",
         label: "Masse nette à payer",
         icon: CreditCard,
-        displayValue: `${stats.totalAmount.toLocaleString("fr-MG")} Ar`,
+        displayValue: formatAr(stats.totalAmount),
       },
     ];
   }, [stats]);

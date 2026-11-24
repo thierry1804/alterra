@@ -3,7 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { basePrisma } from "../../lib/prisma-base.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { INVOICE_CLIENT } from "../../lib/invoice-client.js";
-import { isiLineKey, lineIsi, ratePercentLabel, type IsiSettings } from "../../lib/isi.js";
+import { isiLineKey, isiSettingsOf, lineGross, lineIsi, ratePercentLabel } from "../../lib/isi.js";
 import { ApiError } from "../../middleware/error-handler.js";
 import { BUCKETS, minioClient } from "../storage/minio.js";
 import { getReportStream } from "../storage/presigned-url.service.js";
@@ -57,7 +57,16 @@ export interface BordereauInvoiceTotals {
   workerCount: number;
 }
 
-function formatMoney(value: Prisma.Decimal.Value): string {
+/** Montant à payer : toujours le nombre de décimales réglé dans Paramètres (« 1 234,50 » ou « 1 235 »). */
+function formatMoney(value: Prisma.Decimal.Value, decimals: number): string {
+  return Number(new Prisma.Decimal(value).toString()).toLocaleString("fr-FR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+/** Tarif unitaire : pas de décimales imposées (un tarif n'est pas un montant arrondi). */
+function formatTariff(value: Prisma.Decimal.Value): string {
   return Number(new Prisma.Decimal(value).toString()).toLocaleString("fr-FR", {
     maximumFractionDigits: 2,
   });
@@ -139,10 +148,8 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
     }
   }
 
-  const isiSettings: IsiSettings = {
-    rate: new Prisma.Decimal(bordereau.isiRate),
-    rounding: bordereau.isiRounding,
-  };
+  const isiSettings = isiSettingsOf(bordereau);
+  const money = (value: Prisma.Decimal.Value) => formatMoney(value, isiSettings.decimals);
   const byCategory = new Map<string, typeof grouped extends Map<string, infer V> ? V[] : never>();
   for (const entry of grouped.values()) {
     const list = byCategory.get(entry.category.code) ?? [];
@@ -168,8 +175,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
             ),
         )
         .map((entry) => {
-          const lineIsiValue = lineIsi(entry.amount, isiSettings);
-          subtotal = subtotal.add(entry.amount);
+          const lineAmount = lineGross(entry.amount, isiSettings);
+          const lineIsiValue = lineIsi(lineAmount, isiSettings);
+          subtotal = subtotal.add(lineAmount);
           isiSubtotal = isiSubtotal.add(lineIsiValue);
           workerIds.add(entry.workerId);
           rowNumber += 1;
@@ -180,10 +188,10 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
             designation: `${entry.subActivityLabel} ${periodLabel}`,
             quantity: formatQuantity(entry.quantity),
             unit: entry.unit,
-            unitPrice: formatMoney(entry.unitRate),
-            amount: formatMoney(entry.amount),
-            isiAmount: formatMoney(lineIsiValue),
-            netAmount: formatMoney(entry.amount.sub(lineIsiValue)),
+            unitPrice: formatTariff(entry.unitRate),
+            amount: money(lineAmount),
+            isiAmount: money(lineIsiValue),
+            netAmount: money(lineAmount.sub(lineIsiValue)),
           };
         });
       gross = gross.add(subtotal);
@@ -193,9 +201,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
         label: entries[0].category.label,
         isiRate: ratePercentLabel(bordereau.isiRate),
         lines,
-        subtotal: formatMoney(subtotal),
-        isiSubtotal: formatMoney(isiSubtotal),
-        netSubtotal: formatMoney(subtotal.sub(isiSubtotal)),
+        subtotal: money(subtotal),
+        isiSubtotal: money(isiSubtotal),
+        netSubtotal: money(subtotal.sub(isiSubtotal)),
       };
     });
 
@@ -215,8 +223,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
     let adjustmentSubtotal = new Prisma.Decimal(0);
     let adjustmentIsi = new Prisma.Decimal(0);
     const adjustmentLines: BordereauInvoiceLine[] = adjustments.map((adjustment) => {
-      const adjustmentLineIsi = lineIsi(adjustment.amount, isiSettings);
-      adjustmentSubtotal = adjustmentSubtotal.add(adjustment.amount);
+      const adjustmentAmount = lineGross(adjustment.amount, isiSettings);
+      const adjustmentLineIsi = lineIsi(adjustmentAmount, isiSettings);
+      adjustmentSubtotal = adjustmentSubtotal.add(adjustmentAmount);
       adjustmentIsi = adjustmentIsi.add(adjustmentLineIsi);
       workerIds.add(adjustment.payment.workerId);
       rowNumber += 1;
@@ -228,9 +237,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
         quantity: "",
         unit: "",
         unitPrice: "",
-        amount: formatMoney(adjustment.amount),
-        isiAmount: formatMoney(adjustmentLineIsi),
-        netAmount: formatMoney(adjustment.amount.sub(adjustmentLineIsi)),
+        amount: money(adjustmentAmount),
+        isiAmount: money(adjustmentLineIsi),
+        netAmount: money(adjustmentAmount.sub(adjustmentLineIsi)),
       };
     });
     activities.push({
@@ -238,9 +247,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
       label: "Ajustements manuels",
       isiRate: ratePercentLabel(bordereau.isiRate),
       lines: adjustmentLines,
-      subtotal: formatMoney(adjustmentSubtotal),
-      isiSubtotal: formatMoney(adjustmentIsi),
-      netSubtotal: formatMoney(adjustmentSubtotal.sub(adjustmentIsi)),
+      subtotal: money(adjustmentSubtotal),
+      isiSubtotal: money(adjustmentIsi),
+      netSubtotal: money(adjustmentSubtotal.sub(adjustmentIsi)),
     });
     gross = gross.add(adjustmentSubtotal);
     isi = isi.add(adjustmentIsi);
@@ -261,9 +270,9 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
       activities,
       totals: {
         workerCount: workerIds.size,
-        gross: formatMoney(gross),
-        isi: formatMoney(isi),
-        net: formatMoney(net),
+        gross: money(gross),
+        isi: money(isi),
+        net: money(net),
       },
       isiRate: ratePercentLabel(bordereau.isiRate),
     },

@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { MAX_AMOUNT_DECIMALS, clampDecimals } from "../lib/isi.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
@@ -72,7 +73,7 @@ async function getAppSetting() {
     mapTilerKey: row?.mapTilerKey ?? null,
     bioValidationRequired: row?.bioValidationRequired ?? true,
     isiRate: row ? new Prisma.Decimal(row.isiRate) : new Prisma.Decimal("0.05"),
-    isiRounding: row?.isiRounding ?? ("UNIT" as const),
+    amountDecimals: clampDecimals(row?.amountDecimals ?? 0),
     updatedAt: row?.updatedAt ?? null,
   };
 }
@@ -88,7 +89,9 @@ function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
     mapTilerKeyConfigured: Boolean(settings.mapTilerKey),
     bioValidationRequired: settings.bioValidationRequired,
     isiRatePercent: Number(settings.isiRate.mul(100).toDecimalPlaces(2).toString()),
-    isiRounding: settings.isiRounding,
+    amountDecimals: settings.amountDecimals,
+    // Ancien champ, dérivé du nombre de décimales : les clients non mis à jour continuent de fonctionner.
+    isiRounding: settings.amountDecimals === 0 ? ("UNIT" as const) : ("NONE" as const),
   };
 }
 
@@ -472,10 +475,18 @@ appSettingsRouter.patch(
   },
 );
 
-const setIsiSchema = z.object({
-  ratePercent: z.number().min(0).max(100).multipleOf(0.01),
-  rounding: z.enum(["UNIT", "NONE"]),
-});
+const setIsiSchema = z
+  .object({
+    ratePercent: z.number().min(0).max(100).multipleOf(0.01),
+    /** Nombre de décimales des montants de paiement : 0 (arrondi à l'Ariary) à 2. */
+    decimals: z.number().int().min(0).max(MAX_AMOUNT_DECIMALS).optional(),
+    /** Ancien format : UNIT = 0 décimale, NONE = 2. Accepté pour les clients non mis à jour. */
+    rounding: z.enum(["UNIT", "NONE"]).optional(),
+  })
+  .refine((body) => body.decimals !== undefined || body.rounding !== undefined, {
+    message: "decimals requis",
+    path: ["decimals"],
+  });
 
 appSettingsRouter.patch(
   "/app-settings/isi",
@@ -484,14 +495,16 @@ appSettingsRouter.patch(
   validate(setIsiSchema),
   async (req, res, next) => {
     try {
-      const { ratePercent, rounding } = req.body as z.infer<typeof setIsiSchema>;
+      const body = req.body as z.infer<typeof setIsiSchema>;
+      const { ratePercent } = body;
+      const decimals = body.decimals ?? (body.rounding === "UNIT" ? 0 : 2);
       const rate = new Prisma.Decimal(ratePercent).div(100);
       const before = await getAppSetting();
 
       const updated = await prisma.appSetting.upsert({
         where: { id: SETTINGS_ID },
-        create: { id: SETTINGS_ID, isiRate: rate, isiRounding: rounding },
-        update: { isiRate: rate, isiRounding: rounding },
+        create: { id: SETTINGS_ID, isiRate: rate, amountDecimals: decimals },
+        update: { isiRate: rate, amountDecimals: decimals },
       });
 
       await writeAuditLog({
@@ -501,9 +514,9 @@ appSettingsRouter.patch(
         entityId: SETTINGS_ID,
         before: {
           isiRatePercent: Number(before.isiRate.mul(100).toString()),
-          isiRounding: before.isiRounding,
+          amountDecimals: before.amountDecimals,
         },
-        after: { isiRatePercent: ratePercent, isiRounding: updated.isiRounding },
+        after: { isiRatePercent: ratePercent, amountDecimals: updated.amountDecimals },
         ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
@@ -512,7 +525,7 @@ appSettingsRouter.patch(
         settingsResponse({
           ...before,
           isiRate: new Prisma.Decimal(updated.isiRate),
-          isiRounding: updated.isiRounding,
+          amountDecimals: clampDecimals(updated.amountDecimals),
           updatedAt: updated.updatedAt,
         }),
       );

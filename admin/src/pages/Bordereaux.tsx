@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { formatAmount } from "../lib/money";
 import { useMemo, useState } from "react";
 import { FileCheck } from "lucide-react";
 import { api } from "../lib/api";
@@ -215,9 +216,7 @@ export default function BordereauxPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">{row.paymentCount}</TableCell>
-                  <TableCell className="text-right">
-                    {Number(row.totalAmount).toLocaleString("fr-FR")}
-                  </TableCell>
+                  <TableCell className="text-right">{formatAmount(row.totalAmount)}</TableCell>
                   <TableCell className="text-center">
                     <Button size="sm" variant="outline" onClick={() => setOpenId(row.id)}>
                       Ouvrir

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { AppPrisma } from "../../lib/prisma.js";
-import { isiLineKey, lineIsi } from "../../lib/isi.js";
+import { isiLineKey, isiSettingsOf, lineGross, lineIsi, type IsiSettings } from "../../lib/isi.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { isoWeekOfUtcDate } from "../../lib/week-iso.js";
 
@@ -138,7 +138,7 @@ export async function getCostsSummary(db: CostsDb, filters: CostsFilters): Promi
         amount: true,
         bordereauId: true,
         worker: { select: { siteId: true } },
-        bordereau: { select: { isiRate: true, isiRounding: true } },
+        bordereau: { select: { isiRate: true, amountDecimals: true } },
         subActivity: { select: { category: { select: { id: true, code: true, label: true } } } },
       },
     });
@@ -150,7 +150,7 @@ export async function getCostsSummary(db: CostsDb, filters: CostsFilters): Promi
         siteId: string;
         workerId: string;
         category: { id: string; code: string; label: string };
-        isi: { rate: Prisma.Decimal; rounding: "UNIT" | "NONE" };
+        isi: IsiSettings;
       }
     >();
 
@@ -167,16 +167,14 @@ export async function getCostsSummary(db: CostsDb, filters: CostsFilters): Promi
           siteId: pointage.worker.siteId,
           workerId: pointage.workerId,
           category: pointage.subActivity.category,
-          isi: {
-            rate: new Prisma.Decimal(pointage.bordereau.isiRate),
-            rounding: pointage.bordereau.isiRounding,
-          },
+          isi: isiSettingsOf(pointage.bordereau),
         });
       }
     }
 
     for (const line of lines.values()) {
-      const net = toNumber(line.amount.sub(lineIsi(line.amount, line.isi)));
+      const gross = lineGross(line.amount, line.isi);
+      const net = toNumber(gross.sub(lineIsi(gross, line.isi)));
       const entry = byActivityMap.get(line.category.id) ?? {
         categoryId: line.category.id,
         code: line.category.code,
