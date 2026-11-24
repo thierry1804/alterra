@@ -62,6 +62,8 @@ export default {
         "modal-backdrop": "1040",
         modal: "1050",
         toast: "1060",
+        // Popovers et menus : au-dessus des fenêtres modales et des cellules collantes, sous les infobulles.
+        popover: "1065",
         tooltip: "1070",
       },
       keyframes: {
