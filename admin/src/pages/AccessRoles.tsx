@@ -31,7 +31,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/useAuth";
+import RolesMatrix from "../components/access/RolesMatrix";
 import RolesTable from "../components/access/RolesTable";
+import { withGroupToggled } from "../lib/access-matrix";
+import { useSearchParams } from "react-router-dom";
+import { cn } from "../lib/utils";
 import { confirmationFor, copyName, type RolePatch } from "../lib/access-roles";
 import {
   SCOPE_LABELS,
@@ -88,6 +92,18 @@ function toggled<T>(set: Set<T>, value: T): Set<T> {
 
 export default function AccessRolesPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("vue") === "matrice" ? "matrice" : "liste";
+  const setView = (next: "liste" | "matrice") =>
+    setSearchParams(
+      (params) => {
+        const copy = new URLSearchParams(params);
+        if (next === "matrice") copy.set("vue", "matrice");
+        else copy.delete("vue");
+        return copy;
+      },
+      { replace: true },
+    );
   const { user } = useAuth();
   const held = useMemo(() => new Set(user?.permissions ?? []), [user]);
 
@@ -196,7 +212,10 @@ export default function AccessRolesPage() {
       queryClient.setQueryData(["access", "roles"], context?.previous);
       toast({ title: "Échec", description: errorMessage(err), variant: "destructive" });
     },
-    onSuccess: () => toast({ title: "Rôle mis à jour" }),
+    // Une case cochée dans la matrice se voit d'elle-même : pas de toast à chaque clic.
+    onSuccess: (_data, { patch }) => {
+      if (!patch.groupIds) toast({ title: "Rôle mis à jour" });
+    },
     onSettled: refresh,
   });
 
@@ -228,6 +247,14 @@ export default function AccessRolesPage() {
     const message = confirmationFor(role, patch);
     if (message) setPendingPatch({ role, patch, message });
     else patchRole.mutate({ role, patch });
+  }
+
+  function requestGroupToggle(role: AccessRole, group: PermissionGroup, checked: boolean) {
+    // Base : la liste la plus récente du cache, pour que des clics rapprochés s'additionnent.
+    const current =
+      queryClient.getQueryData<AccessRole[]>(["access", "roles"])?.find((r) => r.id === role.id) ??
+      role;
+    requestRolePatch(current, { groupIds: withGroupToggled(current.groupIds, group.id, checked) });
   }
 
   function openGroup(group: PermissionGroup | null) {
@@ -280,19 +307,53 @@ export default function AccessRolesPage() {
         </TabsList>
 
         <TabsContent value="roles" className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div
+              role="group"
+              aria-label="Affichage des rôles"
+              className="inline-flex rounded-md border border-zinc-300 p-0.5"
+            >
+              {(
+                [
+                  ["liste", "Liste"],
+                  ["matrice", "Matrice"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={view === value}
+                  onClick={() => setView(value)}
+                  className={cn(
+                    "alterra-focus min-h-8 rounded px-3 text-sm font-medium transition-colors",
+                    view === value ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <Button type="button" onClick={() => openRole(null)}>
               Nouveau rôle
             </Button>
           </div>
-          <RolesTable
-            roles={roles}
-            resources={resources}
-            onOpenDetail={openRole}
-            onPatch={requestRolePatch}
-            onDuplicate={(role) => duplicateRole.mutate(role)}
-            onDelete={(role) => setToDelete({ kind: "role", item: role })}
-          />
+          {view === "liste" ? (
+            <RolesTable
+              roles={roles}
+              resources={resources}
+              onOpenDetail={openRole}
+              onPatch={requestRolePatch}
+              onDuplicate={(role) => duplicateRole.mutate(role)}
+              onDelete={(role) => setToDelete({ kind: "role", item: role })}
+            />
+          ) : (
+            <RolesMatrix
+              roles={roles}
+              groups={groups}
+              resources={resources}
+              onToggle={requestGroupToggle}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-3">

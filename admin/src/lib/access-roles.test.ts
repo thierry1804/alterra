@@ -112,3 +112,16 @@ describe("copyName", () => {
     expect(copyName("Finance", ["Finance", "Finance (copie)"])).toBe("Finance (copie 2)");
   });
 });
+
+describe("confirmationFor : groupes", () => {
+  it("décrit l'ajout ou le retrait de groupes sur un rôle système", () => {
+    const system = role({ isSystem: true, groupIds: ["a", "b"], userCount: 2 });
+    const message = confirmationFor(system, { groupIds: ["a", "c"] });
+    expect(message).toContain("1 groupe ajouté, 1 groupe retiré");
+    expect(message).toContain("2 utilisateurs concernés");
+  });
+
+  it("ne demande rien pour un rôle personnalisé", () => {
+    expect(confirmationFor(role({ groupIds: ["a"] }), { groupIds: [] })).toBeNull();
+  });
+});

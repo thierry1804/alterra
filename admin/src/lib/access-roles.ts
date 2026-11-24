@@ -62,6 +62,7 @@ export interface RolePatch {
   description?: string | null;
   scope?: AccessScope;
   mfaRequired?: boolean;
+  groupIds?: string[];
 }
 
 /**
@@ -77,6 +78,21 @@ export function confirmationFor(role: AccessRole, patch: RolePatch): string | nu
     parts.push(
       `La portée passera de « ${SCOPE_LABELS[role.scope]} » à « ${SCOPE_LABELS[patch.scope]} ».`,
     );
+  }
+  if (patch.groupIds) {
+    const before = new Set(role.groupIds);
+    const after = new Set(patch.groupIds);
+    const added = [...after].filter((id) => !before.has(id)).length;
+    const removed = [...before].filter((id) => !after.has(id)).length;
+    if (added + removed > 0) {
+      const detail = [
+        added > 0 ? `${added} groupe${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}` : "",
+        removed > 0
+          ? `${removed} groupe${removed > 1 ? "s" : ""} retiré${removed > 1 ? "s" : ""}`
+          : "",
+      ].filter(Boolean);
+      if (role.isSystem) parts.push(`Droits modifiés : ${detail.join(", ")}.`);
+    }
   }
   if (role.isSystem) {
     if (parts.length === 0) parts.push("Vous modifiez les informations d'un rôle système.");

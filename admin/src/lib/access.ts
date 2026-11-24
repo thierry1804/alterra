@@ -2,6 +2,9 @@ import { api } from "./api";
 
 export type AccessScope = "TOUS" | "SITE" | "EQUIPE";
 
+/** Identifiant du rôle Administrateur (rôle système, identique côté serveur) : verrouillé dans la matrice. */
+export const ADMIN_ROLE_ID = "00000000-0000-0000-000b-000000000001";
+
 export const SCOPE_LABELS: Record<AccessScope, string> = {
   TOUS: "Tous les sites",
   SITE: "Son site",
