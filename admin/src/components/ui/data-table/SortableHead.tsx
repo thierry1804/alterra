@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Info } from "lucide-react";
+import { Hint } from "../tooltip";
 import { TableHead } from "../table";
 import { cn } from "../../../lib/utils";
 
@@ -10,6 +11,8 @@ interface SortableHeadProps {
   onSort: (key: string) => void;
   numeric?: boolean;
   className?: string;
+  /** Aide courte affichée dans une infobulle (survol et focus clavier). Requiert un TooltipProvider. */
+  hint?: string;
 }
 
 /** En-tête de colonne cliquable pour trier — même rendu que TableHead, plus l'indicateur ▲▼. */
@@ -21,6 +24,7 @@ export function SortableHead({
   onSort,
   numeric,
   className,
+  hint,
 }: SortableHeadProps) {
   const active = currentKey === sortKey;
   return (
@@ -44,6 +48,17 @@ export function SortableHead({
           <ArrowUpDown className="h-3 w-3 opacity-30" aria-hidden />
         )}
       </button>
+      {hint && (
+        <Hint label={hint} side="top">
+          <button
+            type="button"
+            aria-label={`Aide : ${label}`}
+            className="alterra-focus ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full align-middle text-subtle hover:text-zinc-900"
+          >
+            <Info className="h-3 w-3" aria-hidden />
+          </button>
+        </Hint>
+      )}
     </TableHead>
   );
 }

@@ -31,6 +31,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/useAuth";
+import RolesTable from "../components/access/RolesTable";
+import { confirmationFor, copyName, type RolePatch } from "../lib/access-roles";
 import {
   SCOPE_LABELS,
   accessApi,
@@ -102,6 +104,11 @@ export default function AccessRolesPage() {
   const [groupForm, setGroupForm] = useState<GroupForm>(emptyGroupForm);
   const [roleSheet, setRoleSheet] = useState<{ editing: AccessRole | null } | null>(null);
   const [roleForm, setRoleForm] = useState<RoleForm>(emptyRoleForm);
+  const [pendingPatch, setPendingPatch] = useState<{
+    role: AccessRole;
+    patch: RolePatch;
+    message: string;
+  } | null>(null);
   const [toDelete, setToDelete] = useState<
     { kind: "group"; item: PermissionGroup } | { kind: "role"; item: AccessRole } | null
   >(null);
@@ -173,6 +180,56 @@ export default function AccessRolesPage() {
     },
   });
 
+  // Modification en place depuis le tableau : mise à jour optimiste, annulée si le serveur refuse.
+  const patchRole = useMutation({
+    mutationFn: ({ role, patch }: { role: AccessRole; patch: RolePatch }) =>
+      accessApi.updateRole(role.id, patch),
+    onMutate: async ({ role, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["access", "roles"] });
+      const previous = queryClient.getQueryData<AccessRole[]>(["access", "roles"]);
+      queryClient.setQueryData<AccessRole[]>(["access", "roles"], (rows) =>
+        rows?.map((row) => (row.id === role.id ? { ...row, ...patch } : row)),
+      );
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      queryClient.setQueryData(["access", "roles"], context?.previous);
+      toast({ title: "Échec", description: errorMessage(err), variant: "destructive" });
+    },
+    onSuccess: () => toast({ title: "Rôle mis à jour" }),
+    onSettled: refresh,
+  });
+
+  const duplicateRole = useMutation({
+    mutationFn: (role: AccessRole) =>
+      accessApi.createRole({
+        name: copyName(
+          role.name,
+          roles.map((r) => r.name),
+        ),
+        description: role.description,
+        scope: role.scope,
+        mfaRequired: role.mfaRequired,
+        groupIds: role.groupIds,
+      }),
+    onSuccess: (created) => {
+      refresh();
+      toast({ title: "Rôle dupliqué", description: created.name });
+    },
+    onError: (err) =>
+      toast({
+        title: "Duplication impossible",
+        description: errorMessage(err),
+        variant: "destructive",
+      }),
+  });
+
+  function requestRolePatch(role: AccessRole, patch: RolePatch) {
+    const message = confirmationFor(role, patch);
+    if (message) setPendingPatch({ role, patch, message });
+    else patchRole.mutate({ role, patch });
+  }
+
   function openGroup(group: PermissionGroup | null) {
     setGroupForm(
       group
@@ -228,53 +285,14 @@ export default function AccessRolesPage() {
               Nouveau rôle
             </Button>
           </div>
-          <div className="rounded-lg border border-zinc-200">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rôle</TableHead>
-                  <TableHead>Portée</TableHead>
-                  <TableHead>Groupes</TableHead>
-                  <TableHead>Utilisateurs</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roles.map((role) => (
-                  <TableRow key={role.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{role.name}</span>
-                        {role.isSystem && <Badge>Système</Badge>}
-                        {role.mfaRequired && <Badge variant="info">MFA</Badge>}
-                      </div>
-                      {role.description && <p className="text-xs text-muted">{role.description}</p>}
-                    </TableCell>
-                    <TableCell>{SCOPE_LABELS[role.scope]}</TableCell>
-                    <TableCell>{role.groupIds.length}</TableCell>
-                    <TableCell>{role.userCount}</TableCell>
-                    <TableCell>
-                      <RowActions>
-                        <IconButton
-                          icon={Pencil}
-                          label={`Modifier ${role.name}`}
-                          onClick={() => openRole(role)}
-                        />
-                        {!role.isSystem && (
-                          <IconButton
-                            icon={Trash2}
-                            variant="destructive"
-                            label={`Supprimer ${role.name}`}
-                            onClick={() => setToDelete({ kind: "role", item: role })}
-                          />
-                        )}
-                      </RowActions>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <RolesTable
+            roles={roles}
+            resources={resources}
+            onOpenDetail={openRole}
+            onPatch={requestRolePatch}
+            onDuplicate={(role) => duplicateRole.mutate(role)}
+            onDelete={(role) => setToDelete({ kind: "role", item: role })}
+          />
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-3">
@@ -554,6 +572,19 @@ export default function AccessRolesPage() {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
         onOpenChange={(open) => !open && setToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingPatch !== null}
+        title={`Modifier le rôle « ${pendingPatch?.role.name ?? ""} » ?`}
+        description={pendingPatch?.message ?? ""}
+        confirmLabel="Appliquer"
+        onConfirm={() => {
+          if (pendingPatch)
+            patchRole.mutate({ role: pendingPatch.role, patch: pendingPatch.patch });
+          setPendingPatch(null);
+        }}
+        onOpenChange={(open) => !open && setPendingPatch(null)}
       />
     </div>
   );

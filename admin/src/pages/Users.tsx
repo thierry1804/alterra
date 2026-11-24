@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import FilterChips from "../components/ui/FilterChips";
 import { useSiteScope } from "../lib/site-scope";
@@ -77,7 +78,8 @@ function generateClientPassword(length = 12): string {
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const [searchParams] = useSearchParams();
+  const [roleFilter, setRoleFilter] = useState(searchParams.get("roleId") ?? "");
   const [siteFilter] = useSiteScope();
   const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
   const [dialogOpen, setDialogOpen] = useState(false);

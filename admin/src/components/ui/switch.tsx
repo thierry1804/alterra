@@ -6,6 +6,7 @@ interface SwitchProps {
   disabled?: boolean;
   id?: string;
   "aria-labelledby"?: string;
+  "aria-label"?: string;
 }
 
 /** Interrupteur : un réglage actif ou non, sans ambiguïté (plus clair qu'une case à cocher). */
