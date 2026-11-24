@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
@@ -78,7 +78,7 @@ invoicesRouter.get(
       res.setHeader("Content-Type", "application/zip");
       res.setHeader("Content-Disposition", `attachment; filename="factures_${periodLabel}.zip"`);
 
-      const archive = archiver("zip", { zlib: { level: 9 } });
+      const archive = new ZipArchive({ zlib: { level: 9 } });
       archive.on("error", next);
       archive.pipe(res);
 
