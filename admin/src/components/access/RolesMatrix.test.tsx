@@ -46,6 +46,7 @@ function role(id: string, name: string, groupIds: string[]): AccessRole {
     groupIds,
     permissions: [],
     userCount: 2,
+    version: "v1",
   };
 }
 

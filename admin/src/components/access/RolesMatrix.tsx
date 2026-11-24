@@ -23,6 +23,8 @@ interface MatrixCellProps {
   groupId: string;
   checked: boolean;
   locked: boolean;
+  /** Case modifiée et non enregistrée. */
+  changed: boolean;
   label: string;
   onToggle: (roleId: string, groupId: string, checked: boolean) => void;
 }
@@ -33,11 +35,15 @@ const MatrixCell = memo(function MatrixCell({
   groupId,
   checked,
   locked,
+  changed,
   label,
   onToggle,
 }: MatrixCellProps) {
   return (
-    <td data-col={roleIndex} className="border-b border-zinc-100 p-0 text-center">
+    <td
+      data-col={roleIndex}
+      className={cn("border-b border-zinc-100 p-0 text-center", changed && "bg-warning-bg")}
+    >
       <label
         title={locked ? ADMIN_LOCK_HINT : undefined}
         className={cn(
@@ -68,12 +74,21 @@ interface MatrixRowProps {
   roles: ColumnMeta[];
   /** « 1011… » : appartenance du groupe à chaque rôle, pour ne re-rendre que les lignes modifiées. */
   bits: string;
+  /** « 0100… » : cases modifiées par rapport à l'état enregistré. */
+  changedBits: string;
   permissionLabels: string[];
   onToggle: (roleId: string, groupId: string, checked: boolean) => void;
 }
 
 const MatrixRow = memo(
-  function MatrixRow({ group, roles, bits, permissionLabels, onToggle }: MatrixRowProps) {
+  function MatrixRow({
+    group,
+    roles,
+    bits,
+    changedBits,
+    permissionLabels,
+    onToggle,
+  }: MatrixRowProps) {
     return (
       <tr className="group/line hover:bg-zinc-50">
         <th
@@ -103,6 +118,7 @@ const MatrixRow = memo(
             groupId={group.id}
             checked={bits[index] === "1"}
             locked={role.id === ADMIN_ROLE_ID}
+            changed={changedBits[index] === "1"}
             label={`${role.name} : ${group.name}`}
             onToggle={onToggle}
           />
@@ -114,19 +130,28 @@ const MatrixRow = memo(
     a.group === b.group &&
     a.roles === b.roles &&
     a.bits === b.bits &&
+    a.changedBits === b.changedBits &&
     a.onToggle === b.onToggle &&
     a.permissionLabels === b.permissionLabels,
 );
 
 interface RolesMatrixProps {
   roles: AccessRole[];
+  /** Rôles tels qu'enregistrés, pour repérer les cases modifiées dans le brouillon. */
+  baseline?: AccessRole[];
   groups: PermissionGroup[];
   resources: PermissionResource[];
   onToggle: (role: AccessRole, group: PermissionGroup, checked: boolean) => void;
 }
 
 /** Matrice rôles × groupes de permissions : une case = un groupe accordé à un rôle. */
-export default function RolesMatrix({ roles, groups, resources, onToggle }: RolesMatrixProps) {
+export default function RolesMatrix({
+  roles,
+  baseline,
+  groups,
+  resources,
+  onToggle,
+}: RolesMatrixProps) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLTableElement>(null);
@@ -161,6 +186,10 @@ export default function RolesMatrix({ roles, groups, resources, onToggle }: Role
   }
   const columnMeta = metaCache.current.value;
   const membership = useMemo(() => columns.map((role) => new Set(role.groupIds)), [columns]);
+  const baseMembership = useMemo(() => {
+    const byId = new Map((baseline ?? roles).map((role) => [role.id, new Set(role.groupIds)]));
+    return columns.map((role) => byId.get(role.id) ?? new Set<string>());
+  }, [baseline, roles, columns]);
   const searching = query.trim().length > 0;
 
   // Les données courantes passent par une ref : le rappel reste stable, donc les lignes inchangées ne se re-rendent pas.
@@ -287,6 +316,7 @@ export default function RolesMatrix({ roles, groups, resources, onToggle }: Role
                     open={open}
                     columns={columnMeta}
                     membership={membership}
+                    baseMembership={baseMembership}
                     labelsByGroup={labelsByGroup}
                     onToggleDomain={toggleDomain}
                     onToggle={handleToggle}
@@ -312,6 +342,7 @@ interface SectionRowsProps {
   open: boolean;
   columns: ColumnMeta[];
   membership: Set<string>[];
+  baseMembership: Set<string>[];
   labelsByGroup: Map<string, string[]>;
   onToggleDomain: (domain: string) => void;
   onToggle: (roleId: string, groupId: string, checked: boolean) => void;
@@ -323,6 +354,7 @@ function SectionRows({
   open,
   columns,
   membership,
+  baseMembership,
   labelsByGroup,
   onToggleDomain,
   onToggle,
@@ -359,6 +391,11 @@ function SectionRows({
             group={group}
             roles={columns}
             bits={membership.map((set) => (set.has(group.id) ? "1" : "0")).join("")}
+            changedBits={membership
+              .map((set, index) =>
+                set.has(group.id) !== baseMembership[index].has(group.id) ? "1" : "0",
+              )
+              .join("")}
             permissionLabels={labelsByGroup.get(group.id) ?? []}
             onToggle={onToggle}
           />

@@ -32,6 +32,7 @@ function role(overrides: Partial<AccessRole> = {}): AccessRole {
     groupIds: [],
     permissions: [],
     userCount: 0,
+    version: "v1",
     ...overrides,
   };
 }

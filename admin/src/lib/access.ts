@@ -41,6 +41,8 @@ export interface AccessRole {
   groupIds: string[];
   permissions: string[];
   userCount: number;
+  /** Horodatage de dernière modification : sert à refuser l'écrasement d'une modification plus récente. */
+  version: string;
 }
 
 export interface RoleOption {
@@ -83,4 +85,19 @@ export const accessApi = {
     },
   ) => api.patch<AccessRole>(`/access/roles/${id}`, body).then((r) => r.data),
   deleteRole: (id: string) => api.delete(`/access/roles/${id}`),
+  /** Sauvegarde groupée, tout ou rien : renvoie les rôles après et avant modification. */
+  bulkUpdateRoles: (
+    changes: Array<{
+      roleId: string;
+      expectedVersion?: string;
+      name?: string;
+      description?: string | null;
+      scope?: AccessScope;
+      mfaRequired?: boolean;
+      groupIds?: string[];
+    }>,
+  ) =>
+    api
+      .post<{ data: AccessRole[]; before: AccessRole[] }>("/access/roles/bulk", { changes })
+      .then((r) => r.data),
 };

@@ -22,6 +22,7 @@ const roles: AccessRole[] = [
     groupIds: ["g1"],
     permissions: ["pointage:lecture", "badge:lecture"],
     userCount: 1,
+    version: "v1",
   },
   {
     id: "conso",
@@ -33,6 +34,7 @@ const roles: AccessRole[] = [
     groupIds: [],
     permissions: ["badge:lecture"],
     userCount: 0,
+    version: "v1",
   },
 ];
 

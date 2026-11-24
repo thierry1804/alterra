@@ -14,6 +14,7 @@ import {
   type RoleFilters,
   type RolePatch,
 } from "../../lib/access-roles";
+import type { RoleField } from "../../lib/access-draft";
 import { cn } from "../../lib/utils";
 import { EmptyState } from "../ui/EmptyState";
 import { Button } from "../ui/button";
@@ -39,6 +40,8 @@ const SORT_ACCESSORS = {
 
 interface RolesTableProps {
   roles: AccessRole[];
+  /** Champs modifiés non enregistrés, par rôle : les cellules concernées sont surlignées. */
+  dirtyFields?: Record<string, Set<RoleField>>;
   resources: PermissionResource[];
   onOpenDetail: (role: AccessRole) => void;
   onPatch: (role: AccessRole, patch: RolePatch) => void;
@@ -48,6 +51,7 @@ interface RolesTableProps {
 
 export default function RolesTable({
   roles,
+  dirtyFields = {},
   resources,
   onOpenDetail,
   onPatch,
@@ -174,6 +178,9 @@ export default function RolesTable({
             <TableBody>
               {sorted.map((role) => {
                 const unused = role.userCount === 0;
+                const dirty = dirtyFields[role.id];
+                const mark = (...fields: RoleField[]) =>
+                  fields.some((field) => dirty?.has(field)) ? "bg-warning-bg/60" : undefined;
                 return (
                   <TableRow
                     key={role.id}
@@ -186,7 +193,13 @@ export default function RolesTable({
                     }}
                     className="group/row cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-ring"
                   >
-                    <TableCell className={cn("min-w-64", unused && "opacity-70")}>
+                    <TableCell
+                      className={cn(
+                        "min-w-64",
+                        unused && "opacity-70",
+                        mark("name", "description"),
+                      )}
+                    >
                       <div className="flex items-center gap-1.5">
                         {role.isSystem && (
                           <Hint label="Rôle système : il ne peut pas être supprimé." side="top">

@@ -10,6 +10,7 @@ import { writeAuditLog } from "../services/audit/audit.service.js";
 import { invalidateRoleAccess } from "../services/access/access.service.js";
 import { PERMISSION_CATALOG } from "../services/access/permissions.catalog.js";
 import {
+  bulkUpdateRoles,
   createGroup,
   createRole,
   deleteGroup,
@@ -45,6 +46,15 @@ const roleSchema = z.object({
 });
 
 const rolePatchSchema = roleSchema.partial();
+
+const roleChangeSchema = rolePatchSchema.extend({
+  roleId: z.guid(),
+  expectedVersion: z.string().max(40).optional(),
+});
+
+const bulkRolesSchema = z.object({
+  changes: z.array(roleChangeSchema).min(1).max(50),
+});
 
 function auditMeta(req: Request) {
   return {
@@ -216,6 +226,46 @@ accessRouter.patch(
         after,
       });
       res.json(after);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * Sauvegarde groupée des modifications de rôles de l'écran « Rôles et groupes » : tout ou rien, une
+ * trace d'audit par rôle modifié (avant/après) écrite dans la même transaction.
+ */
+accessRouter.post(
+  "/access/roles/bulk",
+  requireAuth,
+  requirePermission("role:gerer"),
+  validate(bulkRolesSchema),
+  async (req, res, next) => {
+    try {
+      const { changes } = req.body as z.infer<typeof bulkRolesSchema>;
+      const results = await basePrisma.$transaction(async (tx) => {
+        const applied = await bulkUpdateRoles(tx, req.user!, changes);
+        for (const { before, after } of applied) {
+          await writeAuditLog(
+            {
+              ...auditMeta(req),
+              action: "UPDATE",
+              entityType: "AccessRole",
+              entityId: after.id,
+              before,
+              after,
+            },
+            tx,
+          );
+        }
+        return applied;
+      });
+      invalidateRoleAccess();
+      res.json({
+        data: results.map((result) => result.after),
+        before: results.map((result) => result.before),
+      });
     } catch (err) {
       next(err);
     }

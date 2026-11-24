@@ -32,6 +32,13 @@ export interface GroupInput {
   permissions: string[];
 }
 
+/** Une modification de rôle dans une sauvegarde groupée. */
+export interface RoleChange extends Partial<RoleInput> {
+  roleId: string;
+  /** `version` du rôle quand l'écran l'a chargé : refuse l'écrasement d'une modification plus récente. */
+  expectedVersion?: string;
+}
+
 export interface RoleInput {
   name: string;
   description?: string | null;
@@ -80,6 +87,7 @@ function serializeRole(role: RoleRow) {
     groupIds: role.groups.map((link) => link.groupId),
     permissions: rolePermissions(role),
     userCount: role._count.users,
+    version: role.updatedAt.toISOString(),
   };
 }
 
@@ -229,7 +237,7 @@ export async function createRole(db: Db, actor: AuthUser, input: RoleInput) {
   return serializeRole(role);
 }
 
-export async function updateRole(db: Db, actor: AuthUser, id: string, input: Partial<RoleInput>) {
+async function applyRoleUpdate(db: Db, actor: AuthUser, id: string, input: Partial<RoleInput>) {
   const before = await db.accessRole.findUnique({ where: { id }, include: ROLE_INCLUDE });
   if (!before) throw new ApiError(404, "NOT_FOUND", "Rôle introuvable");
 
@@ -242,6 +250,8 @@ export async function updateRole(db: Db, actor: AuthUser, id: string, input: Par
     db.accessRole.update({
       where: { id },
       data: {
+        // Explicite : un changement de groupes seul doit aussi faire avancer `version`.
+        updatedAt: new Date(),
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.scope !== undefined ? { scope: input.scope } : {}),
@@ -253,8 +263,87 @@ export async function updateRole(db: Db, actor: AuthUser, id: string, input: Par
       include: ROLE_INCLUDE,
     }),
   );
-  await assertAdminRoleKeepsAccess(db);
   return { before: serializeRole(before), after: serializeRole(after) };
+}
+
+export async function updateRole(db: Db, actor: AuthUser, id: string, input: Partial<RoleInput>) {
+  const result = await applyRoleUpdate(db, actor, id, input);
+  await assertAdminRoleKeepsAccess(db);
+  return result;
+}
+
+/** Le rôle de l'acteur doit garder de quoi gérer les rôles : on ne se retire pas ses propres droits d'administration. */
+async function assertActorKeepsAccess(db: Db, actor: AuthUser): Promise<void> {
+  const role = await db.accessRole.findUnique({
+    where: { id: actor.roleId },
+    include: ROLE_INCLUDE,
+  });
+  const permissions = new Set(role ? rolePermissions(role) : []);
+  const missing = ADMIN_REQUIRED_PERMISSIONS.filter((key) => !permissions.has(key));
+  if (missing.length > 0) {
+    throw new ApiError(
+      422,
+      "SELF_LOCKOUT",
+      "Vous ne pouvez pas vous retirer vos propres droits d'administration",
+      { missing },
+    );
+  }
+}
+
+/**
+ * Applique plusieurs modifications de rôles d'un coup. À appeler dans une transaction : la première
+ * erreur annule tout. Les droits de l'acteur, le verrou du rôle Administrateur et l'anti-escalade
+ * sont revérifiés ici, indépendamment de ce que l'écran affiche.
+ */
+export async function bulkUpdateRoles(db: Db, actor: AuthUser, changes: RoleChange[]) {
+  const ids = changes.map((change) => change.roleId);
+  if (new Set(ids).size !== ids.length) {
+    throw new ApiError(
+      422,
+      "DUPLICATE_ROLE_CHANGE",
+      "Un rôle ne peut être modifié qu'une fois par envoi",
+    );
+  }
+
+  const results: {
+    before: ReturnType<typeof serializeRole>;
+    after: ReturnType<typeof serializeRole>;
+  }[] = [];
+  for (const change of changes) {
+    const { roleId, expectedVersion, ...input } = change;
+    const current = await db.accessRole.findUnique({
+      where: { id: roleId },
+      include: ROLE_INCLUDE,
+    });
+    if (!current) throw new ApiError(404, "NOT_FOUND", "Rôle introuvable", { roleId });
+
+    if (expectedVersion && current.updatedAt.toISOString() !== expectedVersion) {
+      throw new ApiError(
+        409,
+        "STALE_ROLE",
+        `Le rôle « ${current.name} » a été modifié entre-temps : rechargez la page`,
+        { roleId },
+      );
+    }
+    if (roleId === SYSTEM_ROLE_IDS.ADMIN && input.groupIds) {
+      const held = new Set(current.groups.map((link) => link.groupId));
+      const next = new Set(input.groupIds);
+      const same = held.size === next.size && [...held].every((id) => next.has(id));
+      if (!same) {
+        throw new ApiError(
+          422,
+          "ADMIN_LOCKED",
+          "Les droits du rôle Administrateur ne peuvent pas être modifiés",
+          { roleId },
+        );
+      }
+    }
+    results.push(await applyRoleUpdate(db, actor, roleId, input));
+  }
+
+  await assertAdminRoleKeepsAccess(db);
+  await assertActorKeepsAccess(db, actor);
+  return results;
 }
 
 export async function deleteRole(db: Db, actor: AuthUser, id: string) {

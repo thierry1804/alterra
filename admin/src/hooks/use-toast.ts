@@ -10,6 +10,10 @@ export interface ToastItem {
   title?: string;
   description?: string;
   variant?: ToastVariant;
+  /** Durée d'affichage en ms (4 s par défaut). */
+  duration?: number;
+  /** Bouton d'action (ex. « Annuler ») ; ferme le toast après le clic. */
+  action?: { label: string; onClick: () => void };
 }
 
 type ToastAction =
@@ -57,7 +61,7 @@ export function toast(input: Omit<ToastItem, "id">) {
     setTimeout(() => {
       dispatch({ type: "REMOVE", id });
       timeouts.delete(id);
-    }, TOAST_REMOVE_DELAY),
+    }, input.duration ?? TOAST_REMOVE_DELAY),
   );
 
   return { id, dismiss: () => dispatch({ type: "DISMISS", id }) };

@@ -11,6 +11,7 @@ export function Toaster() {
         <ToastPrimitive.Root
           key={item.id}
           open
+          duration={item.duration ?? 4000}
           onOpenChange={(open) => {
             if (!open) dismiss(item.id);
           }}
@@ -28,6 +29,20 @@ export function Toaster() {
             <ToastPrimitive.Description className="mt-1 text-sm text-zinc-600">
               {item.description}
             </ToastPrimitive.Description>
+          )}
+          {item.action && (
+            <ToastPrimitive.Action altText={item.action.label} asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  item.action?.onClick();
+                  dismiss(item.id);
+                }}
+                className="alterra-focus mt-2 min-h-8 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+              >
+                {item.action.label}
+              </button>
+            </ToastPrimitive.Action>
           )}
         </ToastPrimitive.Root>
       ))}

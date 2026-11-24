@@ -36,7 +36,20 @@ import RolesTable from "../components/access/RolesTable";
 import { withGroupToggled } from "../lib/access-matrix";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "../lib/utils";
-import { confirmationFor, copyName, type RolePatch } from "../lib/access-roles";
+import {
+  applyPatch,
+  changedFields,
+  countChanges,
+  editDraft,
+  inverseChanges,
+  toChanges,
+  type RoleField,
+  type RolesDraft,
+} from "../lib/access-draft";
+import { copyName, type RolePatch } from "../lib/access-roles";
+import ReviewChangesDialog from "../components/access/ReviewChangesDialog";
+import SaveBar from "../components/access/SaveBar";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import {
   SCOPE_LABELS,
   accessApi,
@@ -120,11 +133,9 @@ export default function AccessRolesPage() {
   const [groupForm, setGroupForm] = useState<GroupForm>(emptyGroupForm);
   const [roleSheet, setRoleSheet] = useState<{ editing: AccessRole | null } | null>(null);
   const [roleForm, setRoleForm] = useState<RoleForm>(emptyRoleForm);
-  const [pendingPatch, setPendingPatch] = useState<{
-    role: AccessRole;
-    patch: RolePatch;
-    message: string;
-  } | null>(null);
+  // Modifications faites dans le tableau ou la matrice, gardées en local jusqu'à « Enregistrer ».
+  const [draft, setDraft] = useState<RolesDraft>({});
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [toDelete, setToDelete] = useState<
     { kind: "group"; item: PermissionGroup } | { kind: "role"; item: AccessRole } | null
   >(null);
@@ -196,27 +207,83 @@ export default function AccessRolesPage() {
     },
   });
 
-  // Modification en place depuis le tableau : mise à jour optimiste, annulée si le serveur refuse.
-  const patchRole = useMutation({
-    mutationFn: ({ role, patch }: { role: AccessRole; patch: RolePatch }) =>
-      accessApi.updateRole(role.id, patch),
-    onMutate: async ({ role, patch }) => {
-      await queryClient.cancelQueries({ queryKey: ["access", "roles"] });
-      const previous = queryClient.getQueryData<AccessRole[]>(["access", "roles"]);
-      queryClient.setQueryData<AccessRole[]>(["access", "roles"], (rows) =>
-        rows?.map((row) => (row.id === role.id ? { ...row, ...patch } : row)),
-      );
-      return { previous };
+  // Seuls les rôles qui existent encore comptent : un rôle supprimé entre-temps ne bloque pas l'envoi.
+  const activeDraft = useMemo(() => {
+    const ids = new Set(roles.map((role) => role.id));
+    return Object.fromEntries(Object.entries(draft).filter(([id]) => ids.has(id))) as RolesDraft;
+  }, [draft, roles]);
+  const viewRoles = useMemo(
+    () =>
+      roles.map((role) =>
+        activeDraft[role.id] ? applyPatch(role, activeDraft[role.id].patch, groups) : role,
+      ),
+    [roles, groups, activeDraft],
+  );
+  const dirtyFields = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(activeDraft).map(([id, entry]) => [id, changedFields(entry.patch)]),
+      ) as Record<string, Set<RoleField>>,
+    [activeDraft],
+  );
+  const changeCount = useMemo(() => countChanges(activeDraft, roles), [activeDraft, roles]);
+  useUnsavedChangesGuard(changeCount > 0);
+
+  function editRole(roleId: string, patch: RolePatch) {
+    setDraft((current) => {
+      const base = roles.find((role) => role.id === roleId);
+      return base ? editDraft(current, base, patch) : current;
+    });
+  }
+
+  function toggleGroup(roleId: string, groupId: string, checked: boolean) {
+    setDraft((current) => {
+      const base = roles.find((role) => role.id === roleId);
+      if (!base) return current;
+      return editDraft(current, base, (role) => ({
+        groupIds: withGroupToggled(role.groupIds, groupId, checked),
+      }));
+    });
+  }
+
+  // Annule la dernière sauvegarde : renvoie les valeurs d'avant, en vérifiant que rien n'a bougé depuis.
+  const undoSave = useMutation({
+    mutationFn: (saved: { before: AccessRole[]; data: AccessRole[] }) =>
+      accessApi.bulkUpdateRoles(inverseChanges(saved.before, saved.data)),
+    onSuccess: () => {
+      refresh();
+      toast({ title: "Modifications annulées" });
     },
-    onError: (err, _vars, context) => {
-      queryClient.setQueryData(["access", "roles"], context?.previous);
-      toast({ title: "Échec", description: errorMessage(err), variant: "destructive" });
+    onError: (err) =>
+      toast({
+        title: "Annulation impossible",
+        description: errorMessage(err),
+        variant: "destructive",
+      }),
+  });
+
+  // Une seule requête, tout ou rien : le serveur revérifie droits, verrou Administrateur et versions.
+  const saveDraft = useMutation({
+    mutationFn: () => accessApi.bulkUpdateRoles(toChanges(activeDraft)),
+    onSuccess: (saved) => {
+      setDraft({});
+      setReviewOpen(false);
+      refresh();
+      toast({
+        title: "Modifications enregistrées",
+        description: `${saved.data.length} rôle${saved.data.length > 1 ? "s" : ""} mis à jour`,
+        duration: 10_000,
+        action: { label: "Annuler", onClick: () => undoSave.mutate(saved) },
+      });
     },
-    // Une case cochée dans la matrice se voit d'elle-même : pas de toast à chaque clic.
-    onSuccess: (_data, { patch }) => {
-      if (!patch.groupIds) toast({ title: "Rôle mis à jour" });
+    onError: (err) => {
+      setReviewOpen(false);
+      toast({
+        title: "Enregistrement refusé : rien n'a été modifié",
+        description: errorMessage(err),
+        variant: "destructive",
+      });
     },
-    onSettled: refresh,
   });
 
   const duplicateRole = useMutation({
@@ -242,20 +309,6 @@ export default function AccessRolesPage() {
         variant: "destructive",
       }),
   });
-
-  function requestRolePatch(role: AccessRole, patch: RolePatch) {
-    const message = confirmationFor(role, patch);
-    if (message) setPendingPatch({ role, patch, message });
-    else patchRole.mutate({ role, patch });
-  }
-
-  function requestGroupToggle(role: AccessRole, group: PermissionGroup, checked: boolean) {
-    // Base : la liste la plus récente du cache, pour que des clics rapprochés s'additionnent.
-    const current =
-      queryClient.getQueryData<AccessRole[]>(["access", "roles"])?.find((r) => r.id === role.id) ??
-      role;
-    requestRolePatch(current, { groupIds: withGroupToggled(current.groupIds, group.id, checked) });
-  }
 
   function openGroup(group: PermissionGroup | null) {
     setGroupForm(
@@ -339,19 +392,21 @@ export default function AccessRolesPage() {
           </div>
           {view === "liste" ? (
             <RolesTable
-              roles={roles}
+              roles={viewRoles}
+              dirtyFields={dirtyFields}
               resources={resources}
               onOpenDetail={openRole}
-              onPatch={requestRolePatch}
+              onPatch={(role, patch) => editRole(role.id, patch)}
               onDuplicate={(role) => duplicateRole.mutate(role)}
               onDelete={(role) => setToDelete({ kind: "role", item: role })}
             />
           ) : (
             <RolesMatrix
-              roles={roles}
+              roles={viewRoles}
+              baseline={roles}
               groups={groups}
               resources={resources}
-              onToggle={requestGroupToggle}
+              onToggle={(role, group, checked) => toggleGroup(role.id, group.id, checked)}
             />
           )}
         </TabsContent>
@@ -635,17 +690,21 @@ export default function AccessRolesPage() {
         onOpenChange={(open) => !open && setToDelete(null)}
       />
 
-      <ConfirmDialog
-        open={pendingPatch !== null}
-        title={`Modifier le rôle « ${pendingPatch?.role.name ?? ""} » ?`}
-        description={pendingPatch?.message ?? ""}
-        confirmLabel="Appliquer"
-        onConfirm={() => {
-          if (pendingPatch)
-            patchRole.mutate({ role: pendingPatch.role, patch: pendingPatch.patch });
-          setPendingPatch(null);
-        }}
-        onOpenChange={(open) => !open && setPendingPatch(null)}
+      <SaveBar
+        count={changeCount}
+        busy={saveDraft.isPending}
+        onSave={() => setReviewOpen(true)}
+        onCancel={() => setDraft({})}
+      />
+
+      <ReviewChangesDialog
+        open={reviewOpen}
+        roles={roles}
+        groups={groups}
+        draft={activeDraft}
+        busy={saveDraft.isPending}
+        onConfirm={() => saveDraft.mutate()}
+        onOpenChange={setReviewOpen}
       />
     </div>
   );

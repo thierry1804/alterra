@@ -81,6 +81,7 @@ function roleRow(overrides: Record<string, unknown> = {}) {
     mfaRequired: false,
     groups: [{ groupId: MOCK_GROUP_ID, group: groupRow() }],
     _count: { users: 0 },
+    updatedAt: new Date("2026-11-24T10:00:00.000Z"),
     ...overrides,
   };
 }
@@ -352,6 +353,161 @@ describe("access administration", () => {
       const { invalidateRoleAccess } = await import("../services/access/access.service.js");
       invalidateRoleAccess(MOCK_ROLE_ID);
       expect((await getRoleAccess(MOCK_ROLE_ID))?.permissions.has("pointage:saisie")).toBe(true);
+    });
+  });
+
+  describe("bulk role update", () => {
+    const VERSION = "2026-11-24T10:00:00.000Z";
+    const OTHER_ROLE_ID = "00000000-0000-4000-8000-0000000000b2";
+    const adminKeys = ["role:gerer", "utilisateur:affecter_role", "pointage:lecture"];
+
+    function post(body: unknown, header = adminHeader()) {
+      return request(createApp())
+        .post("/api/v1/access/roles/bulk")
+        .set("Authorization", header)
+        .send(body);
+    }
+
+    it("applies several changes in one transaction and audits each role with before/after", async () => {
+      vi.mocked(basePrisma.accessRole.findUnique)
+        .mockResolvedValueOnce(roleRow() as never) // courant, rôle 1
+        .mockResolvedValueOnce(roleRow() as never) // avant, rôle 1
+        .mockResolvedValueOnce(roleRow({ id: OTHER_ROLE_ID, name: "Autre" }) as never)
+        .mockResolvedValueOnce(roleRow({ id: OTHER_ROLE_ID, name: "Autre" }) as never)
+        .mockResolvedValue(adminRoleRow(adminKeys) as never); // contrôles de fin
+      vi.mocked(basePrisma.accessRole.update)
+        .mockResolvedValueOnce(roleRow({ mfaRequired: true }) as never)
+        .mockResolvedValueOnce(
+          roleRow({ id: OTHER_ROLE_ID, name: "Autre", scope: "EQUIPE" }) as never,
+        );
+
+      const res = await post({
+        changes: [
+          { roleId: MOCK_ROLE_ID, mfaRequired: true, expectedVersion: VERSION },
+          { roleId: OTHER_ROLE_ID, scope: "EQUIPE" },
+        ],
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.before).toHaveLength(2);
+      expect(res.body.data[0].mfaRequired).toBe(true);
+      expect(res.body.before[0].mfaRequired).toBe(false);
+      expect(basePrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(basePrisma.auditLog.create).toHaveBeenCalledTimes(2);
+      expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: "UPDATE",
+            entityType: "AccessRole",
+            entityId: MOCK_ROLE_ID,
+          }),
+        }),
+      );
+    });
+
+    it("fails as a whole when one change is invalid: nothing is audited", async () => {
+      vi.mocked(basePrisma.accessRole.findUnique)
+        .mockResolvedValueOnce(roleRow() as never)
+        .mockResolvedValueOnce(roleRow() as never)
+        .mockResolvedValueOnce(null as never);
+      vi.mocked(basePrisma.accessRole.update).mockResolvedValue(roleRow() as never);
+
+      const res = await post({
+        changes: [
+          { roleId: MOCK_ROLE_ID, mfaRequired: true },
+          { roleId: OTHER_ROLE_ID, mfaRequired: true },
+        ],
+      });
+
+      expect(res.status).toBe(404);
+      expect(basePrisma.auditLog.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a role without role:gerer", async () => {
+      const res = await post(
+        { changes: [{ roleId: MOCK_ROLE_ID, mfaRequired: true }] },
+        cdsHeader(),
+      );
+      expect(res.status).toBe(403);
+      expect(basePrisma.accessRole.update).not.toHaveBeenCalled();
+    });
+
+    it("validates the body", async () => {
+      expect((await post({ changes: [] })).status).toBe(422);
+      expect((await post({ changes: [{ roleId: "pas-un-guid" }] })).status).toBe(422);
+      expect(basePrisma.accessRole.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses two changes for the same role", async () => {
+      const res = await post({
+        changes: [
+          { roleId: MOCK_ROLE_ID, mfaRequired: true },
+          { roleId: MOCK_ROLE_ID, scope: "EQUIPE" },
+        ],
+      });
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("DUPLICATE_ROLE_CHANGE");
+    });
+
+    it("refuses to overwrite a role modified since the screen loaded it", async () => {
+      vi.mocked(basePrisma.accessRole.findUnique).mockResolvedValueOnce(
+        roleRow({ updatedAt: new Date("2026-11-24T11:00:00.000Z") }) as never,
+      );
+      const res = await post({
+        changes: [{ roleId: MOCK_ROLE_ID, mfaRequired: true, expectedVersion: VERSION }],
+      });
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("STALE_ROLE");
+      expect(basePrisma.accessRole.update).not.toHaveBeenCalled();
+    });
+
+    it("locks the groups of the Administrateur role on the server", async () => {
+      vi.mocked(basePrisma.accessRole.findUnique).mockResolvedValue(
+        adminRoleRow(adminKeys) as never,
+      );
+      const res = await post({
+        changes: [{ roleId: SYSTEM_ROLE_IDS.ADMIN, groupIds: [] }],
+      });
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("ADMIN_LOCKED");
+      expect(basePrisma.accessRole.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses to grant a scope wider than the actor's", async () => {
+      vi.mocked(basePrisma.accessRole.findUnique).mockResolvedValue(roleRow() as never);
+      const res = await post(
+        { changes: [{ roleId: MOCK_ROLE_ID, scope: "TOUS" }] },
+        managerHeader(),
+      );
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("ROLE_SCOPE_ESCALATION");
+    });
+
+    it("refuses a change that removes the actor's own administration rights", async () => {
+      const lacking = roleRow({
+        id: LIMITED_MANAGER_ROLE_ID,
+        groups: [
+          {
+            groupId: MOCK_GROUP_ID,
+            group: groupRow({ permissions: [{ permissionKey: "pointage:lecture" }] }),
+          },
+        ],
+      });
+      vi.mocked(basePrisma.accessRole.findUnique)
+        .mockResolvedValueOnce(lacking as never)
+        .mockResolvedValueOnce(lacking as never)
+        .mockResolvedValueOnce(adminRoleRow(adminKeys) as never)
+        .mockResolvedValueOnce(lacking as never);
+      vi.mocked(basePrisma.accessRole.update).mockResolvedValue(lacking as never);
+
+      const res = await post(
+        { changes: [{ roleId: LIMITED_MANAGER_ROLE_ID, description: "x" }] },
+        managerHeader(),
+      );
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe("SELF_LOCKOUT");
+      expect(basePrisma.auditLog.create).not.toHaveBeenCalled();
     });
   });
 

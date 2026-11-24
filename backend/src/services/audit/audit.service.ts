@@ -17,9 +17,17 @@ function toJson(value: unknown): Prisma.InputJsonValue | undefined {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-/** Append-only audit entry — uses base client to avoid extension recursion. */
-export async function writeAuditLog(params: WriteAuditLogParams): Promise<void> {
-  await basePrisma.auditLog.create({
+type AuditClient = Pick<typeof basePrisma, "auditLog">;
+
+/**
+ * Append-only audit entry — uses base client to avoid extension recursion. Passer le client d'une
+ * transaction pour que la trace soit écrite (ou annulée) avec la modification qu'elle décrit.
+ */
+export async function writeAuditLog(
+  params: WriteAuditLogParams,
+  client: AuditClient = basePrisma,
+): Promise<void> {
+  await client.auditLog.create({
     data: {
       userId: params.userId ?? null,
       action: params.action,
