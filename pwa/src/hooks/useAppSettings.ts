@@ -19,7 +19,27 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   bioValidationRequired: true,
 };
 
-let cached: AppSettings | null = null;
+const STORAGE_KEY = "alterra:app-settings";
+
+/** Dernier réglage connu d'une session précédente : le nom de l'application s'affiche aussi hors ligne. */
+function readStored(): AppSettings | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? { ...DEFAULT_APP_SETTINGS, ...(JSON.parse(raw) as Partial<AppSettings>) } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(settings: AppSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Stockage indisponible : le nom revient au défaut hors ligne, rien de plus.
+  }
+}
+
+let cached: AppSettings | null = readStored();
 let inFlight: Promise<AppSettings> | null = null;
 
 function fetchAppSettings(): Promise<AppSettings> {
@@ -27,9 +47,10 @@ function fetchAppSettings(): Promise<AppSettings> {
     .get<AppSettings>("/app-settings")
     .then((r) => {
       cached = r.data;
+      writeStored(r.data);
       return r.data;
     })
-    .catch(() => DEFAULT_APP_SETTINGS)
+    .catch(() => cached ?? DEFAULT_APP_SETTINGS)
     .finally(() => {
       inFlight = null;
     });

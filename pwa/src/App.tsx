@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./hooks/AuthProvider";
+import AppBranding from "./components/AppBranding";
 import { GuestRoute, ProtectedRoute } from "./components/ProtectedRoute";
 import PermissionRoute from "./components/PermissionRoute";
 import { ACCESS } from "./components/nav/nav-config";
@@ -22,6 +23,7 @@ import Notifications from "./pages/Notifications";
 export default function App() {
   return (
     <AuthProvider>
+      <AppBranding />
       <BrowserRouter>
         <Routes>
           <Route element={<GuestRoute />}>

@@ -25,7 +25,8 @@ registerRoute(
 );
 
 self.addEventListener("push", (event) => {
-  let title = "ALTERRA";
+  // Le serveur envoie toujours un titre ; ce repli ne porte volontairement aucun nom de marque en dur.
+  let title = "Notification";
   let body = "Nouvelle notification";
   let data: Record<string, unknown> = {};
 
