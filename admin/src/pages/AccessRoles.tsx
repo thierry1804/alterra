@@ -1,36 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { Pencil, Trash2 } from "lucide-react";
 import PageHeader from "../components/shared/PageHeader";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Checkbox } from "../components/ui/checkbox";
-import { IconButton, RowActions } from "../components/ui/IconButton";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "../components/ui/sheet";
-import { Switch } from "../components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/useAuth";
+import GroupSheet from "../components/access/GroupSheet";
+import GroupsTable from "../components/access/GroupsTable";
+import RoleSheet from "../components/access/RoleSheet";
+import { copyGroupName } from "../lib/access-groups";
+import type { GroupFormValues, RoleFormValues } from "../lib/access-forms";
 import CompareRolesDialog from "../components/access/CompareRolesDialog";
 import RolesMatrix from "../components/access/RolesMatrix";
 import { AccessPageSkeleton } from "../components/access/AccessSkeleton";
@@ -54,14 +35,7 @@ import { copyName, type RolePatch } from "../lib/access-roles";
 import ReviewChangesDialog from "../components/access/ReviewChangesDialog";
 import SaveBar from "../components/access/SaveBar";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
-import {
-  SCOPE_LABELS,
-  accessApi,
-  type AccessRole,
-  type AccessScope,
-  type PermissionGroup,
-  type PermissionResource,
-} from "../lib/access";
+import { accessApi, type AccessRole, type PermissionGroup } from "../lib/access";
 
 function errorMessage(err: unknown): string {
   if (!isAxiosError(err)) return "Erreur";
@@ -69,46 +43,6 @@ function errorMessage(err: unknown): string {
   if (!err.response)
     return "Le serveur ne répond pas : vérifiez la connexion. Rien n'a été enregistré.";
   return String(err.response.data?.message ?? "Erreur");
-}
-
-function permissionLabels(resources: PermissionResource[]): Map<string, string> {
-  const labels = new Map<string, string>();
-  for (const resource of resources) {
-    for (const action of resource.actions) {
-      labels.set(`${resource.resource}:${action.action}`, `${resource.label} — ${action.label}`);
-    }
-  }
-  return labels;
-}
-
-interface GroupForm {
-  name: string;
-  description: string;
-  permissions: Set<string>;
-}
-
-interface RoleForm {
-  name: string;
-  description: string;
-  scope: AccessScope;
-  mfaRequired: boolean;
-  groupIds: Set<string>;
-}
-
-const emptyGroupForm: GroupForm = { name: "", description: "", permissions: new Set() };
-const emptyRoleForm: RoleForm = {
-  name: "",
-  description: "",
-  scope: "EQUIPE",
-  mfaRequired: false,
-  groupIds: new Set(),
-};
-
-function toggled<T>(set: Set<T>, value: T): Set<T> {
-  const next = new Set(set);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  return next;
 }
 
 export default function AccessRolesPage() {
@@ -139,12 +73,9 @@ export default function AccessRolesPage() {
   const loading = queries.some((query) => query.isLoading);
   const failed = !loading && queries.some((query) => query.isError);
   const retryAll = () => queries.forEach((query) => void query.refetch());
-  const labels = useMemo(() => permissionLabels(resources), [resources]);
 
   const [groupSheet, setGroupSheet] = useState<{ editing: PermissionGroup | null } | null>(null);
-  const [groupForm, setGroupForm] = useState<GroupForm>(emptyGroupForm);
   const [roleSheet, setRoleSheet] = useState<{ editing: AccessRole | null } | null>(null);
-  const [roleForm, setRoleForm] = useState<RoleForm>(emptyRoleForm);
   // Modifications faites dans le tableau ou la matrice, gardées en local jusqu'à « Enregistrer ».
   const [draft, setDraft] = useState<RolesDraft>({});
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -159,11 +90,11 @@ export default function AccessRolesPage() {
   }
 
   const saveGroup = useMutation({
-    mutationFn: () => {
+    mutationFn: (values: GroupFormValues) => {
       const body = {
-        name: groupForm.name.trim(),
-        description: groupForm.description.trim() || null,
-        permissions: [...groupForm.permissions],
+        name: values.name.trim(),
+        description: values.description.trim() || null,
+        permissions: [...values.permissions],
       };
       return groupSheet?.editing
         ? accessApi.updateGroup(groupSheet.editing.id, body)
@@ -174,18 +105,16 @@ export default function AccessRolesPage() {
       setGroupSheet(null);
       toast({ title: groupSheet?.editing ? "Groupe mis à jour" : "Groupe créé" });
     },
-    onError: (err) =>
-      toast({ title: "Échec", description: errorMessage(err), variant: "destructive" }),
   });
 
   const saveRole = useMutation({
-    mutationFn: () => {
+    mutationFn: (values: RoleFormValues) => {
       const body = {
-        name: roleForm.name.trim(),
-        description: roleForm.description.trim() || null,
-        scope: roleForm.scope,
-        mfaRequired: roleForm.mfaRequired,
-        groupIds: [...roleForm.groupIds],
+        name: values.name.trim(),
+        description: values.description.trim() || null,
+        scope: values.scope,
+        mfaRequired: values.mfaRequired,
+        groupIds: [...values.groupIds],
       };
       return roleSheet?.editing
         ? accessApi.updateRole(roleSheet.editing.id, body)
@@ -196,8 +125,28 @@ export default function AccessRolesPage() {
       setRoleSheet(null);
       toast({ title: roleSheet?.editing ? "Rôle mis à jour" : "Rôle créé" });
     },
+  });
+
+  const duplicateGroup = useMutation({
+    mutationFn: (group: PermissionGroup) =>
+      accessApi.createGroup({
+        name: copyGroupName(
+          group.name,
+          groups.map((g) => g.name),
+        ),
+        description: group.description,
+        permissions: group.permissions,
+      }),
+    onSuccess: (created) => {
+      refresh();
+      toast({ title: "Groupe dupliqué", description: created.name });
+    },
     onError: (err) =>
-      toast({ title: "Échec", description: errorMessage(err), variant: "destructive" }),
+      toast({
+        title: "Duplication impossible",
+        description: errorMessage(err),
+        variant: "destructive",
+      }),
   });
 
   const remove = useMutation({
@@ -324,40 +273,14 @@ export default function AccessRolesPage() {
   });
 
   function openGroup(group: PermissionGroup | null) {
-    setGroupForm(
-      group
-        ? {
-            name: group.name,
-            description: group.description ?? "",
-            permissions: new Set(group.permissions),
-          }
-        : emptyGroupForm,
-    );
+    saveGroup.reset();
     setGroupSheet({ editing: group });
   }
 
   function openRole(role: AccessRole | null) {
-    setRoleForm(
-      role
-        ? {
-            name: role.name,
-            description: role.description ?? "",
-            scope: role.scope,
-            mfaRequired: role.mfaRequired,
-            groupIds: new Set(role.groupIds),
-          }
-        : emptyRoleForm,
-    );
+    saveRole.reset();
     setRoleSheet({ editing: role });
   }
-
-  const roleFormPermissions = useMemo(() => {
-    const all = new Set<string>();
-    for (const group of groups) {
-      if (roleForm.groupIds.has(group.id)) group.permissions.forEach((key) => all.add(key));
-    }
-    return [...all].sort();
-  }, [groups, roleForm.groupIds]);
 
   return (
     <div className="space-y-4">
@@ -456,268 +379,46 @@ export default function AccessRolesPage() {
           ) : loading ? (
             <AccessPageSkeleton />
           ) : (
-            <div className="rounded-lg border border-zinc-200">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Groupe</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Utilisé par</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groups.map((group) => (
-                    <TableRow key={group.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{group.name}</span>
-                          {group.isSystem && <Badge>Système</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>{group.permissions.length}</TableCell>
-                      <TableCell>{group.roleCount} rôle(s)</TableCell>
-                      <TableCell>
-                        <RowActions>
-                          <IconButton
-                            icon={Pencil}
-                            label={`Modifier ${group.name}`}
-                            onClick={() => openGroup(group)}
-                          />
-                          {!group.isSystem && (
-                            <IconButton
-                              icon={Trash2}
-                              variant="destructive"
-                              label={`Supprimer ${group.name}`}
-                              onClick={() => setToDelete({ kind: "group", item: group })}
-                            />
-                          )}
-                        </RowActions>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <GroupsTable
+              groups={groups}
+              roles={roles}
+              resources={resources}
+              onOpen={openGroup}
+              onDuplicate={(group) => duplicateGroup.mutate(group)}
+              onDelete={(group) => setToDelete({ kind: "group", item: group })}
+            />
           )}
         </TabsContent>
       </Tabs>
 
-      <Sheet open={groupSheet !== null} onOpenChange={(open) => !open && setGroupSheet(null)}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{groupSheet?.editing ? "Modifier le groupe" : "Nouveau groupe"}</SheetTitle>
-            <SheetDescription>
-              {groupSheet?.editing && groupSheet.editing.roleCount > 0
-                ? `Utilisé par ${groupSheet.editing.roleCount} rôle(s) : la modification s'applique à tous.`
-                : "Cochez les actions autorisées pour chaque ressource."}
-            </SheetDescription>
-          </SheetHeader>
-          <form
-            className="contents"
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveGroup.mutate();
-            }}
-          >
-            <SheetBody className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="g-name">Nom</Label>
-                <Input
-                  id="g-name"
-                  value={groupForm.name}
-                  onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
-                  required
-                  minLength={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="g-description">Description</Label>
-                <Input
-                  id="g-description"
-                  value={groupForm.description}
-                  onChange={(e) => setGroupForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              <fieldset className="space-y-3">
-                <legend className="text-sm font-medium text-zinc-900">Permissions</legend>
-                {resources.map((resource) => (
-                  <div key={resource.resource} className="rounded-md border border-zinc-200 p-3">
-                    <p className="mb-2 text-sm font-semibold text-zinc-900">{resource.label}</p>
-                    <div className="grid gap-1.5">
-                      {resource.actions.map((action) => {
-                        const key = `${resource.resource}:${action.action}`;
-                        const allowed = held.has(key);
-                        return (
-                          <label
-                            key={key}
-                            className="flex items-center gap-2 text-sm text-zinc-700"
-                            title={allowed ? undefined : "Vous ne détenez pas ce droit"}
-                          >
-                            <Checkbox
-                              checked={groupForm.permissions.has(key)}
-                              disabled={!allowed && !groupForm.permissions.has(key)}
-                              onChange={() =>
-                                setGroupForm((f) => ({
-                                  ...f,
-                                  permissions: toggled(f.permissions, key),
-                                }))
-                              }
-                            />
-                            {action.label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </fieldset>
-            </SheetBody>
-            <SheetFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setGroupSheet(null)}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" className="flex-1" disabled={saveGroup.isPending}>
-                Enregistrer
-              </Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+      {groupSheet && (
+        <GroupSheet
+          group={groupSheet.editing}
+          groups={groups}
+          roles={roles}
+          resources={resources}
+          held={held}
+          saving={saveGroup.isPending}
+          error={saveGroup.isError ? errorMessage(saveGroup.error) : null}
+          onSubmit={(values) => saveGroup.mutate(values)}
+          onClose={() => setGroupSheet(null)}
+        />
+      )}
 
-      <Sheet open={roleSheet !== null} onOpenChange={(open) => !open && setRoleSheet(null)}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{roleSheet?.editing ? "Modifier le rôle" : "Nouveau rôle"}</SheetTitle>
-            <SheetDescription>
-              Un rôle regroupe des groupes de permissions et fixe la portée des données visibles.
-            </SheetDescription>
-          </SheetHeader>
-          <form
-            className="contents"
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveRole.mutate();
-            }}
-          >
-            <SheetBody className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="r-name">Nom</Label>
-                <Input
-                  id="r-name"
-                  value={roleForm.name}
-                  onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))}
-                  required
-                  minLength={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="r-description">Description</Label>
-                <Input
-                  id="r-description"
-                  value={roleForm.description}
-                  onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="r-scope">Portée des données</Label>
-                <select
-                  id="r-scope"
-                  className="flex h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm"
-                  value={roleForm.scope}
-                  onChange={(e) =>
-                    setRoleForm((f) => ({ ...f, scope: e.target.value as AccessScope }))
-                  }
-                >
-                  {(Object.keys(SCOPE_LABELS) as AccessScope[]).map((scope) => (
-                    <option key={scope} value={scope}>
-                      {SCOPE_LABELS[scope]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 p-3">
-                <div>
-                  <Label id="r-mfa-label" htmlFor="r-mfa">
-                    Authentification à deux facteurs
-                  </Label>
-                  <p className="text-xs text-muted">
-                    Le code est demandé à la connexion une fois activé.
-                  </p>
-                </div>
-                <Switch
-                  id="r-mfa"
-                  aria-labelledby="r-mfa-label"
-                  checked={roleForm.mfaRequired}
-                  onCheckedChange={(checked) =>
-                    setRoleForm((f) => ({ ...f, mfaRequired: checked }))
-                  }
-                />
-              </div>
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium text-zinc-900">
-                  Groupes de permissions
-                </legend>
-                {groups.map((group) => {
-                  const beyond = group.permissions.some((key) => !held.has(key));
-                  const selected = roleForm.groupIds.has(group.id);
-                  return (
-                    <label
-                      key={group.id}
-                      className="flex items-center gap-2 text-sm text-zinc-700"
-                      title={
-                        beyond ? "Ce groupe contient des droits que vous ne détenez pas" : undefined
-                      }
-                    >
-                      <Checkbox
-                        checked={selected}
-                        disabled={beyond && !selected}
-                        onChange={() =>
-                          setRoleForm((f) => ({ ...f, groupIds: toggled(f.groupIds, group.id) }))
-                        }
-                      />
-                      {group.name}
-                      <span className="text-xs text-muted">({group.permissions.length})</span>
-                    </label>
-                  );
-                })}
-              </fieldset>
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium text-zinc-900">
-                  Droits obtenus ({roleFormPermissions.length})
-                </p>
-                {roleFormPermissions.length === 0 ? (
-                  <p className="text-xs text-muted">Aucun groupe sélectionné.</p>
-                ) : (
-                  <ul className="max-h-48 space-y-0.5 overflow-y-auto text-xs text-zinc-600">
-                    {roleFormPermissions.map((key) => (
-                      <li key={key}>{labels.get(key) ?? key}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </SheetBody>
-            <SheetFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setRoleSheet(null)}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" className="flex-1" disabled={saveRole.isPending}>
-                Enregistrer
-              </Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+      {roleSheet && (
+        <RoleSheet
+          role={roleSheet.editing}
+          roles={roles}
+          groups={groups}
+          resources={resources}
+          held={held}
+          actorScope={user?.scope}
+          saving={saveRole.isPending}
+          error={saveRole.isError ? errorMessage(saveRole.error) : null}
+          onSubmit={(values) => saveRole.mutate(values)}
+          onClose={() => setRoleSheet(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={toDelete !== null}
