@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { basePrisma } from "../../lib/prisma-base.js";
 import { resolvePeriod } from "../../lib/period-iso.js";
 import { INVOICE_CLIENT } from "../../lib/invoice-client.js";
 import { isiLineKey, lineIsi, ratePercentLabel, type IsiSettings } from "../../lib/isi.js";
@@ -275,7 +276,14 @@ export async function buildInvoiceData(bordereauId: string): Promise<InvoiceData
   };
 }
 
-export async function ensureInvoice(bordereauId: string, options: { force?: boolean } = {}) {
+export interface EnsureInvoiceOptions {
+  force?: boolean;
+  /** Pourquoi le PDF est (re)généré : conservé dans l'historique des révisions. */
+  reason?: string;
+  userId?: string | null;
+}
+
+export async function ensureInvoice(bordereauId: string, options: EnsureInvoiceOptions = {}) {
   const existing = await prisma.bordereauInvoice.findUnique({ where: { bordereauId } });
   if (existing && !options.force) return existing;
 
@@ -289,29 +297,46 @@ export async function ensureInvoice(bordereauId: string, options: { force?: bool
     "Content-Type": "application/pdf",
   });
 
-  return prisma.bordereauInvoice.upsert({
-    where: { bordereauId },
-    create: {
-      bordereauId,
-      fileKey,
-      workerCount: data.totals.workerCount,
-      gross: data.totals.gross,
-      isi: data.totals.isi,
-      net: data.totals.net,
-    },
-    update: {
-      fileKey,
-      workerCount: data.totals.workerCount,
-      gross: data.totals.gross,
-      isi: data.totals.isi,
-      net: data.totals.net,
-    },
+  const figures = {
+    fileKey,
+    workerCount: data.totals.workerCount,
+    gross: data.totals.gross,
+    isi: data.totals.isi,
+    net: data.totals.net,
+  };
+
+  // La ligne courante et son historique bougent ensemble : sans révision, un PDF écrasé serait perdu
+  // pour l'application (le fichier resterait dans MinIO sans plus aucune référence).
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.bordereauInvoice.upsert({
+      where: { bordereauId },
+      create: { bordereauId, ...figures },
+      update: figures,
+    });
+    const last = await tx.bordereauInvoiceRevision.aggregate({
+      where: { invoiceId: invoice.id },
+      _max: { revision: true },
+    });
+    await tx.bordereauInvoiceRevision.create({
+      data: {
+        invoiceId: invoice.id,
+        revision: (last._max.revision ?? 0) + 1,
+        ...figures,
+        reason: options.reason ?? (existing ? "Régénération" : "Génération initiale"),
+        createdById: options.userId ?? null,
+      },
+    });
+    return invoice;
   });
 }
 
-export async function ensureInvoiceQuietly(bordereauId: string, force = false): Promise<void> {
+export async function ensureInvoiceQuietly(
+  bordereauId: string,
+  force = false,
+  reason?: string,
+): Promise<void> {
   try {
-    await ensureInvoice(bordereauId, { force });
+    await ensureInvoice(bordereauId, { force, reason });
   } catch (err) {
     logger.error({ err, bordereauId }, "bordereau invoice generation failed");
   }
@@ -355,7 +380,11 @@ export async function regenerateInvoice(bordereauId: string, user: AuthUser) {
       "La facture ne peut plus changer : le bordereau est validé par le DG, exporté ou remplacé",
     );
   }
-  const invoice = await ensureInvoice(bordereauId, { force: true });
+  const invoice = await ensureInvoice(bordereauId, {
+    force: true,
+    reason: "Régénération manuelle",
+    userId: user.sub,
+  });
   if (!invoice) {
     throw new ApiError(404, "INVOICE_UNAVAILABLE", "Aucune facture disponible pour ce bordereau");
   }
@@ -367,4 +396,72 @@ export async function regenerateInvoice(bordereauId: string, user: AuthUser) {
     after: { bordereauId, version: bordereau.version },
   });
   return invoice;
+}
+
+async function loadBordereauForInvoice(bordereauId: string, user: AuthUser) {
+  const bordereau = await prisma.bordereau.findUnique({
+    where: { id: bordereauId },
+    include: { site: { select: { shortCode: true } }, invoice: { select: { id: true } } },
+  });
+  if (!bordereau) throw new ApiError(404, "NOT_FOUND", "Bordereau introuvable");
+  assertBordereauSite(user, bordereau.siteId);
+  return bordereau;
+}
+
+/** Historique des PDF de la facture d'un bordereau, du plus récent au plus ancien. */
+export async function listInvoiceRevisions(bordereauId: string, user: AuthUser) {
+  const bordereau = await loadBordereauForInvoice(bordereauId, user);
+  if (!bordereau.invoice) return [];
+
+  const revisions = await prisma.bordereauInvoiceRevision.findMany({
+    where: { invoiceId: bordereau.invoice.id },
+    orderBy: { revision: "desc" },
+  });
+  const authorIds = [
+    ...new Set(revisions.map((r) => r.createdById).filter((id): id is string => !!id)),
+  ];
+  const authors = authorIds.length
+    ? await basePrisma.user.findMany({
+        where: { id: { in: authorIds } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const nameOf = new Map(authors.map((a) => [a.id, `${a.firstName} ${a.lastName}`]));
+
+  return revisions.map((revision, index) => ({
+    id: revision.id,
+    revision: revision.revision,
+    current: index === 0,
+    reason: revision.reason,
+    createdAt: revision.createdAt,
+    createdBy: revision.createdById ? (nameOf.get(revision.createdById) ?? null) : null,
+    workerCount: revision.workerCount,
+    gross: revision.gross.toString(),
+    isi: revision.isi.toString(),
+    net: revision.net.toString(),
+  }));
+}
+
+/** PDF d'une révision précise de la facture : téléchargement tracé dans l'audit. */
+export async function openInvoiceRevision(bordereauId: string, revisionId: string, user: AuthUser) {
+  const bordereau = await loadBordereauForInvoice(bordereauId, user);
+  const revision = bordereau.invoice
+    ? await prisma.bordereauInvoiceRevision.findFirst({
+        where: { id: revisionId, invoiceId: bordereau.invoice.id },
+      })
+    : null;
+  if (!revision) throw new ApiError(404, "NOT_FOUND", "Version de facture introuvable");
+
+  await writeAuditLog({
+    userId: user.sub,
+    action: "DOWNLOAD",
+    entityType: "BordereauInvoice",
+    entityId: revision.invoiceId,
+    after: { bordereauId, version: bordereau.version, revision: revision.revision },
+  });
+
+  return {
+    stream: await getReportStream(revision.fileKey),
+    filename: `Facture_${bordereau.site.shortCode}_${bordereau.periodIso}_${bordereau.referenceYear}_n${bordereau.number}_v${bordereau.version}_r${revision.revision}.pdf`,
+  };
 }

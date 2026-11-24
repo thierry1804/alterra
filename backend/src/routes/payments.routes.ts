@@ -22,7 +22,12 @@ import { getReportStream } from "../services/storage/presigned-url.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import type { AuthUser } from "../services/access/auth-user.js";
 import { listBordereaux, listExportQueue } from "../services/payments/bordereaux.service.js";
-import { openInvoice, regenerateInvoice } from "../services/payments/bordereau-invoice.service.js";
+import {
+  listInvoiceRevisions,
+  openInvoice,
+  openInvoiceRevision,
+  regenerateInvoice,
+} from "../services/payments/bordereau-invoice.service.js";
 import {
   addAdjustment,
   removeAdjustment,
@@ -271,6 +276,7 @@ paymentsRouter.get(
 );
 
 const bordereauIdParams = z.object({ id: z.guid() });
+const bordereauRevisionParams = z.object({ id: z.guid(), revisionId: z.guid() });
 const exportQueueQuery = z.object({
   periodIso: z.string().min(2).max(16).optional(),
   referenceYear: z.coerce.number().int().min(2000).max(2100).optional(),
@@ -371,6 +377,39 @@ paymentsRouter.get(
       const { stream, filename } = await openInvoice(req.params.id as string, req.user!);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      stream.pipe(res);
+      stream.on("error", next);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/bordereaux/:id/invoice/revisions",
+  requireAuth,
+  requirePermission("facture:lecture"),
+  validate(bordereauIdParams, "params"),
+  async (req, res, next) => {
+    try {
+      res.json({ data: await listInvoiceRevisions(req.params.id as string, req.user!) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+paymentsRouter.get(
+  "/bordereaux/:id/invoice/revisions/:revisionId",
+  requireAuth,
+  requirePermission("facture:lecture"),
+  validate(bordereauRevisionParams, "params"),
+  async (req, res, next) => {
+    try {
+      const { id, revisionId } = req.params as { id: string; revisionId: string };
+      const { stream, filename } = await openInvoiceRevision(id, revisionId, req.user!);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       stream.pipe(res);
       stream.on("error", next);
     } catch (err) {

@@ -11,6 +11,7 @@ import {
   bordereauStatusVariant,
   type BordereauDetail,
 } from "../../lib/payments";
+import InvoiceHistory from "./InvoiceHistory";
 import PaymentAdjustDialog, { type AdjustablePayment } from "./PaymentAdjustDialog";
 import { IconButton } from "../ui/IconButton";
 import { Badge } from "../ui/badge";
@@ -293,6 +294,7 @@ export default function BordereauDetailDrawer({
                           Facture
                         </Button>
                       )}
+                      {can("facture:lecture") && <InvoiceHistory bordereauId={version.id} />}
                       <Button
                         type="button"
                         size="sm"

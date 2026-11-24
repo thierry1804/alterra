@@ -13,13 +13,20 @@ vi.mock("../lib/prisma.js", () => ({
   prisma: {
     bordereau: { findUnique: vi.fn() },
     bordereauInvoice: { findUnique: vi.fn(), upsert: vi.fn() },
+    bordereauInvoiceRevision: {
+      aggregate: vi.fn(),
+      create: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    $transaction: vi.fn(),
     pointage: { findMany: vi.fn() },
     paymentAdjustment: { findMany: vi.fn() },
   },
 }));
 
 vi.mock("../lib/prisma-base.js", () => ({
-  basePrisma: { auditLog: { create: vi.fn() } },
+  basePrisma: { auditLog: { create: vi.fn() }, user: { findMany: vi.fn() } },
 }));
 
 vi.mock("../services/storage/minio.js", () => ({
@@ -90,6 +97,13 @@ describe("Bordereau invoice", () => {
     vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(bordereau() as never);
     vi.mocked(prisma.paymentAdjustment.findMany).mockResolvedValue([]);
     vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => unknown) =>
+      fn(prisma)) as never);
+    vi.mocked(prisma.bordereauInvoiceRevision.aggregate).mockResolvedValue({
+      _max: { revision: null },
+    } as never);
+    vi.mocked(prisma.bordereauInvoiceRevision.create).mockResolvedValue({} as never);
+    vi.mocked(basePrisma.user.findMany).mockResolvedValue([] as never);
     vi.mocked(prisma.bordereauInvoice.upsert).mockImplementation((async (args: {
       create: Record<string, unknown>;
     }) => ({
@@ -219,5 +233,133 @@ describe("Bordereau invoice", () => {
       .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
     expect(res.status).toBe(404);
     expect(res.body.code).toBe("INVOICE_UNAVAILABLE");
+  });
+
+  describe("revisions history", () => {
+    const REVISION_ID = "00000000-0000-4000-8000-0000000000c2";
+    const AUTHOR_ID = "00000000-0000-4000-8000-0000000000f1";
+
+    function revision(n: number, overrides: Record<string, unknown> = {}) {
+      return {
+        id: n === 2 ? REVISION_ID : `00000000-0000-4000-8000-00000000000${n}`,
+        invoiceId: "inv-1",
+        revision: n,
+        fileKey: `invoices/r${n}.pdf`,
+        workerCount: 2,
+        gross: new Prisma.Decimal("275"),
+        isi: new Prisma.Decimal("13.75"),
+        net: new Prisma.Decimal("261.25"),
+        reason: n === 1 ? "Génération initiale" : "Ajustement de paiement",
+        createdById: n === 2 ? AUTHOR_ID : null,
+        createdAt: new Date(`2026-11-2${n}T08:00:00Z`),
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(
+        bordereau({ invoice: { id: "inv-1" }, site: { shortCode: "MNK" } }) as never,
+      );
+    });
+
+    it("keeps a first revision when the invoice is created", async () => {
+      await ensureInvoice(BORDEREAU_ID);
+      expect(prisma.bordereauInvoiceRevision.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          invoiceId: "inv-1",
+          revision: 1,
+          reason: "Génération initiale",
+          gross: "275",
+        }),
+      });
+    });
+
+    it("adds a new revision on every forced regeneration and keeps its reason and author", async () => {
+      vi.mocked(prisma.bordereauInvoice.findUnique).mockResolvedValue({ id: "inv-1" } as never);
+      vi.mocked(prisma.bordereauInvoiceRevision.aggregate).mockResolvedValue({
+        _max: { revision: 2 },
+      } as never);
+
+      await ensureInvoice(BORDEREAU_ID, {
+        force: true,
+        reason: "Ajustement de paiement",
+        userId: AUTHOR_ID,
+      });
+
+      expect(prisma.bordereauInvoiceRevision.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          revision: 3,
+          reason: "Ajustement de paiement",
+          createdById: AUTHOR_ID,
+        }),
+      });
+    });
+
+    it("lists every version, newest first, with the author and the current one flagged", async () => {
+      vi.mocked(prisma.bordereauInvoiceRevision.findMany).mockResolvedValue([
+        revision(2),
+        revision(1),
+      ] as never);
+      vi.mocked(basePrisma.user.findMany).mockResolvedValue([
+        { id: AUTHOR_ID, firstName: "Fina", lastName: "Nce" },
+      ] as never);
+
+      const res = await request(createApp())
+        .get(`/api/v1/bordereaux/${BORDEREAU_ID}/invoice/revisions`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.map((r: { revision: number }) => r.revision)).toEqual([2, 1]);
+      expect(res.body.data[0]).toMatchObject({
+        current: true,
+        createdBy: "Fina Nce",
+        reason: "Ajustement de paiement",
+        net: "261.25",
+      });
+      expect(res.body.data[1]).toMatchObject({ current: false, createdBy: null });
+    });
+
+    it("returns an empty history when the bordereau has no invoice yet", async () => {
+      vi.mocked(prisma.bordereau.findUnique).mockResolvedValue(
+        bordereau({ invoice: null, site: { shortCode: "MNK" } }) as never,
+      );
+      const res = await request(createApp())
+        .get(`/api/v1/bordereaux/${BORDEREAU_ID}/invoice/revisions`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
+      expect(res.body.data).toEqual([]);
+    });
+
+    it("downloads one precise version and traces it in the audit log", async () => {
+      vi.mocked(prisma.bordereauInvoiceRevision.findFirst).mockResolvedValue(revision(2) as never);
+
+      const res = await request(createApp())
+        .get(`/api/v1/bordereaux/${BORDEREAU_ID}/invoice/revisions/${REVISION_ID}`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-disposition"]).toContain("attachment");
+      expect(res.headers["content-disposition"]).toContain("Facture_MNK_S47_2026_n7_v2_r2.pdf");
+      expect(prisma.bordereauInvoiceRevision.findFirst).toHaveBeenCalledWith({
+        where: { id: REVISION_ID, invoiceId: "inv-1" },
+      });
+      expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: "DOWNLOAD", entityType: "BordereauInvoice" }),
+        }),
+      );
+    });
+
+    it("answers 404 for a version of another invoice, and 403 without the invoice right", async () => {
+      vi.mocked(prisma.bordereauInvoiceRevision.findFirst).mockResolvedValue(null);
+      const missing = await request(createApp())
+        .get(`/api/v1/bordereaux/${BORDEREAU_ID}/invoice/revisions/${REVISION_ID}`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.FINANCE));
+      expect(missing.status).toBe(404);
+
+      const refused = await request(createApp())
+        .get(`/api/v1/bordereaux/${BORDEREAU_ID}/invoice/revisions`)
+        .set("Authorization", header(SYSTEM_ROLE_IDS.CHEF_EQUIPE));
+      expect(refused.status).toBe(403);
+    });
   });
 });

@@ -108,7 +108,7 @@ export async function addAdjustment(
     },
   });
 
-  await ensureInvoiceQuietly(bordereau.id, true);
+  await ensureInvoiceQuietly(bordereau.id, true, "Ajustement de paiement");
   return adjustment;
 }
 
@@ -143,5 +143,5 @@ export async function removeAdjustment(adjustmentId: string, actor: AuthUser) {
     after: { bordereauId: bordereau.id, amount: next.gross.toString() },
   });
 
-  await ensureInvoiceQuietly(bordereau.id, true);
+  await ensureInvoiceQuietly(bordereau.id, true, "Suppression d'un ajustement");
 }

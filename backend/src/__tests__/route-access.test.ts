@@ -100,6 +100,8 @@ describe("route access", () => {
       "POST /api/v1/bordereaux/:id/return",
       "POST /api/v1/parcels/import",
       "GET /api/v1/dashboard/costs",
+      "GET /api/v1/bordereaux/:id/invoice/revisions",
+      "GET /api/v1/bordereaux/:id/invoice/revisions/:revisionId",
       "POST /api/v1/auth/mfa/enroll/setup",
       "POST /api/v1/auth/mfa/enroll/verify",
     ]);

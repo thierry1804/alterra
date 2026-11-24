@@ -88,7 +88,7 @@ describe("Payment adjustments", () => {
         originalAmount: new Prisma.Decimal("1000"),
       }),
     });
-    expect(ensureInvoiceQuietly).toHaveBeenCalledWith(BORDEREAU_ID, true);
+    expect(ensureInvoiceQuietly).toHaveBeenCalledWith(BORDEREAU_ID, true, "Ajustement de paiement");
     expect(basePrisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: "ADJUST_PAYMENT", entityType: "Payment" }),
@@ -190,6 +190,10 @@ describe("Payment adjustments", () => {
         netAmount: new Prisma.Decimal("950"),
       },
     });
-    expect(ensureInvoiceQuietly).toHaveBeenCalledWith(BORDEREAU_ID, true);
+    expect(ensureInvoiceQuietly).toHaveBeenCalledWith(
+      BORDEREAU_ID,
+      true,
+      "Suppression d'un ajustement",
+    );
   });
 });

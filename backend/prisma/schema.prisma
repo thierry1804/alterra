@@ -597,6 +597,26 @@ model BordereauInvoice {
   net         Decimal   @db.Decimal(14, 2)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  /// Chaque génération ou régénération du PDF : la ligne ci-dessus garde la dernière, ici l'historique complet.
+  revisions   BordereauInvoiceRevision[]
+}
+
+model BordereauInvoiceRevision {
+  id          String           @id @default(uuid()) @db.Uuid
+  invoiceId   String           @db.Uuid
+  invoice     BordereauInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  revision    Int
+  fileKey     String
+  workerCount Int
+  gross       Decimal          @db.Decimal(14, 2)
+  isi         Decimal          @db.Decimal(14, 2)
+  net         Decimal          @db.Decimal(14, 2)
+  /// Pourquoi le PDF a été (re)généré : génération initiale, ajustement de paiement, régénération manuelle…
+  reason      String
+  createdById String?          @db.Uuid
+  createdAt   DateTime         @default(now())
+
+  @@unique([invoiceId, revision])
 }
 
 /// Un bordereau MVola généré pour une période : export initial (version 1) ou régénération
