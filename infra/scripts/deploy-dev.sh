@@ -40,6 +40,18 @@ echo "==> Dépendances + base de données"
 npm install --no-audit --no-fund
 ( cd backend && npx prisma migrate deploy && npx prisma generate )
 
+# Les PDF (factures de bordereau, rapports) sont rendus par Puppeteer. .npmrc désactive le téléchargement de
+# Chrome à chaque `npm install` (puppeteer_skip_download), donc sans cette étape l'API répond 500
+# « Could not find Chrome » à la première génération. L'installation est idempotente : si la bonne version est
+# déjà dans ~/.cache/puppeteer, la commande ne télécharge rien. Inutile si PUPPETEER_EXECUTABLE_PATH
+# désigne un Chromium système, ou si les PDF sont simulés (PDF_RENDERER != puppeteer).
+if grep -Eq '^PDF_RENDERER="?puppeteer"?[[:space:]]*$' backend/.env \
+  && ! grep -Eq '^PUPPETEER_EXECUTABLE_PATH=.' backend/.env; then
+  echo "==> Chrome pour les PDF (Puppeteer)"
+  ( cd backend && npm_config_puppeteer_skip_download=false npx puppeteer browsers install chrome ) \
+    || echo "Avertissement : Chrome n'a pas pu être installé, la génération de PDF échouera." >&2
+fi
+
 echo "==> Build des frontends (vérification TypeScript incluse)"
 export VITE_ADMIN_ORIGIN="$PUBLIC_ADMIN_ORIGIN" VITE_PWA_ORIGIN="$PUBLIC_PWA_ORIGIN"
 npm run build -w admin
