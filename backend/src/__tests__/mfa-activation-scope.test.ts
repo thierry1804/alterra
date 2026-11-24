@@ -32,3 +32,23 @@ describe("activation MFA sans session", () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });
+
+describe("tolérance du code TOTP", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  async function activateWith(offsetSeconds: number) {
+    const { secret } = await setupMfa("u2", "probe@example.com");
+    const code = generateSync({ secret, epoch: Math.floor(Date.now() / 1000) + offsetSeconds });
+    return activateMfa("u2", code);
+  }
+
+  it("accepte le code du pas précédent ou suivant (saisie lente, horloge légèrement décalée)", async () => {
+    await expect(activateWith(-30)).resolves.toBeUndefined();
+    await expect(activateWith(30)).resolves.toBeUndefined();
+  });
+
+  it("refuse un code vieux de plus d'un pas", async () => {
+    await expect(activateWith(-90)).rejects.toMatchObject({ code: "INVALID_MFA_CODE" });
+    await expect(activateWith(90)).rejects.toMatchObject({ code: "INVALID_MFA_CODE" });
+  });
+});

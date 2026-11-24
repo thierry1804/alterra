@@ -13,6 +13,12 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const PENDING_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * Tolérance de ±30 s (un pas TOTP) : le temps de saisir le code et un léger décalage d'horloge du
+ * téléphone. Avec 0 (valeur par défaut d'otplib), un code expirant pendant la saisie est refusé.
+ */
+const TOTP_TOLERANCE_SECONDS = 30;
+
 interface PendingMfa {
   secret: string;
   expiresAt: number;
@@ -98,7 +104,7 @@ export async function activateMfa(userId: string, code: string): Promise<void> {
     throw new ApiError(400, "MFA_SETUP_EXPIRED", "MFA setup session expired — restart setup");
   }
 
-  if (!verifySync({ secret, token: code }).valid) {
+  if (!verifySync({ secret, token: code, epochTolerance: TOTP_TOLERANCE_SECONDS }).valid) {
     throw new ApiError(401, "INVALID_MFA_CODE", "Invalid MFA code");
   }
 
@@ -112,7 +118,7 @@ export async function activateMfa(userId: string, code: string): Promise<void> {
 /** Verify TOTP at login for Admin users with MFA enabled. */
 export function verifyLoginMfa(encryptedSecret: string, code: string): boolean {
   const secret = decryptMfaSecret(encryptedSecret);
-  return verifySync({ secret, token: code }).valid;
+  return verifySync({ secret, token: code, epochTolerance: TOTP_TOLERANCE_SECONDS }).valid;
 }
 
 /** Clear pending MFA state (tests). */
