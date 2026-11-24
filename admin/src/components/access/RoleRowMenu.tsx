@@ -1,4 +1,12 @@
-import { Copy, ExternalLink, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  GitCompare,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Users,
+} from "lucide-react";
 import type { AccessRole } from "../../lib/access";
 import {
   DropdownMenu,
@@ -12,6 +20,7 @@ interface RoleRowMenuProps {
   role: AccessRole;
   onOpenDetail: () => void;
   onDuplicate: () => void;
+  onCompare: () => void;
   onShowUsers: () => void;
   onDelete: () => void;
 }
@@ -21,6 +30,7 @@ export default function RoleRowMenu({
   role,
   onOpenDetail,
   onDuplicate,
+  onCompare,
   onShowUsers,
   onDelete,
 }: RoleRowMenuProps) {
@@ -48,6 +58,9 @@ export default function RoleRowMenu({
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onDuplicate}>
           <Copy className="h-3.5 w-3.5" aria-hidden /> Dupliquer
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onCompare}>
+          <GitCompare className="h-3.5 w-3.5" aria-hidden /> Comparer avec…
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onShowUsers} disabled={role.userCount === 0}>
           <Users className="h-3.5 w-3.5" aria-hidden /> Voir les utilisateurs

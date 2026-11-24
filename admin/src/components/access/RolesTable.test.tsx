@@ -43,6 +43,7 @@ function setup() {
     onOpenDetail: vi.fn(),
     onPatch: vi.fn(),
     onDuplicate: vi.fn(),
+    onCompare: vi.fn(),
     onDelete: vi.fn(),
   };
   render(
@@ -128,5 +129,46 @@ describe("RolesTable", () => {
     await user.click(screen.getByRole("button", { name: "Actions du rôle Consultation" }));
     await user.click(await screen.findByRole("menuitem", { name: /Supprimer/ }));
     expect(onDelete).toHaveBeenCalledWith(roles[1]);
+  });
+
+  it("alerte discrètement quand un rôle valide ou paie sans exiger la MFA", () => {
+    const sensitive: AccessRole[] = [
+      { ...roles[1], id: "fin", name: "Finance", permissions: ["paiement:export"] },
+      { ...roles[0], id: "dg", name: "DG", permissions: ["paiement:export"], mfaRequired: true },
+    ];
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <RolesTable
+            roles={sensitive}
+            resources={[
+              {
+                resource: "paiement",
+                label: "Paiements",
+                actions: [{ action: "export", label: "Exporter vers MVola" }],
+              },
+            ]}
+            onOpenDetail={vi.fn()}
+            onPatch={vi.fn()}
+            onDuplicate={vi.fn()}
+            onCompare={vi.fn()}
+            onDelete={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByRole("button", {
+        name: /Alerte : le rôle Finance a des droits sensibles sans MFA/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Alerte : le rôle DG/ })).not.toBeInTheDocument();
+  });
+
+  it("propose de comparer depuis le menu de ligne", async () => {
+    const { onCompare, user } = setup();
+    await user.click(screen.getByRole("button", { name: "Actions du rôle Consultation" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Comparer avec/ }));
+    expect(onCompare).toHaveBeenCalledWith(roles[1]);
   });
 });

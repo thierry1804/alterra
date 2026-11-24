@@ -181,4 +181,51 @@ describe("page Rôles : brouillon et enregistrement groupé", () => {
       { roleId: "r1", expectedVersion: "v2", mfaRequired: true },
     ]);
   });
+
+  it("affiche un squelette pendant le chargement", async () => {
+    api.roles.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    expect(await screen.findByRole("status", { name: "Chargement des rôles" })).toBeInTheDocument();
+  });
+
+  it("propose de recharger quand le chargement échoue, puis affiche les rôles", async () => {
+    api.roles.mockRejectedValueOnce(new Error("réseau"));
+    const user = renderPage();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Impossible de charger les rôles et les groupes",
+    );
+    await user.click(screen.getByRole("button", { name: "Recharger" }));
+    expect(await mfaSwitch()).toBeInTheDocument();
+  });
+
+  it("guide l'utilisateur quand aucun rôle n'existe", async () => {
+    api.roles.mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByText("Aucun rôle pour l'instant")).toBeInTheDocument();
+  });
+
+  it("ouvre la comparaison depuis la barre d'outils", async () => {
+    api.roles.mockResolvedValue([roleFixture(), roleFixture({ id: "r2", name: "Consultation" })]);
+    const user = renderPage();
+    await screen.findByRole("switch", { name: /rôle Consultation/ });
+    await user.click(screen.getByRole("button", { name: "Comparer" }));
+    expect(await screen.findByRole("dialog", { name: "Comparer deux rôles" })).toBeInTheDocument();
+  });
+
+  it("explique qu'une coupure réseau n'a rien enregistré et garde le brouillon", async () => {
+    api.bulkUpdateRoles.mockRejectedValueOnce(
+      Object.assign(new Error("Network Error"), { isAxiosError: true }),
+    );
+    const user = renderPage();
+    await user.click(await mfaSwitch());
+    await user.click(screen.getByRole("button", { name: /Enregistrer…/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox"));
+    await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+    expect(
+      await screen.findByText(/Le serveur ne répond pas : vérifiez la connexion/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 modification non enregistrée")).toBeInTheDocument();
+  });
 });

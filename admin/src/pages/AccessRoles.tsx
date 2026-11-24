@@ -31,7 +31,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/useAuth";
+import CompareRolesDialog from "../components/access/CompareRolesDialog";
 import RolesMatrix from "../components/access/RolesMatrix";
+import { AccessPageSkeleton } from "../components/access/AccessSkeleton";
+import { EmptyState } from "../components/ui/EmptyState";
+import { QueryError } from "../components/ui/QueryError";
 import RolesTable from "../components/access/RolesTable";
 import { withGroupToggled } from "../lib/access-matrix";
 import { useSearchParams } from "react-router-dom";
@@ -60,7 +64,11 @@ import {
 } from "../lib/access";
 
 function errorMessage(err: unknown): string {
-  return isAxiosError(err) ? String(err.response?.data?.message ?? "Erreur") : "Erreur";
+  if (!isAxiosError(err)) return "Erreur";
+  // Pas de réponse : coupure réseau ou serveur injoignable. Rien n'a été enregistré.
+  if (!err.response)
+    return "Le serveur ne répond pas : vérifiez la connexion. Rien n'a été enregistré.";
+  return String(err.response.data?.message ?? "Erreur");
 }
 
 function permissionLabels(resources: PermissionResource[]): Map<string, string> {
@@ -127,6 +135,10 @@ export default function AccessRolesPage() {
   const resources = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
   const roles = useMemo(() => rolesQuery.data ?? [], [rolesQuery.data]);
+  const queries = [catalogQuery, groupsQuery, rolesQuery];
+  const loading = queries.some((query) => query.isLoading);
+  const failed = !loading && queries.some((query) => query.isError);
+  const retryAll = () => queries.forEach((query) => void query.refetch());
   const labels = useMemo(() => permissionLabels(resources), [resources]);
 
   const [groupSheet, setGroupSheet] = useState<{ editing: PermissionGroup | null } | null>(null);
@@ -136,6 +148,7 @@ export default function AccessRolesPage() {
   // Modifications faites dans le tableau ou la matrice, gardées en local jusqu'à « Enregistrer ».
   const [draft, setDraft] = useState<RolesDraft>({});
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [compare, setCompare] = useState<{ leftId: string | null } | null>(null);
   const [toDelete, setToDelete] = useState<
     { kind: "group"; item: PermissionGroup } | { kind: "role"; item: AccessRole } | null
   >(null);
@@ -386,11 +399,31 @@ export default function AccessRolesPage() {
                 </button>
               ))}
             </div>
-            <Button type="button" onClick={() => openRole(null)}>
-              Nouveau rôle
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={roles.length < 2}
+                onClick={() => setCompare({ leftId: null })}
+              >
+                Comparer
+              </Button>
+              <Button type="button" onClick={() => openRole(null)}>
+                Nouveau rôle
+              </Button>
+            </div>
           </div>
-          {view === "liste" ? (
+          {failed ? (
+            <QueryError what="les rôles et les groupes" onRetry={retryAll} />
+          ) : loading ? (
+            <AccessPageSkeleton />
+          ) : roles.length === 0 ? (
+            <EmptyState
+              title="Aucun rôle pour l'instant"
+              hint="Créez un rôle en lui attribuant des groupes de permissions."
+              action={<Button onClick={() => openRole(null)}>Nouveau rôle</Button>}
+            />
+          ) : view === "liste" ? (
             <RolesTable
               roles={viewRoles}
               dirtyFields={dirtyFields}
@@ -398,6 +431,7 @@ export default function AccessRolesPage() {
               onOpenDetail={openRole}
               onPatch={(role, patch) => editRole(role.id, patch)}
               onDuplicate={(role) => duplicateRole.mutate(role)}
+              onCompare={(role) => setCompare({ leftId: role.id })}
               onDelete={(role) => setToDelete({ kind: "role", item: role })}
             />
           ) : (
@@ -417,49 +451,55 @@ export default function AccessRolesPage() {
               Nouveau groupe
             </Button>
           </div>
-          <div className="rounded-lg border border-zinc-200">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Groupe</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Utilisé par</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groups.map((group) => (
-                  <TableRow key={group.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{group.name}</span>
-                        {group.isSystem && <Badge>Système</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell>{group.permissions.length}</TableCell>
-                    <TableCell>{group.roleCount} rôle(s)</TableCell>
-                    <TableCell>
-                      <RowActions>
-                        <IconButton
-                          icon={Pencil}
-                          label={`Modifier ${group.name}`}
-                          onClick={() => openGroup(group)}
-                        />
-                        {!group.isSystem && (
-                          <IconButton
-                            icon={Trash2}
-                            variant="destructive"
-                            label={`Supprimer ${group.name}`}
-                            onClick={() => setToDelete({ kind: "group", item: group })}
-                          />
-                        )}
-                      </RowActions>
-                    </TableCell>
+          {failed ? (
+            <QueryError what="les groupes de permissions" onRetry={retryAll} />
+          ) : loading ? (
+            <AccessPageSkeleton />
+          ) : (
+            <div className="rounded-lg border border-zinc-200">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Groupe</TableHead>
+                    <TableHead>Permissions</TableHead>
+                    <TableHead>Utilisé par</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {groups.map((group) => (
+                    <TableRow key={group.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{group.name}</span>
+                          {group.isSystem && <Badge>Système</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell>{group.permissions.length}</TableCell>
+                      <TableCell>{group.roleCount} rôle(s)</TableCell>
+                      <TableCell>
+                        <RowActions>
+                          <IconButton
+                            icon={Pencil}
+                            label={`Modifier ${group.name}`}
+                            onClick={() => openGroup(group)}
+                          />
+                          {!group.isSystem && (
+                            <IconButton
+                              icon={Trash2}
+                              variant="destructive"
+                              label={`Supprimer ${group.name}`}
+                              onClick={() => setToDelete({ kind: "group", item: group })}
+                            />
+                          )}
+                        </RowActions>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -688,6 +728,15 @@ export default function AccessRolesPage() {
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
         onOpenChange={(open) => !open && setToDelete(null)}
+      />
+
+      <CompareRolesDialog
+        open={compare !== null}
+        onOpenChange={(open) => !open && setCompare(null)}
+        roles={roles}
+        groups={groups}
+        resources={resources}
+        initialLeftId={compare?.leftId}
       />
 
       <SaveBar

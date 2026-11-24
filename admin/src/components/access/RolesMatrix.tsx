@@ -8,6 +8,7 @@ import {
   type PermissionResource,
 } from "../../lib/access";
 import { buildSections, groupShortName, permissionLabelList } from "../../lib/access-matrix";
+import SensitiveMfaWarning from "./SensitiveMfaWarning";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { Hint, TooltipProvider } from "../ui/tooltip";
@@ -296,6 +297,7 @@ export default function RolesMatrix({
                           </Hint>
                         )}
                         {role.name}
+                        <SensitiveMfaWarning role={role} resources={resources} />
                       </span>
                       <span className="text-[11px] font-normal text-muted">
                         {SCOPE_LABELS[role.scope]} · {role.userCount} util.

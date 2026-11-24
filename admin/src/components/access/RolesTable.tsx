@@ -28,6 +28,7 @@ import { Hint, TooltipProvider } from "../ui/tooltip";
 import AccessSummary from "./AccessSummary";
 import InlineText from "./InlineText";
 import RoleRowMenu from "./RoleRowMenu";
+import SensitiveMfaWarning from "./SensitiveMfaWarning";
 import RoleUsersPopover from "./RoleUsersPopover";
 
 const SORT_ACCESSORS = {
@@ -46,6 +47,7 @@ interface RolesTableProps {
   onOpenDetail: (role: AccessRole) => void;
   onPatch: (role: AccessRole, patch: RolePatch) => void;
   onDuplicate: (role: AccessRole) => void;
+  onCompare: (role: AccessRole) => void;
   onDelete: (role: AccessRole) => void;
 }
 
@@ -56,6 +58,7 @@ export default function RolesTable({
   onOpenDetail,
   onPatch,
   onDuplicate,
+  onCompare,
   onDelete,
 }: RolesTableProps) {
   const navigate = useNavigate();
@@ -250,12 +253,13 @@ export default function RolesTable({
                       </Select>
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
-                      <span className="inline-flex min-h-8 items-center">
+                      <span className="inline-flex min-h-8 items-center gap-2">
                         <Switch
                           checked={role.mfaRequired}
                           onCheckedChange={(mfaRequired) => onPatch(role, { mfaRequired })}
                           aria-label={`Double authentification exigée pour le rôle ${role.name}`}
                         />
+                        <SensitiveMfaWarning role={role} resources={resources} />
                       </span>
                     </TableCell>
                     <TableCell className={cn(unused && "opacity-70")}>
@@ -269,6 +273,7 @@ export default function RolesTable({
                         role={role}
                         onOpenDetail={() => onOpenDetail(role)}
                         onDuplicate={() => onDuplicate(role)}
+                        onCompare={() => onCompare(role)}
                         onShowUsers={() => navigate(`/users?roleId=${role.id}`)}
                         onDelete={() => onDelete(role)}
                       />
