@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import QRCode from "qrcode";
 import { generateSecret, generateURI, verifySync } from "otplib";
-import { prisma } from "../../lib/prisma.js";
+import { basePrisma } from "../../lib/prisma.js";
 import {
   deletePendingMfaSecret,
   getPendingMfaSecret,
@@ -103,7 +103,9 @@ export async function activateMfa(userId: string, code: string): Promise<void> {
   }
 
   const encrypted = encryptMfaSecret(secret);
-  await prisma.user.update({ where: { id: userId }, data: { mfaSecret: encrypted } });
+  // Client sans filtre de périmètre : l'activation par jeton d'enrôlement n'a pas de session, donc pas
+  // de portée RLS, et le client filtré refuserait la mise à jour (« Hors de votre périmètre »).
+  await basePrisma.user.update({ where: { id: userId }, data: { mfaSecret: encrypted } });
   await clearPendingSecret(userId);
 }
 
