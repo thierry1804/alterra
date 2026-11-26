@@ -15,6 +15,8 @@ import { uuidv7 } from "../lib/uuid";
 import { getCachedBiometricTemplate } from "../services/biometric/TemplateCache";
 import { matchFaceBlobAgainstTemplate } from "../services/biometric/FaceMatcher";
 import Button, { ButtonLink } from "../components/ui/Button";
+import BridgeVerification from "../components/biometric/BridgeVerification";
+import { isAndroidBrowser } from "../lib/bio-bridge";
 
 function resultBannerClass(result: BiometricCheckResult["result"]): string {
   switch (result) {
@@ -144,6 +146,59 @@ export default function BiometricCapture() {
         <ButtonLink to="/validation" variant="outline" className="mt-3">
           Retour validation
         </ButtonLink>
+      </div>
+    );
+  }
+
+  if (isAndroidBrowser()) {
+    return (
+      <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
+        <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium">Contrôle biométrique</p>
+            <p className="text-xs text-zinc-400">{workerName}</p>
+          </div>
+          <ButtonLink
+            to="/validation"
+            variant="outline"
+            size="sm"
+            className="border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
+          >
+            Retour
+          </ButtonLink>
+        </header>
+        <div className="flex flex-1 flex-col items-center gap-4 p-4">
+          {result && (
+            <div
+              className={`w-full max-w-md rounded-md border px-4 py-3 text-sm ${resultBannerClass(result.result)}`}
+            >
+              <p className="font-medium">{bioResultLabel(result.result)}</p>
+              {(result.result === "KO" || result.result === "DOUBT") && (
+                <p className="mt-2 text-xs opacity-90">
+                  Retournez à la validation pour corriger ou demander une précision au chef
+                  d&apos;équipe.
+                </p>
+              )}
+            </div>
+          )}
+          <BridgeVerification
+            workerId={workerId}
+            referenceDate={pointageDate}
+            autoStart
+            onResult={setResult}
+          />
+          {result && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="w-full max-w-md rounded-2xl border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-900"
+              onClick={() => navigate("/validation")}
+            >
+              Retour à la validation
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

@@ -84,6 +84,12 @@ enum BioResult {
   UNAVAILABLE
 }
 
+enum BiometricSessionStatus {
+  PENDING
+  STARTED
+  COMPLETED
+}
+
 enum BioProvider {
   AXIAN
   MANUAL
@@ -371,6 +377,7 @@ model Worker {
   presences     PresenceRecord[] // V2
   payments      Payment[]
   bioChecks     BiometricCheck[]
+  bioSessions   BiometricSession[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   deletedAt     DateTime?
@@ -452,6 +459,34 @@ model Badge {
   nfcTagId   String    @unique
   assignedAt DateTime  @default(now())
   revokedAt  DateTime?
+}
+
+/// Vérification biométrique lancée par la PWA et exécutée par l'application pont. La référence n'est
+/// jamais stockée en clair : seule son empreinte l'est, la référence ne circule que dans le lien d'ouverture.
+model BiometricSession {
+  id            String                 @id @default(uuid()) @db.Uuid
+  referenceHash String                 @unique
+  workerId      String                 @db.Uuid
+  worker        Worker                 @relation(fields: [workerId], references: [id])
+  createdById   String                 @db.Uuid
+  context       BioContext
+  referenceDate DateTime?              @db.Date
+  status        BiometricSessionStatus @default(PENDING)
+  expiresAt     DateTime
+  deviceId      String?
+  engineVersion String?
+  outcome       String?
+  score         Int?
+  liveness      Int?
+  distanceCm    Int?
+  errorCode     String?
+  bioCheckId    String?                @db.Uuid
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime               @default(now())
+
+  @@index([workerId, createdAt])
+  @@index([expiresAt])
 }
 
 model BiometricCheck {

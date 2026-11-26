@@ -3,6 +3,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_ADMIN_ORIGIN?: string;
+  readonly VITE_BIO_BRIDGE_PACKAGE?: string;
 }
 
 interface ImportMeta {
