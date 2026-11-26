@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import { Download, TriangleAlert } from "lucide-react";
 import { api } from "../lib/api";
@@ -25,6 +25,9 @@ interface AppSettingsResponse {
   loginBranchUpdatedAt: string | null;
   loginLeafUpdatedAt: string | null;
   mapTilerKeyConfigured: boolean;
+  mapTileUrl: string | null;
+  mapImageUrl: string | null;
+  mapImageBounds: { south: number; west: number; north: number; east: number } | null;
   bioValidationRequired: boolean;
   isiRatePercent: number;
   amountDecimals: number;
@@ -103,11 +106,27 @@ export default function AppSettingsPage() {
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
   const [restoring, setRestoring] = useState(false);
   const [mapApiKeyInput, setMapApiKeyInput] = useState("");
+  const [mapTileUrl, setMapTileUrl] = useState("");
+  const [mapImageUrl, setMapImageUrl] = useState("");
+  const [mapSouth, setMapSouth] = useState("");
+  const [mapWest, setMapWest] = useState("");
+  const [mapNorth, setMapNorth] = useState("");
+  const [mapEast, setMapEast] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => api.get<AppSettingsResponse>("/app-settings").then((r) => r.data),
   });
+
+  useEffect(() => {
+    if (!data) return;
+    setMapTileUrl(data.mapTileUrl ?? "");
+    setMapImageUrl(data.mapImageUrl ?? "");
+    setMapSouth(data.mapImageBounds ? String(data.mapImageBounds.south) : "");
+    setMapWest(data.mapImageBounds ? String(data.mapImageBounds.west) : "");
+    setMapNorth(data.mapImageBounds ? String(data.mapImageBounds.north) : "");
+    setMapEast(data.mapImageBounds ? String(data.mapImageBounds.east) : "");
+  }, [data]);
 
   const iconUrl = data?.iconUpdatedAt
     ? `${APP_ICON_URL}?v=${encodeURIComponent(data.iconUpdatedAt)}`
@@ -152,6 +171,33 @@ export default function AppSettingsPage() {
       toast({ title: "Clé MapTiler enregistrée" });
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
       setMapApiKeyInput("");
+    },
+    onError: (err) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err;
+      toast({ title: "Échec", description: String(message), variant: "destructive" });
+    },
+  });
+
+  const saveBasemapMutation = useMutation({
+    mutationFn: () => {
+      const coord = (value: string) => {
+        const trimmed = value.trim().replace(",", ".");
+        if (!trimmed) return null;
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      return api.patch<AppSettingsResponse>("/app-settings/map-basemap", {
+        tileUrl: mapTileUrl.trim() || null,
+        imageUrl: mapImageUrl.trim() || null,
+        south: coord(mapSouth),
+        west: coord(mapWest),
+        north: coord(mapNorth),
+        east: coord(mapEast),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Fond de carte enregistré" });
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
     },
     onError: (err) => {
       const message = isAxiosError(err) ? err.response?.data?.message : err;
@@ -584,6 +630,79 @@ export default function AppSettingsPage() {
                 </Button>
               </div>
             )}
+
+            <div className="space-y-4 border-t border-zinc-200 pt-5">
+              <div className="space-y-2">
+                <Label htmlFor="map-tile-url">Flux de tuiles du client</Label>
+                <Input
+                  id="map-tile-url"
+                  value={mapTileUrl}
+                  onChange={(e) => setMapTileUrl(e.target.value)}
+                  placeholder="https://…/{z}/{x}/{y}.png"
+                />
+                <p className="text-xs text-zinc-500">
+                  URL XYZ avec {"{z}"}, {"{x}"} et {"{y}"}. Si elle est vide, MapTiler ou
+                  OpenStreetMap reste le fond.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="map-image-url">Image de référence</Label>
+                <Input
+                  id="map-image-url"
+                  value={mapImageUrl}
+                  onChange={(e) => setMapImageUrl(e.target.value)}
+                  placeholder="https://…/carte.png"
+                />
+                <p className="text-xs text-zinc-500">
+                  Utilisée seulement sans flux. Les deux coins calent l'image sur la carte.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="map-south">Sud</Label>
+                  <Input
+                    id="map-south"
+                    value={mapSouth}
+                    onChange={(e) => setMapSouth(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map-west">Ouest</Label>
+                  <Input
+                    id="map-west"
+                    value={mapWest}
+                    onChange={(e) => setMapWest(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map-north">Nord</Label>
+                  <Input
+                    id="map-north"
+                    value={mapNorth}
+                    onChange={(e) => setMapNorth(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map-east">Est</Label>
+                  <Input
+                    id="map-east"
+                    value={mapEast}
+                    onChange={(e) => setMapEast(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                disabled={saveBasemapMutation.isPending}
+                onClick={() => saveBasemapMutation.mutate()}
+              >
+                {saveBasemapMutation.isPending ? "Enregistrement…" : "Enregistrer le fond"}
+              </Button>
+            </div>
           </div>
         </TabsContent>
 

@@ -3,9 +3,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, useMap } from "react-leaflet";
 import type { GeoPolygon } from "../../lib/geo";
-import { tileConfig } from "../../lib/map-tiles";
+import { BasemapLayers } from "./BasemapLayers";
 import { useMapTilerKey } from "../../hooks/useAppSettings";
 
 function layerToGeoPolygon(layer: L.Polygon): GeoPolygon {
@@ -14,9 +14,10 @@ function layerToGeoPolygon(layer: L.Polygon): GeoPolygon {
   return geometry as GeoPolygon;
 }
 
-function geoPolygonToLatLngRings(polygon: GeoPolygon): L.LatLngExpression[][] {
-  return polygon.coordinates.map((ring) =>
-    ring.map(([lng, lat]) => [lat, lng] as [number, number]),
+function geoPolygonToLatLngRings(polygon: GeoPolygon): L.LatLngExpression[][][] {
+  const parts = polygon.type === "Polygon" ? [polygon.coordinates] : polygon.coordinates;
+  return parts.map((rings) =>
+    rings.map((ring) => ring.map(([lng, lat]) => [lat, lng] as [number, number])),
   );
 }
 
@@ -120,12 +121,11 @@ export default function PolygonDrawMap({
   center,
   zoom = 14,
 }: PolygonDrawMapProps) {
-  const { apiKey } = useMapTilerKey();
-  const tiles = tileConfig(apiKey);
+  const basemap = useMapTilerKey();
   return (
     <div className="h-72 w-full overflow-hidden rounded-md border border-zinc-300">
       <MapContainer center={center} zoom={zoom} scrollWheelZoom className="h-full w-full">
-        <TileLayer url={tiles.url} attribution={tiles.attribution} />
+        <BasemapLayers basemap={basemap} />
         <GeomanLayer initialValue={value} onChange={onChange} />
       </MapContainer>
     </div>

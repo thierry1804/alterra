@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
+import { downloadBlob, filenameFromDisposition } from "../lib/download";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useSiteScope } from "../lib/site-scope";
 import type { Site } from "../lib/referentials";
@@ -195,6 +196,23 @@ export default function ZonesPage() {
     },
   });
 
+  async function handleGeoExport() {
+    if (!effectiveSiteId) return;
+    try {
+      const response = await api.get<Blob>("/parcels/export", {
+        params: { siteId: effectiveSiteId },
+        responseType: "blob",
+      });
+      downloadBlob(
+        response.data,
+        filenameFromDisposition(response.headers["content-disposition"], "parcelles.geojson"),
+      );
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
+      toast({ title: "Export impossible", description: String(message ?? "Erreur"), variant: "destructive" });
+    }
+  }
+
   function handleExport() {
     const hasSelection = zoneSelection.selectedCount > 0 || parcelSelection.selectedCount > 0;
     const rows: Array<{ type: string; name: string; code: string; surface: string }> = [];
@@ -383,10 +401,16 @@ export default function ZonesPage() {
             {can("parcelle:ecriture") && can("zone:ecriture") && (
               <IconButton
                 icon={Upload}
-                label="Importer un fichier CSV"
+                label="Importer"
                 onClick={() => setImportOpen(true)}
               />
             )}
+            <IconButton
+              icon={Download}
+              label="Export SIG"
+              onClick={() => void handleGeoExport()}
+              disabled={!effectiveSiteId}
+            />
             <IconButton icon={Download} label="Exporter" onClick={handleExport} />
             <Button type="button" onClick={openZoneCreate} disabled={!effectiveSiteId}>
               Nouvelle zone

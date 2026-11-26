@@ -1,4 +1,17 @@
-export function tileConfig(mapTilerKey?: string | null) {
+export interface ClientBasemap {
+  apiKey?: string | null;
+  tileUrl?: string | null;
+  imageUrl?: string | null;
+  imageBounds?: [[number, number], [number, number]] | null;
+}
+
+export function tileConfig(mapTilerKey?: string | null, basemap?: ClientBasemap | null) {
+  if (basemap?.tileUrl) {
+    return {
+      url: basemap.tileUrl,
+      attribution: "Fond du client",
+    };
+  }
   if (mapTilerKey) {
     return {
       url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`,

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
-import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { tileConfig } from "../../lib/map-tiles";
+import { CircleMarker, MapContainer, useMap, useMapEvents } from "react-leaflet";
+import { BasemapLayers } from "../map/BasemapLayers";
 import { cn } from "../../lib/utils";
 import { useMapTilerKey } from "../../hooks/useAppSettings";
 
@@ -46,8 +46,7 @@ export interface SitePickerMapProps {
 
 /** Carte de Madagascar : cliquer pose un repère et renvoie les coordonnées choisies. */
 export default function SitePickerMap({ value, onPick, className }: SitePickerMapProps) {
-  const { apiKey } = useMapTilerKey();
-  const tiles = tileConfig(apiKey);
+  const basemap = useMapTilerKey();
   return (
     <div className={cn("h-64 w-full overflow-hidden rounded-md border border-zinc-300", className)}>
       <MapContainer
@@ -56,7 +55,7 @@ export default function SitePickerMap({ value, onPick, className }: SitePickerMa
         scrollWheelZoom
         className="h-full w-full"
       >
-        <TileLayer url={tiles.url} attribution={tiles.attribution} />
+        <BasemapLayers basemap={basemap} />
         <InvalidateSizeOnMount />
         <ClickHandler onPick={onPick} />
         <RecenterOnChange value={value} />

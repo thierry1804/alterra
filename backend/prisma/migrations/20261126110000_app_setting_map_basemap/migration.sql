@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "AppSetting" ADD COLUMN "mapTileUrl" TEXT;
+ALTER TABLE "AppSetting" ADD COLUMN "mapImageUrl" TEXT;
+ALTER TABLE "AppSetting" ADD COLUMN "mapImageSouth" DOUBLE PRECISION;
+ALTER TABLE "AppSetting" ADD COLUMN "mapImageWest" DOUBLE PRECISION;
+ALTER TABLE "AppSetting" ADD COLUMN "mapImageNorth" DOUBLE PRECISION;
+ALTER TABLE "AppSetting" ADD COLUMN "mapImageEast" DOUBLE PRECISION;

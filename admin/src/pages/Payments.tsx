@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatAr } from "../lib/money";
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { ClipboardList, CreditCard, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
+import { ClipboardList, CreditCard, Download, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
 import { api } from "../lib/api";
 import { downloadBlob, filenameFromDisposition } from "../lib/download";
 import { useSiteScope } from "../lib/site-scope";
@@ -10,10 +10,14 @@ import { useBordereaux } from "../hooks/useBordereaux";
 import { useCan } from "../hooks/useCan";
 import {
   currentIsoWeekInput,
+  PAYMENT_STATUS_LABELS,
   periodToExportParam,
+  RECONCILIATION_LABELS,
   type GenerateBordereauxResult,
   type PaymentRow,
 } from "../lib/payments";
+import { exportToExcel } from "../components/ui/data-table/exportToExcel";
+import { IconButton } from "../components/ui/IconButton";
 import PageHeader from "../components/shared/PageHeader";
 import KpiCards, { type StatCardItem } from "../components/dashboard/KpiCards";
 import PaymentFlow from "../components/payments/PaymentFlow";
@@ -293,6 +297,35 @@ export default function PaymentsPage() {
             {regenerating ? "Régénération…" : "Régénérer le bordereau"}
           </Button>
         )}
+        <IconButton
+          icon={Download}
+          label="Exporter"
+          disabled={rows.length === 0}
+          onClick={() =>
+            void exportToExcel(
+              rows,
+              [
+                { header: "Matricule", accessor: (row) => row.worker.matricule },
+                { header: "Nom", accessor: (row) => row.worker.lastName },
+                { header: "Prénom", accessor: (row) => row.worker.firstName },
+                { header: "MVola", accessor: (row) => row.worker.mvolaNumber },
+                { header: "Période", accessor: (row) => row.periodIso },
+                { header: "Brut", accessor: (row) => row.amount },
+                { header: "ISI", accessor: (row) => row.isiAmount },
+                { header: "Net", accessor: (row) => row.netAmount },
+                { header: "Statut", accessor: (row) => PAYMENT_STATUS_LABELS[row.status] },
+                {
+                  header: "Réconciliation",
+                  accessor: (row) =>
+                    row.reconciliationStatus
+                      ? RECONCILIATION_LABELS[row.reconciliationStatus]
+                      : "",
+                },
+              ],
+              "paiements",
+            )
+          }
+        />
         {can("paiement:import_statut") && (
           <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
             Import retour MVola

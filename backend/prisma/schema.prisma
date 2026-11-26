@@ -797,6 +797,14 @@ model AppSetting {
   loginBranchKey        String?
   loginLeafKey          String?
   mapTilerKey           String?
+  /// URL de tuiles XYZ du client ({z}/{x}/{y}). Prioritaire sur MapTiler.
+  mapTileUrl            String?
+  /// Image de référence, affichée si aucun flux XYZ n'est renseigné.
+  mapImageUrl           String?
+  mapImageSouth         Float?
+  mapImageWest          Float?
+  mapImageNorth         Float?
+  mapImageEast          Float?
   /// Contrôle biométrique pas encore fiable sur le terrain — permet à l'admin de désactiver
   /// temporairement son exigence pour la validation des pointages (réactiver dès que prêt).
   bioValidationRequired Boolean     @default(true)

@@ -1,6 +1,9 @@
-export interface GeoPolygon {
-  type: "Polygon";
-  coordinates: number[][][];
+export type GeoPolygon =
+  | { type: "Polygon"; coordinates: number[][][] }
+  | { type: "MultiPolygon"; coordinates: number[][][][] };
+
+function polygonParts(geometry: GeoPolygon): number[][][][] {
+  return geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
 }
 
 export interface Zone {
@@ -49,13 +52,35 @@ export interface SiteGeo {
 
 /** GeoJSON stores [longitude, latitude]; Leaflet expects [latitude, longitude]. */
 export function geoPolygonToLatLngs(polygon: GeoPolygon | null): [number, number][] {
-  if (!polygon?.coordinates?.[0]?.length) return [];
-  return polygon.coordinates[0].map(([lng, lat]) => [lat, lng]);
+  if (!polygon) return [];
+  const points: [number, number][] = [];
+  for (const rings of polygonParts(polygon)) {
+    const outer = rings[0];
+    if (!outer) continue;
+    for (const [lng, lat] of outer) points.push([lat, lng]);
+  }
+  return points;
+}
+
+/**
+ * Un polygone Leaflet par partie : premier anneau = contour, les suivants = trous.
+ * Coordonnées [lat, lng].
+ */
+export function geoGeometryToLeaflet(polygon: GeoPolygon | null): [number, number][][][] | null {
+  if (!polygon) return null;
+  const parts = polygonParts(polygon)
+    .map((rings) =>
+      rings
+        .filter((ring) => ring.length >= 3)
+        .map((ring) => ring.map(([lng, lat]) => [lat, lng] as [number, number])),
+    )
+    .filter((rings) => rings.length > 0 && rings[0].length >= 3);
+  return parts.length > 0 ? parts : null;
 }
 
 /** Centroïde approximatif (moyenne des sommets) du premier anneau, en [lat, lng]. */
 export function geoPolygonCenter(polygon: GeoPolygon | null): [number, number] | null {
-  const ring = polygon?.coordinates?.[0];
+  const ring = polygon ? polygonParts(polygon)[0]?.[0] : undefined;
   if (!ring?.length) return null;
   const [sumLat, sumLng] = ring.reduce(
     ([lat, lng], [pointLng, pointLat]) => [lat + pointLat, lng + pointLng],

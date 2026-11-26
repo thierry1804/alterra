@@ -1,11 +1,21 @@
 import { z } from "zod";
 
-/** GeoJSON Polygon minimal pour zones et parcelles. */
+const position = z.tuple([z.number(), z.number()]);
+const linearRing = z.array(position).min(1);
+const polygonCoordinates = z.array(linearRing).min(1);
+
+/** GeoJSON Polygon ou MultiPolygon (trous = anneaux après le premier). */
 export const geoPolygonSchema = z
-  .object({
-    type: z.literal("Polygon"),
-    coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))).min(1),
-  })
+  .discriminatedUnion("type", [
+    z.object({
+      type: z.literal("Polygon"),
+      coordinates: polygonCoordinates,
+    }),
+    z.object({
+      type: z.literal("MultiPolygon"),
+      coordinates: z.array(polygonCoordinates).min(1),
+    }),
+  ])
   .nullable()
   .optional();
 

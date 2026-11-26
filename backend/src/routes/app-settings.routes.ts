@@ -8,6 +8,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
+import { parseMapBasemap } from "../lib/map-basemap.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { BUCKETS, minioClient } from "../services/storage/minio.js";
 import {
@@ -71,6 +72,12 @@ async function getAppSetting() {
     loginBranchKey: row?.loginBranchKey ?? null,
     loginLeafKey: row?.loginLeafKey ?? null,
     mapTilerKey: row?.mapTilerKey ?? null,
+    mapTileUrl: row?.mapTileUrl ?? null,
+    mapImageUrl: row?.mapImageUrl ?? null,
+    mapImageSouth: row?.mapImageSouth ?? null,
+    mapImageWest: row?.mapImageWest ?? null,
+    mapImageNorth: row?.mapImageNorth ?? null,
+    mapImageEast: row?.mapImageEast ?? null,
     bioValidationRequired: row?.bioValidationRequired ?? true,
     isiRate: row ? new Prisma.Decimal(row.isiRate) : new Prisma.Decimal("0.05"),
     amountDecimals: clampDecimals(row?.amountDecimals ?? 0),
@@ -87,6 +94,20 @@ function settingsResponse(settings: Awaited<ReturnType<typeof getAppSetting>>) {
     loginBranchUpdatedAt: settings.updatedAt,
     loginLeafUpdatedAt: settings.updatedAt,
     mapTilerKeyConfigured: Boolean(settings.mapTilerKey),
+    mapTileUrl: settings.mapTileUrl,
+    mapImageUrl: settings.mapImageUrl,
+    mapImageBounds:
+      settings.mapImageSouth != null &&
+      settings.mapImageWest != null &&
+      settings.mapImageNorth != null &&
+      settings.mapImageEast != null
+        ? {
+            south: settings.mapImageSouth,
+            west: settings.mapImageWest,
+            north: settings.mapImageNorth,
+            east: settings.mapImageEast,
+          }
+        : null,
     bioValidationRequired: settings.bioValidationRequired,
     isiRatePercent: Number(settings.isiRate.mul(100).toDecimalPlaces(2).toString()),
     amountDecimals: settings.amountDecimals,
@@ -535,23 +556,102 @@ appSettingsRouter.patch(
   },
 );
 
+function mapKeyPayload(settings: Awaited<ReturnType<typeof getAppSetting>>) {
+  const basemap = {
+    tileUrl: settings.mapTileUrl,
+    imageUrl: settings.mapImageUrl,
+    imageBounds:
+      settings.mapImageSouth != null &&
+      settings.mapImageWest != null &&
+      settings.mapImageNorth != null &&
+      settings.mapImageEast != null
+        ? {
+            south: settings.mapImageSouth,
+            west: settings.mapImageWest,
+            north: settings.mapImageNorth,
+            east: settings.mapImageEast,
+          }
+        : null,
+  };
+  if (settings.mapTilerKey) return { apiKey: settings.mapTilerKey, source: "database" as const, ...basemap };
+  const envKey = process.env.VITE_MAPTILER_KEY;
+  if (envKey) return { apiKey: envKey, source: "env" as const, ...basemap };
+  return { apiKey: null, source: "none" as const, ...basemap };
+}
+
 appSettingsRouter.get("/app-settings/map-key", requireAuth, async (_req, res, next) => {
   try {
-    const settings = await getAppSetting();
-    if (settings.mapTilerKey) {
-      res.json({ apiKey: settings.mapTilerKey, source: "database" });
-      return;
-    }
-    const envKey = process.env.VITE_MAPTILER_KEY;
-    if (envKey) {
-      res.json({ apiKey: envKey, source: "env" });
-      return;
-    }
-    res.json({ apiKey: null, source: "none" });
+    res.json(mapKeyPayload(await getAppSetting()));
   } catch (err) {
     next(err);
   }
 });
+
+const mapBasemapSchema = z.object({
+  tileUrl: z.string().max(500).nullable(),
+  imageUrl: z.string().max(500).nullable(),
+  south: z.number().nullable(),
+  west: z.number().nullable(),
+  north: z.number().nullable(),
+  east: z.number().nullable(),
+});
+
+appSettingsRouter.patch(
+  "/app-settings/map-basemap",
+  requireAuth,
+  requirePermission("parametres:ecriture"),
+  validate(mapBasemapSchema),
+  async (req, res, next) => {
+    try {
+      const parsed = parseMapBasemap(req.body as z.infer<typeof mapBasemapSchema>);
+      const before = await getAppSetting();
+      const updated = await prisma.appSetting.upsert({
+        where: { id: SETTINGS_ID },
+        create: {
+          id: SETTINGS_ID,
+          mapTileUrl: parsed.tileUrl,
+          mapImageUrl: parsed.imageUrl,
+          mapImageSouth: parsed.south,
+          mapImageWest: parsed.west,
+          mapImageNorth: parsed.north,
+          mapImageEast: parsed.east,
+        },
+        update: {
+          mapTileUrl: parsed.tileUrl,
+          mapImageUrl: parsed.imageUrl,
+          mapImageSouth: parsed.south,
+          mapImageWest: parsed.west,
+          mapImageNorth: parsed.north,
+          mapImageEast: parsed.east,
+        },
+      });
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "UPDATE",
+        entityType: "AppSetting",
+        entityId: SETTINGS_ID,
+        before: { mapTileUrl: before.mapTileUrl, mapImageUrl: before.mapImageUrl },
+        after: { mapTileUrl: parsed.tileUrl, mapImageUrl: parsed.imageUrl },
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      res.json(
+        settingsResponse({
+          ...before,
+          mapTileUrl: updated.mapTileUrl,
+          mapImageUrl: updated.mapImageUrl,
+          mapImageSouth: updated.mapImageSouth,
+          mapImageWest: updated.mapImageWest,
+          mapImageNorth: updated.mapImageNorth,
+          mapImageEast: updated.mapImageEast,
+          updatedAt: updated.updatedAt,
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 appSettingsRouter.get("/manifest.webmanifest", async (_req, res, next) => {
   try {

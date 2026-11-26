@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, Polygon, Popup, TileLayer, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, Polygon, Popup, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { collectGeoBounds, geoPolygonToLatLngs, type SiteGeo } from "../../lib/geo";
-import { tileConfig } from "../../lib/map-tiles";
+import { collectGeoBounds, geoGeometryToLeaflet, type SiteGeo } from "../../lib/geo";
+import { BasemapLayers } from "./BasemapLayers";
 import { useMapTilerKey } from "../../hooks/useAppSettings";
 
 const DEFAULT_CENTER: [number, number] = [-18.91, 47.52];
@@ -63,8 +63,7 @@ export default function SiteMap({
   showParcels,
   onSiteSelect,
 }: SiteMapProps) {
-  const { apiKey } = useMapTilerKey();
-  const tiles = tileConfig(apiKey);
+  const basemap = useMapTilerKey();
   const visibleSites = selectedSiteId ? sites.filter((site) => site.id === selectedSiteId) : sites;
 
   return (
@@ -74,7 +73,7 @@ export default function SiteMap({
       scrollWheelZoom
       className="h-full w-full"
     >
-      <TileLayer url={tiles.url} attribution={tiles.attribution} />
+      <BasemapLayers basemap={basemap} />
       <MapBoundsUpdater
         sites={sites}
         selectedSiteId={selectedSiteId}
@@ -120,8 +119,8 @@ export default function SiteMap({
       {showZones &&
         visibleSites.flatMap((site) =>
           site.zones.map((zone) => {
-            const positions = geoPolygonToLatLngs(zone.geoPolygon);
-            if (positions.length < 3) return null;
+            const positions = geoGeometryToLeaflet(zone.geoPolygon);
+            if (!positions) return null;
             return (
               <Polygon
                 key={`zone-${zone.id}`}
@@ -151,8 +150,8 @@ export default function SiteMap({
         visibleSites.flatMap((site) =>
           site.zones.flatMap((zone) =>
             zone.parcelles.map((parcel) => {
-              const positions = geoPolygonToLatLngs(parcel.geoPolygon);
-              if (positions.length < 3) return null;
+              const positions = geoGeometryToLeaflet(parcel.geoPolygon);
+              if (!positions) return null;
               return (
                 <Polygon
                   key={`parcel-${parcel.id}`}

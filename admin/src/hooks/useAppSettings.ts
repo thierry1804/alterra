@@ -56,9 +56,19 @@ export function useAppSettings() {
   };
 }
 
+export interface MapImageBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
 export interface MapTilerKeyResponse {
   apiKey: string | null;
   source: "database" | "env" | "none";
+  tileUrl: string | null;
+  imageUrl: string | null;
+  imageBounds: MapImageBounds | null;
 }
 
 /** Clé MapTiler résolue (base > .env > aucune) — route authentifiée, jamais exposée publiquement. */
@@ -69,5 +79,20 @@ export function useMapTilerKey() {
     staleTime: 5 * 60 * 1000,
   });
 
-  return data ?? { apiKey: null, source: "none" as const };
+  const resolved = data ?? {
+    apiKey: null,
+    source: "none" as const,
+    tileUrl: null,
+    imageUrl: null,
+    imageBounds: null,
+  };
+  return {
+    ...resolved,
+    imageBounds: resolved.imageBounds
+      ? ([
+          [resolved.imageBounds.south, resolved.imageBounds.west],
+          [resolved.imageBounds.north, resolved.imageBounds.east],
+        ] as [[number, number], [number, number]])
+      : null,
+  };
 }

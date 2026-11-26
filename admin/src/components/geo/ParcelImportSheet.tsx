@@ -29,14 +29,18 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+type ImportPayload =
+  | { kind: "csv" | "kml"; text: string }
+  | { kind: "zip"; buffer: ArrayBuffer };
+
 export default function ParcelImportSheet({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
-  const [csv, setCsv] = useState<string | null>(null);
+  const [payload, setPayload] = useState<ImportPayload | null>(null);
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<ImportResult | null>(null);
 
   function reset() {
-    setCsv(null);
+    setPayload(null);
     setFileName("");
     setPreview(null);
   }
@@ -48,7 +52,17 @@ export default function ParcelImportSheet({ open, onOpenChange }: Props) {
 
   const run = useMutation({
     mutationFn: async (dryRun: boolean) => {
-      const res = await api.post<ImportResult>("/parcels/import", { csv, dryRun });
+      if (!payload) throw new Error("Aucun fichier");
+      if (payload.kind === "zip") {
+        const res = await api.post<ImportResult>("/parcels/import-shp", payload.buffer, {
+          params: { dryRun: dryRun ? "true" : "false" },
+          headers: { "Content-Type": "application/octet-stream" },
+        });
+        return res.data;
+      }
+      const body =
+        payload.kind === "kml" ? { kml: payload.text, dryRun } : { csv: payload.text, dryRun };
+      const res = await api.post<ImportResult>("/parcels/import", body);
       return res.data;
     },
     onSuccess: (result) => {
@@ -71,12 +85,30 @@ export default function ParcelImportSheet({ open, onOpenChange }: Props) {
 
   async function pickFile(file: File | undefined) {
     setPreview(null);
+    setPayload(null);
     if (!file) return;
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".shp")) {
+      toast({
+        title: "Archive zip attendue",
+        description: "Zippez le shapefile (.shp, .dbf et .shx) avant de l'importer.",
+        variant: "destructive",
+      });
+      return;
+    }
     setFileName(file.name);
-    setCsv(await file.text());
+    if (name.endsWith(".zip")) {
+      setPayload({ kind: "zip", buffer: await file.arrayBuffer() });
+      return;
+    }
+    const text = await file.text();
+    setPayload({ kind: name.endsWith(".kml") ? "kml" : "csv", text });
   }
 
-  const canImport = preview !== null && preview.errors.length === 0 && preview.rows > 0;
+  const importable =
+    preview !== null && preview.parcellesCreated + preview.parcellesUpdated > 0;
+  const canImport =
+    importable && (preview.errors.length === 0 || payload?.kind === "kml" || payload?.kind === "zip");
 
   return (
     <Sheet
@@ -90,19 +122,19 @@ export default function ParcelImportSheet({ open, onOpenChange }: Props) {
         <SheetHeader>
           <SheetTitle>Importer des parcelles</SheetTitle>
           <SheetDescription>
-            Fichier CSV avec les colonnes : site ; zone ; code ; nom ; type (parcelle ou pépinière).
-            Les zones absentes sont créées. Une parcelle déjà connue (même code dans la zone) est
-            mise à jour.
+            CSV (site, zone, code, nom) ou délimitations KML / archive zip shapefile (code_site,
+            code_parcelle, surface). Les parcelles géographiques sont rangées dans la zone
+            « Parcelles plantées » du site indiqué. Un code déjà connu est mis à jour.
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="parcel-import-file">Fichier CSV</Label>
+              <Label htmlFor="parcel-import-file">Fichier CSV, KML ou zip</Label>
               <input
                 id="parcel-import-file"
                 type="file"
-                accept=".csv,text/csv,text/plain"
+                accept=".csv,.kml,.zip,text/csv,text/plain,application/vnd.google-earth.kml+xml,application/zip"
                 className="block w-full text-sm"
                 onChange={(e) => void pickFile(e.target.files?.[0])}
               />
@@ -127,6 +159,11 @@ export default function ParcelImportSheet({ open, onOpenChange }: Props) {
                 {preview.errors.length === 0 && preview.rows > 0 && (
                   <p className="text-zinc-600">Aucune erreur. Vous pouvez lancer l'import.</p>
                 )}
+                {preview.errors.length > 0 && canImport && (
+                  <p className="text-zinc-600">
+                    Les lignes signalées sont ignorées. Le reste peut être importé.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -138,7 +175,7 @@ export default function ParcelImportSheet({ open, onOpenChange }: Props) {
           <Button
             type="button"
             variant="outline"
-            disabled={!csv || run.isPending}
+            disabled={!payload || run.isPending}
             onClick={() => run.mutate(true)}
           >
             Vérifier le fichier

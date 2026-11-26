@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -9,6 +9,10 @@ import { validate } from "../middleware/validate.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { importParcelsCsv } from "../services/geo/parcel-import.service.js";
+import { importParcelFeatures } from "../services/geo/parcel-geo-import.service.js";
+import { exportParcelsGeoJson } from "../services/geo/parcel-geo-export.service.js";
+import { parseKmlParcels } from "../services/geo/kml.js";
+import { readShapefileZip } from "../services/geo/shp.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
 import { canSeeSite, visibleSiteId } from "../lib/visible-site.js";
 
@@ -77,10 +81,23 @@ parcelsRouter.get(
   },
 );
 
-const importParcelsSchema = z.object({
-  csv: z.string().min(1).max(1_500_000),
-  dryRun: z.boolean().optional(),
-});
+const importParcelsSchema = z
+  .object({
+    csv: z.string().min(1).max(1_500_000).optional(),
+    kml: z.string().min(1).max(1_500_000).optional(),
+    dryRun: z.boolean().optional(),
+  })
+  .refine((body) => Boolean(body.csv) !== Boolean(body.kml), {
+    message: "Envoyez un CSV ou un KML",
+  });
+
+function importActor(req: { user?: { sub: string }; ip?: string; headers: { "user-agent"?: string } }) {
+  return {
+    userId: req.user!.sub,
+    ip: req.ip,
+    userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+  };
+}
 
 parcelsRouter.post(
   "/parcels/import",
@@ -90,15 +107,67 @@ parcelsRouter.post(
   async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof importParcelsSchema>;
+      const actor = { ...importActor(req), dryRun: body.dryRun ?? false };
+      if (body.kml) {
+        res.json(await importParcelFeatures(parseKmlParcels(body.kml), actor));
+        return;
+      }
+      res.json(await importParcelsCsv(body.csv!, actor));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const shpQuerySchema = z.object({
+  dryRun: z.enum(["true", "false"]).optional(),
+});
+
+parcelsRouter.post(
+  "/parcels/import-shp",
+  requireAuth,
+  requirePermission("zone:ecriture", "parcelle:ecriture"),
+  raw({ type: "application/octet-stream", limit: "20mb" }),
+  validate(shpQuerySchema, "query"),
+  async (req, res, next) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new ApiError(422, "EMPTY_FILE", "Archive shapefile attendue");
+      }
+      const query = req.query as z.infer<typeof shpQuerySchema>;
+      const features = await readShapefileZip(req.body);
       res.json(
-        await importParcelsCsv(body.csv, {
-          dryRun: body.dryRun ?? false,
-          userId: req.user!.sub,
-          ip: req.ip,
-          userAgent:
-            typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+        await importParcelFeatures(features, {
+          ...importActor(req),
+          dryRun: query.dryRun === "true",
         }),
       );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+const exportQuerySchema = z.object({
+  siteId: z.guid(),
+});
+
+parcelsRouter.get(
+  "/parcels/export",
+  requireAuth,
+  requirePermission("parcelle:lecture"),
+  validate(exportQuerySchema, "query"),
+  async (req, res, next) => {
+    try {
+      const { siteId: requested } = req.query as z.infer<typeof exportQuerySchema>;
+      const siteId = visibleSiteId(req.user!, requested);
+      if (siteId === null || siteId !== requested) {
+        throw new ApiError(403, "FORBIDDEN", "Hors de votre périmètre");
+      }
+      const exported = await exportParcelsGeoJson(requested);
+      res.setHeader("Content-Type", "application/geo+json; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${exported.filename}"`);
+      res.send(exported.body);
     } catch (err) {
       next(err);
     }
