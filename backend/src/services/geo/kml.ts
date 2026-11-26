@@ -72,6 +72,37 @@ function roundHectares(raw: string | undefined): number | null {
   return Math.round(value * 100) / 100;
 }
 
+function formatRing(ring: number[][]): string {
+  return ring.map(([lng, lat]) => `${lng},${lat}`).join(" ");
+}
+
+/** Polygon ou MultiPolygon en KML. L'altitude n'est pas écrite. */
+export function geometryToKml(geometry: NonNullable<GeoPolygon>): string {
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const bodies = polygons.map((rings) => {
+    const [outer, ...holes] = rings;
+    if (!outer?.length) return "";
+    const inner = holes
+      .filter((ring) => ring.length > 0)
+      .map(
+        (ring) =>
+          `<innerBoundaryIs><LinearRing><coordinates>${formatRing(ring)}</coordinates></LinearRing></innerBoundaryIs>`,
+      )
+      .join("");
+    return `<Polygon><outerBoundaryIs><LinearRing><coordinates>${formatRing(outer)}</coordinates></LinearRing></outerBoundaryIs>${inner}</Polygon>`;
+  });
+  const xml = bodies.filter(Boolean).join("");
+  return geometry.type === "MultiPolygon" ? `<MultiGeometry>${xml}</MultiGeometry>` : xml;
+}
+
+export function escapeKmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 /** Lit les placemarks d'un KML (SchemaData QGIS / ArcGIS). L'altitude est ignorée. */
 export function parseKmlParcels(kml: string): KmlParcelFeature[] {
   const xml = localTags(kml);

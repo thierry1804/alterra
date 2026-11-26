@@ -199,6 +199,7 @@ export async function importParcelsCsv(
         zonesCreated: result.zonesCreated,
         parcellesCreated: result.parcellesCreated,
         parcellesUpdated: result.parcellesUpdated,
+        format: "csv",
       },
       ip: options.ip,
       userAgent: options.userAgent,

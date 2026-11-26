@@ -205,7 +205,7 @@ export default function ZonesPage() {
       });
       downloadBlob(
         response.data,
-        filenameFromDisposition(response.headers["content-disposition"], "parcelles.geojson"),
+        filenameFromDisposition(response.headers["content-disposition"], "parcelles.kml"),
       );
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : "Erreur";
@@ -395,7 +395,7 @@ export default function ZonesPage() {
     <div className="space-y-4">
       <PageHeader
         title="Zones & parcelles"
-        description="Hiérarchie géographique Site → Zone → Parcelle (GeoJSON)."
+        description="Hiérarchie géographique Site → Zone → Parcelle."
         action={
           <div className="flex items-center gap-2">
             {can("parcelle:ecriture") && can("zone:ecriture") && (
@@ -507,7 +507,7 @@ export default function ZonesPage() {
               />
               <SortableHead
                 sortKey="geoPolygon"
-                label="GeoJSON"
+                label="Contour"
                 currentKey={sortKey}
                 currentDir={sortDir}
                 onSort={toggleSort}
@@ -529,7 +529,7 @@ export default function ZonesPage() {
                   <EmptyState
                     icon={Layers}
                     title="Aucune zone pour ce site"
-                    hint="Créez la première zone, puis dessinez ses parcelles sur la carte ou importez un fichier GeoJSON."
+                    hint="Créez la première zone, puis dessinez ses parcelles sur la carte ou importez un fichier KML."
                     action={
                       <Button type="button" onClick={openZoneCreate}>
                         <Plus className="h-4 w-4" aria-hidden />
@@ -575,7 +575,7 @@ export default function ZonesPage() {
                     <TableCell>
                       {totalHa > 0 ? `${totalHa.toLocaleString("fr-MG")} ha` : "-"}
                     </TableCell>
-                    <TableCell>{zone.geoPolygon ? "Polygon" : "-"}</TableCell>
+                    <TableCell>{zone.geoPolygon ? "Oui" : "-"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions>
                         <IconButton
@@ -625,7 +625,7 @@ export default function ZonesPage() {
                             ? `${Number(parcel.surfaceHa).toLocaleString("fr-MG")} ha`
                             : "-"}
                         </TableCell>
-                        <TableCell>{parcel.geoPolygon ? "Polygon" : "-"}</TableCell>
+                        <TableCell>{parcel.geoPolygon ? "Oui" : "-"}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <RowActions>
                             <IconButton

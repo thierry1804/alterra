@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { enqueueWeeklyPdfJob, getWeeklyPdfJobStatus } from "../jobs/pdf.worker.js";
 import { requireAuth } from "../middleware/auth.js";
+import { writeAuditLog } from "../services/audit/audit.service.js";
 import { ApiError } from "../middleware/error-handler.js";
 import { requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
@@ -117,6 +118,21 @@ reportsRouter.get(
         siteId: query.siteId,
       });
       const exported = await exportReport(report, query.format);
+
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "EXPORT",
+        entityType: "Report",
+        after: {
+          type: query.type,
+          month: query.month,
+          format: query.format,
+          siteId: query.siteId ?? null,
+          filename: exported.filename,
+        },
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
 
       res.setHeader("Content-Type", exported.contentType);
       res.setHeader("Content-Disposition", `attachment; filename="${exported.filename}"`);
