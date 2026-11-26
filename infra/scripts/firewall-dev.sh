@@ -27,6 +27,18 @@ for ipt in iptables ip6tables; do
     "$ipt" -A ALTERRA-INPUT -s "$ip" -j DROP
   done
   "$ipt" -A ALTERRA-INPUT -p tcp -m multiport --dports "$HOST_PORTS,${DOCKER_PORTS// /,}" -j DROP
+  # Deny-by-default depuis Internet (interface externe seulement) : RETURN = autorisé (suite de INPUT),
+  # tout le reste est DROP. Autorisé : connexions établies, ICMP, SSH/HTTP/HTTPS, DHCP.
+  "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+  if [[ "$ipt" == "iptables" ]]; then
+    "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -p icmp -j RETURN
+    "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -p udp --sport 67 --dport 68 -j RETURN
+  else
+    "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -p ipv6-icmp -j RETURN
+    "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -p udp --dport 546 -j RETURN
+  fi
+  "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -p tcp -m multiport --dports 22,80,443 -j RETURN
+  "$ipt" -A ALTERRA-INPUT -i "$EXT_IFACE" -j DROP
   "$ipt" -C INPUT -j ALTERRA-INPUT 2>/dev/null || "$ipt" -I INPUT 1 -j ALTERRA-INPUT
 done
 
@@ -35,6 +47,11 @@ iptables -N ALTERRA-DOCKER 2>/dev/null || iptables -F ALTERRA-DOCKER
 for port in $DOCKER_PORTS; do
   iptables -A ALTERRA-DOCKER -i "$EXT_IFACE" -p tcp -m conntrack --ctorigdstport "$port" -j DROP
 done
+# Deny-by-default pour les ports Docker publiés : seuls 80/443 joignables depuis Internet.
+iptables -A ALTERRA-DOCKER -i "$EXT_IFACE" -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+iptables -A ALTERRA-DOCKER -i "$EXT_IFACE" -p tcp -m conntrack --ctorigdstport 80 -j RETURN
+iptables -A ALTERRA-DOCKER -i "$EXT_IFACE" -p tcp -m conntrack --ctorigdstport 443 -j RETURN
+iptables -A ALTERRA-DOCKER -i "$EXT_IFACE" -m conntrack --ctstate DNAT -j DROP
 iptables -A ALTERRA-DOCKER -j RETURN
 iptables -C DOCKER-USER -j ALTERRA-DOCKER 2>/dev/null || iptables -I DOCKER-USER 1 -j ALTERRA-DOCKER
 
