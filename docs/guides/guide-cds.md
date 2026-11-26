@@ -77,13 +77,12 @@ Pour chaque MOC :
 ### 4.2 Contrôle biométrique
 
 1. Appuyer **Contrôle bio** sur une ligne
-2. Autoriser la caméra si demandé
-3. Placer le visage du MOC dans le cadre
-4. **Capturer et analyser**
-5. Résultat : OK / KO / DOUBT + score %
-6. **Retour à la validation**
+2. L'application ouvre automatiquement le **moteur biométrique** (le pont, installé sur le téléphone)
+3. Placer le visage du MOC dans le cadre du moteur et suivre ses indications
+4. Le moteur se ferme tout seul et l'application affiche le résultat : OK / KO
+5. **Revérifier** pour recommencer, ou **Retour à la validation**
 
-> En mode mock ou manuel (formation), le score peut être simulé. En production AXIAN, suivre les consignes site.
+> Si rien ne s'ouvre, appuyer **Rouvrir**. Si le moteur reste introuvable, contacter l'administrateur : le pont biométrique doit être installé sur le téléphone. Le contrôle nécessite une connexion.
 
 `[Capture : écran capture biométrique]`
 
