@@ -3,19 +3,35 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { api } from "../lib/api";
+import { useMapTilerKey } from "../hooks/useAppSettings";
 import { useSiteScope } from "../lib/site-scope";
+import { satelliteAvailable, type BasemapStyle } from "../lib/map-tiles";
 import type { SiteGeo } from "../lib/geo";
 import PageHeader from "../components/shared/PageHeader";
 import SiteMap from "../components/map/SiteMap";
 import { Button } from "../components/ui/button";
 import { IconButton } from "../components/ui/IconButton";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Select } from "../components/ui/select";
 import { cn } from "../lib/utils";
 import { formatPercent, type DashboardSummary } from "../lib/dashboard";
+import {
+  countParcels,
+  EMPTY_PARCEL_FILTER,
+  filterSiteParcels,
+  parcelFilterActive,
+  type ParcelMapFilter,
+} from "../lib/parcel-map-filter";
 
 export default function MapPage() {
   const [selectedSiteId, setSelectedSiteId] = useSiteScope();
   const [showZones, setShowZones] = useState(true);
   const [showParcels, setShowParcels] = useState(true);
+  const [basemapStyle, setBasemapStyle] = useState<BasemapStyle>("plan");
+  const basemap = useMapTilerKey();
+  const canUseSatellite = satelliteAvailable(basemap);
+  const [parcelFilter, setParcelFilter] = useState<ParcelMapFilter>(EMPTY_PARCEL_FILTER);
 
   const {
     data: sites = [],
@@ -32,6 +48,17 @@ export default function MapPage() {
     () => sites.find((site) => site.id === selectedSiteId) ?? null,
     [sites, selectedSiteId],
   );
+  const filterActive = parcelFilterActive(parcelFilter);
+  const filteredSites = useMemo(
+    () => filterSiteParcels(sites, parcelFilter),
+    [sites, parcelFilter],
+  );
+  const parcelScope = selectedSiteId ? sites.filter((site) => site.id === selectedSiteId) : sites;
+  const filteredScope = selectedSiteId
+    ? filteredSites.filter((site) => site.id === selectedSiteId)
+    : filteredSites;
+  const totalParcels = countParcels(parcelScope);
+  const shownParcels = countParcels(filteredScope);
 
   const siteKpis = useQuery({
     queryKey: ["dashboard", "kpis", selectedSiteId],
@@ -83,6 +110,31 @@ export default function MapPage() {
             {layer.label}
           </button>
         ))}
+        {canUseSatellite && (
+          <div className="ml-1 flex items-center gap-2" role="group" aria-label="Fond de carte">
+            {(
+              [
+                { value: "plan", label: "Plan" },
+                { value: "satellite", label: "Satellite" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={basemapStyle === option.value}
+                onClick={() => setBasemapStyle(option.value)}
+                className={cn(
+                  "alterra-focus rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  basemapStyle === option.value
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
         {selectedSite && (
           <button
             type="button"
@@ -92,6 +144,82 @@ export default function MapPage() {
             {selectedSite.name} ✕
           </button>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3">
+        <div className="space-y-1">
+          <Label htmlFor="parcel-filter-query">Parcelle</Label>
+          <Input
+            id="parcel-filter-query"
+            value={parcelFilter.query}
+            placeholder="Code, nom ou zone"
+            className="w-44"
+            onChange={(event) =>
+              setParcelFilter((current) => ({ ...current, query: event.target.value }))
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="parcel-filter-min">Surface min (ha)</Label>
+          <Input
+            id="parcel-filter-min"
+            inputMode="decimal"
+            value={parcelFilter.surfaceMin}
+            placeholder="0"
+            className="w-28"
+            onChange={(event) =>
+              setParcelFilter((current) => ({ ...current, surfaceMin: event.target.value }))
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="parcel-filter-max">Surface max (ha)</Label>
+          <Input
+            id="parcel-filter-max"
+            inputMode="decimal"
+            value={parcelFilter.surfaceMax}
+            placeholder="10"
+            className="w-28"
+            onChange={(event) =>
+              setParcelFilter((current) => ({ ...current, surfaceMax: event.target.value }))
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="parcel-filter-kind">Type</Label>
+          <Select
+            id="parcel-filter-kind"
+            value={parcelFilter.kind}
+            className="w-36"
+            onChange={(event) =>
+              setParcelFilter((current) => ({
+                ...current,
+                kind: event.target.value as ParcelMapFilter["kind"],
+              }))
+            }
+          >
+            <option value="">Tous</option>
+            <option value="PARCELLE">Parcelles</option>
+            <option value="PEPINIERE">Pépinières</option>
+          </Select>
+        </div>
+        {filterActive && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setParcelFilter(EMPTY_PARCEL_FILTER)}
+          >
+            Effacer
+          </Button>
+        )}
+        <p className="pb-1 text-sm text-zinc-600">
+          {filterActive && shownParcels === 0
+            ? "Aucune parcelle ne correspond."
+            : `${shownParcels.toLocaleString("fr-FR")} parcelle${shownParcels > 1 ? "s" : ""}${
+                filterActive ? ` sur ${totalParcels.toLocaleString("fr-FR")}` : ""
+              }`}
+        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -106,10 +234,12 @@ export default function MapPage() {
             </div>
           ) : (
             <SiteMap
-              sites={sites}
+              sites={filteredSites}
               selectedSiteId={selectedSiteId}
               showZones={showZones}
               showParcels={showParcels}
+              fitParcelsOnly={filterActive && shownParcels > 0}
+              basemapStyle={canUseSatellite ? basemapStyle : "plan"}
               onSiteSelect={setSelectedSiteId}
             />
           )}
@@ -180,7 +310,7 @@ export default function MapPage() {
                 <div className="flex justify-between gap-3">
                   <dt>Parcelles</dt>
                   <dd className="alterra-num">
-                    {selectedSite.zones.reduce((sum, zone) => sum + zone.parcelles.length, 0)}
+                    {filterActive ? `${shownParcels} / ${totalParcels}` : totalParcels}
                   </dd>
                 </div>
               </dl>

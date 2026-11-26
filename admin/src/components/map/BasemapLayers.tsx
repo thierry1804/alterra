@@ -1,13 +1,19 @@
 import { ImageOverlay, TileLayer } from "react-leaflet";
-import { tileConfig, type ClientBasemap } from "../../lib/map-tiles";
+import { tileConfig, type BasemapStyle, type ClientBasemap } from "../../lib/map-tiles";
 
 /** Tuiles (flux client, sinon MapTiler, sinon OSM) et image de référence si aucun flux n'est branché. */
-export function BasemapLayers({ basemap }: { basemap: ClientBasemap }) {
-  const tiles = tileConfig(basemap.apiKey, basemap);
+export function BasemapLayers({
+  basemap,
+  style = "plan",
+}: {
+  basemap: ClientBasemap;
+  style?: BasemapStyle;
+}) {
+  const tiles = tileConfig(basemap.apiKey, basemap, style);
   const showImage = !basemap.tileUrl && basemap.imageUrl && basemap.imageBounds;
   return (
     <>
-      <TileLayer url={tiles.url} attribution={tiles.attribution} />
+      <TileLayer key={tiles.url} url={tiles.url} attribution={tiles.attribution} />
       {showImage && (
         <ImageOverlay url={basemap.imageUrl!} bounds={basemap.imageBounds!} opacity={0.85} />
       )}

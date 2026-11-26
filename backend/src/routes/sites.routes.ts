@@ -75,6 +75,7 @@ sitesRouter.get(
                   id: true,
                   name: true,
                   code: true,
+                  kind: true,
                   surfaceHa: true,
                   geoPolygon: true,
                 },

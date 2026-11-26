@@ -44,6 +44,7 @@ export interface SiteGeo {
       id: string;
       name: string;
       code: string | null;
+      kind?: ParcelleKind;
       surfaceHa: string | null;
       geoPolygon: GeoPolygon | null;
     }>;
@@ -91,13 +92,19 @@ export function geoPolygonCenter(polygon: GeoPolygon | null): [number, number] |
 
 export function collectGeoBounds(
   sites: SiteGeo[],
-  options: { siteId?: string; includeZones: boolean; includeParcels: boolean },
+  options: {
+    siteId?: string;
+    includeZones: boolean;
+    includeParcels: boolean;
+    includeSitePoint?: boolean;
+  },
 ): [number, number][] {
   const points: [number, number][] = [];
   const visibleSites = options.siteId ? sites.filter((site) => site.id === options.siteId) : sites;
+  const includeSitePoint = options.includeSitePoint !== false;
 
   visibleSites.forEach((site) => {
-    if (site.geoLat != null && site.geoLng != null) {
+    if (includeSitePoint && site.geoLat != null && site.geoLng != null) {
       points.push([site.geoLat, site.geoLng]);
     }
 

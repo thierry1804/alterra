@@ -5,7 +5,18 @@ export interface ClientBasemap {
   imageBounds?: [[number, number], [number, number]] | null;
 }
 
-export function tileConfig(mapTilerKey?: string | null, basemap?: ClientBasemap | null) {
+export type BasemapStyle = "plan" | "satellite";
+
+/** La vue satellite vient du style MapTiler hybrid. Un flux client reste prioritaire. */
+export function satelliteAvailable(basemap?: ClientBasemap | null): boolean {
+  return Boolean(basemap?.apiKey) && !basemap?.tileUrl;
+}
+
+export function tileConfig(
+  mapTilerKey?: string | null,
+  basemap?: ClientBasemap | null,
+  style: BasemapStyle = "plan",
+) {
   if (basemap?.tileUrl) {
     return {
       url: basemap.tileUrl,
@@ -13,8 +24,9 @@ export function tileConfig(mapTilerKey?: string | null, basemap?: ClientBasemap 
     };
   }
   if (mapTilerKey) {
+    const mapId = style === "satellite" ? "hybrid" : "streets-v2";
     return {
-      url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`,
+      url: `https://api.maptiler.com/maps/${mapId}/{z}/{x}/{y}.png?key=${mapTilerKey}`,
       attribution:
         '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     };

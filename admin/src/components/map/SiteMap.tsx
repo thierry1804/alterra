@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { CircleMarker, MapContainer, Polygon, Popup, useMap } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
+import type { LatLngBoundsExpression, LeafletMouseEvent, Polygon as LeafletPolygon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { collectGeoBounds, geoGeometryToLeaflet, type SiteGeo } from "../../lib/geo";
 import { BasemapLayers } from "./BasemapLayers";
+import type { BasemapStyle } from "../../lib/map-tiles";
 import { useMapTilerKey } from "../../hooks/useAppSettings";
 
 const DEFAULT_CENTER: [number, number] = [-18.91, 47.52];
@@ -14,6 +15,7 @@ interface MapBoundsUpdaterProps {
   selectedSiteId: string;
   showZones: boolean;
   showParcels: boolean;
+  fitParcelsOnly: boolean;
 }
 
 function MapBoundsUpdater({
@@ -21,14 +23,16 @@ function MapBoundsUpdater({
   selectedSiteId,
   showZones,
   showParcels,
+  fitParcelsOnly,
 }: MapBoundsUpdaterProps) {
   const map = useMap();
 
   useEffect(() => {
     const points = collectGeoBounds(sites, {
       siteId: selectedSiteId || undefined,
-      includeZones: showZones,
+      includeZones: showZones && !fitParcelsOnly,
       includeParcels: showParcels,
+      includeSitePoint: !fitParcelsOnly,
     });
 
     if (points.length === 0) {
@@ -43,9 +47,41 @@ function MapBoundsUpdater({
 
     const bounds = points as LatLngBoundsExpression;
     map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
-  }, [map, sites, selectedSiteId, showZones, showParcels]);
+  }, [map, sites, selectedSiteId, showZones, showParcels, fitParcelsOnly]);
 
   return null;
+}
+
+function zoomToParcel(map: ReturnType<typeof useMap>, event: LeafletMouseEvent) {
+  const layer = event.target as LeafletPolygon;
+  map.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 18 });
+  layer.openPopup();
+}
+
+function ParcelPolygon({
+  positions,
+  children,
+}: {
+  positions: [number, number][][][];
+  children: ReactNode;
+}) {
+  const map = useMap();
+  return (
+    <Polygon
+      positions={positions}
+      pathOptions={{
+        color: "#3f3f46",
+        weight: 1.5,
+        fillColor: "#d4d4d8",
+        fillOpacity: 0.35,
+      }}
+      eventHandlers={{
+        click: (event) => zoomToParcel(map, event),
+      }}
+    >
+      {children}
+    </Polygon>
+  );
 }
 
 export interface SiteMapProps {
@@ -53,6 +89,8 @@ export interface SiteMapProps {
   selectedSiteId: string;
   showZones: boolean;
   showParcels: boolean;
+  fitParcelsOnly?: boolean;
+  basemapStyle?: BasemapStyle;
   onSiteSelect: (siteId: string) => void;
 }
 
@@ -61,6 +99,8 @@ export default function SiteMap({
   selectedSiteId,
   showZones,
   showParcels,
+  fitParcelsOnly = false,
+  basemapStyle = "plan",
   onSiteSelect,
 }: SiteMapProps) {
   const basemap = useMapTilerKey();
@@ -73,12 +113,13 @@ export default function SiteMap({
       scrollWheelZoom
       className="h-full w-full"
     >
-      <BasemapLayers basemap={basemap} />
+      <BasemapLayers basemap={basemap} style={basemapStyle} />
       <MapBoundsUpdater
         sites={sites}
         selectedSiteId={selectedSiteId}
         showZones={showZones}
         showParcels={showParcels}
+        fitParcelsOnly={fitParcelsOnly}
       />
 
       {visibleSites.map((site) => {
@@ -153,16 +194,7 @@ export default function SiteMap({
               const positions = geoGeometryToLeaflet(parcel.geoPolygon);
               if (!positions) return null;
               return (
-                <Polygon
-                  key={`parcel-${parcel.id}`}
-                  positions={positions}
-                  pathOptions={{
-                    color: "#3f3f46",
-                    weight: 1.5,
-                    fillColor: "#d4d4d8",
-                    fillOpacity: 0.35,
-                  }}
-                >
+                <ParcelPolygon key={`parcel-${parcel.id}`} positions={positions}>
                   <Popup>
                     <div className="text-sm">
                       <p className="font-medium">
@@ -177,7 +209,7 @@ export default function SiteMap({
                       </p>
                     </div>
                   </Popup>
-                </Polygon>
+                </ParcelPolygon>
               );
             }),
           ),
