@@ -10,7 +10,7 @@ import { ApiError } from "../middleware/error-handler.js";
 import { writeAuditLog } from "../services/audit/audit.service.js";
 import { importParcelsCsv } from "../services/geo/parcel-import.service.js";
 import { importParcelFeatures } from "../services/geo/parcel-geo-import.service.js";
-import { exportParcelsGeoJson } from "../services/geo/parcel-geo-export.service.js";
+import { exportParcelsKml } from "../services/geo/parcel-geo-export.service.js";
 import { parseKmlParcels } from "../services/geo/kml.js";
 import { readShapefileZip } from "../services/geo/shp.js";
 import { bulkIdsSchema, runBulk } from "../lib/bulk.js";
@@ -109,7 +109,7 @@ parcelsRouter.post(
       const body = req.body as z.infer<typeof importParcelsSchema>;
       const actor = { ...importActor(req), dryRun: body.dryRun ?? false };
       if (body.kml) {
-        res.json(await importParcelFeatures(parseKmlParcels(body.kml), actor));
+        res.json(await importParcelFeatures(parseKmlParcels(body.kml), { ...actor, source: "kml" }));
         return;
       }
       res.json(await importParcelsCsv(body.csv!, actor));
@@ -140,6 +140,7 @@ parcelsRouter.post(
         await importParcelFeatures(features, {
           ...importActor(req),
           dryRun: query.dryRun === "true",
+          source: "shp",
         }),
       );
     } catch (err) {
@@ -164,8 +165,21 @@ parcelsRouter.get(
       if (siteId === null || siteId !== requested) {
         throw new ApiError(403, "FORBIDDEN", "Hors de votre périmètre");
       }
-      const exported = await exportParcelsGeoJson(requested);
-      res.setHeader("Content-Type", "application/geo+json; charset=utf-8");
+      const exported = await exportParcelsKml(requested);
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "EXPORT",
+        entityType: "Parcelle",
+        after: {
+          siteId: requested,
+          filename: exported.filename,
+          count: exported.count,
+          format: "kml",
+        },
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
+      res.setHeader("Content-Type", "application/vnd.google-earth.kml+xml; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${exported.filename}"`);
       res.send(exported.body);
     } catch (err) {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { PaymentCycle, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
+import { writeAuditLog } from "../services/audit/audit.service.js";
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { validate } from "../middleware/validate.js";
 import { deletePaymentsBatch, generatePayments } from "../services/payments/generate.service.js";
@@ -214,6 +215,16 @@ paymentsRouter.get(
       const file = await getMvolaExportFile(req.params.id);
       if (!file) throw new ApiError(404, "NOT_FOUND", "Export introuvable");
 
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "DOWNLOAD",
+        entityType: "Payment",
+        entityId: req.params.id,
+        after: { filename: file.filename },
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
+
       const stream = await getReportStream(file.minioKey);
       res.setHeader(
         "Content-Type",
@@ -355,6 +366,15 @@ paymentsRouter.get(
   async (req, res, next) => {
     try {
       const { buffer, filename } = await buildBordereauWorkbook(req.params.id as string, req.user!);
+      await writeAuditLog({
+        userId: req.user!.sub,
+        action: "DOWNLOAD",
+        entityType: "Bordereau",
+        entityId: req.params.id as string,
+        after: { filename },
+        ip: req.ip,
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined,
+      });
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

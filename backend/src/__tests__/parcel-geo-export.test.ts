@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { exportParcelsGeoJson } from "../services/geo/parcel-geo-export.service.js";
+import { exportParcelsKml } from "../services/geo/parcel-geo-export.service.js";
+import { parseKmlParcels } from "../services/geo/kml.js";
 
 vi.mock("../lib/prisma.js", () => ({
   prisma: {
@@ -11,7 +12,7 @@ vi.mock("../lib/prisma.js", () => ({
 
 import { prisma } from "../lib/prisma.js";
 
-describe("exportParcelsGeoJson", () => {
+describe("exportParcelsKml", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -54,21 +55,31 @@ describe("exportParcelsGeoJson", () => {
       },
     ] as never);
 
-    const exported = await exportParcelsGeoJson("site-mnk");
-    const body = JSON.parse(exported.body) as {
-      features: Array<{ properties: Record<string, unknown> }>;
-    };
+    const exported = await exportParcelsKml("site-mnk");
+    const features = parseKmlParcels(exported.body);
 
-    expect(exported.filename).toBe("parcelles_MNK.geojson");
-    expect(body.features[0].properties).toEqual({
-      code_parcelle: "P1001",
-      code_site: "MNK",
-      surface: 1.5,
-      activites: "Sarclage, Trouaison",
-      nb_travailleurs: 2,
-      date_min: "2026-03-02",
-      date_max: "2026-03-10",
+    expect(exported.filename).toBe("parcelles_MNK.kml");
+    expect(features).toHaveLength(1);
+    expect(features[0]).toMatchObject({
+      codeParcelle: "P1001",
+      codeSite: "MNK",
+      surfaceHa: 1.5,
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [47.1, -18.1],
+            [47.2, -18.1],
+            [47.2, -18.2],
+            [47.1, -18.1],
+          ],
+        ],
+      },
     });
+    expect(exported.body).toContain('<SimpleData name="activites">Sarclage, Trouaison</SimpleData>');
+    expect(exported.body).toContain('<SimpleData name="nb_travailleurs">2</SimpleData>');
+    expect(exported.body).toContain('<SimpleData name="date_min">2026-03-02</SimpleData>');
+    expect(exported.body).toContain('<SimpleData name="date_max">2026-03-10</SimpleData>');
     expect(prisma.parcelle.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: expect.objectContaining({

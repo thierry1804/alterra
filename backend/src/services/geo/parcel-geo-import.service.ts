@@ -11,7 +11,13 @@ class DryRunRollback extends Error {}
 
 export async function importParcelFeatures(
   features: KmlParcelFeature[],
-  options: { dryRun: boolean; userId: string; ip?: string; userAgent?: string },
+  options: {
+    dryRun: boolean;
+    userId: string;
+    ip?: string;
+    userAgent?: string;
+    source?: "kml" | "shp";
+  },
 ): Promise<ParcelImportResult> {
   if (features.length === 0) {
     throw new ApiError(422, "EMPTY_FILE", "Aucune parcelle géométrique dans le fichier");
@@ -134,6 +140,7 @@ export async function importParcelFeatures(
         parcellesCreated: result.parcellesCreated,
         parcellesUpdated: result.parcellesUpdated,
         errors: result.errors.length,
+        format: options.source ?? "kml",
       },
       ip: options.ip,
       userAgent: options.userAgent,
